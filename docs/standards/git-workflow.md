@@ -26,7 +26,7 @@ Refs #12
 ```
 
 - **Types:** `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert`.
-- **Scopes:** the area changed, and `deps` for dependency updates: `cli`, `desktop`, `core`, `config`, `e2e`, `docs`, `repo`, `deps`.
+- **Scopes:** the area changed, and `deps` for dependency updates: `cli`, `desktop`, `core`, `config`, `e2e`, `docs`, `repo`, `deps`, `deps-dev`. Dependabot uses `deps` for runtime dependencies and `deps-dev` for dev dependencies.
 - **Summary:** imperative, lower case, no full stop, 72 characters at most.
 - **Breaking change:** add `!` after the scope, and a `BREAKING CHANGE:` footer saying what breaks and how to migrate.
 - **Issues:** reference them with `Refs #12`. Never write `closes`, `fixes` or `resolves`: the issue closes by hand, not by a commit.

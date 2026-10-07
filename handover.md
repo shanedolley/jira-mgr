@@ -66,7 +66,7 @@ Answered 2026-10-07: Keychain access through `/usr/bin/security`; state files in
 ## Traps
 
 - **Node 22 by default** (2026-10-07). The machine's default `node` is 22.22; the repo needs 24. Prefix commands with `PATH=$HOME/.local/share/mise/installs/node/24.16.0/bin:$PATH`, or run `mise use node@24` in the repo.
-- **Dependabot titles fail `pr-title`** (2026-10-07). Dependabot writes `build(deps-dev): ...`; the allowed scopes include `deps` but not `deps-dev`. Fix in `.github/dependabot.yml` (`commit-message`) or the scope list in `ci.yml` and `docs/standards/git-workflow.md`.
+- **Dependabot titles fail `pr-title`** - resolved 2026-10-07. Added `deps-dev` to the allowed scopes in `ci.yml` and documented in `docs/standards/git-workflow.md` that Dependabot uses `deps` for runtime and `deps-dev` for dev dependencies.
 - **pnpm forwards `--`** (2026-10-07). `pnpm jm -- --help` passes a literal `--`; `scripts/jm.ts` strips it.
 - **Pinned toolchain** (2026-10-07). TypeScript stays below 6.1 for `typescript-eslint`, ESLint stays on 9 for `eslint-plugin-react`. See `packages/config-lint/README.md`.
 - **Squash merges and `git branch -d`** (2026-10-07). After a squash merge `-d` refuses; confirm `git diff --quiet main <branch>` and then use `KOTHAR_ALLOW_DESTRUCTIVE=1 git branch -D`.
