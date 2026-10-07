@@ -10,6 +10,11 @@ export interface HierarchyOptions {
   accountId: string
   /** Every Customer option. With `hideEmptyCustomers` off, the ones with no visible issue still show. */
   customers?: CustomerOption[]
+  /**
+   * A view's filter predicate (`issueMatcher`). Like "Assignee: me", it keeps the issues it
+   * matches plus their ancestors, which show as context.
+   */
+  match?: ((issue: Issue) => boolean) | undefined
 }
 
 export interface HierarchyNode {
@@ -19,7 +24,7 @@ export interface HierarchyNode {
   /** Done children of an open parent, behind the "N done" chip. */
   doneChildren: HierarchyNode[]
   doneCount: number
-  /** True when "Assignee: me" kept the issue only as an ancestor of a matching one. */
+  /** True when "Assignee: me" or a view's filters kept the issue only as an ancestor of a matching one. */
   contextOnly: boolean
   /** Set on a direct child of an Epic whose Customer differs from the Epic's. */
   customerMismatch: { own: CustomerOption | null; epic: CustomerOption | null } | null
@@ -81,11 +86,15 @@ export function buildHierarchy(issues: Issue[], options: HierarchyOptions): Cust
   // Done ancestors of a kept open issue: "Hide done" must not hide that issue, so they stay as context.
   const rescued = new Set<string>()
 
-  if (options.assigneeMe) {
-    const mine = issues.filter((i) => i.assignee?.accountId === options.accountId)
+  if (options.assigneeMe || options.match) {
+    const wanted = issues.filter(
+      (i) =>
+        (!options.assigneeMe || i.assignee?.accountId === options.accountId) &&
+        (options.match?.(i) ?? true),
+    )
     keep.clear()
-    for (const i of mine) keep.add(i.key)
-    for (const i of mine) {
+    for (const i of wanted) keep.add(i.key)
+    for (const i of wanted) {
       for (const ancestor of ancestors(i)) {
         if (!keep.has(ancestor.key)) context.add(ancestor.key)
         if (!isDone(i) && isDone(ancestor)) rescued.add(ancestor.key)
