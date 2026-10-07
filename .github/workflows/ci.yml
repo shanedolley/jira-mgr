@@ -43,6 +43,7 @@ jobs:
             docs
             repo
             deps
+            deps-dev
 
   checks:
     runs-on: ubuntu-latest
