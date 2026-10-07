@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME` and `appTitle`. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, and the HTTP client at `@jira-mgr/core/http`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME` and `appTitle`. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, and the HTTP client at `@jira-mgr/core/http`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -25,11 +25,20 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 
 `@jira-mgr/core/auth` exports `login`, `logout` and `getCredentials`.
 
-- `login({ siteUrl, projectKey, email, token })` accepts only an `https://<name>.atlassian.net` site with no path, port or userinfo. It checks the token with `GET /rest/api/3/myself` (no redirects), then stores the token in the Keychain and `siteUrl`, `projectKey` and `email` in `settings.json`. A 401 or 403 throws `permission_denied` and stores nothing.
+- `login({ siteUrl, projectKey, email, token })` accepts only an `https://<name>.atlassian.net` site with no path, port or userinfo. It checks the token with `GET /rest/api/3/myself` (no redirects), resolves the custom fields (see Field Resolution), then stores the token in the Keychain, `siteUrl`, `projectKey` and `email` in `settings.json`, and the ids in `fields.json`. A 401 or 403 throws `permission_denied`, and a field failure throws `validation_failed`; either stores nothing.
 - `logout()` deletes every `jira-mgr` Keychain item, even when `settings.json` is corrupt, and clears `email` from settings. A missing item is not an error. `login` deletes the previous account's item when the email changes.
 - `getCredentials()` returns `{ siteUrl, email, token }`, or throws `permission_denied` ("Not logged in") when settings hold no email or the Keychain holds no token. A `siteUrl` in settings that fails the login site check throws `validation_failed`, so the token never goes to a tampered site.
 
 The Keychain item has service `jira-mgr` and the email as account. Every call goes through `/usr/bin/security`: reads use `find-generic-password -w`, and writes send `add-generic-password -U` to `security -i` on stdin, so the token never reaches a command line. A token or email holding a quote, backslash or control character is refused, since `security -i` has no safe encoding for it. A token over 1024 bytes or an email over 254 bytes is refused too, because `security -i` reads stdin in 4095-byte chunks and runs any overflow as a new command. `security -i` exits 0 even when its command fails, so a write reads the item back.
+
+## Field Resolution
+
+`@jira-mgr/core/fields` exports `resolveFields` and `getFieldIds`. `login` calls `resolveFields`; clients call `getFieldIds()`.
+
+- `resolveFields(http, project, overrides)` reads the create metadata of every issue type of the project, all pages, and matches Customer, Engagement, Sprint, Start date and Time remaining (h) by exact name. A name counts as found when any type lists it. It returns `{ customer, engagement, sprint, startDate, timeRemaining }`.
+- A name that no type lists, or that maps to more than one field id, throws `validation_failed` naming each field and its candidate ids, and telling the user to set `fieldOverrides` in `settings.json`.
+- A `fieldOverrides` id wins over the name. It must still appear in the project's create metadata, or the login fails.
+- `getFieldIds()` returns the ids in `fields.json` with the current `fieldOverrides` applied. It throws `permission_denied` when `fields.json` is missing, and `validation_failed` when it was resolved for another site or project than settings name.
 
 ## HTTP Client
 

@@ -14,9 +14,22 @@ export function stateDir(): string {
   return join(homedir(), 'Library', 'Application Support', 'jira-mgr')
 }
 
-const FIELD_NAMES = ['customer', 'engagement', 'sprint', 'startDate', 'timeRemaining'] as const
+export const FIELD_NAMES = [
+  'customer',
+  'engagement',
+  'sprint',
+  'startDate',
+  'timeRemaining',
+] as const
 
-const fieldIds = z.object(Object.fromEntries(FIELD_NAMES.map((n) => [n, z.string().min(1)])))
+export type FieldName = (typeof FIELD_NAMES)[number]
+
+const fieldIds = z.object(
+  Object.fromEntries(FIELD_NAMES.map((n) => [n, z.string().min(1)])) as Record<
+    FieldName,
+    z.ZodString
+  >,
+)
 
 const toggles = z
   .object({
@@ -75,6 +88,7 @@ const fieldsSchema = z
   })
   .nullable()
 
+export type FieldIds = z.infer<typeof fieldIds>
 export type Settings = z.infer<typeof settingsSchema>
 export type SavedView = z.infer<typeof savedViewSchema>
 export type TimerState = z.infer<typeof timerSchema>
