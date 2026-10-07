@@ -118,6 +118,11 @@ describe('jm help', () => {
     expect(del.output.example).toEqual({ key: 'PSAPAC-12', deletedSubtasks: ['PSAPAC-13'] })
     expect(del.exits).toEqual([
       { code: 'validation_failed', exit: 2, when: expect.stringContaining('--confirm') as unknown },
+      {
+        code: 'permission_denied',
+        exit: 4,
+        when: expect.stringContaining('No project') as unknown,
+      },
       { code: 'not_found', exit: 3, when: expect.stringContaining('does not exist') as unknown },
     ])
     expect(del.writes).toEqual(['jira'])

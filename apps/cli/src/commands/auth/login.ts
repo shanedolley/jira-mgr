@@ -14,6 +14,9 @@ interface LoginData {
   displayName: string
 }
 
+/** Core refuses a token over 1024 bytes; this stops stdin well before a stray file fills memory. */
+const MAX_TOKEN_BYTES = 4096
+
 const QUESTIONS = {
   site: 'Jira site URL (https://<name>.atlassian.net): ',
   project: 'Jira project key: ',
@@ -34,7 +37,11 @@ async function ask(ctx: Context, question: string, hidden: boolean): Promise<str
 async function readToken(tokenStdin: boolean, ctx: Context): Promise<string> {
   let token: string
   if (tokenStdin && !ctx.io.stdinIsTTY) {
-    token = (await ctx.io.readStdin()).trim()
+    const text = await ctx.io.readStdin(MAX_TOKEN_BYTES)
+    if (Buffer.byteLength(text) > MAX_TOKEN_BYTES) {
+      throw new JiraMgrError('validation_failed', 'The API token on stdin is too long.')
+    }
+    token = text.trim()
   } else if (ctx.io.stdinIsTTY && (tokenStdin || ctx.io.stderrIsTTY)) {
     token = await ask(ctx, 'Jira API token (hidden): ', true)
   } else {

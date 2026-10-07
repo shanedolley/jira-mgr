@@ -575,9 +575,10 @@ describe('transitionIssue', () => {
   it('posts the transition that reaches a status given by id', async () => {
     const requests = serveTransitions('transitions-story')
 
-    await transitionIssue(client, 'PSAPAC-3119', '11824')
+    const reached = await transitionIssue(client, 'PSAPAC-3119', '11824')
 
     expect(requests[1]?.body).toEqual({ transition: { id: '31' } })
+    expect(reached).toBe('Done')
   })
 
   it('matches the status the transition reaches, not the transition name', async () => {

@@ -203,14 +203,14 @@ const transitionsResponse = z.object({
 
 /**
  * Moves an issue to the status named `status` (case-insensitive) or with that id, by the
- * transition that reaches it. Throws `validation_failed` listing the statuses available when
- * none does.
+ * transition that reaches it, and returns the name of the status reached. Throws
+ * `validation_failed` listing the statuses available when none does.
  */
 export async function transitionIssue(
   http: HttpClient,
   key: string,
   status: string,
-): Promise<void> {
+): Promise<string> {
   const issueKeyValue = parseInput(issueKey, key, 'move the issue')
   const path = `/rest/api/3/issue/${issueKeyValue}/transitions`
   const raw = await http.request('GET', path)
@@ -237,4 +237,5 @@ export async function transitionIssue(
     )
   }
   await http.request('POST', path, { body: { transition: { id: transition.id } } })
+  return transition.to.name
 }

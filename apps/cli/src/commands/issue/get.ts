@@ -1,8 +1,5 @@
-import { JiraMgrError } from '@jira-mgr/core'
 import { adfToMarkdown } from '@jira-mgr/core/adf'
-import { parseSiteUrl } from '@jira-mgr/core/auth'
 import { getIssue, type IssueDetail } from '@jira-mgr/core/search'
-import { readSettings } from '@jira-mgr/core/state'
 
 import type { Handler } from '../../context.js'
 import {
@@ -13,6 +10,7 @@ import {
   stripControl,
 } from '../../output.js'
 import type { SpecOf } from '../../schema.js'
+import { siteUrl } from '../../site.js'
 
 type IssueData = IssueDetail & { descriptionMarkdown: string | null; url: string }
 
@@ -20,20 +18,14 @@ type IssueData = IssueDetail & { descriptionMarkdown: string | null; url: string
 export const get: Handler<SpecOf<'issue get'>, IssueData> = {
   async run({ key }, ctx) {
     const issue = await getIssue(ctx.http(), key, { signal: ctx.signal })
-    const siteUrl = parseSiteUrl((await readSettings()).siteUrl ?? '')
-    if (siteUrl === null) {
-      throw new JiraMgrError(
-        'validation_failed',
-        'The site URL in settings is not an https://<name>.atlassian.net site. Run `jm auth login` again.',
-      )
-    }
+    const site = await siteUrl()
     const { description, subtasks, ...rest } = issue
     return {
       ...rest,
       description,
       descriptionMarkdown: description === null ? null : adfToMarkdown(description),
       subtasks,
-      url: `${siteUrl}/browse/${issue.key}`,
+      url: `${site}/browse/${issue.key}`,
     }
   },
 
