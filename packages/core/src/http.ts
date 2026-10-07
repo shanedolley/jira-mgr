@@ -34,6 +34,8 @@ export interface RequestOptions {
   /** An object is sent as JSON. A `FormData` is sent as multipart, for attachments. */
   body?: unknown
   signal?: AbortSignal
+  /** Overrides the client's timeout for this request, such as a large upload. */
+  timeoutMs?: number
 }
 
 export interface HttpClient {
@@ -154,6 +156,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   const credentials = options.credentials ?? (() => getCredentials())
 
   async function request(method: string, path: string, init: RequestOptions = {}) {
+    const limitMs = init.timeoutMs ?? timeoutMs
     assertJiraPath(path)
     if (init.body !== undefined && READ_METHODS.includes(method.toUpperCase())) {
       throw new JiraMgrError('validation_failed', `${method} cannot carry a body.`)
@@ -191,7 +194,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
     }
 
     for (let attempt = 0; ; attempt++) {
-      const timeout = AbortSignal.timeout(timeoutMs)
+      const timeout = AbortSignal.timeout(limitMs)
       const signal = init.signal === undefined ? timeout : AbortSignal.any([timeout, init.signal])
       const started = performance.now()
       const elapsed = () => `${String(Math.round(performance.now() - started))}ms`
@@ -215,7 +218,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
         throw new JiraMgrError(
           'jira_error',
           (timedOut
-            ? `${label} did not finish within ${String(timeoutMs / 1000)} seconds.`
+            ? `${label} did not finish within ${String(limitMs / 1000)} seconds.`
             : `Cannot reach Jira for ${label}. Check your network, and that Jira did not redirect the request.`) +
             mayHaveRun,
           { cause },
