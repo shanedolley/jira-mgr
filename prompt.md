@@ -4,7 +4,7 @@
 
 Measured 2026-10-08 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and `gh issue list --state open --limit 200`. #21 to #26 are closed. L7 (#27) ran with Shane on 2026-10-08. Work in order:
 
-1. **Shane's HIL review of #27, #60 and #61, and his open decision on #27.** #27 is in HIL Review (runbook merged in #62). #60 is merged in PR #63 (516669f) and in HIL Review. #61 is fixed on branch `fix-cli-output-polish` (one full stop after Jira's quoted message; an empty worklog comment reads `null`) and awaits review. The decision is whether `jm issue create` reads the new issue back ([comment on #27](https://github.com/shanedolley/jira-mgr/issues/27#issuecomment-6048998036)). Nothing else to build on these.
+1. **Shane's HIL review of #27, #60 and #61, and his open decision on #27.** #27 is in HIL Review (runbook merged in #62). #60 is merged in PR #63 (516669f) and in HIL Review. #61 is merged in PR #64 (845f979) and in HIL Review. The decision is whether `jm issue create` reads the new issue back ([comment on #27](https://github.com/shanedolley/jira-mgr/issues/27#issuecomment-6048998036)). Nothing else to build on these.
 2. **Desktop D1 (#28)** once Shane closes #27. Write D2's and D4's design docs before their code.
 
 ## Reading Order
