@@ -17,6 +17,8 @@
     "./search": "./src/search.ts",
     "./sprints": "./src/sprints.ts",
     "./state": "./src/state.ts",
+    "./timer": "./src/timer.ts",
+    "./timer-calc": "./src/timer-calc.ts",
     "./write": "./src/write.ts"
   },
   "scripts": {

@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -164,6 +164,44 @@ Three subpaths cover the secondary operations. Each function takes an `HttpClien
 - `getFieldOptions(http, field)` returns `{ id, name }[]` for `customer`, `engagement`, `priority`, `issueType` or `status`. Customer, Engagement and Priority come from the project's create metadata, so Priority lists the project's 11 priorities, not the site's 20. `status` lists each status of the project once.
 
 Recorded fixtures back every response mapping: `comments-psapac-666`, `worklogs-psapac-666`, `issue-links-psapac-666` and `-664` (the same link seen from both ends), `issue-attachments-psapac-3017`, `issuelinktype`, `attachment-meta`, `board-psapac`, `board-sprints-active-future`, `board-sprints-all`, `label-suggestions`, `assignable-users` and `project-statuses`. Tests record each request's method, path, query and body, and never reach Jira.
+
+## Timer
+
+`@jira-mgr/core/timer-calc` is pure (no `node:` imports, so the renderer can use it). `@jira-mgr/core/timer` is the Node-only engine over `timer.json`.
+
+### Engine
+
+Every function takes `{ now?, lock? }`: `now` is the clock (tests pass a fixed one), `lock` tunes the wait.
+
+- `startTimer(issue, { switch?, expectRunning? })` takes `{ key, issueType: { name } }`, so an `Issue` works. Only Task, Bug, Story and Subtask can be timed (Q56); anything else throws `validation_failed` before the file is read. It returns `{ timer, stopped }`.
+  - Nothing running: starts, `stopped` is `null`.
+  - The same issue already runs: no-op. If it is paused, it resumes.
+  - Another issue runs: throws `validation_failed` with `details.runningIssueKey`, unless `switch: true`. Then one write stops that timer and starts the new one, and `stopped` holds the old timer's draft (Q50). That draft is the only record of the old timer, so use `switchAndLog` when the old time is to be logged, and `startTimer` with `switch` only to discard it.
+  - `expectRunning` is the issue key the caller showed the user. If a different timer runs, it throws `validation_failed` with `details.runningIssueKey` and `details.expectedIssueKey`. No timer running passes.
+- `stopTimer({ expectRunning? })` clears the timer and returns a `WorklogDraft`, or `null` when idle. `expectRunning` is as in `startTimer`.
+- `pauseTimer()` and `resumeTimer()` close or open a segment and return the timer. Pausing a paused timer and resuming a running one change nothing. Both throw `not_found` when idle.
+- `stopAndLog(http, { comment?, timeSpent?, expectRunning? })` stops the timer and logs it with `addWorklog` (`started` from the draft, `timeSpent` from the draft or the override), for the stop dialog and `jm timer stop` (Q51). It returns `{ draft, worklog }`, or `null` when idle. `comment` is ADF and `timeSpent` a Jira duration, both checked before the timer stops, so bad input throws `validation_failed` and the timer keeps running. `expectRunning` is as in `startTimer`, and a different running timer stops nothing. It is required whenever `timeSpent` is given, so an adjusted time never lands on a timer the user did not see. There is no `started` override: a worklog always starts at the timer's first segment.
+- `switchAndLog(http, issue, { comment?, timeSpent?, expectRunning? })` (`timeSpent` again needs `expectRunning`) checks the issue and the log input, stops the running timer, logs it, then starts the timer on `issue`. It returns `{ timer, stopped, logged }`, with `stopped` and `logged` `null` when nothing was running or the issue already runs.
+- `restoreTimer(timer)` writes a stopped timer back with every segment closed (paused), only when `timer.json` is empty, and returns whether it did.
+
+The engine makes no HTTP call itself; `stopAndLog` and `switchAndLog` take the client. Tracked time is never dropped: when `addWorklog` fails for any reason (401, network, 5xx), the timer goes back paused through `restoreTimer`, and `switchAndLog` does not start the new timer. The error keeps Jira's code (`internal` for a non-Jira failure) and says `The timer is paused on KEY; stop the timer again.` with the `started` time. `details` holds `{ draft, timer, restored }`. If someone started another timer meanwhile, nothing is overwritten: `restored` is `false` and the message tells the user to log by hand. A `jira_error` or `internal` failure may follow a request that got through (a timeout, or a 2xx with a body core cannot read), so its message adds `Check KEY's worklogs before retrying.` and a retry may log twice. When `switchAndLog` logs the old timer and the start is then refused, the message says the old issue's time was logged and `details.logged` holds `{ draft, worklog }`.
+
+The app's switch dialog (Q59): read the timer, show `worklogDraft(timer, settings.timer, new Date())` and remember its issue key. On confirm call `switchAndLog(http, issue, { expectRunning: shownKey, timeSpent, comment })`, which logs exactly the draft of the timer it stopped, so a timer the CLI changed meanwhile is refused instead of logged wrongly. On discard call `startTimer(issue, { switch: true, expectRunning: shownKey })` and drop `stopped`.
+
+The app's stop dialog works the same way: show `worklogDraft(...)` for the running timer and remember its issue key, then on confirm call `stopAndLog(http, { expectRunning: shownKey, timeSpent, comment })`. If the CLI switched to another issue meanwhile, the call throws `validation_failed` and the user's adjusted time is not logged anywhere. If the CLI stopped the timer, the call returns `null`: nothing was logged, because the timer was already stopped elsewhere. On discard there is nothing to log: call `stopTimer({ expectRunning: shownKey })`.
+
+### Draft
+
+`WorklogDraft` is `{ issueKey, started, seconds, timeSpent, needsConfirmation }`. `started` is the first segment's start as a UTC ISO string (pass `new Date(started)` to `addWorklog`). Paused time is excluded.
+
+- Rounding follows `timer.rounding` (default `5m`): nearest step, exact halves up, one step minimum (7m to 5m, 8m to 10m, 7m30s to 10m, 2m to 5m). `none` rounds to whole minutes with a one-minute minimum. `timeSpent` uses hours and minutes only, such as `1h 5m`, so a long timer never turns into days.
+- `needsConfirmation` is true when the running total is over `reminderThresholdHours` (default 8, exactly 8h does not count), or when the first segment's start and the stop moment fall on different dates in the machine's local time, paused or not, because one worklog dated day 1 would hold day 2's work. Stopping exactly at midnight counts as the next date.
+- `reminderDue(timer, settings.timer, now, lastReminderAt)` is true once the running total passes the threshold and no notice has gone out since it did, then again each `reminderIntervalMinutes` after `lastReminderAt` (`null` before the first notice). A paused or absent timer is never due. The app keeps `lastReminderAt` in memory.
+- `elapsedMs(timer, now)` gives the running time for the row, page and sidebar displays.
+
+### Concurrency
+
+The app and the CLI both write `timer.json`, so each operation runs under an exclusive lock, `timer.json.lock` beside it. The lock is a file linked into place with its pid and time, so another writer sees it whole or not at all. A writer waits up to `lock.waitMs` (5000), polling every `pollMs` (10), then throws `internal` naming the file. Each attempt stamps the lock with the current time, so a lock taken after a long wait is never stale on entry. A lock is abandoned when its pid is dead, its time is older than `staleMs` (10000), or the file is unreadable; the next writer removes it by renaming it away, and links it back if the file it took was a lock acquired after the check. A holder only removes a lock that is still its own.
 
 ## Test
 
