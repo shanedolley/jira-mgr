@@ -5,20 +5,14 @@ import { JiraMgrError } from './errors.js'
 import { getFieldIds } from './fields.js'
 import type { HttpClient } from './http.js'
 import { readSettings, type FieldIds } from './state.js'
+import { duration, issueKey, parseInput } from './validate.js'
 
 const ISSUE_TYPES = ['Epic', 'Story', 'Task', 'Bug', 'Subtask'] as const
 /** Q23: a type change is allowed only among these three, which share a hierarchy level. */
 const SWAPPABLE_TYPES = ['Story', 'Task', 'Bug'] as const
 
-const issueKey = z
-  .string()
-  .regex(/^[A-Z][A-Z0-9_]*-[1-9]\d*$/, 'Not an issue key such as PSAPAC-12.')
 const text = z.string().min(1)
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.')
-/** A Jira duration such as "2h 30m" or "1w 2d". */
-const duration = z
-  .string()
-  .regex(/^\d+[wdhm](?: \d+[wdhm])*$/, 'Use a Jira duration such as "2h 30m".')
 const label = z.string().regex(/^\S+$/, 'A label holds no spaces.')
 const required = (name: string) =>
   z.string({ error: `${name} is required.` }).min(1, `${name} is required.`)
@@ -84,20 +78,6 @@ const editInput = z
   })
 
 export type EditIssueInput = z.input<typeof editInput>
-
-/** Throws `validation_failed` naming each bad field. Nothing has been sent yet. */
-function parseInput<T extends z.ZodType>(schema: T, input: unknown, what: string): z.output<T> {
-  const parsed = schema.safeParse(input)
-  if (parsed.success) return parsed.data
-  const problems = parsed.error.issues.map(
-    ({ path, message }) => `${path.length > 0 ? `${path.join('.')}: ` : ''}${message}`,
-  )
-  throw new JiraMgrError(
-    'validation_failed',
-    `Cannot ${what}: ${problems.join(' ')} Fix the input and try again.`,
-    { details: { issues: parsed.error.issues } },
-  )
-}
 
 type Input = Partial<Record<string, unknown>>
 

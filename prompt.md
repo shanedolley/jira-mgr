@@ -4,10 +4,10 @@
 
 Measured 2026-10-07 by reading every open Core issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). CLI and Desktop issues wait on all of Core.
 
-1. **Finish C10 issue writes (#18)** on `c10-issue-writes`: review, push, CI (ship-it merges), proof; internal story, so the project manager moves it to Done.
+1. **Finish C11 issue extras (#19)** on `c11-issue-extras`: review, push, CI (ship-it merges), proof; internal story, so the project manager moves it to Done.
 2. **C8 views and search (#16)**: no open blockers.
-3. **C11 issue extras (#19)**: blocked only by C10.
-4. **C12 timer engine (#20)**: blocked by C11.
+3. **C12 timer engine (#20)**: blocked only by C11. Note on #20: `timer.json` writes from app and CLI are last-writer-wins.
+4. **L1 command schema (#21)**: waits on all of Core (C8, C11, C12). Write its design doc first.
 
 ## Reading Order
 
@@ -24,7 +24,7 @@ Measured 2026-10-07 by reading every open Core issue's blockers (`gh api repos/s
 5. Run `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm e2e` for desktop work. Read the pass and fail counts. Commit locally and have a reviewer other than the builder pass it before pushing, since a green PR may merge at once.
 6. Run `/autonomous:update`, so the handover lands in the story's commit.
 7. Commit with `Refs #n`, push, open the pull request, watch CI with `gh pr checks <n> --watch`.
-8. On green CI the ship-it automation merges; do not run `gh pr merge`. Confirm MERGED, then clean up the branch.
+8. On green CI the ship-it automation usually merges; do not race it with `gh pr merge`. If a green PR is still open after about 10 minutes, merge it with `gh pr merge <n> --squash`. Confirm MERGED, then clean up the branch.
 9. Comment on the issue how each criterion is met, ending with `Review verdict: PASS (reviewer <agent>, builder <agent>)`. Then have `kothar:project-manager` close it as Done, unless it needs Shane's judgement: anything he sees or uses (CLI output, Desktop UI), anything touching security or credentials, and live PSAPAC checks. Those go to `status:hil-review` for Shane to close (rule adopted by Shane 2026-10-07).
 
 ## Decision Format

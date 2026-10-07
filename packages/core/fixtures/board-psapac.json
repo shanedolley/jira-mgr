@@ -1,0 +1,24 @@
+{
+  "maxResults": 50,
+  "startAt": 0,
+  "total": 1,
+  "isLast": true,
+  "values": [
+    {
+      "id": 1706,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/board/1706",
+      "name": "PSAPAC All Delivery board",
+      "type": "simple",
+      "location": {
+        "projectId": 12606,
+        "displayName": "Professional Services - APAC (PSAPAC)",
+        "projectName": "Professional Services - APAC",
+        "projectKey": "PSAPAC",
+        "projectTypeKey": "software",
+        "avatarURI": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/15119?size=small",
+        "name": "Professional Services - APAC (PSAPAC)"
+      },
+      "isPrivate": false
+    }
+  ]
+}

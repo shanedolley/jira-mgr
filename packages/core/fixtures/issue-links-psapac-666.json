@@ -1,0 +1,160 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "698015",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/698015",
+  "key": "PSAPAC-666",
+  "fields": {
+    "issuelinks": [
+      {
+        "id": "551838",
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLink/551838",
+        "type": {
+          "id": "10000",
+          "name": "Blocks",
+          "inward": "is blocked by",
+          "outward": "blocks",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10000"
+        },
+        "outwardIssue": {
+          "id": "698011",
+          "key": "PSAPAC-664",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/698011",
+          "fields": {
+            "summary": "Value Consulting - Check in session (Draft 2) 23rd Sept 2025",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Done",
+              "id": "11824",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+                "id": 3,
+                "key": "done",
+                "colorName": "green",
+                "name": "Done"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+              "id": "11502",
+              "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+              "name": "Story",
+              "subtask": false,
+              "avatarId": 12015,
+              "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+              "hierarchyLevel": 0
+            }
+          }
+        }
+      },
+      {
+        "id": "551839",
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLink/551839",
+        "type": {
+          "id": "10000",
+          "name": "Blocks",
+          "inward": "is blocked by",
+          "outward": "blocks",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10000"
+        },
+        "outwardIssue": {
+          "id": "698009",
+          "key": "PSAPAC-663",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/698009",
+          "fields": {
+            "summary": "Value Consulting - Check in session (Draft 1) 17 Sept 2025",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Done",
+              "id": "11824",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+                "id": 3,
+                "key": "done",
+                "colorName": "green",
+                "name": "Done"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+              "id": "11502",
+              "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+              "name": "Story",
+              "subtask": false,
+              "avatarId": 12015,
+              "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+              "hierarchyLevel": 0
+            }
+          }
+        }
+      },
+      {
+        "id": "551840",
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLink/551840",
+        "type": {
+          "id": "10000",
+          "name": "Blocks",
+          "inward": "is blocked by",
+          "outward": "blocks",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10000"
+        },
+        "outwardIssue": {
+          "id": "698021",
+          "key": "PSAPAC-669",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/698021",
+          "fields": {
+            "summary": "Sydney Water Data Governance Committee Meeting Mid October 2025 - Preparations",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Done",
+              "id": "11824",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+                "id": 3,
+                "key": "done",
+                "colorName": "green",
+                "name": "Done"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+              "id": "11502",
+              "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+              "name": "Story",
+              "subtask": false,
+              "avatarId": 12015,
+              "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+              "hierarchyLevel": 0
+            }
+          }
+        }
+      }
+    ]
+  }
+}

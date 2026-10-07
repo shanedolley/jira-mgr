@@ -1,0 +1,588 @@
+[
+  {
+    "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11500",
+    "id": "11500",
+    "name": "Task",
+    "subtask": false,
+    "statuses": [
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11855",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Hold",
+        "untranslatedName": "Hold",
+        "id": "11855",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11822",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "11822",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11954",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Review",
+        "untranslatedName": "Review",
+        "id": "11954",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+        "description": "This work item is being actively worked on at the moment by the assignee.",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "11823",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "11824",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11501",
+    "id": "11501",
+    "name": "Bug",
+    "subtask": false,
+    "statuses": [
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11855",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Hold",
+        "untranslatedName": "Hold",
+        "id": "11855",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11822",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "11822",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11954",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Review",
+        "untranslatedName": "Review",
+        "id": "11954",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+        "description": "This work item is being actively worked on at the moment by the assignee.",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "11823",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "11824",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+    "id": "11502",
+    "name": "Story",
+    "subtask": false,
+    "statuses": [
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11855",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Hold",
+        "untranslatedName": "Hold",
+        "id": "11855",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11822",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "11822",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11954",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Review",
+        "untranslatedName": "Review",
+        "id": "11954",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+        "description": "This work item is being actively worked on at the moment by the assignee.",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "11823",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "11824",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+    "id": "11503",
+    "name": "Epic",
+    "subtask": false,
+    "statuses": [
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11855",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Hold",
+        "untranslatedName": "Hold",
+        "id": "11855",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11822",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "11822",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11954",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Review",
+        "untranslatedName": "Review",
+        "id": "11954",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+        "description": "This work item is being actively worked on at the moment by the assignee.",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "11823",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "11824",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/12020",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Opportunity",
+        "untranslatedName": "Opportunity",
+        "id": "12020",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11504",
+    "id": "11504",
+    "name": "Subtask",
+    "subtask": true,
+    "statuses": [
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11855",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Hold",
+        "untranslatedName": "Hold",
+        "id": "11855",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11822",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "11822",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11954",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Review",
+        "untranslatedName": "Review",
+        "id": "11954",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+        "description": "This work item is being actively worked on at the moment by the assignee.",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "11823",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      },
+      {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "11824",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "12606"
+          }
+        }
+      }
+    ]
+  }
+]

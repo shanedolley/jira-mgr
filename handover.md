@@ -4,14 +4,11 @@
 
 Checked 2026-10-07.
 
-- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40), C4 (#41), C5 (#42), C6 (#43), C7 (#44) and C9 (#45). Run `git log --oneline -1 origin/main` for the head commit.
-- C4 HTTP client merged in #41; Shane reviewed and closed #12.
-- C5 field resolution merged in #42 and is closed.
-- C6 issue search merged in #43 and is closed.
-- C7 hierarchy merged in #44 and is closed.
-- C9 ADF and Markdown merged in #45 and is closed: `adfToMarkdown` and `markdownToAdf` in `@jira-mgr/core/adf`, lossless on a no-edit round trip through `adf` fences, `<adf-node>` tags and `<!--adf-->` notes (see `packages/core/README.md`).
-- C10 issue writes (#18) is built on `c10-issue-writes`: `createIssue`, `editIssue`, `deleteIssue`, `transitionIssue` in `@jira-mgr/core/write`, tested against MSW only. Whether Jira accepts a type change is unverified until L7 (noted on #27). Its pull request carries this handover; find it with `gh pr list --head c10-issue-writes`.
-- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search`, `/write` (Node-only); `/issue`, `/hierarchy` and `/adf` are renderer-safe. `jm` still prints only `--help` and `--version`.
+- `main` holds the scaffold (#1), roadmap and handover (#7, #46), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5) and Core stories C1-C7, C9 and C10 (#38-#45, #47). Run `git log --oneline -1 origin/main` for the head commit.
+- Core subpaths: `@jira-mgr/core` (errors and the `Issue` type, renderer-safe), `/issue`, `/hierarchy`, `/adf` (renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search`, `/write`, `/extras`, `/sprints`, `/lookups` (Node-only). `jm` still prints only `--help` and `--version`.
+- C11 issue extras (#19) is built on `c11-issue-extras`: `@jira-mgr/core/extras` (comments, worklogs, links, attachments), `/sprints` (board, sprint list, move in and out) and `/lookups` (label suggestions, assignable users, field options). Its pull request carries this handover; find it with `gh pr list --head c11-issue-extras`.
+- Live-check items for L7 are collected on #27: type change, remaining estimate, sprint moves on the simple board, worklog `adjustEstimate=auto`, attachment upload. Link direction was verified live on 2026-10-07 with Shane's approval (link 642179 created and deleted): the issue named `inwardIssue` in a POST is the blocker.
+- Client-side rules core leaves to the CLI and app (C11 findings): label suggestions are site-wide, so filter to project labels if wanted (Q35); hide undated sprints such as "PS TEMPLATES" behind "Show all" (Q20); priorities come from createmeta (11 for PSAPAC), not `/priority` (20 site-wide).
 
 ## Board
 
@@ -19,14 +16,14 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Closed (Done) | #9 C1, #10 C2, #11 C3, #12 C4, #13 C5, #14 C6, #15 C7, #17 C9 | `gh issue list --state closed --limit 200` | 2026-10-07 |
-| Open roadmap issues | 21 (Core 4, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #18 (C10) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| Closed (Done) | #9-#15, #17, #18 (C1-C7, C9, C10) | `gh issue list --state closed --limit 200` | 2026-10-07 |
+| Open roadmap issues | 20 (Core 3, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
+| In progress | #19 (C11) | `gh issue list --label status:in-progress` | 2026-10-07 |
 | In AI or HIL review | none | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `c10-issue-writes`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `c11-issue-extras`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -34,7 +31,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (797 pass and 1 skipped in `core`, 11 files, measured on `c10-issue-writes` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (871 pass and 1 skipped in `core`, 14 files, measured on `c11-issue-extras` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -43,12 +40,12 @@ All from the repository root, under Node 24 (see Traps).
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #45 merge, bdf09d3 (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #47 merge, f56fb78 (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
 
 ## Environments
 
 - Jira: Collibra site `engineering-collibra.atlassian.net`, project PSAPAC. PSAPAC's measured shape (issue types, field ids, statuses, link types, sprints, counts) is in [round 2](docs/discovery/2026-10-07-product-grilling/round-2.md), measured 2026-10-07. Correction from the recorded createmeta fixtures (2026-10-07): Sprint (10600) is on Task, Bug, Story and Subtask, absent only on Epic; Start date (13808) is on Bug, Story and Epic, absent on Task and Subtask. Field presence comes from createmeta and editmeta, not from round 2. Editmeta (C10 fixtures): Subtask has no Priority; `issuetype` is listed with no operations, allowed values Task, Bug and Story; transition 3 on Epics is named "REVIEW", so match transitions by target status.
-- Credentials: `~/.claude/bin/kj collibra` reads the Keychain item `kothar-jira-collibra` with `COLLIBRA_JIRA_EMAIL`, and the fixture recorder borrows that token through `JM_JIRA_TOKEN`. jira-mgr's own item (service `jira-mgr`, account = email) is written by `login` from `@jira-mgr/core/auth`, but no real login has run, so it does not exist (`security find-generic-password -s jira-mgr` exits 44, 2026-10-07).
+- Credentials: `~/.claude/bin/kj collibra` reads the Keychain item `kothar-jira-collibra` with `COLLIBRA_JIRA_EMAIL`, and the fixture recorder borrows that token through `JM_JIRA_TOKEN`. jira-mgr's own item (service `jira-mgr`, account = email) is written by `login` from `@jira-mgr/core/auth`, but no real login has run, so it does not exist (`security find-generic-password -s jira-mgr` exits 44, re-checked 2026-10-07 after C10).
 - Recorded fixtures are committed as recorded, with no scrubbing (Q60). Never record request headers.
 
 ## Open Decisions
@@ -61,17 +58,18 @@ Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue 
 
 ## Traps
 
-- **Node 22 by default** (re-checked 2026-10-07: `node -v` gives v22.22.0). The machine's default `node` is 22.22; the repo needs 24. Prefix commands with `PATH=$HOME/.local/share/mise/installs/node/24.16.0/bin:$PATH`, or run `mise use node@24` in the repo.
+- **Node 22 by default** (re-checked 2026-10-07 after C10: `node -v` gives v22.22.0). The machine's default `node` is 22.22; the repo needs 24. Prefix commands with `PATH=$HOME/.local/share/mise/installs/node/24.16.0/bin:$PATH`, or run `mise use node@24` in the repo.
 - **Dependabot titles fail `pr-title`** - resolved 2026-10-07. Added `deps-dev` to the allowed scopes in `ci.yml` and documented in `docs/standards/git-workflow.md` that Dependabot uses `deps` for runtime and `deps-dev` for dev dependencies.
 - **pnpm forwards `--`** (2026-10-07). `pnpm jm -- --help` passes a literal `--`; `scripts/jm.ts` strips it.
-- **Pinned toolchain** (re-checked 2026-10-07). ESLint stays on 9 for `eslint-plugin-react`. Dependabot #4 moved every package to TypeScript `~7.0.2` except `packages/config-lint`, which keeps `~6.0.0` for `typescript-eslint`; lint and typecheck pass. `packages/config-lint/README.md` still says TypeScript stays on 6.0, which now holds only for that package.
+- **Pinned toolchain** (re-checked 2026-10-07). ESLint stays on 9 for `eslint-plugin-react`. Dependabot #4 moved every package to TypeScript `~7.0.2` except `packages/config-lint`, which keeps `~6.0.0` for `typescript-eslint`; lint and typecheck pass (re-checked 2026-10-07). `packages/config-lint/README.md` still says TypeScript stays on 6.0, which now holds only for that package.
 - **Squash merges and `git branch -d`** (2026-10-07). After a squash merge `-d` refuses; confirm `git diff --quiet main <branch>` and then use `KOTHAR_ALLOW_DESTRUCTIVE=1 git branch -D`.
 - **`kj` paths** (2026-10-07). The ticket guard rejects shell variables inside a `kj` path and `>|` redirects; write paths literally.
 - **Ticket guard reads Bash text** (2026-10-07, hit twice). `guard-ticket-moves.py` refuses Bash commands whose text names Jira (the Collibra host, `JM_JIRA_SITE=`, even the word in a `sed` or commit heredoc) unless the program is one it knows sends no request. Write commit messages to a scratch file with the Write tool and pass `git commit -F`. `gh` refuses `--body-file` from a path; pass PR bodies inline as a `--body "$(cat <<'EOF' ... EOF)"` heredoc in a command of their own. Read Jira through `~/.claude/bin/kj collibra`.
 - **msw 3 breaks Vitest's peer range** (2026-10-07). `pnpm add -D msw` resolves 3.x; Vitest wants `^2.4.9`. `@jira-mgr/core` pins `msw@^2`.
 - **Weak regression tests** (2026-10-07). C4's first abort test passed with the bug still present. Reviewers now revert each fix in a scratch copy and confirm its test fails; ask for that on every bug fix.
-- **ship-it merges on green** (2026-10-07, hit on #38, #40, #42 and #43). The ship-it automation merges a PR under Shane's account as soon as CI passes, and a second merge (ship-it or `gh pr merge`) then reports "merge conflicts" or "merge already in progress". Review the local commit before pushing, never run `gh pr merge` yourself, and treat that ship-it failure as noise once `gh pr view <n> --json state` says MERGED.
+- **ship-it merges on green** (2026-10-07, hit on #38, #40, #42, #43; it also merged #44, #45 and #47 unprompted, but left #46, a docs-only PR, open until merged by hand). The ship-it automation merges a PR under Shane's account as soon as CI passes, and a second merge (ship-it or `gh pr merge`) then reports "merge conflicts" or "merge already in progress". Review the local commit before pushing, never run `gh pr merge` yourself, and treat that ship-it failure as noise once `gh pr view <n> --json state` says MERGED.
 - **Node modules in the renderer** (2026-10-07). Re-exporting `node:fs` code from `@jira-mgr/core`'s main entry makes the desktop build warn. Node-only code goes behind a subpath export such as `@jira-mgr/core/state`.
 - **`security -i` exits 0 on failure and splits long lines** (2026-10-07). A bad command inside `security -i` still exits 0 and can create a junk item, and stdin past 4095 bytes runs as a second command. `@jira-mgr/core/auth` caps token and email length, refuses commands of 4095 bytes or more, and reads the item back after every write. Probe the Keychain only with throwaway service names and delete what you create.
 - **Shell noclobber** (2026-10-07). `>` refuses to overwrite an existing file; a check run redirected to an old log silently did not run. Use a fresh log name per run.
 - **Recorded search pages never end** (2026-10-07). Fixtures recorded mid-phase all carry `isLast: false`; tests serve page 2 with the token dropped and `isLast: true`. Record from the end of a phase if a test needs a genuine last page.
+- **Reviewers can be confidently wrong about Jira semantics** (2026-10-07). C11's reviewer called the link direction reversed, citing a third-party issue; a live check proved the builder right. When builder and reviewer disagree on Jira behaviour and only a write can settle it, ask Shane for one reversible live check rather than picking a side.
