@@ -2,11 +2,12 @@
 
 ## Start Here
 
-Measured 2026-10-07 from each open issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`).
+Measured 2026-10-07 by reading every open Core issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). CLI and Desktop issues wait on all of Core.
 
-1. **C4 HTTP client (#12)**: unblocked once C3 (#11) merges. Build on `getCredentials()` from `@jira-mgr/core/auth`; keep the https Atlassian host check.
-2. **C9 ADF and Markdown (#17)**: unblocked; C1 (#9) merged.
-3. **C5 field resolution (#13)**: needs C4.
+1. **Finish C4 HTTP client (#12)**: review passed; pushed on `c4-http-client`. Watch CI, post proof, and have the project manager move the issue to HIL Review (it handles credentials).
+2. **C9 ADF and Markdown (#17)**: no open blockers; can start now.
+3. **C5 field resolution (#13)**: blocked only by C4. Use `createHttpClient` from `@jira-mgr/core/http`.
+4. **C6 issue search (#14)**: blocked by C5. C10 (#18) waits on C5 and C9.
 
 ## Reading Order
 
@@ -24,7 +25,7 @@ Measured 2026-10-07 from each open issue's blockers (`gh api repos/shanedolley/j
 6. Run `/autonomous:update`, so the handover lands in the story's commit.
 7. Commit with `Refs #n`, push, open the pull request, watch CI with `gh pr checks <n> --watch`.
 8. On green CI, merge (Shane's standing rule in his global instructions), then clean up the branch.
-9. Comment on the issue how each criterion is met; have `kothar:project-manager` set `status:ai-review`.
+9. Comment on the issue how each criterion is met, ending with `Review verdict: PASS (reviewer <agent>, builder <agent>)`. Then have `kothar:project-manager` close it as Done, unless it needs Shane's judgement: anything he sees or uses (CLI output, Desktop UI), anything touching security or credentials, and live PSAPAC checks. Those go to `status:hil-review` for Shane to close (rule adopted by Shane 2026-10-07).
 
 ## Decision Format
 
