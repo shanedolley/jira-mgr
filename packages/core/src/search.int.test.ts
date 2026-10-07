@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { JIRA_SITE, loadFixture, server } from '../test/msw.js'
 import { JiraMgrError } from './errors.js'
 import { createHttpClient } from './http.js'
-import { searchIssuePages, searchIssues, type SearchPage } from './search.js'
+import { getIssue, searchIssuePages, searchIssues, type SearchPage } from './search.js'
 import { writeFields, writeSettings } from './state.js'
 
 const IDS = {
@@ -308,6 +308,19 @@ describe('searchIssues', () => {
     )
   })
 
+  it('skips a phase left out of `phases` without sending a request for it', async () => {
+    const requests = serveSearch()
+    const issues = await searchIssues(client, { phases: ['unresolved'] })
+    expect(issues).toHaveLength(20)
+    expect(requests).toHaveLength(2)
+    expect(requests.every((r) => r.jql.includes('!= Done'))).toBe(true)
+
+    const done = serveSearch()
+    await searchIssues(client, { phases: ['done'] })
+    expect(done.every((r) => r.jql.includes('= Done') && !r.jql.includes('!='))).toBe(true)
+    expect(done).toHaveLength(2)
+  })
+
   it('fails with permission_denied when settings hold no project', async () => {
     await writeSettings({ siteUrl: JIRA_SITE })
     const requests = serveSearch()
@@ -315,5 +328,73 @@ describe('searchIssues', () => {
     const error = await failure(searchIssues(client))
     expect(error.code).toBe('permission_denied')
     expect(requests).toHaveLength(0)
+  })
+})
+
+describe('getIssue', () => {
+  const serveIssue = (body: unknown = loadFixture('issue-psapac-3066'), status = 200) => {
+    const paths: string[] = []
+    server.use(
+      http.get(`${JIRA_SITE}/rest/api/3/issue/:key`, ({ request }) => {
+        const url = new URL(request.url)
+        paths.push(`${url.pathname}${url.search}`)
+        return HttpResponse.json(body as Record<string, unknown>, { status })
+      }),
+    )
+    return paths
+  }
+
+  it('reads one issue with its description and subtasks from a recorded response', async () => {
+    const paths = serveIssue()
+    const issue = await getIssue(client, 'PSAPAC-3066')
+
+    expect(paths).toHaveLength(1)
+    expect(paths[0]).toMatch(/^\/rest\/api\/3\/issue\/PSAPAC-3066\?fields=summary,/)
+    expect(paths[0]).toContain(',customfield_14849,')
+    expect(paths[0]).toMatch(/,description,subtasks$/)
+    expect(issue).toMatchObject({
+      key: 'PSAPAC-3066',
+      summary: expect.any(String) as string,
+      status: { name: 'Done', category: 'done' },
+      customer: { id: '16120', value: 'BHP' },
+      parentKey: 'PSAPAC-2832',
+      subtasks: [{ key: 'PSAPAC-3122', summary: 'test', status: 'To Do' }],
+    })
+    expect(issue.description).toMatchObject({ type: 'doc', version: 1 })
+    expect(JSON.stringify(issue.description)).toContain('Done when both forums have run.')
+  })
+
+  it('returns a null description and no subtasks when the issue has none', async () => {
+    const recorded = loadFixture('issue-psapac-3066') as { fields: Record<string, unknown> }
+    serveIssue({ ...recorded, fields: { ...recorded.fields, description: null, subtasks: [] } })
+    expect(await getIssue(client, 'PSAPAC-3066')).toMatchObject({ description: null, subtasks: [] })
+  })
+
+  it('returns a null description when the description key is absent', async () => {
+    const recorded = loadFixture('issue-psapac-3066') as { fields: Record<string, unknown> }
+    const fields = Object.fromEntries(
+      Object.entries(recorded.fields).filter(([key]) => key !== 'description'),
+    )
+    serveIssue({ ...recorded, fields })
+    const issue = await getIssue(client, 'PSAPAC-3066')
+    expect(issue.description).toBeNull()
+    expect(Object.hasOwn(issue, 'description')).toBe(true)
+  })
+
+  it('maps an unknown issue to not_found', async () => {
+    serveIssue({ errorMessages: ['Issue does not exist or you do not have permission.'] }, 404)
+    expect((await failure(getIssue(client, 'PSAPAC-99999'))).code).toBe('not_found')
+  })
+
+  it('refuses a malformed key before any request', async () => {
+    const paths = serveIssue()
+    expect((await failure(getIssue(client, 'PSAPAC-1/../x'))).code).toBe('validation_failed')
+    expect(paths).toEqual([])
+  })
+
+  it('throws jira_error when the description is not an ADF document', async () => {
+    const recorded = loadFixture('issue-psapac-3066') as { fields: Record<string, unknown> }
+    serveIssue({ ...recorded, fields: { ...recorded.fields, description: 'plain text' } })
+    expect((await failure(getIssue(client, 'PSAPAC-3066'))).code).toBe('jira_error')
   })
 })

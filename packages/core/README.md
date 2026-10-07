@@ -62,12 +62,14 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 
 ## Issue Search
 
-`@jira-mgr/core/search` exports `searchIssuePages` and `searchIssues`. The `Issue` type and its zod schema live in `@jira-mgr/core/issue`, which imports nothing from `node:`. The main entry re-exports the type, so a renderer imports it from `@jira-mgr/core`.
+`@jira-mgr/core/search` exports `searchIssuePages`, `searchIssues` and `getIssue`. The `Issue` type and its zod schema live in `@jira-mgr/core/issue`, which imports nothing from `node:`. The main entry re-exports the type, so a renderer imports it from `@jira-mgr/core`.
 
-- `searchIssuePages(http, { pageSize, signal })` is an async generator over `POST /rest/api/3/search/jql`, following `nextPageToken` until `isLast`. It reads the project from settings and the custom field ids from `getFieldIds()`, and requests only the fields `Issue` needs, never the description. It yields `{ phase, issues, loaded }`.
+- `searchIssuePages(http, { pageSize, phases, signal })` is an async generator over `POST /rest/api/3/search/jql`, following `nextPageToken` until `isLast`. It reads the project from settings and the custom field ids from `getFieldIds()`, and requests only the fields `Issue` needs, never the description. It yields `{ phase, issues, loaded }`.
+- `phases` (default both) names the phases to load. `['unresolved']` sends no request for Done issues, so a client that hides them halves the requests.
 - Two phases run in order: `unresolved` (`statusCategory != Done`), then `done`. Each orders by `key DESC`. The key never changes, so an edit made mid-load cannot move an issue across a page boundary as `updated` would.
 - `loaded` counts issues across both phases. Jira sends no total, so there is no percentage.
 - `searchIssues(http, options)` collects every issue in load order.
+- `getIssue(http, key, { signal })` reads one issue with the same fields plus `description` (an ADF document, or `null`) and `subtasks` (`{ key, summary, status }`, the status as its name). An unknown key throws `not_found`.
 - `signal` goes to the HTTP client, so aborting stops the paging and rejects with the signal's reason.
 - An issue that fails the schema, or a page that is not last but sends no token or repeats one, throws `jira_error`.
 - `Issue` holds `id`, `key`, `summary`, `issueType`, `status` (with `category`), `resolution`, `parentKey`, `assignee`, `labels`, `priority`, `customer`, `engagement`, `sprints`, `startDate`, `dueDate`, `originalEstimateSeconds`, `remainingEstimateSeconds`, `timeRemainingHours`, `created` and `updated`. Times are UTC ISO strings, and a value Jira leaves empty is `null` (`[]` for `sprints`).

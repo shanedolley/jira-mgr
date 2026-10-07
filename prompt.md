@@ -2,11 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). The CLI chain runs L2, L3, L4, L5, L6, L7 in order; a blocker merged and waiting in HIL Review counts as satisfied (see Traps). CLI stories are user-facing, so after their agent review they go to Shane in HIL Review. Desktop waits on all of CLI.
+Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). The CLI chain runs L3, L4, L5, L6, L7 in order; a blocker merged and waiting in HIL Review counts as satisfied (see Traps). CLI stories go to Shane in HIL Review after their agent review. Desktop waits on all of CLI.
 
-1. **Finish L2 auth (#22)** on `l2-auth`: review, push, CI (ship-it merges), proof, then HIL Review.
-2. **L3 reading (#23)**: after L2; note on #23 about `--view my-issues`; adds core `getIssue` with description and subtasks, tree printing and status colour per the design.
-3. **L4 writing (#24)**: after L3.
+1. **Finish L3 reading (#23)** on `l3-reading`: review, push, CI (ship-it merges), proof, then HIL Review.
+2. **L4 writing (#24)**: issue create, edit, delete, status set; Markdown in through `markdownToAdf`, `--adf <file>` for raw ADF.
+3. **L5 extras (#25)**: after L4.
 
 Each L story implements only handlers: the specs already exist in `apps/cli/src/schema.ts`. Follow the design doc's per-story test list.
 

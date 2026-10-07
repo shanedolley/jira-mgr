@@ -1,0 +1,235 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "1449165",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449165",
+  "key": "PSAPAC-3066",
+  "fields": {
+    "customfield_21785": 1.57,
+    "summary": "Attend the Data Domain Owners forums to preview the new UI",
+    "issuetype": {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+      "id": "11502",
+      "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+      "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+      "name": "Story",
+      "subtask": false,
+      "avatarId": 12015,
+      "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+      "hierarchyLevel": 0
+    },
+    "parent": {
+      "id": "1421405",
+      "key": "PSAPAC-2832",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1421405",
+      "fields": {
+        "summary": "BHP - REA",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+          "description": "This work item is being actively worked on at the moment by the assignee.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "In Progress",
+          "id": "11823",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+            "id": 4,
+            "key": "indeterminate",
+            "colorName": "yellow",
+            "name": "In Progress"
+          }
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+          "id": "11503",
+          "description": "A collection of related bugs, stories, and tasks.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+          "name": "Epic",
+          "subtask": false,
+          "avatarId": 12007,
+          "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+          "hierarchyLevel": 1
+        }
+      }
+    },
+    "subtasks": [
+      {
+        "id": "1450597",
+        "key": "PSAPAC-3122",
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1450597",
+        "fields": {
+          "summary": "test",
+          "status": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11822",
+            "description": "",
+            "iconUrl": "https://engineering-collibra.atlassian.net/",
+            "name": "To Do",
+            "id": "11822",
+            "statusCategory": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+              "id": 2,
+              "key": "new",
+              "colorName": "blue-gray",
+              "name": "To Do"
+            }
+          },
+          "priority": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+            "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+            "name": "Minor",
+            "id": "4"
+          },
+          "issuetype": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11504",
+            "id": "11504",
+            "description": "Subtasks track small pieces of work that are part of a larger task.",
+            "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12016?size=medium",
+            "name": "Subtask",
+            "subtask": true,
+            "avatarId": 12016,
+            "entityId": "86f78445-c5d2-4289-9b06-380ca8baf666",
+            "hierarchyLevel": -1
+          }
+        }
+      }
+    ],
+    "created": "2026-10-04T08:54:20.615+0000",
+    "customfield_14850": {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15869",
+      "value": "REA ",
+      "id": "15869"
+    },
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Preview the new UI, which BHP rolls out globally during the week of 12 Oct 2026, at two forums, using the deck from PSAPAC-3065."
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Domain Owners Forum, Tuesday 6 Oct 2026."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Minerals Americas forum, Wednesday morning, 7 Oct 2026."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Done when both forums have run."
+            }
+          ]
+        }
+      ]
+    },
+    "priority": {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+      "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+      "name": "Minor",
+      "id": "4"
+    },
+    "resolution": {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+      "id": "7",
+      "description": "Work has been completed on this issue.",
+      "name": "Done"
+    },
+    "timetracking": {
+      "originalEstimate": "4h",
+      "remainingEstimate": "0m",
+      "timeSpent": "1h 26m",
+      "originalEstimateSeconds": 14400,
+      "remainingEstimateSeconds": 0,
+      "timeSpentSeconds": 5160
+    },
+    "labels": [
+      "PSAPAC"
+    ],
+    "customfield_10600": [
+      {
+        "id": 10170,
+        "name": "PS Sprint 36 (05 Oct-18 Oct)",
+        "state": "active",
+        "boardId": 1706,
+        "goal": "- BHP | Data Domain Owner forum attendances\n- BHP | Landing page roll out completed\n- BHP | Roadmap agreed with Christine for rest of FY\n- MBBE | Plans understood from Maybank and/or CG\n- MBBE | Operating Model Support required and process understood including where to log time for this effort\n- MBBE | Collibra Internally WoW bedded down\n- MBBE | Relationship with CG partner to bring problems directly to us\n- TLC | Decision making known and reset with new resources on both sides (Cynthia and Sarah TLC / Sharon Collibra)\n- TLC | AI Gov SoW understood and signed\n- TLC | Connector SoW or way forward understood\n- TLC | Glossary in Prod\n- SWC | LeanIX consultation in progress\n- TfNSW | On hold waiting for REA Renewal SoW signed / Jeannine away-Ben fill in for urgent matters\n- TfNSW | AI Metadata ingestion workflow scope identified\n- IAG | Technical Workshops kicked off and continuing for SAP Connector\n- WOW | New REA kicked off\n- PETRONAS | Ignite continues\n- EM | September Delivery Reports completed\n- Team | Corey back and team health improves!",
+        "startDate": "2026-10-05T23:32:56.296Z",
+        "endDate": "2026-10-18T14:00:00.000Z"
+      }
+    ],
+    "duedate": "2026-10-07",
+    "customfield_14849": {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16120",
+      "value": "BHP",
+      "id": "16120"
+    },
+    "customfield_13808": null,
+    "assignee": {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3A16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+      "accountId": "712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+      "emailAddress": "shane.dolley@collibra.com",
+      "avatarUrls": {
+        "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/48",
+        "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/24",
+        "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/16",
+        "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/32"
+      },
+      "displayName": "Shane Dolley",
+      "active": true,
+      "timeZone": "Australia/Brisbane",
+      "accountType": "atlassian"
+    },
+    "updated": "2026-10-07T04:07:32.597+0000",
+    "status": {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+      "description": "",
+      "iconUrl": "https://engineering-collibra.atlassian.net/",
+      "name": "Done",
+      "id": "11824",
+      "statusCategory": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+        "id": 3,
+        "key": "done",
+        "colorName": "green",
+        "name": "Done"
+      }
+    }
+  }
+}

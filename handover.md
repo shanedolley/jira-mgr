@@ -7,7 +7,8 @@ Checked 2026-10-07.
 - The Core milestone is complete: C1-C12 merged (#38-#45, #47-#50) and closed. Run `git log --oneline -1 origin/main` for the head commit.
 - Core subpaths: `@jira-mgr/core` (errors and the `Issue` type, renderer-safe), `/issue`, `/hierarchy`, `/adf`, `/timer-calc`, `/view-filter` (renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search`, `/write`, `/extras`, `/sprints`, `/lookups`, `/timer` (Node-only).
 - L1 command schema merged in #51 (78e186d) from the accepted design doc [docs/design/0001-cli-command-schema.md](docs/design/0001-cli-command-schema.md) and waits in HIL Review for Shane: every L2-L6 command is specified in `apps/cli/src/schema.ts`; only `help` has a handler, so later stories add handlers only. `pnpm docs:reference` writes `docs/reference/cli.md` and `errors.md`, and CI fails if they drift.
-- L2 auth (#22) is built on `l2-auth`: `jm auth login` (token from `--token-stdin` or a hidden prompt, never a flag), `status`, `logout`; core `getCurrentUser` and a `./test/msw` export; CLI tests share core's MSW fake and a fake `security` runner. Its pull request carries this handover; find it with `gh pr list --head l2-auth`.
+- L2 auth merged in #52 (b1f7b5a) and waits in HIL Review for Shane: `jm auth login` (token from `--token-stdin` or a hidden prompt, never a flag), `status`, `logout`. CLI tests share core's MSW fake (`@jira-mgr/core/test/msw`, `/test/setup`) and run behind a backstop that makes spawning `/usr/bin/security` throw.
+- L3 reading (#23) is built on `l3-reading`: `jm issue list`, `issue tree`, `issue get`, `field options`, `link types`, `sprint list`, `view list`; core `getIssue` and a `phases` option on `searchIssuePages`. Two spec exits were corrected (see the design doc's L3 amendment). Its pull request carries this handover; find it with `gh pr list --head l3-reading`.
 - CLI decisions (Shane, 2026-10-07): JSON envelope `{"data"}` / `{"error"}`; extra commands comment, worklog, link, attach and view list plus sprint set backlog; a timer stop needing confirmation exits 2 without `--confirm` or `--time`; JSON carries `descriptionMarkdown` and `bodyMarkdown` beside the ADF.
 - Live-check items for L7 are collected on #27: type change, remaining estimate, sprint moves on the simple board, worklog `adjustEstimate=auto`, attachment upload. Link direction was verified live on 2026-10-07 with Shane's approval (link 642179 created and deleted): the issue named `inwardIssue` in a POST is the blocker.
 - Client-side rules core leaves to the CLI and app (C11 findings): label suggestions are site-wide, so filter to project labels if wanted (Q35); hide undated sprints such as "PS TEMPLATES" behind "Show all" (Q20); priorities come from createmeta (11 for PSAPAC), not `/priority` (20 site-wide).
@@ -20,12 +21,12 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Closed (Done) | #9-#20 (all of Core) | `gh issue list --state closed --limit 200` | 2026-10-07 |
 | Open roadmap issues | 17 (CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #22 (L2) | `gh issue list --label status:in-progress` | 2026-10-07 |
-| In AI or HIL review | #21 (L1, HIL, waiting on Shane) | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
+| In progress | #23 (L3) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| In AI or HIL review | #21 (L1), #22 (L2): HIL, waiting on Shane | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `l2-auth`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `l3-reading`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -33,17 +34,17 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (core 1013 pass and 1 skipped in 18 files; CLI 129 in 13 files, after a `tsup` build; measured on `l2-auth` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (core 1020 pass and 1 skipped in 18 files; CLI 250 in 20 files, after a `tsup` build; measured on `l3-reading` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
-| `pnpm jm -- <args>` | Runs the built CLI; only `help` works on `main` (2026-10-07) | Nothing yet; later the site and project in `settings.json` |
+| `pnpm jm -- <args>` | Runs the built CLI: `help` and `auth` on `main`, reading commands from L3 (2026-10-07) | Live Jira at the site in `settings.json`, as the logged-in user; reads only until L4 |
 | `pnpm docs:reference` | Regenerates `docs/reference/cli.md` and `errors.md` from `jm help --json` | Nothing external |
 | `pnpm fixture:record -- <name> <GET\|POST> <path> [body]` | Records one response body to `packages/core/fixtures/` | Live Jira at `JM_JIRA_SITE`, reads only: it refuses every write except the search `POST` |
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #51 merge, 78e186d (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #52 merge, b1f7b5a (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
 
 ## Environments
 

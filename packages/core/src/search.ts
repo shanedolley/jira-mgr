@@ -1,10 +1,12 @@
 import { z } from 'zod'
 
+import { adfDocSchema, type AdfDoc } from './adf-schema.js'
 import { JiraMgrError } from './errors.js'
 import { getFieldIds } from './fields.js'
 import type { HttpClient } from './http.js'
 import { issueSchema, type Issue } from './issue.js'
 import { readSettings, type FieldIds } from './state.js'
+import { issueKey, parseInput, parseResponse } from './validate.js'
 
 const PAGE_SIZE = 100
 
@@ -18,6 +20,8 @@ export type SearchPhase = (typeof PHASES)[number][0]
 
 export interface SearchOptions {
   pageSize?: number
+  /** The phases to load, in load order. Defaults to both. A skipped phase sends no request. */
+  phases?: readonly SearchPhase[]
   signal?: AbortSignal
 }
 
@@ -76,6 +80,7 @@ export async function* searchIssuePages(
 
   let loaded = 0
   for (const [phase, condition] of PHASES) {
+    if (options.phases?.includes(phase) === false) continue
     const jql = `project = ${quote(settings.projectKey)} AND ${condition} ORDER BY key DESC`
     let nextPageToken: string | undefined
     const seen = new Set<string>()
@@ -113,4 +118,50 @@ export async function searchIssues(
   const issues: Issue[] = []
   for await (const page of searchIssuePages(http, options)) issues.push(...page.issues)
   return issues
+}
+
+export interface IssueDetail extends Issue {
+  /** The description as Atlassian Document Format, or `null` when the issue has none. */
+  description: AdfDoc | null
+  subtasks: { key: string; summary: string; status: string }[]
+}
+
+const detailSchema = z.object({
+  fields: z.object({
+    description: adfDocSchema.nullish(),
+    subtasks: z
+      .array(
+        z.object({
+          key: z.string(),
+          fields: z.object({ summary: z.string(), status: z.object({ name: z.string() }) }),
+        }),
+      )
+      .nullish(),
+  }),
+})
+
+/**
+ * One issue with its description and subtasks, which the searches leave out. Throws `not_found`
+ * when the issue does not exist.
+ */
+export async function getIssue(
+  http: HttpClient,
+  key: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<IssueDetail> {
+  const issue = parseInput(issueKey, key, 'get the issue')
+  const ids = await getFieldIds()
+  const fields = [...requestedFields(ids), 'description', 'subtasks'].join(',')
+  const raw = await http.request('GET', `/rest/api/3/issue/${issue}?fields=${fields}`, options)
+  const base = parseResponse(issueSchema(ids), raw, 'issue')
+  const { description, subtasks } = parseResponse(detailSchema, raw, 'issue').fields
+  return {
+    ...base,
+    description: description ?? null,
+    subtasks: (subtasks ?? []).map((s) => ({
+      key: s.key,
+      summary: s.fields.summary,
+      status: s.fields.status.name,
+    })),
+  }
 }

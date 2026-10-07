@@ -171,6 +171,563 @@ Calls:
 
 - `@jira-mgr/core/auth#logout`
 
+## issue
+
+### jm issue list
+
+```
+jm issue list [--view <id-or-name>] [--search <text>] [--assignee <assignee>] [--status <name-or-id>] [--label <text>] [--type <name-or-id>] [--sprint <sprint>] [--mine] [--show-done] [--limit <integer>]
+```
+
+Lists the project's issues, hiding Done ones unless `--show-done`. A view's filters apply first, and each filter flag replaces that field's list.
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--view <id-or-name>` | text | no |  | Start from a saved view, by id or by name in any case. |
+| `--search <text>` | text | no |  | Match this text in the summary or key. |
+| `--assignee <assignee>` | text | no |  | Keep issues assigned to `me`, `unassigned` or an account id. Repeatable. |
+| `--status <name-or-id>` | text | no |  | Keep issues in this status. Repeatable. |
+| `--label <text>` | text | no |  | Keep issues with this label. Repeatable. |
+| `--type <name-or-id>` | text | no |  | Keep issues of this type. Repeatable. |
+| `--sprint <sprint>` | text | no |  | Keep issues in this sprint: an id, a name or `current`. Repeatable. |
+| `--mine` | boolean | no |  | Keep only issues assigned to you. |
+| `--show-done` | boolean | no |  | Include Done issues. |
+| `--limit <integer>` | integer | no |  | Stop after this many matching issues. |
+
+#### Examples
+
+```sh
+# List your open issues.
+jm issue list --mine
+```
+
+```sh
+# List up to 20 in-progress issues labelled etl.
+jm issue list --status "In Progress" --label etl --limit 20
+```
+
+#### Output
+
+An array of issues.
+
+```json
+{
+  "data": [
+    {
+      "id": "10042",
+      "key": "PSAPAC-12",
+      "summary": "Build the loader",
+      "issueType": {
+        "id": "10001",
+        "name": "Story",
+        "subtask": false,
+        "hierarchyLevel": 0
+      },
+      "status": {
+        "id": "3",
+        "name": "In Progress",
+        "category": "indeterminate"
+      },
+      "resolution": null,
+      "parentKey": "PSAPAC-10",
+      "assignee": {
+        "accountId": "5b10ac8d82e05b22cc7d4ef5",
+        "displayName": "Shane Dolley",
+        "avatarUrl": null
+      },
+      "labels": [
+        "etl"
+      ],
+      "priority": {
+        "id": "3",
+        "name": "Medium"
+      },
+      "customer": {
+        "id": "10100",
+        "value": "Acme Corp"
+      },
+      "engagement": {
+        "id": "10200",
+        "value": "Data migration"
+      },
+      "sprints": [
+        {
+          "id": 7,
+          "name": "Sprint 7",
+          "state": "active"
+        }
+      ],
+      "startDate": "2026-10-01",
+      "dueDate": "2026-10-14",
+      "originalEstimateSeconds": 28800,
+      "remainingEstimateSeconds": 14400,
+      "timeRemainingHours": null,
+      "created": "2026-09-28T01:02:03.000Z",
+      "updated": "2026-10-06T23:10:00.000Z"
+    }
+  ]
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | `--view` names no saved view. |
+| 2 | `validation_failed` | A state file, such as the saved views, is invalid. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/state#findView`
+- `@jira-mgr/core/search#searchIssuePages`
+- `@jira-mgr/core/view-filter#issueMatcher`
+
+### jm issue tree
+
+```
+jm issue tree [--view <id-or-name>] [--search <text>] [--assignee <assignee>] [--status <name-or-id>] [--label <text>] [--type <name-or-id>] [--sprint <sprint>] [--mine] [--show-done] [--show-empty-customers]
+```
+
+Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. Done children collapse into a `+N done` chip.
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--view <id-or-name>` | text | no |  | Start from a saved view, by id or by name in any case. |
+| `--search <text>` | text | no |  | Match this text in the summary or key. |
+| `--assignee <assignee>` | text | no |  | Keep issues assigned to `me`, `unassigned` or an account id. Repeatable. |
+| `--status <name-or-id>` | text | no |  | Keep issues in this status. Repeatable. |
+| `--label <text>` | text | no |  | Keep issues with this label. Repeatable. |
+| `--type <name-or-id>` | text | no |  | Keep issues of this type. Repeatable. |
+| `--sprint <sprint>` | text | no |  | Keep issues in this sprint: an id, a name or `current`. Repeatable. |
+| `--mine` | boolean | no |  | Keep only issues assigned to you. |
+| `--show-done` | boolean | no |  | Include Done issues. |
+| `--show-empty-customers` | boolean | no |  | Include Customers with no matching issue. |
+
+#### Examples
+
+```sh
+# Show your open issues as a tree.
+jm issue tree --mine
+```
+
+#### Output
+
+An array of Customer groups, each with its Epics and the issues under no Epic.
+
+```json
+{
+  "data": [
+    {
+      "customer": {
+        "id": "10100",
+        "value": "Acme Corp"
+      },
+      "epics": [
+        {
+          "issue": {
+            "id": "10042",
+            "key": "PSAPAC-12",
+            "summary": "Build the loader",
+            "issueType": {
+              "id": "10001",
+              "name": "Story",
+              "subtask": false,
+              "hierarchyLevel": 0
+            },
+            "status": {
+              "id": "3",
+              "name": "In Progress",
+              "category": "indeterminate"
+            },
+            "resolution": null,
+            "parentKey": "PSAPAC-10",
+            "assignee": {
+              "accountId": "5b10ac8d82e05b22cc7d4ef5",
+              "displayName": "Shane Dolley",
+              "avatarUrl": null
+            },
+            "labels": [
+              "etl"
+            ],
+            "priority": {
+              "id": "3",
+              "name": "Medium"
+            },
+            "customer": {
+              "id": "10100",
+              "value": "Acme Corp"
+            },
+            "engagement": {
+              "id": "10200",
+              "value": "Data migration"
+            },
+            "sprints": [
+              {
+                "id": 7,
+                "name": "Sprint 7",
+                "state": "active"
+              }
+            ],
+            "startDate": "2026-10-01",
+            "dueDate": "2026-10-14",
+            "originalEstimateSeconds": 28800,
+            "remainingEstimateSeconds": 14400,
+            "timeRemainingHours": null,
+            "created": "2026-09-28T01:02:03.000Z",
+            "updated": "2026-10-06T23:10:00.000Z"
+          },
+          "children": [],
+          "doneChildren": [],
+          "doneCount": 0,
+          "contextOnly": false,
+          "customerMismatch": null
+        }
+      ],
+      "noEpic": []
+    }
+  ]
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | `--view` names no saved view. |
+| 2 | `validation_failed` | A state file, such as the saved views, is invalid. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/state#findView`
+- `@jira-mgr/core/search#searchIssuePages`
+- `@jira-mgr/core/view-filter#issueMatcher`
+- `@jira-mgr/core/hierarchy#buildHierarchy`
+- `@jira-mgr/core/lookups#getFieldOptions`
+
+### jm issue get
+
+```
+jm issue get <key>
+```
+
+Show one issue
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key, such as PSAPAC-12. |
+
+#### Examples
+
+```sh
+# Show PSAPAC-12 with its description and subtasks.
+jm issue get PSAPAC-12
+```
+
+#### Output
+
+The issue, its description as ADF and as Markdown, its subtasks and its URL.
+
+```json
+{
+  "data": {
+    "id": "10042",
+    "key": "PSAPAC-12",
+    "summary": "Build the loader",
+    "issueType": {
+      "id": "10001",
+      "name": "Story",
+      "subtask": false,
+      "hierarchyLevel": 0
+    },
+    "status": {
+      "id": "3",
+      "name": "In Progress",
+      "category": "indeterminate"
+    },
+    "resolution": null,
+    "parentKey": "PSAPAC-10",
+    "assignee": {
+      "accountId": "5b10ac8d82e05b22cc7d4ef5",
+      "displayName": "Shane Dolley",
+      "avatarUrl": null
+    },
+    "labels": [
+      "etl"
+    ],
+    "priority": {
+      "id": "3",
+      "name": "Medium"
+    },
+    "customer": {
+      "id": "10100",
+      "value": "Acme Corp"
+    },
+    "engagement": {
+      "id": "10200",
+      "value": "Data migration"
+    },
+    "sprints": [
+      {
+        "id": 7,
+        "name": "Sprint 7",
+        "state": "active"
+      }
+    ],
+    "startDate": "2026-10-01",
+    "dueDate": "2026-10-14",
+    "originalEstimateSeconds": 28800,
+    "remainingEstimateSeconds": 14400,
+    "timeRemainingHours": null,
+    "created": "2026-09-28T01:02:03.000Z",
+    "updated": "2026-10-06T23:10:00.000Z",
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Checked."
+            }
+          ]
+        }
+      ]
+    },
+    "descriptionMarkdown": "Checked.",
+    "subtasks": [
+      {
+        "key": "PSAPAC-13",
+        "summary": "Write the tests",
+        "status": "To Do"
+      }
+    ],
+    "url": "https://example.atlassian.net/browse/PSAPAC-12"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | The issue does not exist. |
+| 2 | `validation_failed` | The site in settings is not an Atlassian Cloud site. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/search#getIssue`
+- `@jira-mgr/core/adf#adfToMarkdown`
+
+## link
+
+### jm link types
+
+```
+jm link types
+```
+
+List the link types
+
+#### Examples
+
+```sh
+# List the link types and their phrases.
+jm link types
+```
+
+#### Output
+
+An array of link types.
+
+```json
+{
+  "data": [
+    {
+      "id": "10000",
+      "name": "Blocks",
+      "inward": "is blocked by",
+      "outward": "blocks"
+    }
+  ]
+}
+```
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/extras#listLinkTypes`
+
+## sprint
+
+### jm sprint list
+
+```
+jm sprint list [--all]
+```
+
+Lists the active sprint and the dated future sprints. `--all` adds closed and undated ones.
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--all` | boolean | no |  | Include closed and undated sprints. |
+
+#### Examples
+
+```sh
+# List the active and upcoming sprints.
+jm sprint list
+```
+
+#### Output
+
+An array of sprints.
+
+```json
+{
+  "data": [
+    {
+      "id": 7,
+      "name": "Sprint 7",
+      "state": "active",
+      "startDate": "2026-10-01T00:00:00.000Z",
+      "endDate": "2026-10-15T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | The project has no board that supports sprints. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/sprints#findBoard`
+- `@jira-mgr/core/sprints#listSprints`
+
+## field
+
+### jm field options
+
+```
+jm field options <field>
+```
+
+List the values a field accepts
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `field` | enum | yes | The field to list. One of customer, engagement, priority, issue-type, status. |
+
+#### Examples
+
+```sh
+# List the Customers.
+jm field options customer
+```
+
+#### Output
+
+An array of values.
+
+```json
+{
+  "data": [
+    {
+      "id": "10100",
+      "name": "Acme Corp"
+    }
+  ]
+}
+```
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/lookups#getFieldOptions`
+
+## view
+
+### jm view list
+
+```
+jm view list
+```
+
+List saved views
+
+#### Examples
+
+```sh
+# List the saved views and their ids.
+jm view list
+```
+
+#### Output
+
+An array of saved views.
+
+```json
+{
+  "data": [
+    {
+      "id": "my-issues",
+      "name": "My issues",
+      "filters": {},
+      "toggles": {
+        "hideDone": true,
+        "assigneeMe": true,
+        "hideEmptyCustomers": true
+      }
+    }
+  ]
+}
+```
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/state#readViews`
+
 ## help
 
 ### jm help

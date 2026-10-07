@@ -396,6 +396,8 @@ The CLI needs four small, additive core changes, each in the story that first us
 
 *Amended 2026-10-07, review of L2:* core `login` now returns `CurrentUser` (`{ accountId, displayName }`). Core's `exports` also gains `./test/setup`, the shared Vitest setup file that starts the MSW fake.
 
+*Amended 2026-10-07, build of L3:* `getIssue(http, key, { signal })` returns the issue's fields plus `description` (an ADF document or `null`) and `subtasks` (`{ key, summary, status }`, the status as its name). `searchIssuePages` gains `phases`, because the generator fetches a phase's first page before the caller can stop it: a caller that hides Done passes `['unresolved']` and sends no request for Done issues. `issue list` and `issue tree` therefore load with `phases`, not by stopping the generator. `issue get` builds `url` from the site in settings. Their `validation_failed` exit now reads "A state file, such as the saved views, is invalid", because filter flags match issues client-side and do not resolve names. `sprint list` exits 3 when the project has no board that supports sprints, and hides a future sprint with neither a start nor an end date unless `--all`.
+
 ### Testing
 
 **In-process.** CLI tests call `run(argv, io, deps)` from `apps/cli/src/run.ts` with a fake `io` (string buffers, `stdoutIsTTY` and `stderrIsTTY` flags, `columns`, `env` with `NO_COLOR`) and read the exit code, stdout and stderr. Handler tests sit beside their handler as `<verb>.int.test.ts`, start the MSW server from `@jira-mgr/core/test/msw`, call `usePsapacState()`, and inject `createHttpClient({ credentials, sleep })` so no test touches the Keychain or waits. They assert the requests core sent (`serveRecorded`), the envelope, and the exit code. `argv` never holds pnpm's `--`.

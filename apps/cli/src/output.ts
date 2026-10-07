@@ -1,6 +1,7 @@
 import { styleText } from 'node:util'
 
 import type { ErrorCode } from '@jira-mgr/core'
+import type { CustomerGroup, HierarchyNode } from '@jira-mgr/core/hierarchy'
 
 import type { Io } from './context.js'
 
@@ -48,6 +49,8 @@ export interface Column {
   header: string
   /** Truncates the column at this width. The last column takes the rest of the line instead. */
   max?: number
+  /** Styles a cell after it is padded and truncated, so colour codes never count toward the width. */
+  paint?: (cell: string, row: number) => string
 }
 
 const GAP = '  '
@@ -70,13 +73,19 @@ export function renderTable(
   })
   const used = widths.reduce((sum, width) => sum + width + GAP.length, 0)
   const lastWidth = Math.max(MIN_LAST_WIDTH, tty.columns - used)
-  const line = (row: readonly string[]) =>
+  const line = (row: readonly string[], r: number) =>
     row
-      .map((cell, i) =>
-        i === last
-          ? truncate(cell, lastWidth)
-          : truncate(cell, widths[i] ?? 0).padEnd(widths[i] ?? 0),
-      )
+      .map((cell, i) => {
+        const fitted =
+          i === last
+            ? truncate(cell, lastWidth)
+            : truncate(cell, widths[i] ?? 0).padEnd(widths[i] ?? 0)
+        const paint = columns[i]?.paint
+        if (paint === undefined) return fitted
+        // Colour the text only, so the padding after it stays plain.
+        const text = fitted.trimEnd()
+        return paint(text, r) + fitted.slice(text.length)
+      })
       .join(GAP)
   const header = columns.map((column, i) =>
     i === last ? column.header : column.header.padEnd(widths[i] ?? 0),
@@ -84,17 +93,24 @@ export function renderTable(
   return [tty.style('bold', header.join(GAP)), ...cells.map(line)].join('\n')
 }
 
-/** `Label:  value` lines with the labels in bold and the values aligned. */
+/** Colours a status by its category: none for to do, blue for in progress, green for done. */
+export function statusStyle(tty: Tty, category: string, text: string): string {
+  if (category === 'indeterminate') return tty.style('blue', text)
+  if (category === 'done') return tty.style('green', text)
+  return text
+}
+
+/** `Label:  value` lines with the labels in bold and the values aligned. `paint` styles a value after it is cleaned. */
 export function renderRecord(
   tty: Tty,
-  rows: readonly (readonly [label: string, value: string])[],
+  rows: readonly (readonly [label: string, value: string, paint?: (value: string) => string])[],
 ): string {
   const width = Math.max(...rows.map(([label]) => label.length))
   return rows
-    .map(
-      ([label, value]) =>
-        `${tty.style('bold', `${label}:`)}${' '.repeat(width - label.length)} ${stripControl(value)}`,
-    )
+    .map(([label, value, paint]) => {
+      const text = stripControl(value)
+      return `${tty.style('bold', `${label}:`)}${' '.repeat(width - label.length)} ${paint?.(text) ?? text}`
+    })
     .join('\n')
 }
 
@@ -119,3 +135,60 @@ export function toJson(value: unknown, pretty: boolean): string {
 
 export const dataEnvelope = (data: unknown) => ({ data: data === undefined ? null : data })
 export const errorEnvelope = (error: ErrorBody) => ({ error })
+
+const clean = (text: string) => stripControl(text).replaceAll(/\s+/g, ' ')
+const TYPE_WIDTH = 7
+
+/**
+ * The Customer, Epic, issue, Subtask tree, two spaces per level. Type pads to 7 characters and
+ * status to the longest shown. A mismatch gets a yellow badge and a `+N done` chip stands for the
+ * Done children. A context-only row is dim, or ends in ` (context)` when colour is off.
+ */
+export function renderTree(tty: Tty, groups: readonly CustomerGroup[]): string {
+  const everyNode = (node: HierarchyNode): HierarchyNode[] => [
+    node,
+    ...node.children.flatMap(everyNode),
+  ]
+  const shown = groups.flatMap((g) => [...g.epics, ...g.noEpic].flatMap(everyNode))
+  const statusWidth = Math.max(0, ...shown.map((n) => clean(n.issue.status.name).length))
+  const coloured = tty.style('dim', 'x') !== 'x'
+  const indent = (depth: number) => '  '.repeat(depth)
+  const lines: string[] = []
+
+  function row(node: HierarchyNode, depth: number): string {
+    const { issue, contextOnly, customerMismatch } = node
+    const status = clean(issue.status.name)
+    const head = `${indent(depth)}${issue.key}  ${clean(issue.issueType.name).padEnd(TYPE_WIDTH)}  `
+    const badge =
+      customerMismatch === null
+        ? ''
+        : `  [Customer: ${clean(customerMismatch.own?.value ?? 'No Customer')}, Epic: ${clean(customerMismatch.epic?.value ?? 'No Customer')}]`
+    const room = Math.max(
+      MIN_LAST_WIDTH,
+      tty.columns - head.length - statusWidth - 2 - badge.length,
+    )
+    const summary = truncate(clean(issue.summary), room)
+    const pad = ' '.repeat(statusWidth - status.length)
+    if (contextOnly) {
+      const text = `${head}${status}${pad}  ${summary}${badge}`
+      return coloured ? tty.style('dim', text) : `${text} (context)`
+    }
+    return `${head}${statusStyle(tty, issue.status.category, status)}${pad}  ${summary}${badge === '' ? '' : tty.style('yellow', badge)}`
+  }
+
+  function walk(node: HierarchyNode, depth: number): void {
+    lines.push(row(node, depth))
+    for (const child of node.children) walk(child, depth + 1)
+    if (node.doneCount > 0) lines.push(`${indent(depth + 1)}+${String(node.doneCount)} done`)
+  }
+
+  for (const group of groups) {
+    lines.push(tty.style('bold', clean(group.customer?.value ?? 'No Customer')))
+    for (const epic of group.epics) walk(epic, 1)
+    if (group.noEpic.length > 0) {
+      lines.push(`${indent(1)}No Epic`)
+      for (const issue of group.noEpic) walk(issue, 2)
+    }
+  }
+  return lines.join('\n')
+}
