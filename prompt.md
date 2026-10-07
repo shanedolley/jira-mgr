@@ -2,13 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). The CLI chain runs L3, L4, L5, L6, L7 in order; a blocker merged and waiting in HIL Review counts as satisfied (see Traps). CLI stories go to Shane in HIL Review after their agent review. Desktop waits on all of CLI.
+Measured 2026-10-07 by reading open issues' blockers. The CLI is built (L1-L6 merged, all in HIL Review for Shane). Nothing can proceed without Shane:
 
-1. **Finish L6 timer (#26)** on `l6-timer`: review, push, CI (ship-it merges), proof, then HIL Review.
-2. **L7 live check (#27)**: needs Shane present, since it writes to PSAPAC; run the smoke checklist and every item collected on #27, recording each result.
-3. **Desktop D1 shell (#28)**: unblocked once the CLI milestone closes (L1-L7 closed by Shane). Write D2's and D4's design docs before their code.
-
-Each L story implements only handlers: the specs already exist in `apps/cli/src/schema.ts`. Follow the design doc's per-story test list.
+1. **L7 live check (#27)**: run it with Shane present, since it writes to PSAPAC. Work through `docs/runbooks/` (write the smoke checklist there first if absent) and every item collected on #27 (type change, remaining estimate, sprint moves on board 1706, worklog `adjustEstimate=auto`, attachment upload, foreign comment and worklog ids). Create throwaway issues for the writes and delete them afterwards with Shane's go-ahead; record each result on #27.
+2. **Shane's HIL reviews**: #21-#26 wait on him; the CLI milestone closes when L1-L7 close.
+3. **Desktop D1 shell (#28)**: unblocked once the CLI milestone closes. Write D2's and D4's design docs before their code.
 
 ## Reading Order
 
