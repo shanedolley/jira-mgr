@@ -48,7 +48,7 @@ All from the repository root, under Node 24 (see Traps).
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #57 merge, 5405f77 (re-checked 2026-10-07) (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last code merge on `main`: PR #56 (c29fe9d), CI green; the docs-only merges after it (#57, #58) are green too (checked 2026-10-07). For the current head run, use `gh run list --workflow ci.yml --branch main --limit 1`.
 
 ## Environments
 
