@@ -133,10 +133,13 @@ function failure(response: Response, text: string, method: string, path: string)
       .map(([field, message]) => `${field}: ${message}`)
       .at(0)
   const next = NEXT_STEPS[response.status]
+  const quoted = first?.slice(0, MAX_DETAIL_CHARS)
+  // Jira's text often ends a sentence already; a second full stop would double it.
+  const stop = quoted !== undefined && /[.!?]$/.test(quoted) ? '' : '.'
   return new JiraMgrError(
     STATUS_CODES[response.status] ?? 'jira_error',
     `Jira answered ${String(response.status)} to ${method} ${path}` +
-      `${first === undefined ? '' : `: ${first.slice(0, MAX_DETAIL_CHARS)}`}.${next === undefined ? '' : ` ${next}`}`,
+      `${quoted === undefined ? '' : `: ${quoted}`}${stop}${next === undefined ? '' : ` ${next}`}`,
     {
       details: {
         status: response.status,

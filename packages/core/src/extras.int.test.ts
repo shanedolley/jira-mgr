@@ -142,6 +142,13 @@ describe('worklogs', () => {
     })
   })
 
+  it('maps a worklog with an empty ADF comment to null', async () => {
+    const empty = { version: 1, type: 'doc', content: [] }
+    const one = { ...(first('worklogs-psapac-666', 'worklogs') as object), comment: empty }
+    serveRecorded(() => HttpResponse.json({ total: 1, worklogs: [one] }))
+    expect((await listWorklogs(client, 'PSAPAC-666'))[0]?.comment).toBeNull()
+  })
+
   it('maps a worklog with no comment to null', async () => {
     const one = { ...(first('worklogs-psapac-666', 'worklogs') as object), comment: undefined }
     serveRecorded(() => HttpResponse.json({ total: 1, worklogs: [one] }))
