@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { FieldIds } from './state.js'
 
 /** Jira sends `+1100` offsets, which `Date` reads; the domain keeps UTC ISO text. */
-const jiraTime = z.string().transform((text, ctx) => {
+export const jiraTime = z.string().transform((text, ctx) => {
   const time = new Date(text)
   if (Number.isNaN(time.getTime())) {
     ctx.addIssue({ code: 'custom', message: 'Not a date-time.' })

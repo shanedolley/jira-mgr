@@ -135,9 +135,27 @@ describe('path validation', () => {
     '/rest/%2E./admin',
     '/rest/api\\..\\admin',
     '/rest/.\t./admin',
+    '/rest/api/..?x=1',
+    '/rest/api/%2e%2e?x=1',
+    '/rest/api\\x?x=1',
   ])('refuses %s without sending a request', async (path) => {
     const error = await rejection(client().api.request('GET', path))
     expect(error.code).toBe('validation_failed')
+  })
+
+  it('sends a query string that holds "..", an encoded dot or a backslash', async () => {
+    const seen: string[] = []
+    server.use(
+      http.get(`${JIRA_SITE}/rest/api/3/jql/autocompletedata/suggestions`, ({ request }) => {
+        seen.push(new URL(request.url).search)
+        return HttpResponse.json({ results: [] })
+      }),
+    )
+    await client().api.request(
+      'GET',
+      '/rest/api/3/jql/autocompletedata/suggestions?fieldValue=a..b%2eC%5Cd\\e#frag..',
+    )
+    expect(seen).toEqual(['?fieldValue=a..b%2eC%5Cd\\e'])
   })
 
   it.each(['GET', 'HEAD'])('refuses a body on %s', async (method) => {

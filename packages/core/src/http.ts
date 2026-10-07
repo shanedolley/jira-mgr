@@ -89,7 +89,9 @@ const defaultDebug = (line: string) => {
 
 /** Only `/rest/...` on the site is allowed, so a caller cannot steer the token to another URL. */
 function assertJiraPath(path: string): void {
-  if (!path.startsWith('/rest/') || /\.\.|%2e/i.test(path) || path.includes('\\')) {
+  // The query and fragment cannot change which endpoint is called, and a search may hold "..".
+  const pathname = path.split(/[?#]/, 1)[0] ?? ''
+  if (!path.startsWith('/rest/') || /\.\.|%2e/i.test(pathname) || pathname.includes('\\')) {
     throw new JiraMgrError(
       'validation_failed',
       'A Jira request path must start with /rest/ and hold no "..", backslash or encoded dot.',

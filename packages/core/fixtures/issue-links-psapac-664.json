@@ -1,0 +1,110 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "698011",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/698011",
+  "key": "PSAPAC-664",
+  "fields": {
+    "issuelinks": [
+      {
+        "id": "551838",
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLink/551838",
+        "type": {
+          "id": "10000",
+          "name": "Blocks",
+          "inward": "is blocked by",
+          "outward": "blocks",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10000"
+        },
+        "inwardIssue": {
+          "id": "698015",
+          "key": "PSAPAC-666",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/698015",
+          "fields": {
+            "summary": "Value Consulting Statement 2 - Data Quality (Customer Use Case) development",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Done",
+              "id": "11824",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+                "id": 3,
+                "key": "done",
+                "colorName": "green",
+                "name": "Done"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+              "id": "11502",
+              "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+              "name": "Story",
+              "subtask": false,
+              "avatarId": 12015,
+              "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+              "hierarchyLevel": 0
+            }
+          }
+        }
+      },
+      {
+        "id": "551841",
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLink/551841",
+        "type": {
+          "id": "10000",
+          "name": "Blocks",
+          "inward": "is blocked by",
+          "outward": "blocks",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10000"
+        },
+        "inwardIssue": {
+          "id": "698013",
+          "key": "PSAPAC-665",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/698013",
+          "fields": {
+            "summary": "Value Consulting Statement 1 - AI Governance (AIAF) development",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Done",
+              "id": "11824",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+                "id": 3,
+                "key": "done",
+                "colorName": "green",
+                "name": "Done"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+              "id": "11502",
+              "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+              "name": "Story",
+              "subtask": false,
+              "avatarId": 12015,
+              "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+              "hierarchyLevel": 0
+            }
+          }
+        }
+      }
+    ]
+  }
+}

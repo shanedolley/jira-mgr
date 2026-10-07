@@ -1,0 +1,513 @@
+{
+  "maxResults": 50,
+  "startAt": 0,
+  "total": 70,
+  "isLast": false,
+  "values": [
+    {
+      "id": 10170,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/10170",
+      "state": "active",
+      "name": "PS Sprint 36 (05 Oct-18 Oct)",
+      "startDate": "2026-10-05T23:32:56.296Z",
+      "endDate": "2026-10-18T14:00:00.000Z",
+      "createdDate": "2025-09-30T06:16:49.070Z",
+      "originBoardId": 1706,
+      "goal": "- BHP | Data Domain Owner forum attendances\n- BHP | Landing page roll out completed\n- BHP | Roadmap agreed with Christine for rest of FY\n- MBBE | Plans understood from Maybank and/or CG\n- MBBE | Operating Model Support required and process understood including where to log time for this effort\n- MBBE | Collibra Internally WoW bedded down\n- MBBE | Relationship with CG partner to bring problems directly to us\n- TLC | Decision making known and reset with new resources on both sides (Cynthia and Sarah TLC / Sharon Collibra)\n- TLC | AI Gov SoW understood and signed\n- TLC | Connector SoW or way forward understood\n- TLC | Glossary in Prod\n- SWC | LeanIX consultation in progress\n- TfNSW | On hold waiting for REA Renewal SoW signed / Jeannine away-Ben fill in for urgent matters\n- TfNSW | AI Metadata ingestion workflow scope identified\n- IAG | Technical Workshops kicked off and continuing for SAP Connector\n- WOW | New REA kicked off\n- PETRONAS | Ignite continues\n- EM | September Delivery Reports completed\n- Team | Corey back and team health improves!"
+    },
+    {
+      "id": 10171,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/10171",
+      "state": "future",
+      "name": "PS Sprint 37 (19 Oct- 01 Nov)",
+      "startDate": "2026-10-19T14:00:00.000Z",
+      "endDate": "2026-11-01T14:00:00.000Z",
+      "createdDate": "2025-09-30T06:16:50.754Z",
+      "originBoardId": 1706,
+      "goal": ""
+    },
+    {
+      "id": 10172,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/10172",
+      "state": "future",
+      "name": "PS Sprint 38 (02 Nov-15 Nov)",
+      "startDate": "2026-11-02T14:00:00.000Z",
+      "endDate": "2026-11-15T14:00:00.000Z",
+      "createdDate": "2025-09-30T06:17:00.868Z",
+      "originBoardId": 1706,
+      "goal": ""
+    },
+    {
+      "id": 10173,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/10173",
+      "state": "future",
+      "name": "PS Sprint 39 (16 Nov - 29 Nov)",
+      "startDate": "2026-11-16T14:00:00.000Z",
+      "endDate": "2026-11-29T14:00:00.000Z",
+      "createdDate": "2025-09-30T06:17:02.412Z",
+      "originBoardId": 1706,
+      "goal": ""
+    },
+    {
+      "id": 10174,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/10174",
+      "state": "future",
+      "name": "PS Sprint 40 (30 Nov - 13 Dec)",
+      "startDate": "2026-12-06T14:00:00.000Z",
+      "endDate": "2026-12-13T14:00:00.000Z",
+      "createdDate": "2025-09-30T06:17:06.504Z",
+      "originBoardId": 1706,
+      "goal": ""
+    },
+    {
+      "id": 10175,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/10175",
+      "state": "future",
+      "name": "PS Sprint 41,42(14 Dec-08 Jan)",
+      "startDate": "2026-12-14T14:00:00.000Z",
+      "endDate": "2027-01-08T14:00:00.000Z",
+      "createdDate": "2025-09-30T06:17:08.021Z",
+      "originBoardId": 1706,
+      "goal": ""
+    },
+    {
+      "id": 11993,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/11993",
+      "state": "future",
+      "name": "PS TEMPLATES",
+      "createdDate": "2025-12-18T22:02:14.818Z",
+      "originBoardId": 1706,
+      "goal": "Sprint placeholder for templates"
+    },
+    {
+      "id": 21162,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21162",
+      "state": "future",
+      "name": "PS Sprint 43 (11 Jan-24 Jan)",
+      "startDate": "2027-01-11T00:00:00.000Z",
+      "endDate": "2027-01-24T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:50:00.092Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21163,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21163",
+      "state": "future",
+      "name": "PS Sprint 44 (25 Jan-07 Feb)",
+      "startDate": "2027-01-25T00:00:00.000Z",
+      "endDate": "2027-02-07T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:50:58.608Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21164,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21164",
+      "state": "future",
+      "name": "PS Sprint 45 (08 Feb-21 Feb)",
+      "startDate": "2027-02-08T00:00:00.000Z",
+      "endDate": "2027-02-21T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:50:59.761Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21165,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21165",
+      "state": "future",
+      "name": "PS Sprint 46 (22 Feb-07 Mar)",
+      "startDate": "2027-02-22T00:00:00.000Z",
+      "endDate": "2027-03-07T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:00.899Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21166,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21166",
+      "state": "future",
+      "name": "PS Sprint 47 (08 Mar-21 Mar)",
+      "startDate": "2027-03-08T00:00:00.000Z",
+      "endDate": "2027-03-21T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:01.311Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21167,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21167",
+      "state": "future",
+      "name": "PS Sprint 48 (22 Mar-04 Apr)",
+      "startDate": "2027-03-22T00:00:00.000Z",
+      "endDate": "2027-04-04T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:01.851Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21168,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21168",
+      "state": "future",
+      "name": "PS Sprint 49 (05 Apr-18 Apr)",
+      "startDate": "2027-04-05T00:00:00.000Z",
+      "endDate": "2027-04-18T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:02.347Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21169,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21169",
+      "state": "future",
+      "name": "PS Sprint 50 (19 Apr-02 May)",
+      "startDate": "2027-04-19T00:00:00.000Z",
+      "endDate": "2027-05-02T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:03.440Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21170,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21170",
+      "state": "future",
+      "name": "PS Sprint 51 (03 May-16 May)",
+      "startDate": "2027-05-03T00:00:00.000Z",
+      "endDate": "2027-05-16T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:03.981Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21171,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21171",
+      "state": "future",
+      "name": "PS Sprint 52 (17 May-30 May)",
+      "startDate": "2027-05-17T00:00:00.000Z",
+      "endDate": "2027-05-30T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:05.076Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21172,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21172",
+      "state": "future",
+      "name": "PS Sprint 53 (31 May-13 Jun)",
+      "startDate": "2027-05-31T00:00:00.000Z",
+      "endDate": "2027-06-13T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:05.561Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21173,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21173",
+      "state": "future",
+      "name": "PS Sprint 54 (14 Jun-27 Jun)",
+      "startDate": "2027-06-14T00:00:00.000Z",
+      "endDate": "2027-06-27T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:05.998Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21174,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21174",
+      "state": "future",
+      "name": "PS Sprint 55 (28 Jun-11 Jul)",
+      "startDate": "2027-06-28T00:00:00.000Z",
+      "endDate": "2027-07-11T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:06.510Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21175,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21175",
+      "state": "future",
+      "name": "PS Sprint 56 (12 Jul-25 Jul)",
+      "startDate": "2027-07-12T00:00:00.000Z",
+      "endDate": "2027-07-25T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:06.931Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21176,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21176",
+      "state": "future",
+      "name": "PS Sprint 57 (26 Jul-08 Aug)",
+      "startDate": "2027-07-26T00:00:00.000Z",
+      "endDate": "2027-08-08T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:07.414Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21177,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21177",
+      "state": "future",
+      "name": "PS Sprint 58 (09 Aug-22 Aug)",
+      "startDate": "2027-08-09T00:00:00.000Z",
+      "endDate": "2027-08-22T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:07.848Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21178,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21178",
+      "state": "future",
+      "name": "PS Sprint 59 (23 Aug-05 Sep)",
+      "startDate": "2027-08-23T00:00:00.000Z",
+      "endDate": "2027-09-05T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:08.296Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21179,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21179",
+      "state": "future",
+      "name": "PS Sprint 60 (06 Sep-19 Sep)",
+      "startDate": "2027-09-06T00:00:00.000Z",
+      "endDate": "2027-09-19T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:08.738Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21180,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21180",
+      "state": "future",
+      "name": "PS Sprint 61 (20 Sep-03 Oct)",
+      "startDate": "2027-09-20T00:00:00.000Z",
+      "endDate": "2027-10-03T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:09.214Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21181,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21181",
+      "state": "future",
+      "name": "PS Sprint 62 (04 Oct-17 Oct)",
+      "startDate": "2027-10-04T00:00:00.000Z",
+      "endDate": "2027-10-17T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:09.650Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21182,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21182",
+      "state": "future",
+      "name": "PS Sprint 63 (18 Oct-31 Oct)",
+      "startDate": "2027-10-18T00:00:00.000Z",
+      "endDate": "2027-10-31T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:10.078Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21183,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21183",
+      "state": "future",
+      "name": "PS Sprint 64 (01 Nov-14 Nov)",
+      "startDate": "2027-11-01T00:00:00.000Z",
+      "endDate": "2027-11-14T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:10.543Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21184,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21184",
+      "state": "future",
+      "name": "PS Sprint 65 (15 Nov-28 Nov)",
+      "startDate": "2027-11-15T00:00:00.000Z",
+      "endDate": "2027-11-28T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:10.998Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21185,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21185",
+      "state": "future",
+      "name": "PS Sprint 66 (29 Nov-12 Dec)",
+      "startDate": "2027-11-29T00:00:00.000Z",
+      "endDate": "2027-12-12T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:11.452Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21186,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21186",
+      "state": "future",
+      "name": "PS Sprint 69 (10 Jan-23 Jan)",
+      "startDate": "2028-01-10T00:00:00.000Z",
+      "endDate": "2028-01-23T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:12.205Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21187,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21187",
+      "state": "future",
+      "name": "PS Sprint 70 (24 Jan-06 Feb)",
+      "startDate": "2028-01-24T00:00:00.000Z",
+      "endDate": "2028-02-06T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:12.646Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21188,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21188",
+      "state": "future",
+      "name": "PS Sprint 71 (07 Feb-20 Feb)",
+      "startDate": "2028-02-07T00:00:00.000Z",
+      "endDate": "2028-02-20T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:13.100Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21189,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21189",
+      "state": "future",
+      "name": "PS Sprint 72 (21 Feb-05 Mar)",
+      "startDate": "2028-02-21T00:00:00.000Z",
+      "endDate": "2028-03-05T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:13.580Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21190,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21190",
+      "state": "future",
+      "name": "PS Sprint 73 (06 Mar-19 Mar)",
+      "startDate": "2028-03-06T00:00:00.000Z",
+      "endDate": "2028-03-19T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:14.028Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21191,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21191",
+      "state": "future",
+      "name": "PS Sprint 74 (20 Mar-02 Apr)",
+      "startDate": "2028-03-20T00:00:00.000Z",
+      "endDate": "2028-04-02T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:14.502Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21192,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21192",
+      "state": "future",
+      "name": "PS Sprint 75 (03 Apr-16 Apr)",
+      "startDate": "2028-04-03T00:00:00.000Z",
+      "endDate": "2028-04-16T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:14.962Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21193,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21193",
+      "state": "future",
+      "name": "PS Sprint 76 (17 Apr-30 Apr)",
+      "startDate": "2028-04-17T00:00:00.000Z",
+      "endDate": "2028-04-30T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:15.441Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21194,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21194",
+      "state": "future",
+      "name": "PS Sprint 77 (01 May-14 May)",
+      "startDate": "2028-05-01T00:00:00.000Z",
+      "endDate": "2028-05-14T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:15.876Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21195,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21195",
+      "state": "future",
+      "name": "PS Sprint 78 (15 May-28 May)",
+      "startDate": "2028-05-15T00:00:00.000Z",
+      "endDate": "2028-05-28T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:16.339Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21196,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21196",
+      "state": "future",
+      "name": "PS Sprint 79 (29 May-11 Jun)",
+      "startDate": "2028-05-29T00:00:00.000Z",
+      "endDate": "2028-06-11T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:16.810Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21197,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21197",
+      "state": "future",
+      "name": "PS Sprint 80 (12 Jun-25 Jun)",
+      "startDate": "2028-06-12T00:00:00.000Z",
+      "endDate": "2028-06-25T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:17.266Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21198,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21198",
+      "state": "future",
+      "name": "PS Sprint 81 (26 Jun-09 Jul)",
+      "startDate": "2028-06-26T00:00:00.000Z",
+      "endDate": "2028-07-09T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:17.696Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21199,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21199",
+      "state": "future",
+      "name": "PS Sprint 82 (10 Jul-23 Jul)",
+      "startDate": "2028-07-10T00:00:00.000Z",
+      "endDate": "2028-07-23T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:18.234Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21200,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21200",
+      "state": "future",
+      "name": "PS Sprint 83 (24 Jul-06 Aug)",
+      "startDate": "2028-07-24T00:00:00.000Z",
+      "endDate": "2028-08-06T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:18.671Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21201,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21201",
+      "state": "future",
+      "name": "PS Sprint 84 (07 Aug-20 Aug)",
+      "startDate": "2028-08-07T00:00:00.000Z",
+      "endDate": "2028-08-20T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:19.131Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21202,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21202",
+      "state": "future",
+      "name": "PS Sprint 85 (21 Aug-03 Sep)",
+      "startDate": "2028-08-21T00:00:00.000Z",
+      "endDate": "2028-09-03T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:19.583Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21203,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21203",
+      "state": "future",
+      "name": "PS Sprint 86 (04 Sep-17 Sep)",
+      "startDate": "2028-09-04T00:00:00.000Z",
+      "endDate": "2028-09-17T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:20.017Z",
+      "originBoardId": 1706
+    },
+    {
+      "id": 21204,
+      "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/21204",
+      "state": "future",
+      "name": "PS Sprint 87 (18 Sep-01 Oct)",
+      "startDate": "2028-09-18T00:00:00.000Z",
+      "endDate": "2028-10-01T00:00:00.000Z",
+      "createdDate": "2026-06-27T15:51:20.476Z",
+      "originBoardId": 1706
+    }
+  ]
+}

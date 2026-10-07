@@ -1,0 +1,64 @@
+{
+  "results": [
+    {
+      "value": "CU:Allowance",
+      "displayName": "<b>CU</b>:Allowance"
+    },
+    {
+      "value": "CU:Auditability",
+      "displayName": "<b>CU</b>:Auditability"
+    },
+    {
+      "value": "CU:Burndown",
+      "displayName": "<b>CU</b>:Burndown"
+    },
+    {
+      "value": "CU:Publishing",
+      "displayName": "<b>CU</b>:Publishing"
+    },
+    {
+      "value": "CU:Visibility",
+      "displayName": "<b>CU</b>:Visibility"
+    },
+    {
+      "value": "Curation",
+      "displayName": "<b>Cu</b>ration"
+    },
+    {
+      "value": "Customer",
+      "displayName": "<b>Cu</b>stomer"
+    },
+    {
+      "value": "CustomerDocumentation",
+      "displayName": "<b>Cu</b>stomerDocumentation"
+    },
+    {
+      "value": "Customer_Penetration_Test",
+      "displayName": "<b>Cu</b>stomer_Penetration_Test"
+    },
+    {
+      "value": "Customer_Problem_Review",
+      "displayName": "<b>Cu</b>stomer_Problem_Review"
+    },
+    {
+      "value": "Customer_Questionnaire",
+      "displayName": "<b>Cu</b>stomer_Questionnaire"
+    },
+    {
+      "value": "Customer_Security_Issue",
+      "displayName": "<b>Cu</b>stomer_Security_Issue"
+    },
+    {
+      "value": "Customer_Vulnerability",
+      "displayName": "<b>Cu</b>stomer_Vulnerability"
+    },
+    {
+      "value": "Customer_Vulnerability_Scan",
+      "displayName": "<b>Cu</b>stomer_Vulnerability_Scan"
+    },
+    {
+      "value": "Customizations",
+      "displayName": "<b>Cu</b>stomizations"
+    }
+  ]
+}

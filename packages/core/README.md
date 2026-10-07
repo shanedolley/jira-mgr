@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -44,7 +44,7 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 
 `createHttpClient(options?)` from `@jira-mgr/core/http` returns `{ request(method, path, { body, signal }) }`. It signs each request with Basic auth from `getCredentials()`, and `options.credentials` swaps that out for tests.
 
-- `path` must start with `/rest/` and hold no `..`, backslash or encoded dot, so the token only goes to the site. Redirects are refused.
+- `path` must start with `/rest/` and hold no `..`, backslash or encoded dot before its query string, so the token only goes to the site. The query string is free to hold them, as a label search may. Redirects are refused.
 - A plain `body` goes as JSON. A `FormData` body goes as multipart with `X-Atlassian-Token: no-check`. A 204 or empty body resolves to `undefined`. Any other body resolves to parsed JSON typed `unknown`, which the caller validates.
 - A 429, or a 503 with `Retry-After`, waits that many seconds (at most 60) and retries, up to 3 times. A 429 with no header, or a zero, past or unreadable one, backs off 1, 2, then 4 seconds. `options.sleep` replaces the wait in tests, and the caller's `signal` cuts a wait short. Each attempt, body read included, times out after `timeoutMs` (30 000 by default). A failed write says it may have gone through. A GET or HEAD with a body is refused.
 - 400 throws `validation_failed`, 401 and 403 `permission_denied`, 404 `not_found`, and everything else `jira_error`, including network failures, timeouts and spent retries. `details` holds `{ status, errorMessages, errors }` from the response body.
@@ -132,6 +132,38 @@ Markdown is a trust boundary, so every note, tag and fence is validated when rea
 - `transitionIssue(http, key, status)` reads `GET /rest/api/3/issue/{key}/transitions`, picks the transition whose target status has that id or name (case-insensitive), and posts it. A status the issue cannot reach throws `validation_failed` listing the ones it can, in `details.available`. The transition's own name is not matched: the recorded Epic transition 3 is named `REVIEW` and reaches `Review`.
 
 Recorded `editmeta-*` and `transitions-*` fixtures for a Story, a Subtask and an Epic back the field shapes; a test checks that every field `editIssue` sends is settable on each type. Tests record the requests and never reach Jira.
+
+## Issue Extras
+
+Three subpaths cover the secondary operations. Each function takes an `HttpClient` first, validates its input with zod before any request, and validates every response, throwing `jira_error` on a shape it does not expect. Keys must look like `PSAPAC-12`, and comment, worklog, link, attachment and sprint ids must be digits, so no input can change a request path. A 403 from Jira, such as editing another user's comment or worklog (Q34), throws `permission_denied`.
+
+### Comments, Worklogs, Links, Attachments
+
+`@jira-mgr/core/extras`:
+
+- `listComments`, `addComment`, `editComment` and `deleteComment`. Bodies are ADF: pass `markdownToAdf(text)` and render with `adfToMarkdown`. A comment is `{ id, author, body, created, updated }`, with UTC ISO times.
+- `listWorklogs`, `addWorklog`, `editWorklog` and `deleteWorklog`. Every write sends `adjustEstimate=auto`, so Jira moves the remaining estimate by the time logged (Q11). `addWorklog(http, key, { timeSpent, started?, comment? })` takes a Jira duration such as `1h 30m` (decimals are refused), `started` as a `Date`, and an optional ADF comment. It sends `started` as UTC in Jira's `yyyy-MM-dd'T'HH:mm:ss.SSS+0000` form, since Jira rejects a `Z` suffix. Without `started` Jira uses the current time. `editWorklog` sends only the fields given.
+- `listLinks(http, key)` returns `{ id, type, direction, issue: { key, summary, status } }` as seen from that issue. `direction` is `outward` when the issue reads "<this> <type.outward> <issue>" ("blocks") and `inward` for "is blocked by". `listLinkTypes` returns all of the site's types, 21 on PSAPAC, with nothing filtered.
+- `addLink(http, { type: { name } | { id }, key, direction, otherKey })` reads as a sentence: `direction: 'outward'` with `Blocks` makes `key` block `otherKey`, and `'inward'` makes `key` blocked by `otherKey`. Jira answers 201 with no body, so find the new link's id with `listLinks`. `removeLink(http, linkId)` removes by id. Jira's POST names the blocking side `inwardIssue`; core relies on that, and a live PSAPAC check confirmed it on 2026-10-07 (link 642179, created and deleted).
+- `listAttachments`, `addAttachment(http, key, { filename, content })` and `removeAttachment`. `content` is a `Blob` or `Uint8Array`, so the CLI and the app both call it. The upload goes as multipart through the HTTP client. First it reads the site's `uploadLimit` from the attachment settings (100 000 000 bytes on PSAPAC), and a larger file, or a site with attachments off, throws `validation_failed` before any bytes are sent.
+
+### Sprints
+
+`@jira-mgr/core/sprints`:
+
+- `findBoard(http, projectKey?)` returns `{ id, name, type }` for the project's board (settings unless given), or `null`. Only a `scrum` or `simple` board counts, since a Kanban board has no sprints. A project with several of those gets the first one Jira lists.
+- `listSprints(http, boardId, { all? })` returns `{ id, name, state, startDate, endDate }`, all pages. Without `all` it asks for `state=active,future`; with it, closed sprints come too. An undated sprint has `null` dates. The Q20 picker rule (dated future sprints first, undated behind "Show all") is the client's: core returns what Jira lists.
+- `moveToSprint(http, sprintId, keys)` moves issues into a sprint through the Agile sprint endpoint, and `moveToBacklog(http, keys)` moves them out through the Agile backlog endpoint. Each takes 1 to 50 keys, Jira's limit.
+
+### Pickers
+
+`@jira-mgr/core/lookups`:
+
+- `suggestLabels(http, prefix)` returns label names from Jira's autocomplete. Jira suggests from every project on the site, so a client wanting only project labels filters further. The prefix is percent-encoded.
+- `searchAssignableUsers(http, query, { projectKey? })` returns active users assignable in the project as `{ accountId, displayName, avatarUrl }`, at most 50, and drops the email address.
+- `getFieldOptions(http, field)` returns `{ id, name }[]` for `customer`, `engagement`, `priority`, `issueType` or `status`. Customer, Engagement and Priority come from the project's create metadata, so Priority lists the project's 11 priorities, not the site's 20. `status` lists each status of the project once.
+
+Recorded fixtures back every response mapping: `comments-psapac-666`, `worklogs-psapac-666`, `issue-links-psapac-666` and `-664` (the same link seen from both ends), `issue-attachments-psapac-3017`, `issuelinktype`, `attachment-meta`, `board-psapac`, `board-sprints-active-future`, `board-sprints-all`, `label-suggestions`, `assignable-users` and `project-statuses`. Tests record each request's method, path, query and body, and never reach Jira.
 
 ## Test
 

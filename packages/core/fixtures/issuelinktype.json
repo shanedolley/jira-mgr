@@ -1,0 +1,151 @@
+{
+  "issueLinkTypes": [
+    {
+      "id": "10000",
+      "name": "Blocks",
+      "inward": "is blocked by",
+      "outward": "blocks",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10000"
+    },
+    {
+      "id": "10500",
+      "name": "Causes",
+      "inward": "is caused by",
+      "outward": "causes",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10500"
+    },
+    {
+      "id": "10400",
+      "name": "Cloners",
+      "inward": "cloned to",
+      "outward": "cloned from",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10400"
+    },
+    {
+      "id": "10701",
+      "name": "Defect",
+      "inward": "created by",
+      "outward": "created",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10701"
+    },
+    {
+      "id": "11108",
+      "name": "Design",
+      "inward": "is designed by",
+      "outward": "designs",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11108"
+    },
+    {
+      "id": "11042",
+      "name": "Discovery - Connected",
+      "inward": "is connected to",
+      "outward": "connects to",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11042"
+    },
+    {
+      "id": "10600",
+      "name": "Document",
+      "inward": "is documented by",
+      "outward": "documents",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10600"
+    },
+    {
+      "id": "10002",
+      "name": "Duplicate",
+      "inward": "is duplicated by",
+      "outward": "duplicates",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10002"
+    },
+    {
+      "id": "10200",
+      "name": "Implementer",
+      "inward": "is implemented by",
+      "outward": "implements",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10200"
+    },
+    {
+      "id": "10800",
+      "name": "Issue split",
+      "inward": "split from",
+      "outward": "split to",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10800"
+    },
+    {
+      "id": "12175",
+      "name": "Merged",
+      "inward": "merged from",
+      "outward": "merged into",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/12175"
+    },
+    {
+      "id": "12142",
+      "name": "migration_parent",
+      "inward": "is a parent of",
+      "outward": "is a child of",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/12142"
+    },
+    {
+      "id": "11004",
+      "name": "Polaris datapoint work item link",
+      "inward": "added to idea",
+      "outward": "is idea for",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11004"
+    },
+    {
+      "id": "11008",
+      "name": "Polaris issue link",
+      "inward": "JPD Linked",
+      "outward": "JPD Linked",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11008"
+    },
+    {
+      "id": "11003",
+      "name": "Polaris merge work item link",
+      "inward": "merged into",
+      "outward": "merged from",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11003"
+    },
+    {
+      "id": "11076",
+      "name": "Post-Incident Reviews",
+      "inward": "is reviewed by",
+      "outward": "reviews",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11076"
+    },
+    {
+      "id": "11075",
+      "name": "Problem/Incident",
+      "inward": "is caused by",
+      "outward": "causes",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11075"
+    },
+    {
+      "id": "10003",
+      "name": "Relates",
+      "inward": "relates to",
+      "outward": "relates to",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/10003"
+    },
+    {
+      "id": "11000",
+      "name": "Test",
+      "inward": "is tested by",
+      "outward": "tests",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11000"
+    },
+    {
+      "id": "11009",
+      "name": "Treatment",
+      "inward": "is treated by",
+      "outward": "treats",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11009"
+    },
+    {
+      "id": "11001",
+      "name": "Zephyr Capture testing",
+      "inward": "testing discovered",
+      "outward": "discovered while testing",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issueLinkType/11001"
+    }
+  ]
+}

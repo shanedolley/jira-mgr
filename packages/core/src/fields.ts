@@ -26,8 +26,8 @@ const fieldsPage = z
   })
   .transform((page) => ({ total: page.total, items: page.fields }))
 
-/** Reads every page of a createmeta listing. */
-async function fetchAll<T>(
+/** Reads every page of a listing that answers `startAt` and `maxResults` with a `total`. */
+export async function fetchAll<T>(
   http: HttpClient,
   path: string,
   schema: z.ZodType<{ total: number; items: T[] }>,
@@ -36,14 +36,16 @@ async function fetchAll<T>(
   for (;;) {
     const raw = await http.request(
       'GET',
-      `${path}?startAt=${String(items.length)}&maxResults=${String(PAGE_SIZE)}`,
+      `${path}${path.includes('?') ? '&' : '?'}startAt=${String(items.length)}&maxResults=${String(PAGE_SIZE)}`,
     )
     const page = schema.safeParse(raw)
     if (!page.success) {
       throw new JiraMgrError(
         'jira_error',
-        `Jira sent an unexpected createmeta response for ${path}.`,
-        { details: { issues: page.error.issues } },
+        `Jira sent an unexpected response for ${path.split('?')[0] ?? path}.`,
+        {
+          details: { issues: page.error.issues },
+        },
       )
     }
     items.push(...page.data.items)
