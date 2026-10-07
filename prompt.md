@@ -4,10 +4,9 @@
 
 Measured 2026-10-07 by reading every open Core issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). CLI and Desktop issues wait on all of Core.
 
-1. **Finish C11 issue extras (#19)** on `c11-issue-extras`: review, push, CI (ship-it merges), proof; internal story, so the project manager moves it to Done.
-2. **C8 views and search (#16)**: no open blockers.
-3. **C12 timer engine (#20)**: blocked only by C11. Note on #20: `timer.json` writes from app and CLI are last-writer-wins.
-4. **L1 command schema (#21)**: waits on all of Core (C8, C11, C12). Write its design doc first.
+1. **Finish C12 timer engine (#20)** on `c12-timer-engine`: review, push, CI (ship-it merges), proof; internal story, so the project manager moves it to Done.
+2. **C8 views and search (#16)**: no open blockers; the last Core story.
+3. **L1 command schema (#21)**: unblocked once C8 and C12 close. Write its design doc first (docs/design/, from docs/templates/design-doc.md), including `docs/reference/errors.md` (note on #21).
 
 ## Reading Order
 
