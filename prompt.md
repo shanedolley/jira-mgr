@@ -2,12 +2,12 @@
 
 ## Start Here
 
-Measured 2026-10-07: no issues exist, so no story is claimable yet.
+Measured 2026-10-07 with `gh issue list --state open --limit 200` and each issue's dependencies.
 
-1. Get Shane's approval of the roadmap pull request (`gh pr list --head plan-roadmap`), then merge it on green CI.
-2. Create milestones Core, CLI and Desktop, the status labels, and one issue per roadmap row, each with the row's "Done when" as acceptance criteria and its "Needs" as blockers.
-3. Build, in order: **C1** test harness and **C2** state files (no blockers, can run in parallel), then **C9** ADF and Markdown (needs C1) and **C3** credentials (needs C2).
-4. Fix the Dependabot `pr-title` trap in [handover.md](handover.md) in its own small pull request.
+1. **C2 state files (#10)**: no blockers. Unblocks C3, C5, C8 and C12.
+2. **C9 ADF and Markdown (#17)**: blocked only by C1 (#9), which is in review.
+3. **C3 credentials (#11)**: blocked by C2.
+4. **C4 HTTP client (#12)**: blocked by C1 and C3.
 
 ## Reading Order
 
