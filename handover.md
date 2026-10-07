@@ -38,7 +38,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (core 1036 pass and 1 skipped in 18 files; CLI 576, after a `tsup` build; measured on `main` at c29fe9d 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (core 1036 pass and 1 skipped in 18 files; CLI 576, after a `tsup` build; measured on `main` at c29fe9d 2026-10-07; later commits are docs only) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -48,7 +48,7 @@ All from the repository root, under Node 24 (see Traps).
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #56 merge, c29fe9d (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #57 merge, 5405f77 (re-checked 2026-10-07) (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
 
 ## Environments
 
