@@ -1,0 +1,4 @@
+{
+  "extends": "@jira-mgr/config-ts/node.json",
+  "include": ["desktop", "playwright.config.ts"]
+}

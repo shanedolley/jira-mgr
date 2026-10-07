@@ -1,0 +1,7 @@
+{
+  "extends": "@jira-mgr/config-ts/vite.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "electron.vite.config.ts"]
+}

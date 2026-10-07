@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+
+# Refuse any version published less than seven days ago (value in minutes).
+# See docs/standards/dependencies.md.
+minimumReleaseAge: 10080
+
+# Run install scripts only for these. Electron has none: it downloads its binary on first use.
+onlyBuiltDependencies:
+  - esbuild

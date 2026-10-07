@@ -1,0 +1,12 @@
+# The ownership map: who reviews each path. Later entries win.
+# A private repository on GitHub Free ignores this file, so it neither requests
+# nor enforces reviews; the author requests the owner's review by hand
+# (docs/standards/code-review.md). It takes effect if the plan changes.
+*                       @shanedolley
+
+# Paths where a mistake reaches every contributor or the token
+/.github/               @shanedolley
+/packages/core/         @shanedolley
+/AGENTS.md              @shanedolley
+/CLAUDE.md              @shanedolley
+/docs/                  @shanedolley

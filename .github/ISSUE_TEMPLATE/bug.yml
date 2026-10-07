@@ -1,0 +1,34 @@
+name: Bug
+description: Something jira-mgr does wrong.
+title: "bug: "
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The command or screen, what you expected, and what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. jm issue get PSAPAC-123 --json
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `jm --version`, or the app version.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Error output, ideally with `JM_DEBUG=1`. Remove tokens and other secrets first.
+      render: text
