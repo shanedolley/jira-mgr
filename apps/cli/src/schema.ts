@@ -370,7 +370,7 @@ export const COMMANDS = [
     output: { summary: 'An array of issues.', example: [ISSUE] },
     exits: [
       { code: 'not_found', when: '`--view` names no saved view.' },
-      { code: 'validation_failed', when: 'A name matches no value, or more than one.' },
+      { code: 'validation_failed', when: 'A state file, such as the saved views, is invalid.' },
     ],
     writes: [],
     calls: [
@@ -416,7 +416,7 @@ export const COMMANDS = [
     },
     exits: [
       { code: 'not_found', when: '`--view` names no saved view.' },
-      { code: 'validation_failed', when: 'A name matches no value, or more than one.' },
+      { code: 'validation_failed', when: 'A state file, such as the saved views, is invalid.' },
     ],
     writes: [],
     calls: [
@@ -447,7 +447,13 @@ export const COMMANDS = [
         url: 'https://example.atlassian.net/browse/PSAPAC-12',
       },
     },
-    exits: [{ code: 'not_found', when: 'The issue does not exist.' }],
+    exits: [
+      { code: 'not_found', when: 'The issue does not exist.' },
+      {
+        code: 'validation_failed',
+        when: 'The site in settings is not an Atlassian Cloud site.',
+      },
+    ],
     writes: [],
     calls: ['@jira-mgr/core/search#getIssue', '@jira-mgr/core/adf#adfToMarkdown'],
   },
@@ -1004,6 +1010,7 @@ export const COMMANDS = [
     options: [{ name: 'all', type: 'boolean', description: 'Include closed and undated sprints.' }],
     examples: [{ command: 'jm sprint list', description: 'List the active and upcoming sprints.' }],
     output: { summary: 'An array of sprints.', example: [SPRINT] },
+    exits: [{ code: 'not_found', when: 'The project has no board that supports sprints.' }],
     writes: [],
     calls: ['@jira-mgr/core/sprints#findBoard', '@jira-mgr/core/sprints#listSprints'],
   },

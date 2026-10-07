@@ -1,6 +1,6 @@
 # CLI
 
-The `jm` command, used by people and agents alike. Package `@jira-mgr/cli`, built with tsup and Commander. Today it runs `jm help` and `jm auth login`, `status` and `logout`; the commands for issues, comments, worklogs, links, attachments, sprints and the timer arrive in stories L3 to L6. The design is [0001](../../docs/design/0001-cli-command-schema.md), and every command is documented in [cli.md](../../docs/reference/cli.md).
+The `jm` command, used by people and agents alike. Package `@jira-mgr/cli`, built with tsup and Commander. Today it runs `jm help`, `jm auth login`, `status` and `logout`, and the reads: `jm issue list`, `tree` and `get`, `jm field options`, `jm link types`, `jm sprint list` and `jm view list`. The writes, comments, worklogs, attachments and the timer arrive in stories L4 to L6. The design is [0001](../../docs/design/0001-cli-command-schema.md), and every command is documented in [cli.md](../../docs/reference/cli.md).
 
 ## Run
 
