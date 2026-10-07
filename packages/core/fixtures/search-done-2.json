@@ -1,0 +1,1235 @@
+{
+  "issues": [
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1449216",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449216",
+      "key": "PSAPAC-3081",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "MBBE - DQO Cloud - Connect - Teradata & Hive",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+          "id": "11502",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 12015,
+          "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "1449214",
+          "key": "PSAPAC-3079",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449214",
+          "fields": {
+            "summary": "MBBE - DQO Cloud - Connect",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Done",
+              "id": "11824",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+                "id": 3,
+                "key": "done",
+                "colorName": "green",
+                "name": "Done"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+              "id": "11503",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+              "name": "Epic",
+              "subtask": false,
+              "avatarId": 12007,
+              "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "created": "2026-10-04T23:09:24.136+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26667",
+          "value": "DQO Cloud",
+          "id": "26667",
+          "color": "YELLOW_DARKER"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {
+          "originalEstimate": "4h",
+          "remainingEstimate": "4h",
+          "originalEstimateSeconds": 14400,
+          "remainingEstimateSeconds": 14400
+        },
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": null,
+        "duedate": "2026-10-13",
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25103",
+          "value": "Maybank",
+          "id": "25103",
+          "color": "GREEN_DARKER"
+        },
+        "customfield_13808": null,
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=62149de15d162c0069a54c21",
+          "accountId": "62149de15d162c0069a54c21",
+          "emailAddress": "ashish.sharma@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "24x24": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "16x16": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "32x32": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png"
+          },
+          "displayName": "Ashish Sharma",
+          "active": true,
+          "timeZone": "US/Eastern",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T01:20:09.491+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1449215",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449215",
+      "key": "PSAPAC-3080",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "MBBE - DQO Cloud - Connect - Oracle",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+          "id": "11502",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 12015,
+          "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "1449214",
+          "key": "PSAPAC-3079",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449214",
+          "fields": {
+            "summary": "MBBE - DQO Cloud - Connect",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Done",
+              "id": "11824",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+                "id": 3,
+                "key": "done",
+                "colorName": "green",
+                "name": "Done"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+              "id": "11503",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+              "name": "Epic",
+              "subtask": false,
+              "avatarId": 12007,
+              "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "created": "2026-10-04T23:09:21.830+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26667",
+          "value": "DQO Cloud",
+          "id": "26667",
+          "color": "YELLOW_DARKER"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {
+          "originalEstimate": "4h",
+          "remainingEstimate": "4h",
+          "originalEstimateSeconds": 14400,
+          "remainingEstimateSeconds": 14400
+        },
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": null,
+        "duedate": "2026-10-13",
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25103",
+          "value": "Maybank",
+          "id": "25103",
+          "color": "GREEN_DARKER"
+        },
+        "customfield_13808": null,
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=62149de15d162c0069a54c21",
+          "accountId": "62149de15d162c0069a54c21",
+          "emailAddress": "ashish.sharma@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "24x24": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "16x16": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "32x32": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png"
+          },
+          "displayName": "Ashish Sharma",
+          "active": true,
+          "timeZone": "US/Eastern",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T01:20:09.484+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1449214",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449214",
+      "key": "PSAPAC-3079",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "MBBE - DQO Cloud - Connect",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+          "id": "11503",
+          "description": "A collection of related bugs, stories, and tasks.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+          "name": "Epic",
+          "subtask": false,
+          "avatarId": 12007,
+          "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+          "hierarchyLevel": 1
+        },
+        "created": "2026-10-04T23:09:19.749+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26667",
+          "value": "DQO Cloud",
+          "id": "26667",
+          "color": "YELLOW_DARKER"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {},
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": null,
+        "duedate": "2026-08-13",
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25103",
+          "value": "Maybank",
+          "id": "25103",
+          "color": "GREEN_DARKER"
+        },
+        "customfield_13808": null,
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3Ae741f0cf-583b-48aa-8b81-6bc8e44cd370",
+          "accountId": "712020:e741f0cf-583b-48aa-8b81-6bc8e44cd370",
+          "emailAddress": "sharon.warner@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+            "24x24": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+            "16x16": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+            "32x32": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png"
+          },
+          "displayName": "Sharon Warner",
+          "active": true,
+          "timeZone": "Etc/GMT",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T01:20:07.255+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1449212",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449212",
+      "key": "PSAPAC-3077",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "MBBE - DQO Cloud - Initiate - Kickoff",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+          "id": "11502",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 12015,
+          "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "1449207",
+          "key": "PSAPAC-3072",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449207",
+          "fields": {
+            "summary": "MBBE - DQO Cloud - Initiate",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+              "description": "This work item is being actively worked on at the moment by the assignee.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "In Progress",
+              "id": "11823",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+                "id": 4,
+                "key": "indeterminate",
+                "colorName": "yellow",
+                "name": "In Progress"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+              "id": "11503",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+              "name": "Epic",
+              "subtask": false,
+              "avatarId": 12007,
+              "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "created": "2026-10-04T23:01:32.293+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26667",
+          "value": "DQO Cloud",
+          "id": "26667",
+          "color": "YELLOW_DARKER"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {
+          "originalEstimate": "4h",
+          "remainingEstimate": "4h",
+          "originalEstimateSeconds": 14400,
+          "remainingEstimateSeconds": 14400
+        },
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": null,
+        "duedate": null,
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25103",
+          "value": "Maybank",
+          "id": "25103",
+          "color": "GREEN_DARKER"
+        },
+        "customfield_13808": null,
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=62149de15d162c0069a54c21",
+          "accountId": "62149de15d162c0069a54c21",
+          "emailAddress": "ashish.sharma@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "24x24": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "16x16": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "32x32": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png"
+          },
+          "displayName": "Ashish Sharma",
+          "active": true,
+          "timeZone": "US/Eastern",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T01:11:59.549+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1449211",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449211",
+      "key": "PSAPAC-3076",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "MBBE - DQO Cloud - Initiate - DQ Use Case Review",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+          "id": "11502",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 12015,
+          "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "1449207",
+          "key": "PSAPAC-3072",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449207",
+          "fields": {
+            "summary": "MBBE - DQO Cloud - Initiate",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+              "description": "This work item is being actively worked on at the moment by the assignee.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "In Progress",
+              "id": "11823",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+                "id": 4,
+                "key": "indeterminate",
+                "colorName": "yellow",
+                "name": "In Progress"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+              "id": "11503",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+              "name": "Epic",
+              "subtask": false,
+              "avatarId": 12007,
+              "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "created": "2026-10-04T23:01:29.970+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26667",
+          "value": "DQO Cloud",
+          "id": "26667",
+          "color": "YELLOW_DARKER"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {
+          "originalEstimate": "4h",
+          "remainingEstimate": "4h",
+          "originalEstimateSeconds": 14400,
+          "remainingEstimateSeconds": 14400
+        },
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": null,
+        "duedate": null,
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25103",
+          "value": "Maybank",
+          "id": "25103",
+          "color": "GREEN_DARKER"
+        },
+        "customfield_13808": null,
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=62149de15d162c0069a54c21",
+          "accountId": "62149de15d162c0069a54c21",
+          "emailAddress": "ashish.sharma@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "24x24": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "16x16": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "32x32": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png"
+          },
+          "displayName": "Ashish Sharma",
+          "active": true,
+          "timeZone": "US/Eastern",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T01:11:59.805+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1449205",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449205",
+      "key": "PSAPAC-3070",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "MBBE - DQO Cloud - Prepare - Briefing Call",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+          "id": "11502",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 12015,
+          "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "1449204",
+          "key": "PSAPAC-3069",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449204",
+          "fields": {
+            "summary": "MBBE - DQO Cloud - Prepare",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Done",
+              "id": "11824",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+                "id": 3,
+                "key": "done",
+                "colorName": "green",
+                "name": "Done"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+              "id": "11503",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+              "name": "Epic",
+              "subtask": false,
+              "avatarId": 12007,
+              "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "created": "2026-10-04T22:56:13.505+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26667",
+          "value": "DQO Cloud",
+          "id": "26667",
+          "color": "YELLOW_DARKER"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {
+          "originalEstimate": "4h",
+          "remainingEstimate": "4h",
+          "originalEstimateSeconds": 14400,
+          "remainingEstimateSeconds": 14400
+        },
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": null,
+        "duedate": "2026-07-09",
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25103",
+          "value": "Maybank",
+          "id": "25103",
+          "color": "GREEN_DARKER"
+        },
+        "customfield_13808": "2026-07-09",
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=62149de15d162c0069a54c21",
+          "accountId": "62149de15d162c0069a54c21",
+          "emailAddress": "ashish.sharma@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "24x24": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "16x16": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png",
+            "32x32": "https://secure.gravatar.com/avatar/5ad86e2eaf3a461c9ac652caa0bf417e?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAS-1.png"
+          },
+          "displayName": "Ashish Sharma",
+          "active": true,
+          "timeZone": "US/Eastern",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T01:12:00.356+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1449204",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449204",
+      "key": "PSAPAC-3069",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "MBBE - DQO Cloud - Prepare",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+          "id": "11503",
+          "description": "A collection of related bugs, stories, and tasks.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+          "name": "Epic",
+          "subtask": false,
+          "avatarId": 12007,
+          "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+          "hierarchyLevel": 1
+        },
+        "created": "2026-10-04T22:56:11.347+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26667",
+          "value": "DQO Cloud",
+          "id": "26667",
+          "color": "YELLOW_DARKER"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {},
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": null,
+        "duedate": "2026-07-09",
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25103",
+          "value": "Maybank",
+          "id": "25103",
+          "color": "GREEN_DARKER"
+        },
+        "customfield_13808": null,
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3Ae741f0cf-583b-48aa-8b81-6bc8e44cd370",
+          "accountId": "712020:e741f0cf-583b-48aa-8b81-6bc8e44cd370",
+          "emailAddress": "sharon.warner@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+            "24x24": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+            "16x16": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+            "32x32": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png"
+          },
+          "displayName": "Sharon Warner",
+          "active": true,
+          "timeZone": "Etc/GMT",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T01:11:59.745+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1449164",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449164",
+      "key": "PSAPAC-3065",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "New UI preview deck for the Data Domain Owners forums",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+          "id": "11502",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 12015,
+          "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "1421405",
+          "key": "PSAPAC-2832",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1421405",
+          "fields": {
+            "summary": "BHP - REA",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+              "description": "This work item is being actively worked on at the moment by the assignee.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "In Progress",
+              "id": "11823",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+                "id": 4,
+                "key": "indeterminate",
+                "colorName": "yellow",
+                "name": "In Progress"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+              "id": "11503",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+              "name": "Epic",
+              "subtask": false,
+              "avatarId": 12007,
+              "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "created": "2026-10-04T08:52:53.035+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15869",
+          "value": "REA ",
+          "id": "15869"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {
+          "originalEstimate": "4h",
+          "remainingEstimate": "0m",
+          "timeSpent": "2h",
+          "originalEstimateSeconds": 14400,
+          "remainingEstimateSeconds": 0,
+          "timeSpentSeconds": 7200
+        },
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": [
+          {
+            "id": 10170,
+            "name": "PS Sprint 36 (05 Oct-18 Oct)",
+            "state": "active",
+            "boardId": 1706,
+            "goal": "- BHP | Data Domain Owner forum attendances\n- BHP | Landing page roll out completed\n- BHP | Roadmap agreed with Christine for rest of FY\n- MBBE | Plans understood from Maybank and/or CG\n- MBBE | Operating Model Support required and process understood including where to log time for this effort\n- MBBE | Collibra Internally WoW bedded down\n- MBBE | Relationship with CG partner to bring problems directly to us\n- TLC | Decision making known and reset with new resources on both sides (Cynthia and Sarah TLC / Sharon Collibra)\n- TLC | AI Gov SoW understood and signed\n- TLC | Connector SoW or way forward understood\n- TLC | Glossary in Prod\n- SWC | LeanIX consultation in progress\n- TfNSW | On hold waiting for REA Renewal SoW signed / Jeannine away-Ben fill in for urgent matters\n- TfNSW | AI Metadata ingestion workflow scope identified\n- IAG | Technical Workshops kicked off and continuing for SAP Connector\n- WOW | New REA kicked off\n- PETRONAS | Ignite continues\n- EM | September Delivery Reports completed\n- Team | Corey back and team health improves!",
+            "startDate": "2026-10-05T23:32:56.296Z",
+            "endDate": "2026-10-18T14:00:00.000Z"
+          }
+        ],
+        "duedate": "2026-10-05",
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16120",
+          "value": "BHP",
+          "id": "16120"
+        },
+        "customfield_13808": null,
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3A16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+          "accountId": "712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+          "emailAddress": "shane.dolley@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/32"
+          },
+          "displayName": "Shane Dolley",
+          "active": true,
+          "timeZone": "Australia/Brisbane",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T01:05:18.651+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1447612",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1447612",
+      "key": "PSAPAC-3059",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "SWC | AI Gov / Collibra Command Centre - Demonstration Preparation",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+          "id": "11502",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 12015,
+          "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "538184",
+          "key": "PSAPAC-172",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/538184",
+          "fields": {
+            "summary": "SWC | Q4P3 | AI Governance (AIAF Use Case)",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/12020",
+              "description": "",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "Opportunity",
+              "id": "12020",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+                "id": 4,
+                "key": "indeterminate",
+                "colorName": "yellow",
+                "name": "In Progress"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+              "id": "11503",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+              "name": "Epic",
+              "subtask": false,
+              "avatarId": 12007,
+              "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "created": "2026-10-01T01:45:03.687+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21683",
+          "value": "Account Management / Business Development",
+          "id": "21683",
+          "color": "GREY"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {
+          "originalEstimate": "4h",
+          "remainingEstimate": "4h",
+          "originalEstimateSeconds": 14400,
+          "remainingEstimateSeconds": 14400
+        },
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": [
+          {
+            "id": 10170,
+            "name": "PS Sprint 36 (05 Oct-18 Oct)",
+            "state": "active",
+            "boardId": 1706,
+            "goal": "- BHP | Data Domain Owner forum attendances\n- BHP | Landing page roll out completed\n- BHP | Roadmap agreed with Christine for rest of FY\n- MBBE | Plans understood from Maybank and/or CG\n- MBBE | Operating Model Support required and process understood including where to log time for this effort\n- MBBE | Collibra Internally WoW bedded down\n- MBBE | Relationship with CG partner to bring problems directly to us\n- TLC | Decision making known and reset with new resources on both sides (Cynthia and Sarah TLC / Sharon Collibra)\n- TLC | AI Gov SoW understood and signed\n- TLC | Connector SoW or way forward understood\n- TLC | Glossary in Prod\n- SWC | LeanIX consultation in progress\n- TfNSW | On hold waiting for REA Renewal SoW signed / Jeannine away-Ben fill in for urgent matters\n- TfNSW | AI Metadata ingestion workflow scope identified\n- IAG | Technical Workshops kicked off and continuing for SAP Connector\n- WOW | New REA kicked off\n- PETRONAS | Ignite continues\n- EM | September Delivery Reports completed\n- Team | Corey back and team health improves!",
+            "startDate": "2026-10-05T23:32:56.296Z",
+            "endDate": "2026-10-18T14:00:00.000Z"
+          },
+          {
+            "id": 10169,
+            "name": "PS Sprint 35 (21 Sep-04 Oct)",
+            "state": "closed",
+            "boardId": 1706,
+            "goal": "- Sharon to catch up and understand project activities\n- Salesforce in order for projects, timesheets, assignments etc\n- Ben getting into Petronas (review when Corey returns 05 Oct)\n- IAG Kick off\n- Petronas Kick off \n- Pertonas prepare & reset for Ignite\n- TfNSW Data Attributes and Reference Data Documentation complete\n- Clarity on AIAF solution for TfNSW & Sydney Water\n- Sydney Water REA Qtr Review\n- TLC Glossary Use Case complete\n- BHP Landing page ready for deployment",
+            "startDate": "2026-09-23T00:07:02.000Z",
+            "endDate": "2026-10-04T14:00:00.000Z",
+            "completeDate": "2026-10-05T23:31:52.357Z"
+          }
+        ],
+        "duedate": "2026-10-09",
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15865",
+          "value": "Sydney Water",
+          "id": "15865"
+        },
+        "customfield_13808": "2026-10-01",
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3A68371993-69d3-44b8-ac15-3f53b4d759f1",
+          "accountId": "712020:68371993-69d3-44b8-ac15-3f53b4d759f1",
+          "emailAddress": "benjamin.carey@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/6714c3dc35a5e3cc2490374d899a9045?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBC-4.png",
+            "24x24": "https://secure.gravatar.com/avatar/6714c3dc35a5e3cc2490374d899a9045?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBC-4.png",
+            "16x16": "https://secure.gravatar.com/avatar/6714c3dc35a5e3cc2490374d899a9045?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBC-4.png",
+            "32x32": "https://secure.gravatar.com/avatar/6714c3dc35a5e3cc2490374d899a9045?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBC-4.png"
+          },
+          "displayName": "Ben Carey",
+          "active": true,
+          "timeZone": "Etc/GMT",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T23:57:10.247+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    },
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "1446868",
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1446868",
+      "key": "PSAPAC-3040",
+      "fields": {
+        "customfield_21785": null,
+        "summary": "SWC | Data Domains & Data Concepts (CIM)",
+        "issuetype": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+          "id": "11502",
+          "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+          "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+          "name": "Story",
+          "subtask": false,
+          "avatarId": 12015,
+          "entityId": "2689867f-b6c8-40de-becf-cd12bfba7e35",
+          "hierarchyLevel": 0
+        },
+        "parent": {
+          "id": "700135",
+          "key": "PSAPAC-696",
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/700135",
+          "fields": {
+            "summary": "SWC | EDG16 | Q4P1 | Enterprise Capabilities & Business Processes (Lean IX / Collibra Integration)",
+            "status": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+              "description": "This work item is being actively worked on at the moment by the assignee.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/",
+              "name": "In Progress",
+              "id": "11823",
+              "statusCategory": {
+                "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+                "id": 4,
+                "key": "indeterminate",
+                "colorName": "yellow",
+                "name": "In Progress"
+              }
+            },
+            "priority": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+              "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+              "name": "Minor",
+              "id": "4"
+            },
+            "issuetype": {
+              "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+              "id": "11503",
+              "description": "A collection of related bugs, stories, and tasks.",
+              "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+              "name": "Epic",
+              "subtask": false,
+              "avatarId": 12007,
+              "entityId": "4ea7203f-209f-4e54-902e-03bbb5088dde",
+              "hierarchyLevel": 1
+            }
+          }
+        },
+        "created": "2026-09-30T06:42:06.021+0000",
+        "customfield_14850": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15869",
+          "value": "REA ",
+          "id": "15869"
+        },
+        "priority": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        "resolution": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/resolution/7",
+          "id": "7",
+          "description": "Work has been completed on this issue.",
+          "name": "Done"
+        },
+        "timetracking": {
+          "originalEstimate": "4h",
+          "remainingEstimate": "0m",
+          "originalEstimateSeconds": 14400,
+          "remainingEstimateSeconds": 0
+        },
+        "labels": [
+          "PSAPAC"
+        ],
+        "customfield_10600": [
+          {
+            "id": 10170,
+            "name": "PS Sprint 36 (05 Oct-18 Oct)",
+            "state": "active",
+            "boardId": 1706,
+            "goal": "- BHP | Data Domain Owner forum attendances\n- BHP | Landing page roll out completed\n- BHP | Roadmap agreed with Christine for rest of FY\n- MBBE | Plans understood from Maybank and/or CG\n- MBBE | Operating Model Support required and process understood including where to log time for this effort\n- MBBE | Collibra Internally WoW bedded down\n- MBBE | Relationship with CG partner to bring problems directly to us\n- TLC | Decision making known and reset with new resources on both sides (Cynthia and Sarah TLC / Sharon Collibra)\n- TLC | AI Gov SoW understood and signed\n- TLC | Connector SoW or way forward understood\n- TLC | Glossary in Prod\n- SWC | LeanIX consultation in progress\n- TfNSW | On hold waiting for REA Renewal SoW signed / Jeannine away-Ben fill in for urgent matters\n- TfNSW | AI Metadata ingestion workflow scope identified\n- IAG | Technical Workshops kicked off and continuing for SAP Connector\n- WOW | New REA kicked off\n- PETRONAS | Ignite continues\n- EM | September Delivery Reports completed\n- Team | Corey back and team health improves!",
+            "startDate": "2026-10-05T23:32:56.296Z",
+            "endDate": "2026-10-18T14:00:00.000Z"
+          },
+          {
+            "id": 10169,
+            "name": "PS Sprint 35 (21 Sep-04 Oct)",
+            "state": "closed",
+            "boardId": 1706,
+            "goal": "- Sharon to catch up and understand project activities\n- Salesforce in order for projects, timesheets, assignments etc\n- Ben getting into Petronas (review when Corey returns 05 Oct)\n- IAG Kick off\n- Petronas Kick off \n- Pertonas prepare & reset for Ignite\n- TfNSW Data Attributes and Reference Data Documentation complete\n- Clarity on AIAF solution for TfNSW & Sydney Water\n- Sydney Water REA Qtr Review\n- TLC Glossary Use Case complete\n- BHP Landing page ready for deployment",
+            "startDate": "2026-09-23T00:07:02.000Z",
+            "endDate": "2026-10-04T14:00:00.000Z",
+            "completeDate": "2026-10-05T23:31:52.357Z"
+          }
+        ],
+        "duedate": "2026-10-02",
+        "customfield_14849": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15865",
+          "value": "Sydney Water",
+          "id": "15865"
+        },
+        "customfield_13808": "2026-09-21",
+        "assignee": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=608fa06e70d1d1006f537f01",
+          "accountId": "608fa06e70d1d1006f537f01",
+          "emailAddress": "john.shea@collibra.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/c581435c953c8170f8d9cd7c03d429b5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+            "24x24": "https://secure.gravatar.com/avatar/c581435c953c8170f8d9cd7c03d429b5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+            "16x16": "https://secure.gravatar.com/avatar/c581435c953c8170f8d9cd7c03d429b5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png",
+            "32x32": "https://secure.gravatar.com/avatar/c581435c953c8170f8d9cd7c03d429b5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FJS-3.png"
+          },
+          "displayName": "John Shea",
+          "active": true,
+          "timeZone": "Etc/GMT",
+          "accountType": "atlassian"
+        },
+        "updated": "2026-10-06T23:57:08.866+0000",
+        "status": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+          "description": "",
+          "iconUrl": "https://engineering-collibra.atlassian.net/",
+          "name": "Done",
+          "id": "11824",
+          "statusCategory": {
+            "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+            "id": 3,
+            "key": "done",
+            "colorName": "green",
+            "name": "Done"
+          }
+        }
+      }
+    }
+  ],
+  "nextPageToken": "Cjlpc3N1ZUtleSZpc3N1ZUtleSZPUkRFUl9ERVNDI1N0cmluZyZVRk5CVUVGRCVJbnQmTXpBME1BPT0QFBibqoujkTQiPnByb2plY3QgPSAiUFNBUEFDIiBBTkQgc3RhdHVzQ2F0ZWdvcnkgPSBEb25lIE9SREVSIEJZIGtleSBERVNDKgJbXQ==",
+  "isLast": false
+}

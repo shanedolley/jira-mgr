@@ -4,10 +4,11 @@
 
 Checked 2026-10-07.
 
-- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40) and C4 (#41). Run `git log --oneline -1 origin/main` for the head commit.
+- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40), C4 (#41) and C5 (#42). Run `git log --oneline -1 origin/main` for the head commit.
 - C4 HTTP client merged in #41 and waits in HIL Review for Shane (it sends credentials).
-- C5 field resolution (#13) is built on `c5-field-resolution`: `@jira-mgr/core/fields` resolves the five custom fields by name during `login`, and `getFieldIds()` returns them with overrides. Its pull request carries this handover; find it with `gh pr list --head c5-field-resolution`.
-- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields` (Node-only). `jm` still prints only `--help` and `--version`.
+- C5 field resolution merged in #42 and is closed.
+- C6 issue search (#14) is built on `c6-issue-search`: `Issue` in `@jira-mgr/core/issue` (renderer-safe, type re-exported from the main entry) and `searchIssuePages` / `searchIssues` in `@jira-mgr/core/search`, unresolved first then Done, ordered by key. Its pull request carries this handover; find it with `gh pr list --head c6-issue-search`.
+- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search` (Node-only); `/issue` is renderer-safe. `jm` still prints only `--help` and `--version`.
 
 ## Board
 
@@ -15,14 +16,14 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Closed (Done) | #9 C1, #10 C2, #11 C3 | `gh issue list --state closed --limit 200` | 2026-10-07 |
-| Open roadmap issues | 26 (Core 9, CLI 7, Desktop 10); #12 stays open until Shane closes it | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #13 (C5) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| Closed (Done) | #9 C1, #10 C2, #11 C3, #13 C5 | `gh issue list --state closed --limit 200` | 2026-10-07 |
+| Open roadmap issues | 25 (Core 8, CLI 7, Desktop 10); #12 stays open until Shane closes it | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
+| In progress | #14 (C6) | `gh issue list --label status:in-progress` | 2026-10-07 |
 | In AI or HIL review | #12 (C4, HIL) | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `c5-field-resolution`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `c6-issue-search`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -30,7 +31,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (149 pass and 1 skipped in `core`, 7 files, measured on `c5-field-resolution` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (164 pass and 1 skipped in `core`, 8 files, measured on `c6-issue-search` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -70,3 +71,4 @@ Answered 2026-10-07: internal stories close as Done after a passing agent review
 - **Node modules in the renderer** (2026-10-07). Re-exporting `node:fs` code from `@jira-mgr/core`'s main entry makes the desktop build warn. Node-only code goes behind a subpath export such as `@jira-mgr/core/state`.
 - **`security -i` exits 0 on failure and splits long lines** (2026-10-07). A bad command inside `security -i` still exits 0 and can create a junk item, and stdin past 4095 bytes runs as a second command. `@jira-mgr/core/auth` caps token and email length, refuses commands of 4095 bytes or more, and reads the item back after every write. Probe the Keychain only with throwaway service names and delete what you create.
 - **Shell noclobber** (2026-10-07). `>` refuses to overwrite an existing file; a check run redirected to an old log silently did not run. Use a fresh log name per run.
+- **Recorded search pages never end** (2026-10-07). Fixtures recorded mid-phase all carry `isLast: false`; tests serve page 2 with the token dropped and `isLast: true`. Record from the end of a phase if a test needs a genuine last page.

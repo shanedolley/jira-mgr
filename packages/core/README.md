@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME` and `appTitle`. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, and the HTTP client at `@jira-mgr/core/http`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, and issue search at `@jira-mgr/core/search`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -49,6 +49,18 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 - A 429, or a 503 with `Retry-After`, waits that many seconds (at most 60) and retries, up to 3 times. A 429 with no header, or a zero, past or unreadable one, backs off 1, 2, then 4 seconds. `options.sleep` replaces the wait in tests, and the caller's `signal` cuts a wait short. Each attempt, body read included, times out after `timeoutMs` (30 000 by default). A failed write says it may have gone through. A GET or HEAD with a body is refused.
 - 400 throws `validation_failed`, 401 and 403 `permission_denied`, 404 `not_found`, and everything else `jira_error`, including network failures, timeouts and spent retries. `details` holds `{ status, errorMessages, errors }` from the response body.
 - `JM_DEBUG=1` prints `jm http <METHOD> <path> <status> <ms>` to `stderr` for each attempt. It never prints headers, bodies or query strings.
+
+## Issue Search
+
+`@jira-mgr/core/search` exports `searchIssuePages` and `searchIssues`. The `Issue` type and its zod schema live in `@jira-mgr/core/issue`, which imports nothing from `node:`. The main entry re-exports the type, so a renderer imports it from `@jira-mgr/core`.
+
+- `searchIssuePages(http, { pageSize, signal })` is an async generator over `POST /rest/api/3/search/jql`, following `nextPageToken` until `isLast`. It reads the project from settings and the custom field ids from `getFieldIds()`, and requests only the fields `Issue` needs, never the description. It yields `{ phase, issues, loaded }`.
+- Two phases run in order: `unresolved` (`statusCategory != Done`), then `done`. Each orders by `key DESC`. The key never changes, so an edit made mid-load cannot move an issue across a page boundary as `updated` would.
+- `loaded` counts issues across both phases. Jira sends no total, so there is no percentage.
+- `searchIssues(http, options)` collects every issue in load order.
+- `signal` goes to the HTTP client, so aborting stops the paging and rejects with the signal's reason.
+- An issue that fails the schema, or a page that is not last but sends no token or repeats one, throws `jira_error`.
+- `Issue` holds `id`, `key`, `summary`, `issueType`, `status` (with `category`), `resolution`, `parentKey`, `assignee`, `labels`, `priority`, `customer`, `engagement`, `sprints`, `startDate`, `dueDate`, `originalEstimateSeconds`, `remainingEstimateSeconds`, `timeRemainingHours`, `created` and `updated`. Times are UTC ISO strings, and a value Jira leaves empty is `null` (`[]` for `sprints`).
 
 ## Test
 

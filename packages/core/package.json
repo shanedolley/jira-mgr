@@ -9,6 +9,8 @@
     "./auth": "./src/auth.ts",
     "./fields": "./src/fields.ts",
     "./http": "./src/http.ts",
+    "./issue": "./src/issue.ts",
+    "./search": "./src/search.ts",
     "./state": "./src/state.ts"
   },
   "scripts": {
