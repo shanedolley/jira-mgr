@@ -1,0 +1,32 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "697585",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/697585",
+  "key": "PSAPAC-661",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "mention",
+              "attrs": {
+                "id": "5ce7daddf593d10d74a74c49",
+                "text": "@Tony Hoang",
+                "accessLevel": "",
+                "localId": "c86efe9c-6cca-4e82-a80c-83639ccf4bfe"
+              }
+            },
+            {
+              "type": "text",
+              "text": " An epic for the stories that you have created without one to organise it.  Spoken with Nigel to work out how to manage."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

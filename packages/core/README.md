@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, and the issue tree at `@jira-mgr/core/hierarchy`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -74,6 +74,53 @@ It returns `CustomerGroup[]`, each `{ customer, epics, noEpic }`, and `customer:
 - `assigneeMe` keeps issues assigned to `accountId` plus their ancestors. An ancestor kept only as context has `contextOnly: true`.
 - `hideEmptyCustomers: false` adds a group for every Customer in `customers`, and for every Customer whose issues the toggles hid.
 - Customers sort case-insensitively, then No Customer, then "Collibra (Internal team)" and "Collibra (Internal template)". Epics sort by key descending. Children sort by status (Opportunity, To Do, In Progress, Review, Hold, Done, then any other), then key descending.
+
+## ADF and Markdown
+
+`@jira-mgr/core/adf` exports `adfToMarkdown(adf)`, `markdownToAdf(markdown)`, the `adfDocSchema` and `adfNodeSchema` zod schemas, and the `AdfDoc`, `AdfNode` and `AdfMark` types. Both functions are pure and import nothing from `node:`, so the CLI and the renderer share them.
+
+- `adfToMarkdown(adf)` takes `unknown`, validates it as an ADF document (`version: 1`, `type: 'doc'`, nodes with a string `type`, blocks and no inline nodes at the top level), and throws `validation_failed` when it is not one. It returns GFM Markdown.
+- `markdownToAdf(markdown)` returns `{ version: 1, type: 'doc', content }`. Any text is Markdown, so it fails only on nesting.
+- Either function throws `validation_failed` when the document is nested so deeply that reading it overflows the stack, as `>` repeated thousands of times does.
+- **No-edit round trip.** `markdownToAdf(adfToMarkdown(doc))` deep-equals `doc` for any valid ADF, including node types and attrs core has never seen. `adfToMarkdown` checks this itself: it reads each top-level block's Markdown back, and writes a block that does not come back identical as an `adf` fence. Only keys on the document itself beyond `version`, `type` and `content` are dropped.
+
+### Markdown Form
+
+| ADF                                                                                                                                                                    | Markdown                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paragraph`, `heading` 1-6, `rule`, `blockquote`                                                                                                                       | Paragraph, `#` headings, `---`, `>`                                                                                                         |
+| `bulletList`, `orderedList` (`order`), nested `listItem`                                                                                                               | `-` and `N.` lists, numbered from `order`, nested by indent                                                                                 |
+| `codeBlock` (`language`)                                                                                                                                               | Fenced block, fence longer than any backtick run inside                                                                                     |
+| `table`                                                                                                                                                                | GFM table when every cell holds one paragraph and the rows are the same width. A table with no header row gets an empty Markdown header row |
+| `hardBreak`                                                                                                                                                            | `\` and a newline, or `<br>` at the edge of a paragraph, beside another break, beside a space, and in headings and table cells              |
+| marks `strong`, `em`, `code`, `strike`, `link` (`href`, `title`)                                                                                                       | `**`, `_`, backticks, `~~`, `[text](href "title")`                                                                                          |
+| mark `underline`                                                                                                                                                       | `<u>text</u>`                                                                                                                               |
+| `inlineCard` with only a `url`                                                                                                                                         | `<https://...>`                                                                                                                             |
+| any other inline node: `mention`, `emoji`, `date`, `status`, `mediaInline`, an inlineCard with more attrs, unknown nodes                                               | `<adf-node data='{"type":"mention",...}'>@Tony</adf-node>`                                                                                  |
+| a text node Markdown cannot say as it stands: other marks, marks with other attrs, a different mark order, spaces inside a mark                                        | the same `<adf-node>` tag, holding the whole text node                                                                                      |
+| any other block: `panel`, `expand`, `mediaSingle`, `mediaGroup`, `layoutSection`, `taskList`, `decisionList`, `extension`, `blockCard`, a complex table, unknown nodes | an `adf` fence holding the node as one line of JSON                                                                                         |
+
+The `<adf-node>` tag carries the node as JSON in `data`, with `<`, `>` and `'` written as `\u` escapes, and a readable label inside that the reader ignores. An `adf` fence holds the node as JSON. To change one, edit the JSON, or write the node to a file and pass `--adf <file>`.
+
+### Notes
+
+An HTML comment `<!--adf TYPE {...}-->` at the end of a text block restores what Markdown cannot show of a node: attrs such as `localId`, block marks such as `alignment`, and spaces Markdown drops at the ends of the block (`head` and `tail`). `TYPE` names the node. A note sits on the first text line of the node it names, and a list item, list or quote takes the notes of its first child, so `1. text <!--adf paragraph {...}--><!--adf listItem {...}-->` carries a paragraph and an item. An empty paragraph is a line holding only its note. A table with no header row carries `"headerless": true` in a `table` note on the empty header row.
+
+A block that needs a note but has no text line to hold it, such as a list item that starts with a code block, is written as a fence. A note naming a node that is not there is ignored.
+
+Markdown is a trust boundary, so every note, tag and fence is validated when read. A note must be an object whose `attrs` is a record or `null`, `marks` a list of marks, `head` and `tail` strings, and `headerless` true; one that is not is dropped, with the space before it, as if it were not there. An `<adf-node>` tag must hold an inline node, so a `table` or `panel` cannot land in a paragraph, and an `adf` fence must hold a block node, so a `text` or `mention` cannot land in a document. One that does not stays as literal text, or as an ordinary code block, and nothing throws. A node type core has never seen passes either check, since it could be either kind. Markdown `<!-- -->` separates two lists of the same kind, which would otherwise merge.
+
+### Reading Markdown
+
+- Bare URLs, `www.` links and email addresses become `link` marks. `<https://...>` becomes an `inlineCard`.
+- Images have no ADF form without an upload, so `![alt](url)` becomes the text `alt` linked to the URL.
+- A task box `- [ ] x` keeps its box as text. HTML entities such as `&amp;` stay as written. HTML tags other than `<br>`, `<u>` and `<adf-node>` stay as text.
+- A table gets `tableHeader` cells in its first row and `tableCell` cells after it, each with `attrs: {}`, and no table attrs.
+- An `adf` fence holding a valid node becomes that node. One that does not stays a code block.
+
+### Dependency
+
+`marked` is a runtime dependency of core, used only for its lexer (`Lexer` with GFM). Core maps the tokens to ADF itself and never calls marked's HTML renderer. Writing a GFM block and inline parser by hand would cost more than the dependency: marked is MIT licensed, has no install scripts and no dependencies, and runs in a browser.
 
 ## Test
 

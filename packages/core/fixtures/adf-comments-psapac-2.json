@@ -1,0 +1,71 @@
+{
+  "startAt": 0,
+  "maxResults": 100,
+  "total": 1,
+  "comments": [
+    {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/523190/comment/1151961",
+      "id": "1151961",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3Ae741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "accountId": "712020:e741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "emailAddress": "sharon.warner@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png"
+        },
+        "displayName": "Sharon Warner",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "atlassian"
+      },
+      "body": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Roadmap building out here "
+              },
+              {
+                "type": "text",
+                "text": "https://engineering-collibra.atlassian.net/wiki/x/wYYtGAQ",
+                "marks": [
+                  {
+                    "type": "link",
+                    "attrs": {
+                      "href": "https://engineering-collibra.atlassian.net/wiki/x/wYYtGAQ"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "updateAuthor": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3Ae741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "accountId": "712020:e741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "emailAddress": "sharon.warner@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png"
+        },
+        "displayName": "Sharon Warner",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "atlassian"
+      },
+      "created": "2025-07-01T02:08:42.485+0000",
+      "updated": "2025-07-01T02:08:42.485+0000",
+      "jsdPublic": true
+    }
+  ]
+}

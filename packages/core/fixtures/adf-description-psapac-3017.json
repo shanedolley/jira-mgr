@@ -1,0 +1,773 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "1440137",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1440137",
+  "key": "PSAPAC-3017",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "This Epic will track any PS work for the Data Access Preview"
+            }
+          ],
+          "attrs": {
+            "localId": "e0bfd3acb73e"
+          }
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "localId": "4031bdbcf89d"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Collibra Automation Bot  [11:00 PM]"
+            },
+            {
+              "type": "hardBreak"
+            }
+          ],
+          "attrs": {
+            "localId": "b03d7b6f5518"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": " New Preview Program Application"
+            }
+          ],
+          "attrs": {
+            "localId": "768bbf6cdf5e"
+          }
+        },
+        {
+          "type": "mediaSingle",
+          "attrs": {
+            "width": 250,
+            "widthType": "pixel",
+            "localId": "3ea6c12841db",
+            "layout": "center"
+          },
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "b779fa03-43a9-473f-bc64-531f0c7fa560",
+                "alt": ":information_source:",
+                "collection": "",
+                "localId": "2c9c577e8c0b",
+                "height": 22,
+                "width": 22
+              }
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "localId": "819812c86da1"
+          }
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "localId": "4566b3e3904f"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Customer: Sydney Water Corporation"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Preview: Data Access"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Contact: "
+            },
+            {
+              "type": "text",
+              "text": "Anie Issac",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://collibra.lightning.force.com/lightning/r/Contact/0036M00003CZXiJQAX/view"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "The contact above has applied via "
+            },
+            {
+              "type": "text",
+              "text": "preview.collibra.com",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "http://preview.collibra.com"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " — this is a signal of the account's interest in this feature. The Product team will review; space is limited and participation isn't guaranteed. This channel will be notified if the user is accepted."
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Questions? Reach out in"
+            }
+          ],
+          "attrs": {
+            "localId": "816d30918903"
+          }
+        },
+        {
+          "type": "mediaSingle",
+          "attrs": {
+            "width": 250,
+            "widthType": "pixel",
+            "localId": "066cf6fa0346",
+            "layout": "center"
+          },
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "2dca82e3-a88f-4cfc-a9e5-1a2f302369b8",
+                "alt": ":bulb:",
+                "collection": "",
+                "localId": "8ed07f4b212f",
+                "height": 22,
+                "width": 22
+              }
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "#previews-info",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://collibra.slack.com/archives/C0AH4AETN5Q"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "."
+            }
+          ],
+          "attrs": {
+            "localId": "9f66b26f5538"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Brody Murray  [10:40 AM]"
+            },
+            {
+              "type": "hardBreak"
+            }
+          ],
+          "attrs": {
+            "localId": "9392845b4428"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "@john.shea",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://collibra.slack.com/team/U02125CN9UH"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "I'm going to follow up with Anie to re-confirm permissions and that they've got the data architect persona locked down for participation in the trial of Raito."
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "From a PS standpoint are we good to go for your assistance with helping Anie and team with setup via the 12 hours PS time? If so and we're ready, I'll let Myriam know to send out the welcome email to them. Anie reached out to you to discuss the implementation for the trial FYI!"
+            }
+          ],
+          "attrs": {
+            "localId": "b56396c14cb9"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "@Sharon",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://collibra.slack.com/team/U08L2GPPVSN"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " FYI!"
+            }
+          ],
+          "attrs": {
+            "localId": "d763ee9bcfce"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Brody Murray  [12:19 PM]"
+            },
+            {
+              "type": "hardBreak"
+            }
+          ],
+          "attrs": {
+            "localId": "c8acc03b8750"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hey "
+            },
+            {
+              "type": "text",
+              "text": "@john.shea",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://collibra.slack.com/team/U02125CN9UH"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "!"
+            }
+          ],
+          "attrs": {
+            "localId": "6289cbbb8b2e"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "We haven't gotten to that stage yet, we've had an overview with them with "
+            },
+            {
+              "type": "text",
+              "text": "@Bart_VDK",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://collibra.slack.com/team/U52QQ4SHE"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " and "
+            },
+            {
+              "type": "text",
+              "text": "@alin.coop",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://collibra.slack.com/team/U08BU6DSQ8H"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " while I was on leave a few weeks ago. They don't have any success criteria well-defined, that they've shared with us, but I've extracted some out of Andrew D's comments from that session:"
+            },
+            {
+              "type": "hardBreak"
+            }
+          ],
+          "attrs": {
+            "localId": "a3d740c3e07c"
+          }
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "c2351805db4a"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "They've had Azure Databricks up and running for 3 years"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "ca2d606d2d84"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "b6c3ce1a30da"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "All data access governed by AD - rudimentary data security model while building data products, and now Immuta"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "23675583a000"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "d70cd50c3f7f"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Immuta (currently on-prem) - renewal with Immuta is happening now - pushing for SW to move to SaaS offering."
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "e204b7e35a14"
+                  }
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "attrs": {
+                        "localId": "b71794a044ef"
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Risk-averse org, so infra/architects need to be convinced on their SaaS offering. Still a lot of hurdles to get through to make the move."
+                            }
+                          ],
+                          "attrs": {
+                            "localId": "68390968c153"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "attrs": {
+                        "localId": "8c334f9c6412"
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Collibra has been through a lot of this already with their architects, and has been in place for 6-7 years, so this is in our favour"
+                            }
+                          ],
+                          "attrs": {
+                            "localId": "bfb466b2218d"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "27c556ee236c"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "8b940138c35c"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Consolidation play - why have Immuta if already have Collibra and Raito can replicate what they're doing today in Immuta?"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "e4088983661e"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "6b3e525ca836"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Collibra is front-end for all data governance, DQ, access, at the moment - most users see front-end as Collibra, so desire to have other aspects such as access governed here too."
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "33bb33f7de8c"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "3481e5eca815"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Success criteria"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "530f361479bf"
+                  }
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "attrs": {
+                        "localId": "ca8c69fa9ac8"
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Well-defined success criteria doesn't exist yet, but aligns with Raito's use-cases (data access management, masking/filtering, access/usage monitoring dashboarding)"
+                            }
+                          ],
+                          "attrs": {
+                            "localId": "66c0b3a69156"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "attrs": {
+                        "localId": "9fe15bac7780"
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "A few things called out explicitly:"
+                            }
+                          ],
+                          "attrs": {
+                            "localId": "c5cc04624e73"
+                          }
+                        },
+                        {
+                          "type": "bulletList",
+                          "content": [
+                            {
+                              "type": "listItem",
+                              "attrs": {
+                                "localId": "659a94ea64de"
+                              },
+                              "content": [
+                                {
+                                  "type": "paragraph",
+                                  "content": [
+                                    {
+                                      "type": "text",
+                                      "text": "PII - ",
+                                      "marks": [
+                                        {
+                                          "type": "strong"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "text": "Automated PII detection and classification"
+                                    }
+                                  ],
+                                  "attrs": {
+                                    "localId": "e1c29e575509"
+                                  }
+                                }
+                              ]
+                            },
+                            {
+                              "type": "listItem",
+                              "attrs": {
+                                "localId": "e6ecebce0190"
+                              },
+                              "content": [
+                                {
+                                  "type": "paragraph",
+                                  "content": [
+                                    {
+                                      "type": "text",
+                                      "text": "Masking/filtering - ",
+                                      "marks": [
+                                        {
+                                          "type": "strong"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "text": "Automated record filtering and dynamic masking/anonymisation based on what user is permitted to access"
+                                    }
+                                  ],
+                                  "attrs": {
+                                    "localId": "8545c4c31b5b"
+                                  }
+                                }
+                              ]
+                            },
+                            {
+                              "type": "listItem",
+                              "attrs": {
+                                "localId": "c92ecee790ee"
+                              },
+                              "content": [
+                                {
+                                  "type": "paragraph",
+                                  "content": [
+                                    {
+                                      "type": "text",
+                                      "text": "Fully integrated data intelligence platform - ",
+                                      "marks": [
+                                        {
+                                          "type": "strong"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "text": "Access should sit alongside stewardship governance, CDEs, rules, etc (one platform)."
+                                    }
+                                  ],
+                                  "attrs": {
+                                    "localId": "a61ef0447770"
+                                  }
+                                }
+                              ]
+                            },
+                            {
+                              "type": "listItem",
+                              "attrs": {
+                                "localId": "7724c02bcb5c"
+                              },
+                              "content": [
+                                {
+                                  "type": "paragraph",
+                                  "content": [
+                                    {
+                                      "type": "text",
+                                      "text": "Agnostic - ",
+                                      "marks": [
+                                        {
+                                          "type": "strong"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "text": "Access governance shouldn't just be tied to a single enterprise data platform - and should go beyond just Azure Databricks"
+                                    }
+                                  ],
+                                  "attrs": {
+                                    "localId": "66560ebd0bfa"
+                                  }
+                                }
+                              ]
+                            },
+                            {
+                              "type": "listItem",
+                              "attrs": {
+                                "localId": "bec378c22bf8"
+                              },
+                              "content": [
+                                {
+                                  "type": "paragraph",
+                                  "content": [
+                                    {
+                                      "type": "text",
+                                      "text": "Auditable and centralised management - ",
+                                      "marks": [
+                                        {
+                                          "type": "strong"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "text",
+                                      "text": "Access should be centrally auditable and governed (currently Immuta Data Lab sandboxes are unregulated)."
+                                    }
+                                  ],
+                                  "attrs": {
+                                    "localId": "924add24b02d"
+                                  }
+                                }
+                              ]
+                            }
+                          ],
+                          "attrs": {
+                            "localId": "e5b185bfef41"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "683e2d1e3eb9"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "localId": "b40c181c3043"
+          }
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "localId": "0a81c32fbeaf"
+          }
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "localId": "a488e46be5f7"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "We can build these out as we progress, but Andrew D is on leave this week just FYI"
+            }
+          ],
+          "attrs": {
+            "localId": "64371453437c"
+          }
+        }
+      ]
+    }
+  }
+}

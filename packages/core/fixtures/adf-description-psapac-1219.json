@@ -1,0 +1,556 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "850874",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/850874",
+  "key": "PSAPAC-1219",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "(Awaiting list of prioritised Use Cases)"
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Customer Use Case"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Sarah (DQ SME) has some existing (static, i.e. non-time series) queries for the View:"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "VW_DIM_CUSTOMER_LATEST",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "These include some spot checks across Membership, Leisure, and Digital products usage (logins for app), including Data Quality Dimensions of:"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Uniqueness",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " (Customer Id)"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Consistency",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " (Data Lineage)"
+            }
+          ]
+        },
+        {
+          "type": "mediaSingle",
+          "attrs": {
+            "width": 903,
+            "widthType": "pixel",
+            "layout": "align-start"
+          },
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "29c4e659-6aaf-4cac-beb0-a832460822c6",
+                "alt": "Pasted Graphic 5-20260119-232251.png",
+                "collection": "",
+                "height": 871,
+                "width": 1227
+              }
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Conformity",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "BENFT_INTXN_ID Hash Validation",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "For the MEMBER BENEFIT STORE LATEST data quality analysis, the consistency check highlights that the BENFT_INTXN_ID column has the most complex hash. This column aggregates information from multiple sources, creating varied values based on the origin."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "For example, data from AMS (AMS_M and AMS_U) is transformed as follows in EDW (in Experian):"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "content": [
+            {
+              "type": "text",
+              "text": "```sql\n\nCONVERT(\n\nVARCHAR(40),\n\nHASHBYTES(\n\n'SHA1',\n\nUPPER(CONVERT(VARCHAR(MAX),\n\nISNULL(CONVERT(VARCHAR(100), TRX_HEADER_ID), 'NA') + '|' +\n\nISNULL(CONVERT(VARCHAR(100), TRX_ITEM_ID), 'NA') + '|' +\n\nISNULL(CONVERT(VARCHAR(100), FILE_SOURCE), 'NA') + '|' +\n\n'MSV'\n\n))\n\n),\n\n2\n\n);\n\n```"
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "This is a screenshot of the relevant parts of the ADS Workflow:"
+            }
+          ]
+        },
+        {
+          "type": "mediaSingle",
+          "attrs": {
+            "width": 903,
+            "widthType": "pixel",
+            "layout": "align-start"
+          },
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "6b7ba2f2-c8b2-489c-8282-2f5151cdc78e",
+                "alt": "unnamed-20260120-051014.png",
+                "collection": "",
+                "height": 268,
+                "width": 1190
+              }
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "The workflow consists of:"
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "attrs": {
+            "order": 1
+          },
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Source: Importing un-hashed staging level data."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Filter: Focusing on the data relevant to AMS_U. "
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Transformation: Creating a new column, HASH_AMS_U, using (Experian):"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "content": [
+            {
+              "type": "text",
+              "text": "```sql\n\nHash(\n\n'SHA1',\n\nUpperCase(\n\nConcatenate([c:DATALOADTRANSACTIONID], '|', [c:HEADERUID], '|', 'U', '|', 'MSV')\n\n)\n\n)\n\n```"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Alternatively, I have included a screenshot the ADS click-drag set up"
+            }
+          ]
+        },
+        {
+          "type": "mediaSingle",
+          "attrs": {
+            "width": 799,
+            "widthType": "pixel",
+            "layout": "align-start"
+          },
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "6bea779a-0ea8-4303-83c8-cdb3b6beb531",
+                "alt": "unnamed (1)-20260120-051104.png",
+                "collection": "",
+                "height": 268,
+                "width": 799
+              }
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Example data:"
+            }
+          ]
+        },
+        {
+          "type": "mediaSingle",
+          "attrs": {
+            "width": 386,
+            "widthType": "pixel",
+            "layout": "align-start"
+          },
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "dec03f2f-7a8c-412a-9230-957b2fc2b222",
+                "alt": "+ DATALOADTRANSACTIONID-20260120-051110.png",
+                "collection": "",
+                "height": 67,
+                "width": 386
+              }
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "attrs": {
+            "order": 1
+          },
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Inner Join: Joining the new HASH_AMS_U column with the BENFT_INTXN_ID column from vw_DIM_MEMBER_BENEFIT_STORE_LATEST. I have confirmed there is no loss of rows. "
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Validation: Ensuring the HASH_AMS_U value matches BENFT_INTXN_ID."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": " "
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Manual Reporting",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Experian query results are written directly to the View(!) for manual reporting:"
+            }
+          ]
+        },
+        {
+          "type": "mediaSingle",
+          "attrs": {
+            "width": 903,
+            "widthType": "pixel",
+            "layout": "align-start"
+          },
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "5d8e3396-063b-4d8f-b206-03ffa1d67c2d",
+                "alt": "image-20260120-083554.png",
+                "collection": "",
+                "height": 514,
+                "width": 1230
+              }
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Possibly Tableau?"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "UDQ Implementation"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Timeslicing DateTime Column",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Within vw_DIM_CUSTOMER_LATEST there is OMD_INSERT_DATETIME (original datetime that the record was added to the table) and LST_UPDT_DTE_TM (when the record was most recently updated). "
+            }
+          ]
+        },
+        {
+          "type": "blockquote",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Checking if LST_UPDT_DTE_TM is populated when row is created"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Customer Primary Key",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "For the majority of the data sources relating to customer/member information the primary connection key is SFCRM_CUST_ID as this is unique to each RACV Customer."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Custom DQ Rules",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "BENFT_INTXN_ID Hash Validation",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "blockquote",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Checking if UDQ supports Secondary dataset in DQ Rules (@<table> syntax in SQL)"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

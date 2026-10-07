@@ -1,0 +1,760 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "1090812",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1090812",
+  "key": "PSAPAC-1672",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hi Jeannine, "
+            }
+          ],
+          "attrs": {
+            "localId": "df29e911ae72"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "As per the Ranger "
+            },
+            {
+              "type": "text",
+              "text": "process ",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://view-su2.highspot.com/viewer/4d77125d4aad6de46175925ca2b27034#1"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ", I understand that you have completed the Collibra-certified Solution Architects  and are on the waitlist.  There is an intake for the "
+            },
+            {
+              "type": "date",
+              "attrs": {
+                "timestamp": "1773532800000",
+                "localId": "e4f6e9b4cb90"
+              }
+            },
+            {
+              "type": "text",
+              "text": ".  Can you please confirm that you are on the wait list?"
+            }
+          ],
+          "attrs": {
+            "localId": "2d81ba646473"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Also, Becky suggested that you need to watch these, was this part of the Collibra-certified Solution Architects certification (14hours in total)?  "
+            }
+          ],
+          "attrs": {
+            "localId": "ff1b62bc3ff9"
+          }
+        },
+        {
+          "type": "table",
+          "attrs": {
+            "isNumberColumnEnabled": false,
+            "layout": "center",
+            "localId": "116d542b-a569-468d-aa78-c4d824df690b"
+          },
+          "content": [
+            {
+              "type": "tableRow",
+              "attrs": {
+                "localId": "67aff3a09f8e"
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "4c95f527229b",
+                    "colwidth": [
+                      254
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Creating an asset model part 1"
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "b34f2a8571fa"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "27b184e8ea51",
+                    "colwidth": [
+                      1135
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "inlineCard",
+                          "attrs": {
+                            "url": "https://drive.google.com/file/d/1ngf5C9to4SuCU4NjUZHFOW6xk_4Nehrs/view?usp=drive_link",
+                            "localId": "d59163563f87"
+                          }
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "7bebd5802267"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "attrs": {
+                "localId": "1a98239a21f1"
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "e37e833c4b60",
+                    "colwidth": [
+                      254
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Creating an asset model part 2"
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "a661a6b86e6a"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "50da1b06dd0c",
+                    "colwidth": [
+                      1135
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "inlineCard",
+                          "attrs": {
+                            "url": "https://drive.google.com/file/d/1Vz1s-CjCE9iCSm4pngXh8V1DHHIyHRKm/view?usp=drive_link",
+                            "localId": "db4c786d8984"
+                          }
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "d8de02e4d51b"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "attrs": {
+                "localId": "059f346d3118"
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "45b4573ab879",
+                    "colwidth": [
+                      254
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Creating a metamodel"
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "de32fcaca43a"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "bf5f3b1c3bb2",
+                    "colwidth": [
+                      1135
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "inlineCard",
+                          "attrs": {
+                            "url": "https://drive.google.com/file/d/1GceXovw5txtNWJKjBpkmnFnpUN0mL_jK/view?usp=drive_link",
+                            "localId": "468c787c33d0"
+                          }
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "75134f34f3b0"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "attrs": {
+                "localId": "b0c8498dd230"
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "52f61a6e596d",
+                    "colwidth": [
+                      254
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Data lifecycle"
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "bd60a163b5a6"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "8d984b413080",
+                    "colwidth": [
+                      1135
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "inlineCard",
+                          "attrs": {
+                            "url": "https://drive.google.com/file/d/1vlZiqT6syjgz3ubvS1_gLB8l_dNv8js_/view?usp=drive_link",
+                            "localId": "cb7eb2c9938f"
+                          }
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "9a2b7e62bf5a"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "attrs": {
+                "localId": "1a5ffbfb210f"
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "fd30a47f6b66",
+                    "colwidth": [
+                      254
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Configuring an operating model"
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "3a5fc71e741f"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "365d64cff8de",
+                    "colwidth": [
+                      1135
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "inlineCard",
+                          "attrs": {
+                            "url": "https://drive.google.com/file/d/1ehQ_1l2817PjCqOGTa1VPvQeeZ5R7SWi/view?usp=drive_link",
+                            "localId": "b5d724f94535"
+                          }
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "299f6da743a6"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "attrs": {
+                "localId": "0030ec90458d"
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "c81c92af620c",
+                    "colwidth": [
+                      254
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Managing workflows"
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "7b4df4c0b34e"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "d51d2d7eee21",
+                    "colwidth": [
+                      1135
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "inlineCard",
+                          "attrs": {
+                            "url": "https://drive.google.com/file/d/12jZ_rmEOsdTN2ZCH3XaBXdpfslr9HCuU/view?usp=drive_link",
+                            "localId": "0c14adce3f1c"
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "text": " "
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "a78ecf38f17c"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "attrs": {
+                "localId": "cbcffa3c79d1"
+              },
+              "content": [
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "5630de868004",
+                    "colwidth": [
+                      254
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Designing workflows"
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "aa6f374f41e8"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "attrs": {
+                    "localId": "1f2a56b09108",
+                    "colwidth": [
+                      1135
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "inlineCard",
+                          "attrs": {
+                            "url": "https://drive.google.com/file/d/1PiqiHffAY1MtIJoI2lxphm96gQBASUI0/view?usp=drive_link",
+                            "localId": "6e48620925c3"
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "text": " "
+                        }
+                      ],
+                      "attrs": {
+                        "localId": "080539e5d1f4"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Regards"
+            }
+          ],
+          "attrs": {
+            "localId": "fd0b3be02502"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Sharon"
+            }
+          ],
+          "attrs": {
+            "localId": "1202ebe3180e"
+          }
+        },
+        {
+          "type": "paragraph",
+          "attrs": {
+            "localId": "102034c4e19c"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Approximate Timeline",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "localId": "7675113f74f0"
+          }
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "55eb1af6dbb2"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "March 16th",
+                      "marks": [
+                        {
+                          "type": "strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": Ranger Candidates receive their scenario and instances"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "efec45f9227b"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "8d67363777f1"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "April 12th",
+                      "marks": [
+                        {
+                          "type": "strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": Ranger Candidates submit their first attempt"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "cbe170e1b07c"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "628005033acd"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "April 13th - May 1st",
+                      "marks": [
+                        {
+                          "type": "strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": Ranger Committee grades Candidate's work"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "dfb996e15ae3"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "812fcc16cb53"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "April 27th - May 8th",
+                      "marks": [
+                        {
+                          "type": "strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": Ranger Candidate Interviews and initial results are sent"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "3d54992279fc"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "eaf0bc6899a4"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "May 11th - May 22nd",
+                      "marks": [
+                        {
+                          "type": "strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": Ranger Candidates submit their revisions based on feedback "
+                    },
+                    {
+                      "type": "text",
+                      "text": "if necessary",
+                      "marks": [
+                        {
+                          "type": "strong"
+                        }
+                      ]
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "a49a50e7ef1e"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "5a2b9111557a"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "All Grading Due by May 29th",
+                      "marks": [
+                        {
+                          "type": "strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": ": Ranger Committee reviews resubmissions."
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "8ecfff1d20c0"
+                  }
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "attrs": {
+                        "localId": "e96dc62c752e"
+                      },
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Note, if a second submission receives a failing score, the submission is reviewed again by another committee member, which can take more time."
+                            }
+                          ],
+                          "attrs": {
+                            "localId": "752d50bfed98"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "a9c2205f69c4"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "localId": "5d76bf5b14d9"
+          }
+        }
+      ]
+    }
+  }
+}

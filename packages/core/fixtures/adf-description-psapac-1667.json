@@ -1,0 +1,156 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "1090806",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1090806",
+  "key": "PSAPAC-1667",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Please complete these prior to our session with Maria scheduled 17th April but do not do the first one until after the "
+            },
+            {
+              "type": "date",
+              "attrs": {
+                "timestamp": "1773964800000"
+              }
+            },
+            {
+              "type": "text",
+              "text": "as per Becky’s note below.  Therefore scheduled into Sprint 22.  This should take approximately 1 hour to complete."
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Collibra University (available now and on-demand)"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "One interface to rule them all: Data Quality and its journey to the Collibra Platform",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "https://university.collibra.com/learn/course/2482/one-interface-to-rule-them-all-data-quality-and-its-journey-to-the-collibra-platform?generated_by=76175&hash=7f6e47f2e5711e90170673a23cd0443a3e0fde85"
+                          }
+                        },
+                        {
+                          "type": "underline"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " (this course will be updated (ETA March 20) with the latest product updates)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The Data Quality & Observability Administrator’s blueprint (Latest UI)",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "https://university.collibra.com/learn/courses/2579/the-data-quality-observability-administrators-blueprint-latest-ui/lessons"
+                          }
+                        },
+                        {
+                          "type": "underline"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Instructor-led training (coordinate with Maria)"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Quality & Observability in the Collibra Platform",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "https://view-su2.highspot.com/viewer/10169ff8abfe59ff32e9a76dc9dcfe49"
+                          }
+                        },
+                        {
+                          "type": "underline"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "text": " (this course will be updated by April 1st with the latest product updates for job management and reporting)"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": " "
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
