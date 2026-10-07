@@ -11,16 +11,19 @@
 ## CLI Output
 
 - `stdout` carries the result only, so it pipes cleanly. Progress, warnings and errors go to `stderr`.
-- With `--json`, or whenever `stdout` is piped, a failure prints `{"error": {"code": "...", "message": "..."}}` to `stdout`.
+- With `--json`, or whenever `stdout` is piped, `stdout` carries one JSON value: `{"data": ...}` on success, `{"error": {"code": "...", "message": "...", "details": ...}}` on failure. `details` is omitted when empty, and `cause` never prints.
+- On a terminal without `--json`, a failure prints `jm: <message>` to `stderr` and nothing to `stdout`.
 - Exit codes:
 
 | Code | Means |
 |---|---|
-| `0` | Success |
+| `0` | Success, `--help`, `--version`, or a pipe closed early (`EPIPE`) |
+| `1` | Internal: a bug in `jm`, not a failure of the command |
 | `2` | Validation: bad flag, missing value, or input that fails its schema |
 | `3` | Not found |
 | `4` | Permission denied |
 | `5` | Jira error: a failure or an unexpected response from Jira |
+| `130` | Interrupted with Ctrl-C |
 
 - `JM_DEBUG=1` prints debug detail to `stderr`, including each request's method, path and status.
 

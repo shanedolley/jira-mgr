@@ -60,6 +60,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - run: pnpm docs:reference && git diff --exit-code -- docs/reference
 
   e2e:
     runs-on: ubuntu-latest

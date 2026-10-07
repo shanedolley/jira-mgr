@@ -1,0 +1,138 @@
+import { CommanderError } from 'commander'
+
+import { JiraMgrError, EXIT_CODES, type ErrorCode } from '@jira-mgr/core'
+
+import { HANDLERS } from './commands/index.js'
+import { createContext, type Deps, type Handler, type HandlerMap, type Io } from './context.js'
+import { idOf, INTERRUPTED } from './help.js'
+import {
+  dataEnvelope,
+  errorEnvelope,
+  paint,
+  stripControl,
+  toJson,
+  ttyOf,
+  type ErrorBody,
+} from './output.js'
+import { buildProgram } from './program.js'
+import { COMMANDS } from './schema.js'
+
+const isEpipe = (error: unknown): boolean =>
+  (error as NodeJS.ErrnoException | undefined)?.code === 'EPIPE'
+
+/** The words that name a command, without flags, for the "missing command" hint. */
+const words = (argv: readonly string[]) => argv.filter((word) => !word.startsWith('-'))
+
+function toFailure(error: unknown, argv: readonly string[]): ErrorBody {
+  if (error instanceof CommanderError) {
+    const message =
+      error.code === 'commander.help'
+        ? `Missing command. Run ${['jm', ...words(argv), '--help'].join(' ')} to list the commands.`
+        : error.message.replace(/^error: /, '')
+    return { code: 'validation_failed', message }
+  }
+  if (error instanceof JiraMgrError) {
+    return { code: error.code, message: error.message, details: error.details }
+  }
+  const message = error instanceof Error ? error.message : String(error)
+  return {
+    code: 'internal',
+    message: `Unexpected error: ${message}. Run with JM_DEBUG=1 for the stack.`,
+  }
+}
+
+/**
+ * Runs `jm` and returns the exit code. Output goes to `io`: the result to stdout, as the JSON
+ * envelope when piped or given `--json`, otherwise as the handler renders it. Errors print to
+ * stdout as the envelope in JSON mode and to stderr as `jm: message` otherwise.
+ */
+export async function run(argv: readonly string[], io: Io, deps: Deps = {}): Promise<number> {
+  try {
+    return await execute(argv, io, deps)
+  } catch (error) {
+    if (isEpipe(error)) return 0
+    throw error
+  }
+}
+
+async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<number> {
+  // Words after a bare `--` are operands, so a literal `--json` there is not the flag.
+  const flagged = argv
+    .slice(0, argv.includes('--') ? argv.indexOf('--') : undefined)
+    .includes('--json')
+  const json = flagged || !io.stdoutIsTTY
+  const specs = deps.specs ?? COMMANDS
+  const handlers: HandlerMap = deps.handlers ?? HANDLERS
+  const ctx = createContext(io, deps, json, specs, handlers)
+
+  let outcome: { handler: Handler; data: unknown } | undefined
+  const program = buildProgram(
+    specs,
+    handlers,
+    async (spec, input) => {
+      const handler = handlers[idOf(spec)]
+      if (handler) outcome = { handler, data: await handler.run(input, ctx) }
+    },
+    {
+      // Help for a noun with no verb is an error, so it goes to stderr, and only for a person.
+      writeOut: (text) => io.stdout.write(text),
+      writeErr: (text) => {
+        if (!json) io.stderr.write(text)
+      },
+      columns: io.columns,
+      color: paint(io, io.stdoutIsTTY, 'bold', 'x') !== 'x',
+    },
+  )
+
+  const interrupted = new Promise<never>((_, reject) => {
+    const abort = () => {
+      reject(new DOMException('Interrupted', 'AbortError'))
+    }
+    if (io.signal.aborted) abort()
+    else io.signal.addEventListener('abort', abort, { once: true })
+  })
+  interrupted.catch(() => undefined)
+
+  try {
+    const parsing = program.parseAsync([...argv], { from: 'user' })
+    parsing.catch(() => undefined) // the race may end first; its late failure is not news
+    await Promise.race([parsing, interrupted])
+  } catch (error) {
+    if (io.signal.aborted) return INTERRUPTED
+    if (isEpipe(error)) return 0
+    if (
+      error instanceof CommanderError &&
+      (error.code === 'commander.helpDisplayed' || error.code === 'commander.version')
+    ) {
+      return 0
+    }
+    return fail(toFailure(error, argv), error, io, json, flagged)
+  }
+  if (io.signal.aborted) return INTERRUPTED
+
+  if (!outcome) return 0
+  const { handler, data } = outcome
+  let text: string
+  try {
+    text = json
+      ? toJson(dataEnvelope(data), flagged && io.stdoutIsTTY)
+      : handler.render(data, ttyOf(io))
+  } catch (error) {
+    // A render that throws, or data JSON cannot hold, is a bug in the handler.
+    return fail(toFailure(error, argv), error, io, json, flagged)
+  }
+  if (text !== '') io.stdout.write(text.endsWith('\n') ? text : `${text}\n`)
+  return 0
+}
+
+function fail(failure: ErrorBody, error: unknown, io: Io, json: boolean, flagged: boolean): number {
+  if (json) {
+    io.stdout.write(toJson(errorEnvelope(failure), flagged && io.stdoutIsTTY))
+  } else {
+    io.stderr.write(`${paint(io, io.stderrIsTTY, 'red', 'jm:')} ${stripControl(failure.message)}\n`)
+  }
+  if (failure.code === 'internal' && io.env.JM_DEBUG === '1' && error instanceof Error) {
+    io.stderr.write(`${error.stack ?? error.message}\n`)
+  }
+  return EXIT_CODES[failure.code satisfies ErrorCode]
+}

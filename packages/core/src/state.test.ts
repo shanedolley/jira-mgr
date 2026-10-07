@@ -258,8 +258,10 @@ describe('view management', () => {
   })
 
   it('refuses an unknown view with not_found', async () => {
-    for (const call of [findView('nope'), renameView('nope', 'X'), deleteView('nope')]) {
-      expect((await validationError(call)).code).toBe('not_found')
+    // Thunks, so each promise starts only when awaited and none rejects unobserved.
+    const calls = [() => findView('nope'), () => renameView('nope', 'X'), () => deleteView('nope')]
+    for (const call of calls) {
+      expect((await validationError(call())).code).toBe('not_found')
     }
   })
 

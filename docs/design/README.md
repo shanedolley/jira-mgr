@@ -6,3 +6,4 @@ Name each `NNNN-short-title.md`, numbered in order, and start from [the template
 
 | Number | Title | Status |
 |---|---|---|
+| [0001](0001-cli-command-schema.md) | CLI command schema | Accepted |

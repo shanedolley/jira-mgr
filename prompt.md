@@ -2,11 +2,13 @@
 
 ## Start Here
 
-Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only).
+Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). CLI stories are user-facing, so after their agent review they go to Shane in HIL Review.
 
-1. **Finish C8 views and search (#16)** on `c8-views-search`: review, push, CI (ship-it merges), proof; internal story, so the project manager moves it to Done. That completes Core.
-2. **L1 command schema (#21)**: unblocked once C8 closes. Write its design doc first in `docs/design/` from `docs/templates/design-doc.md`, covering the schema, `--help`, `jm help --json`, `scripts/gen-reference.ts` for `docs/reference/cli.md` and `docs/reference/errors.md` (note on #21), output modes and exit codes. CLI output is user-facing, so L1-L7 go to Shane in HIL Review.
-3. **L2 auth (#22)**: after L1.
+1. **Finish L1 command schema (#21)** on `l1-command-schema`: review, push, CI (ship-it merges), proof, then HIL Review.
+2. **L2 auth (#22)**: blocked only by L1. Adds `getCurrentUser` and a `./test/msw` export to core, per the design doc's Rollout.
+3. **L3 reading (#23)**: after L2; note on #23 about `--view my-issues`.
+
+Each L story implements only handlers: the specs already exist in `apps/cli/src/schema.ts`. Follow the design doc's per-story test list.
 
 ## Reading Order
 
