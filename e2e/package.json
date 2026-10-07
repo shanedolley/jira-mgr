@@ -1,0 +1,18 @@
+{
+  "name": "@jira-mgr/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@jira-mgr/config-ts": "workspace:*",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.0.0",
+    "electron": "^44.0.0",
+    "typescript": "~6.0.3"
+  }
+}

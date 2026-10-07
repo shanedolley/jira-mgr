@@ -1,0 +1,7 @@
+{
+  "extends": "@jira-mgr/config-ts/node.json",
+  "compilerOptions": {
+    "erasableSyntaxOnly": true
+  },
+  "include": ["*.ts"]
+}

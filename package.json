@@ -1,0 +1,31 @@
+{
+  "name": "jira-mgr",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "prettier": "@jira-mgr/config-lint/prettier",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @jira-mgr/desktop dev",
+    "typecheck": "pnpm -r typecheck && tsc -p scripts",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r test",
+    "test:live": "JM_LIVE_JIRA=1 pnpm -r test",
+    "e2e": "pnpm --filter @jira-mgr/desktop build && pnpm --filter @jira-mgr/e2e e2e",
+    "jm": "node scripts/jm.ts"
+  },
+  "devDependencies": {
+    "@jira-mgr/config-lint": "workspace:*",
+    "@jira-mgr/config-ts": "workspace:*",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.0",
+    "prettier": "^3.9.0",
+    "typescript": "~6.0.3"
+  }
+}

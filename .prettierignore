@@ -1,0 +1,13 @@
+# Written by hand under their own rules
+docs/
+/*.md
+.github/**/*.md
+.github/dependabot.yml
+.github/ISSUE_TEMPLATE/
+.serena/
+pnpm-lock.yaml
+out/
+dist/
+coverage/
+playwright-report/
+test-results/

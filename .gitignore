@@ -1,0 +1,21 @@
+# Dependencies and build output
+node_modules/
+dist/
+out/
+release/
+coverage/
+*.tsbuildinfo
+
+# Secrets: commit .env.example files only
+.env
+.env.*
+!.env.example
+
+# Playwright output
+test-results/
+playwright-report/
+
+# Local tools and OS files
+.serena/
+.DS_Store
+*.log

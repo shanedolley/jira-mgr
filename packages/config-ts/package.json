@@ -1,0 +1,11 @@
+{
+  "name": "@jira-mgr/config-ts",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    "./node.json": "./node.json",
+    "./vite.json": "./vite.json"
+  }
+}
