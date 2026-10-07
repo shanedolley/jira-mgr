@@ -314,7 +314,7 @@ export const COMMANDS = [
       { code: 'permission_denied', when: 'Jira refuses the token.' },
     ],
     writes: ['state', 'keychain'],
-    calls: ['@jira-mgr/core/auth#login', '@jira-mgr/core/lookups#getCurrentUser'],
+    calls: ['@jira-mgr/core/auth#login'],
   },
   {
     path: ['auth', 'status'],

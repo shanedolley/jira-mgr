@@ -1,7 +1,9 @@
-import type { Keychain } from '@jira-mgr/core/auth'
+import { getCredentials, type Keychain } from '@jira-mgr/core/auth'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
+import { getCurrentUser, type CurrentUser } from '@jira-mgr/core/lookups'
 
 import type { Tty } from './output.js'
+import { ask } from './prompt.js'
 import type { CommandSpec, InputOf } from './schema.js'
 
 /** Everything the CLI reads from or writes to the process, so tests can swap it. */
@@ -10,6 +12,9 @@ export interface Io {
   stderr: { write(text: string): unknown }
   /** Reads all of stdin. */
   readStdin(): Promise<string>
+  /** Asks one question on stderr and reads one line from the terminal. `hidden` never echoes the answer. */
+  prompt(question: string, hidden: boolean): Promise<string>
+  stdinIsTTY: boolean
   stdoutIsTTY: boolean
   stderrIsTTY: boolean
   /** The terminal width, when known. */
@@ -38,6 +43,11 @@ export function nodeIo(): Io {
       for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
       return Buffer.concat(chunks).toString('utf8')
     },
+    prompt: (question, hidden) =>
+      ask(process.stdin, process.stderr, question, hidden, () => {
+        controller.abort()
+      }),
+    stdinIsTTY: process.stdin.isTTY,
     stdoutIsTTY: process.stdout.isTTY,
     stderrIsTTY: process.stderr.isTTY,
     columns: process.stdout.columns,
@@ -69,6 +79,8 @@ export interface Deps {
 export interface Context {
   /** Created on first use, so help and auth commands skip the Keychain. */
   http(): HttpClient
+  /** The account the stored token authenticates as. Asked once per run, on first use. */
+  me(): Promise<CurrentUser>
   io: Io
   now(): Date
   /** Pass to every core call that takes one. */
@@ -90,8 +102,13 @@ export function createContext(
   handlers: HandlerMap,
 ): Context {
   let http = deps.http
-  return {
-    http: () => (http ??= createHttpClient()),
+  let me: Promise<CurrentUser> | undefined
+  const ctx: Context = {
+    http: () =>
+      (http ??= createHttpClient({
+        credentials: () => getCredentials({ keychain: deps.keychain }),
+      })),
+    me: () => (me ??= getCurrentUser(ctx.http(), { signal: io.signal })),
     io,
     now: deps.now ?? (() => new Date()),
     signal: io.signal,
@@ -100,4 +117,5 @@ export function createContext(
     specs,
     handlers,
   }
+  return ctx
 }

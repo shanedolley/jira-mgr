@@ -1,6 +1,6 @@
 # CLI
 
-The `jm` command, used by people and agents alike. Package `@jira-mgr/cli`, built with tsup and Commander. Today it runs `jm help`; the commands for auth, issues, comments, worklogs, links, attachments, sprints and the timer arrive in stories L2 to L6. The design is [0001](../../docs/design/0001-cli-command-schema.md), and every command is documented in [cli.md](../../docs/reference/cli.md).
+The `jm` command, used by people and agents alike. Package `@jira-mgr/cli`, built with tsup and Commander. Today it runs `jm help` and `jm auth login`, `status` and `logout`; the commands for issues, comments, worklogs, links, attachments, sprints and the timer arrive in stories L3 to L6. The design is [0001](../../docs/design/0001-cli-command-schema.md), and every command is documented in [cli.md](../../docs/reference/cli.md).
 
 ## Run
 
@@ -38,7 +38,8 @@ src/program.ts                  Commander built from the schema
 src/help.ts                     the help document and the --help extras
 src/values.ts                   one parser per value type
 src/output.ts                   envelope, tables, colour, control-character stripping
-src/context.ts                  Io, Context and the Handler type
+src/context.ts                  Io, Context (with `me()`) and the Handler type
+src/prompt.ts                   one-line terminal prompt, hidden for the token
 src/commands/index.ts           the registry of handlers
-src/commands/<noun>/<verb>.ts   one file per command, from the first real command
+src/commands/<noun>/<verb>.ts   one file per command, with `<verb>.int.test.ts` beside it
 ```

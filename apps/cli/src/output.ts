@@ -84,6 +84,27 @@ export function renderTable(
   return [tty.style('bold', header.join(GAP)), ...cells.map(line)].join('\n')
 }
 
+/** `Label:  value` lines with the labels in bold and the values aligned. */
+export function renderRecord(
+  tty: Tty,
+  rows: readonly (readonly [label: string, value: string])[],
+): string {
+  const width = Math.max(...rows.map(([label]) => label.length))
+  return rows
+    .map(
+      ([label, value]) =>
+        `${tty.style('bold', `${label}:`)}${' '.repeat(width - label.length)} ${stripControl(value)}`,
+    )
+    .join('\n')
+}
+
+/** An ISO time as local `YYYY-MM-DD HH:mm`, the form a terminal shows. */
+export function localDateTime(iso: string): string {
+  const date = new Date(iso)
+  const two = (n: number) => String(n).padStart(2, '0')
+  return `${String(date.getFullYear())}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}`
+}
+
 /** The failure envelope's `error` object. `details` is omitted when undefined. */
 export interface ErrorBody {
   code: ErrorCode

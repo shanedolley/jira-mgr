@@ -23,12 +23,27 @@ const isEpipe = (error: unknown): boolean =>
 /** The words that name a command, without flags, for the "missing command" hint. */
 const words = (argv: readonly string[]) => argv.filter((word) => !word.startsWith('-'))
 
+/**
+ * Commander echoes what the user typed in two errors, so `--token=SECRET` or `jm auth login SECRET`
+ * would print the secret. Everything after the first `=`, or after the operand count, is cut,
+ * newlines in the value included.
+ */
+function redact(code: string, message: string): string {
+  if (code === 'commander.unknownOption') {
+    return message.replace(/^(unknown option '[^'=]*)=[\s\S]*$/, "$1=<redacted>'")
+  }
+  if (code === 'commander.excessArguments') {
+    return message.replace(/^([\s\S]*? but got \d+): [\s\S]*$/, '$1.')
+  }
+  return message
+}
+
 function toFailure(error: unknown, argv: readonly string[]): ErrorBody {
   if (error instanceof CommanderError) {
     const message =
       error.code === 'commander.help'
         ? `Missing command. Run ${['jm', ...words(argv), '--help'].join(' ')} to list the commands.`
-        : error.message.replace(/^error: /, '')
+        : redact(error.code, error.message.replace(/^error: /, ''))
     return { code: 'validation_failed', message }
   }
   if (error instanceof JiraMgrError) {

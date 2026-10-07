@@ -71,7 +71,12 @@ function serveMyself(status: number) {
     http.get(`${JIRA_SITE}/rest/api/3/myself`, ({ request }) => {
       seen.push(request)
       return status === 200
-        ? HttpResponse.json({ accountId: 'abc', emailAddress: EMAIL, active: true })
+        ? HttpResponse.json({
+            accountId: 'abc',
+            displayName: 'Shane',
+            emailAddress: EMAIL,
+            active: true,
+          })
         : HttpResponse.json({ message: 'no' }, { status })
     }),
   )
@@ -231,6 +236,33 @@ describe('login', () => {
     const settings = await readSettings()
     expect(settings).toMatchObject({ siteUrl: JIRA_SITE, projectKey: 'PSAPAC', email: EMAIL })
     expect(JSON.stringify(settings)).not.toContain(TOKEN)
+  })
+
+  it('returns the account from the check, with no second request', async () => {
+    const seen = serveMyself(200)
+    expect(await login(input, { keychain: fakeSecurity().keychain })).toEqual({
+      accountId: 'abc',
+      displayName: 'Shane',
+    })
+    expect(seen).toHaveLength(1)
+  })
+
+  it.each([
+    ['no display name', { accountId: 'abc' }],
+    ['a body that is not an object', 'oops'],
+  ])('maps %s in the check to jira_error and stores nothing', async (_name, body) => {
+    server.use(http.get(`${JIRA_SITE}/rest/api/3/myself`, () => HttpResponse.json(body)))
+    const { keychain, calls } = fakeSecurity()
+    expect((await failure(login(input, { keychain }))).code).toBe('jira_error')
+    expect(calls).toEqual([])
+    expect((await readSettings()).email).toBeUndefined()
+  })
+
+  it('maps a body that is not JSON to jira_error', async () => {
+    server.use(http.get(`${JIRA_SITE}/rest/api/3/myself`, () => new HttpResponse('<html>')))
+    expect((await failure(login(input, { keychain: fakeSecurity().keychain }))).code).toBe(
+      'jira_error',
+    )
   })
 
   it.each([401, 403])('maps %i to permission_denied and stores nothing', async (status) => {
@@ -419,7 +451,7 @@ describe('login', () => {
     const fake = fakeSecurity()
     await login({ ...input, email: OTHER_EMAIL, token: 'first' }, { keychain: fake.keychain })
     const keychain = { ...fake.keychain, delete: () => Promise.reject(new Error('locked')) }
-    await expect(login(input, { keychain })).resolves.toBeUndefined()
+    await expect(login(input, { keychain })).resolves.toMatchObject({ accountId: 'abc' })
     expect(await fake.keychain.get(EMAIL)).toBe(TOKEN)
     expect((await readSettings()).email).toBe(EMAIL)
   })

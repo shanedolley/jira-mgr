@@ -1,0 +1,25 @@
+{
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+  "accountId": "712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+  "accountType": "atlassian",
+  "emailAddress": "shane.dolley@collibra.com",
+  "avatarUrls": {
+    "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/48",
+    "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/24",
+    "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/16",
+    "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/32"
+  },
+  "displayName": "Shane Dolley",
+  "active": true,
+  "timeZone": "Australia/Brisbane",
+  "locale": "en_GB",
+  "groups": {
+    "size": 9,
+    "items": []
+  },
+  "applicationRoles": {
+    "size": 2,
+    "items": []
+  },
+  "expand": "groups,applicationRoles"
+}

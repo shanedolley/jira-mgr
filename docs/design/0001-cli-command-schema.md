@@ -282,9 +282,11 @@ Every command also takes `--json`. Types follow the value types table. `R` marks
 
 | Command | Arguments and options | Calls | Writes | Data |
 |---|---|---|---|---|
-| `jm auth login` | `--site <url>`, `--project <key>`, `--email <text>` (each defaults to settings, else prompts on a TTY, else exits 2); `--token-stdin` | `auth#login`, `lookups#getCurrentUser` | state, keychain | `{ siteUrl, projectKey, email, accountId, displayName }` |
+| `jm auth login` | `--site <url>`, `--project <key>`, `--email <text>` (each defaults to settings, else prompts on a TTY, else exits 2); `--token-stdin` | `auth#login` | state, keychain | `{ siteUrl, projectKey, email, accountId, displayName }` |
 | `jm auth status` | none | `auth#getCredentials`, `state#readFields`, `lookups#getCurrentUser` | none | `{ siteUrl, projectKey, email, accountId, displayName, fieldsResolvedAt }`; exits 4 when logged out |
 | `jm auth logout` | none | `auth#logout` | keychain, state | `{ loggedOut: true }` |
+
+*Amended 2026-10-07, review of L2:* `login` no longer calls `lookups#getCurrentUser`. Core `login` returns the account from its own verify request, so the command makes one `/myself` call and cannot fail after it has stored the login.
 
 #### issue (L3, L4)
 
@@ -391,6 +393,8 @@ The CLI needs four small, additive core changes, each in the story that first us
 | L1 | `ERROR_HELP` in `packages/core/src/errors.ts` |
 | L2 | `getCurrentUser(http)` in `@jira-mgr/core/lookups`: `GET /rest/api/3/myself` to `{ accountId, displayName }`, with a recorded `myself` fixture. `./test/msw` added to core's `exports`, pointing at `test/msw.ts`, so CLI tests share the fake |
 | L3 | `getIssue(http, key)` in `@jira-mgr/core/search`: one issue with `description` (ADF or null) and `subtasks`, with a recorded fixture |
+
+*Amended 2026-10-07, review of L2:* core `login` now returns `CurrentUser` (`{ accountId, displayName }`). Core's `exports` also gains `./test/setup`, the shared Vitest setup file that starts the MSW fake.
 
 ### Testing
 

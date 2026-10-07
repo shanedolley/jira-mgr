@@ -6,7 +6,8 @@ Checked 2026-10-07.
 
 - The Core milestone is complete: C1-C12 merged (#38-#45, #47-#50) and closed. Run `git log --oneline -1 origin/main` for the head commit.
 - Core subpaths: `@jira-mgr/core` (errors and the `Issue` type, renderer-safe), `/issue`, `/hierarchy`, `/adf`, `/timer-calc`, `/view-filter` (renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search`, `/write`, `/extras`, `/sprints`, `/lookups`, `/timer` (Node-only).
-- L1 command schema (#21) is built on `l1-command-schema` from the accepted design doc [docs/design/0001-cli-command-schema.md](docs/design/0001-cli-command-schema.md): every L2-L6 command is specified in `apps/cli/src/schema.ts`; only `help` has a handler, so later stories add handlers only. `pnpm docs:reference` writes `docs/reference/cli.md` and `errors.md`, and CI fails if they drift. Its pull request carries this handover; find it with `gh pr list --head l1-command-schema`.
+- L1 command schema merged in #51 (78e186d) from the accepted design doc [docs/design/0001-cli-command-schema.md](docs/design/0001-cli-command-schema.md) and waits in HIL Review for Shane: every L2-L6 command is specified in `apps/cli/src/schema.ts`; only `help` has a handler, so later stories add handlers only. `pnpm docs:reference` writes `docs/reference/cli.md` and `errors.md`, and CI fails if they drift.
+- L2 auth (#22) is built on `l2-auth`: `jm auth login` (token from `--token-stdin` or a hidden prompt, never a flag), `status`, `logout`; core `getCurrentUser` and a `./test/msw` export; CLI tests share core's MSW fake and a fake `security` runner. Its pull request carries this handover; find it with `gh pr list --head l2-auth`.
 - CLI decisions (Shane, 2026-10-07): JSON envelope `{"data"}` / `{"error"}`; extra commands comment, worklog, link, attach and view list plus sprint set backlog; a timer stop needing confirmation exits 2 without `--confirm` or `--time`; JSON carries `descriptionMarkdown` and `bodyMarkdown` beside the ADF.
 - Live-check items for L7 are collected on #27: type change, remaining estimate, sprint moves on the simple board, worklog `adjustEstimate=auto`, attachment upload. Link direction was verified live on 2026-10-07 with Shane's approval (link 642179 created and deleted): the issue named `inwardIssue` in a POST is the blocker.
 - Client-side rules core leaves to the CLI and app (C11 findings): label suggestions are site-wide, so filter to project labels if wanted (Q35); hide undated sprints such as "PS TEMPLATES" behind "Show all" (Q20); priorities come from createmeta (11 for PSAPAC), not `/priority` (20 site-wide).
@@ -19,12 +20,12 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Closed (Done) | #9-#20 (all of Core) | `gh issue list --state closed --limit 200` | 2026-10-07 |
 | Open roadmap issues | 17 (CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #21 (L1) | `gh issue list --label status:in-progress` | 2026-10-07 |
-| In AI or HIL review | none | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
+| In progress | #22 (L2) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| In AI or HIL review | #21 (L1, HIL, waiting on Shane) | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `l1-command-schema`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `l2-auth`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -32,22 +33,22 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (core 1005 pass and 1 skipped in 18 files; CLI 58 in 7 files, after a `tsup` build; measured on `l1-command-schema` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (core 1013 pass and 1 skipped in 18 files; CLI 129 in 13 files, after a `tsup` build; measured on `l2-auth` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
-| `pnpm jm -- <args>` | Runs the built CLI; only `help` works until L2 | Nothing yet; later the site and project in `settings.json` |
+| `pnpm jm -- <args>` | Runs the built CLI; only `help` works on `main` (2026-10-07) | Nothing yet; later the site and project in `settings.json` |
 | `pnpm docs:reference` | Regenerates `docs/reference/cli.md` and `errors.md` from `jm help --json` | Nothing external |
 | `pnpm fixture:record -- <name> <GET\|POST> <path> [body]` | Records one response body to `packages/core/fixtures/` | Live Jira at `JM_JIRA_SITE`, reads only: it refuses every write except the search `POST` |
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #50 merge, 31fd31f (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #51 merge, 78e186d (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
 
 ## Environments
 
 - Jira: Collibra site `engineering-collibra.atlassian.net`, project PSAPAC. PSAPAC's measured shape (issue types, field ids, statuses, link types, sprints, counts) is in [round 2](docs/discovery/2026-10-07-product-grilling/round-2.md), measured 2026-10-07. Correction from the recorded createmeta fixtures (2026-10-07): Sprint (10600) is on Task, Bug, Story and Subtask, absent only on Epic; Start date (13808) is on Bug, Story and Epic, absent on Task and Subtask. Field presence comes from createmeta and editmeta, not from round 2. Editmeta (C10 fixtures): Subtask has no Priority; `issuetype` is listed with no operations, allowed values Task, Bug and Story; transition 3 on Epics is named "REVIEW", so match transitions by target status.
-- Credentials: `~/.claude/bin/kj collibra` reads the Keychain item `kothar-jira-collibra` with `COLLIBRA_JIRA_EMAIL`, and the fixture recorder borrows that token through `JM_JIRA_TOKEN`. jira-mgr's own item (service `jira-mgr`, account = email) is written by `login` from `@jira-mgr/core/auth`, but no real login has run, so it does not exist (`security find-generic-password -s jira-mgr` exits 44, re-checked 2026-10-07 after C10).
+- Credentials: `~/.claude/bin/kj collibra` reads the Keychain item `kothar-jira-collibra` with `COLLIBRA_JIRA_EMAIL`, and the fixture recorder borrows that token through `JM_JIRA_TOKEN`. jira-mgr's own item (service `jira-mgr`, account = email) is written by `login` from `@jira-mgr/core/auth`, but no real login has run, so it does not exist (`security find-generic-password -s jira-mgr` exits 44, re-checked 2026-10-07 after L1).
 - Recorded fixtures are committed as recorded, with no scrubbing (Q60). Never record request headers.
 
 ## Open Decisions
@@ -60,7 +61,7 @@ Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue 
 
 ## Traps
 
-- **Node 22 by default** (re-checked 2026-10-07 after C10: `node -v` gives v22.22.0). The machine's default `node` is 22.22; the repo needs 24. Prefix commands with `PATH=$HOME/.local/share/mise/installs/node/24.16.0/bin:$PATH`, or run `mise use node@24` in the repo.
+- **Node 22 by default** (re-checked 2026-10-07 after L1: `node -v` gives v22.22.0). The machine's default `node` is 22.22; the repo needs 24. Prefix commands with `PATH=$HOME/.local/share/mise/installs/node/24.16.0/bin:$PATH`, or run `mise use node@24` in the repo.
 - **Dependabot titles fail `pr-title`** - resolved 2026-10-07. Added `deps-dev` to the allowed scopes in `ci.yml` and documented in `docs/standards/git-workflow.md` that Dependabot uses `deps` for runtime and `deps-dev` for dev dependencies.
 - **pnpm forwards `--`** (2026-10-07). `pnpm jm -- --help` passes a literal `--`; `scripts/jm.ts` strips it.
 - **Pinned toolchain** (re-checked 2026-10-07). ESLint stays on 9 for `eslint-plugin-react`. Dependabot #4 moved every package to TypeScript `~7.0.2` except `packages/config-lint`, which keeps `~6.0.0` for `typescript-eslint`; lint and typecheck pass (re-checked 2026-10-07). `packages/config-lint/README.md` still says TypeScript stays on 6.0, which now holds only for that package.
@@ -78,3 +79,4 @@ Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue 
 - **Timer guard matches keys, not timers** (2026-10-07, accepted). `expectRunning` compares the issue key, so if the CLI stops and restarts the same issue while the app's stop dialog is open, confirming logs the dialog's time against the new timer too (two worklogs). Rare; add an `expectStarted` check if it ever bites.
 - **views.json has no lock** (2026-10-07, accepted). View create, rename and delete use atomic writes but no lock, so an app and a CLI editing views at the same moment can lose one edit. Reuse the timer's lock if it ever bites.
 - **Eager promises in tests** (2026-10-07). A C8 test built several rejecting promises in an array before awaiting the first, so a later one could reject unhandled and fail the run intermittently. Fixed in L1 by iterating thunks; build each promise only when you await it.
+- **HIL blockers stay open** (2026-10-07). A story in HIL Review stays open until Shane closes it, so GitHub still lists it as an open blocker (#22 shows #21 open). Treat a blocker whose code is merged and that sits in HIL Review as satisfied for building; it only waits on Shane's sign-off.
