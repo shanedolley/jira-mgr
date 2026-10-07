@@ -1949,6 +1949,300 @@ Calls:
 
 - `@jira-mgr/core/state#readViews`
 
+## timer
+
+### jm timer start
+
+```
+jm timer start <key> [--expect <key>] [--confirm]
+```
+
+Starts timing the issue. A timer already running on another issue is stopped and logged first. A draft that needs confirmation (past the reminder threshold, or across midnight) is refused unless `--confirm`.
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--expect <key>` | issue-key | no |  | Refuse when another issue's timer is running; proceeds when none runs. |
+| `--confirm` | boolean | no |  | Log a draft that needs confirmation as it is. |
+
+#### Examples
+
+```sh
+# Start timing PSAPAC-12.
+jm timer start PSAPAC-12
+```
+
+#### Output
+
+The running timer, the timer it stopped and the worklog that logged.
+
+```json
+{
+  "data": {
+    "timer": {
+      "issueKey": "PSAPAC-12",
+      "state": "running",
+      "elapsedSeconds": 5400,
+      "draft": {
+        "issueKey": "PSAPAC-12",
+        "started": "2026-10-06T23:10:00.000Z",
+        "seconds": 5400,
+        "timeSpent": "1h 30m",
+        "needsConfirmation": false
+      }
+    },
+    "stopped": null,
+    "logged": null
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | The issue is an Epic, `--expect` names another issue, or the draft needs `--confirm`. |
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: state, jira.
+
+Calls:
+
+- `@jira-mgr/core/search#getIssue`
+- `@jira-mgr/core/timer#switchAndLog`
+
+### jm timer stop
+
+```
+jm timer stop [--comment <markdown>] [--time <duration>] [--expect <key>] [--confirm] [--discard]
+```
+
+Stops the timer and logs a worklog. `--time` replaces the measured time and needs `--expect`. `--discard` drops the timer and logs nothing. With no timer, it succeeds with `null`.
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--comment <markdown>` | markdown | no |  | A worklog comment, as Markdown. Conflicts with `--discard`. |
+| `--time <duration>` | duration | no |  | Log this time instead of the measured time. Conflicts with `--discard`. |
+| `--expect <key>` | issue-key | no |  | Refuse when another issue's timer is running; proceeds when none runs. |
+| `--confirm` | boolean | no |  | Log a draft that needs confirmation as it is. Conflicts with `--discard`. |
+| `--discard` | boolean | no |  | Drop the timer without logging. Conflicts with `--comment`, `--time`, `--confirm`. |
+
+#### Examples
+
+```sh
+# Stop the timer and log the measured time.
+jm timer stop
+```
+
+```sh
+# Drop the timer without logging.
+jm timer stop --discard
+```
+
+#### Output
+
+The draft and the worklog; a null worklog with `--discard`; null when no timer runs.
+
+```json
+{
+  "data": {
+    "draft": {
+      "issueKey": "PSAPAC-12",
+      "started": "2026-10-06T23:10:00.000Z",
+      "seconds": 5400,
+      "timeSpent": "1h 30m",
+      "needsConfirmation": false
+    },
+    "worklog": {
+      "id": "10600",
+      "author": {
+        "accountId": "5b10ac8d82e05b22cc7d4ef5",
+        "displayName": "Shane Dolley"
+      },
+      "timeSpent": "1h 30m",
+      "timeSpentSeconds": 5400,
+      "started": "2026-10-06T23:10:00.000Z",
+      "comment": null,
+      "created": "2026-10-06T23:10:00.000Z",
+      "updated": "2026-10-06T23:10:00.000Z"
+    }
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | `--time` without `--expect`, `--expect` names another issue, or the draft needs `--confirm`. |
+| 5 | `jira_error` | The worklog failed; the timer stays paused. |
+
+#### Effects
+
+Writes: state, jira.
+
+Calls:
+
+- `@jira-mgr/core/timer#stopAndLog`
+- `@jira-mgr/core/timer#stopTimer`
+
+### jm timer status
+
+```
+jm timer status
+```
+
+Show the running timer
+
+#### Examples
+
+```sh
+# Show the timer and its draft worklog.
+jm timer status
+```
+
+#### Output
+
+The timer and its draft worklog, or null when none exists.
+
+```json
+{
+  "data": {
+    "issueKey": "PSAPAC-12",
+    "state": "running",
+    "elapsedSeconds": 5400,
+    "draft": {
+      "issueKey": "PSAPAC-12",
+      "started": "2026-10-06T23:10:00.000Z",
+      "seconds": 5400,
+      "timeSpent": "1h 30m",
+      "needsConfirmation": false
+    }
+  }
+}
+```
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/state#readTimer`
+- `@jira-mgr/core/state#readSettings`
+- `@jira-mgr/core/timer-calc#worklogDraft`
+
+### jm timer pause
+
+```
+jm timer pause
+```
+
+Pause the timer
+
+#### Examples
+
+```sh
+# Pause the running timer.
+jm timer pause
+```
+
+#### Output
+
+The paused timer.
+
+```json
+{
+  "data": {
+    "issueKey": "PSAPAC-12",
+    "state": "paused",
+    "elapsedSeconds": 5400,
+    "draft": {
+      "issueKey": "PSAPAC-12",
+      "started": "2026-10-06T23:10:00.000Z",
+      "seconds": 5400,
+      "timeSpent": "1h 30m",
+      "needsConfirmation": false
+    }
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | No timer exists. |
+
+#### Effects
+
+Writes: state.
+
+Calls:
+
+- `@jira-mgr/core/timer#pauseTimer`
+
+### jm timer resume
+
+```
+jm timer resume
+```
+
+Resume the timer
+
+#### Examples
+
+```sh
+# Resume the paused timer.
+jm timer resume
+```
+
+#### Output
+
+The running timer.
+
+```json
+{
+  "data": {
+    "issueKey": "PSAPAC-12",
+    "state": "running",
+    "elapsedSeconds": 5400,
+    "draft": {
+      "issueKey": "PSAPAC-12",
+      "started": "2026-10-06T23:10:00.000Z",
+      "seconds": 5400,
+      "timeSpent": "1h 30m",
+      "needsConfirmation": false
+    }
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | No timer exists. |
+
+#### Effects
+
+Writes: state.
+
+Calls:
+
+- `@jira-mgr/core/timer#resumeTimer`
+
 ## help
 
 ### jm help

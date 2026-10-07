@@ -1160,7 +1160,7 @@ export const COMMANDS = [
         name: 'expect',
         type: 'issue-key',
         valueName: 'key',
-        description: "Act only when this issue's timer is the one running.",
+        description: "Refuse when another issue's timer is running; proceeds when none runs.",
       },
       {
         name: 'confirm',
@@ -1206,7 +1206,7 @@ export const COMMANDS = [
         name: 'expect',
         type: 'issue-key',
         valueName: 'key',
-        description: "Act only when this issue's timer is the one running.",
+        description: "Refuse when another issue's timer is running; proceeds when none runs.",
       },
       {
         name: 'confirm',

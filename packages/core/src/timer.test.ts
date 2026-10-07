@@ -18,6 +18,7 @@ import {
   switchAndLog,
 } from './timer.js'
 import { markdownToAdf } from './adf.js'
+import { worklogDraft } from './timer-calc.js'
 
 let dir: string
 let clockMs: number
@@ -642,6 +643,141 @@ describe('logging a stopped timer', () => {
       expect(error.details).toMatchObject({ runningIssueKey: 'PSAPAC-2' })
       expect(requests).toHaveLength(0)
       expect((await readTimer())?.issueKey).toBe('PSAPAC-2')
+    })
+  })
+
+  describe('an aborted signal', () => {
+    /** An http whose worklog request is held open until the caller aborts it, as a real one is. */
+    function hangingHttp() {
+      const controller = new AbortController()
+      const seen: (AbortSignal | undefined)[] = []
+      const http: HttpClient = {
+        request: (_method, _path, opts) => {
+          seen.push(opts?.signal)
+          return new Promise((_, reject) => {
+            opts?.signal?.addEventListener('abort', () => {
+              reject(opts.signal?.reason as Error)
+            })
+            controller.abort()
+          })
+        },
+      }
+      return { http, controller, seen }
+    }
+
+    it('passes the signal to the worklog request and puts the stopped timer back paused', async () => {
+      const { http, controller, seen } = hangingHttp()
+      await runTwoSegments()
+      const error = await rejection(stopAndLog(http, { ...options, signal: controller.signal }))
+      expect(seen).toEqual([controller.signal])
+      expect(error.code).toBe('internal')
+      expect(error.message).toContain(startedAt)
+      expect(error.message).toContain('The timer is paused on PSAPAC-1; stop the timer again.')
+      const timer = await readTimer()
+      expect(timer?.issueKey).toBe('PSAPAC-1')
+      expect(timer?.segments).toHaveLength(2)
+      expect(timer?.segments.every((s) => s.end !== null)).toBe(true)
+      expect((await stopTimer(options))?.timeSpent).toBe('10m')
+    })
+
+    it('puts the old timer back paused and starts nothing when a switch is aborted', async () => {
+      const { http, controller } = hangingHttp()
+      await startTimer(A, options)
+      tick(12)
+      const error = await rejection(
+        switchAndLog(http, B, { ...options, signal: controller.signal }),
+      )
+      expect(error.details).toMatchObject({ restored: true })
+      const timer = await readTimer()
+      expect(timer?.issueKey).toBe('PSAPAC-1')
+      expect(timer?.segments.every((s) => s.end !== null)).toBe(true)
+    })
+
+    it('stops nothing when the signal is aborted before the call', async () => {
+      const { http, requests } = fakeHttp(() => worklogResponse)
+      await startTimer(A, options)
+      tick(12)
+      const before = await readTimer()
+      const controller = new AbortController()
+      controller.abort()
+      await expect(stopAndLog(http, { ...options, signal: controller.signal })).rejects.toThrow()
+      await expect(
+        switchAndLog(http, B, { ...options, signal: controller.signal }),
+      ).rejects.toThrow()
+      expect(requests).toHaveLength(0)
+      expect(await readTimer()).toEqual(before)
+    })
+  })
+
+  describe('a draft that needs confirmation', () => {
+    const worklogDraftNow = async () => {
+      const timer = await readTimer()
+      if (timer === null) throw new Error('no timer')
+      return worklogDraft(
+        timer,
+        { rounding: '5m', reminderThresholdHours: 8, reminderIntervalMinutes: 60 },
+        now(),
+      )
+    }
+    const asked = (error: JiraMgrError) => {
+      expect(error).toMatchObject({
+        code: 'validation_failed',
+        details: { draft: { issueKey: 'PSAPAC-1', needsConfirmation: true } },
+      })
+    }
+
+    it('is refused by stopAndLog until confirm, and logged with it', async () => {
+      const { http, requests } = fakeHttp(() => worklogResponse)
+      await startTimer(A, options)
+      tick(9 * 60)
+      const before = await readTimer()
+      asked(await rejection(stopAndLog(http, options)))
+      expect(requests).toHaveLength(0)
+      expect(await readTimer()).toEqual(before)
+      await stopAndLog(http, { ...options, confirm: true })
+      expect(requests).toHaveLength(1)
+      expect(await readTimer()).toBeNull()
+    })
+
+    it('is accepted when the user gives the time to log', async () => {
+      const { http, requests } = fakeHttp(() => worklogResponse)
+      await startTimer(A, options)
+      tick(9 * 60)
+      await stopAndLog(http, { ...options, timeSpent: '7h', expectRunning: 'PSAPAC-1' })
+      expect(requests).toHaveLength(1)
+      expect(requests[0]?.body).toMatchObject({ timeSpent: '7h' })
+    })
+
+    it('is refused by stopAndLog when the stop falls across midnight', async () => {
+      const { http, requests } = fakeHttp(() => worklogResponse)
+      clockMs = new Date(2026, 9, 7, 23, 30).getTime()
+      await startTimer(A, options)
+      tick(10) // 23:40, the same date: nothing to confirm
+      expect((await worklogDraftNow()).needsConfirmation).toBe(false)
+      tick(30) // 00:10 the next day
+      asked(await rejection(stopAndLog(http, options)))
+      expect(requests).toHaveLength(0)
+    })
+
+    it('is refused by switchAndLog, which starts nothing, and not for the issue already running', async () => {
+      const { http, requests } = fakeHttp(() => worklogResponse)
+      await startTimer(A, options)
+      tick(9 * 60)
+      const before = await readTimer()
+      asked(await rejection(switchAndLog(http, B, options)))
+      expect(requests).toHaveLength(0)
+      expect(await readTimer()).toEqual(before)
+      await switchAndLog(http, A, options)
+      expect(requests).toHaveLength(0)
+      const result = await switchAndLog(http, B, { ...options, confirm: true })
+      expect(result.logged?.worklog.id).toBe('1')
+      expect(result.timer.issueKey).toBe('PSAPAC-2')
+    })
+
+    it('does not stop stopTimer, which discards', async () => {
+      await startTimer(A, options)
+      tick(9 * 60)
+      expect((await stopTimer(options))?.needsConfirmation).toBe(true)
     })
   })
 })

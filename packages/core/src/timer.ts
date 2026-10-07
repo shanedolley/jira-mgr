@@ -216,11 +216,17 @@ export async function startTimer(
 
 /**
  * Takes the timer off `timer.json` under the lock. Skips it when it runs on `keep`, and refuses
- * when it does not run on `expectRunning`.
+ * when it does not run on `expectRunning`. With `confirmed: false`, refuses a draft that needs
+ * confirmation (Q55), judged on the draft taken here, so the clock cannot pass midnight between
+ * the caller's check and the stop.
  */
 async function takeTimer(
   options: TimerOptions,
-  { keep, expectRunning }: { keep?: string; expectRunning?: string } = {},
+  {
+    keep,
+    expectRunning,
+    confirmed,
+  }: { keep?: string; expectRunning?: string; confirmed?: boolean } = {},
 ): Promise<Stopped | null> {
   return withLock(options.lock, async () => {
     const current = await readTimer()
@@ -231,6 +237,13 @@ async function takeTimer(
     if (current.issueKey === keep) return null
     const now = clock(options)
     const draft = worklogDraft(current, (await readSettings()).timer, now)
+    if (confirmed === false && draft.needsConfirmation) {
+      throw new JiraMgrError(
+        'validation_failed',
+        `${draft.issueKey} has run ${draft.timeSpent} since ${draft.started}, past the reminder threshold or across midnight. Confirm it, or give the time to log.`,
+        { details: { draft } },
+      )
+    }
     await writeTimer(null)
     return {
       draft,
@@ -313,6 +326,17 @@ export interface LogOptions {
   comment?: AddWorklogInput['comment']
   /** Log this Jira duration instead of the draft's, for a time the user adjusted. */
   timeSpent?: string
+  /**
+   * The user saw a draft that needs confirmation (past the reminder threshold, or across
+   * midnight) and accepts it as is. Without it, and without `timeSpent`, such a draft throws
+   * `validation_failed` with `details.draft` and nothing stops.
+   */
+  confirm?: boolean
+  /**
+   * Cuts the worklog request short. The timer then comes back paused, as for any failed log, so
+   * an interrupt loses no time.
+   */
+  signal?: AbortSignal
 }
 
 const logInput = z
@@ -335,6 +359,10 @@ function checkLog(options: LogOptions & { expectRunning?: string }) {
   return parseInput(logInput, { comment, timeSpent, expectRunning }, 'log the timer')
 }
 
+/** An adjusted time is a confirmed one: the user chose what to log. */
+const isConfirmed = ({ confirm, timeSpent }: LogOptions) =>
+  confirm === true || timeSpent !== undefined
+
 /**
  * Logs a taken timer. When anything fails, the timer goes back paused (`restoreTimer`) and the
  * error says so, with the draft and the timer in `details`. A timeout can leave the worklog
@@ -343,16 +371,21 @@ function checkLog(options: LogOptions & { expectRunning?: string }) {
 async function logOrRestore(
   http: HttpClient,
   { timer, draft }: Stopped,
-  log: LogOptions,
-  options: TimerOptions,
+  log: z.output<typeof logInput>,
+  options: TimerOptions & LogOptions,
 ): Promise<{ draft: WorklogDraft; worklog: Worklog }> {
   const timeSpent = log.timeSpent ?? draft.timeSpent
   try {
-    const worklog = await addWorklog(http, draft.issueKey, {
-      timeSpent,
-      started: new Date(draft.started),
-      ...(log.comment !== undefined && { comment: log.comment }),
-    })
+    const worklog = await addWorklog(
+      http,
+      draft.issueKey,
+      {
+        timeSpent,
+        started: new Date(draft.started),
+        ...(log.comment !== undefined && { comment: log.comment }),
+      },
+      { signal: options.signal },
+    )
     return { draft, worklog }
   } catch (cause) {
     const restored = await restoreTimer(timer, options).catch(() => false)
@@ -383,13 +416,22 @@ async function logOrRestore(
  * `expectRunning` is the issue key the caller showed the user. A different running timer throws
  * `validation_failed` and nothing stops. It is required with `timeSpent`, so an adjusted time
  * never lands on a timer the user did not see.
+ *
+ * A draft that needs confirmation (past the threshold, or across midnight) throws
+ * `validation_failed` with `details.draft` and stops nothing, unless `confirm` or `timeSpent` is
+ * given. The check runs under the lock on the draft being taken. An aborted `signal` fails the
+ * worklog request, and the timer comes back paused.
  */
 export async function stopAndLog(
   http: HttpClient,
   options: TimerOptions & LogOptions & { expectRunning?: string } = {},
 ): Promise<{ draft: WorklogDraft; worklog: Worklog } | null> {
   const log = checkLog(options)
-  const stopped = await takeTimer(options, { expectRunning: log.expectRunning })
+  options.signal?.throwIfAborted()
+  const stopped = await takeTimer(options, {
+    expectRunning: log.expectRunning,
+    confirmed: isConfirmed(options),
+  })
   return stopped === null ? null : logOrRestore(http, stopped, log, options)
 }
 
@@ -400,7 +442,8 @@ export async function stopAndLog(
  * issue already running just resumes it, with nothing to log. `expectRunning` is as in
  * `startTimer`, and is required with `timeSpent` as in `stopAndLog`. A timer someone starts
  * between the log and the start makes the start throw `validation_failed`; the message says
- * the old time was logged, and `details.logged` holds it.
+ * the old time was logged, and `details.logged` holds it. `confirm` and `signal` are as in
+ * `stopAndLog`, and apply to the old timer.
  */
 export async function switchAndLog(
   http: HttpClient,
@@ -410,7 +453,12 @@ export async function switchAndLog(
   const key = parseInput(issueKey, issue.key, 'start the timer')
   assertTimeable({ key, issueType: issue.issueType })
   const log = checkLog(options)
-  const stopped = await takeTimer(options, { keep: key, expectRunning: log.expectRunning })
+  options.signal?.throwIfAborted()
+  const stopped = await takeTimer(options, {
+    keep: key,
+    expectRunning: log.expectRunning,
+    confirmed: isConfirmed(options),
+  })
   const logged = stopped === null ? null : await logOrRestore(http, stopped, log, options)
   try {
     const { timer } = await startTimer(issue, options)

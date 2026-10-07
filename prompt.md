@@ -4,9 +4,9 @@
 
 Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). The CLI chain runs L3, L4, L5, L6, L7 in order; a blocker merged and waiting in HIL Review counts as satisfied (see Traps). CLI stories go to Shane in HIL Review after their agent review. Desktop waits on all of CLI.
 
-1. **Finish L5 extras (#25)** on `l5-extras`: review, push, CI (ship-it merges), proof, then HIL Review.
-2. **L6 timer (#26)**: `jm timer start/stop/status/pause/resume`; a stop needing confirmation exits 2 without `--confirm` or `--time`; `--expect` maps to `expectRunning`.
-3. **L7 live check (#27)**: needs Shane present; it writes to PSAPAC. Its items are collected on #27.
+1. **Finish L6 timer (#26)** on `l6-timer`: review, push, CI (ship-it merges), proof, then HIL Review.
+2. **L7 live check (#27)**: needs Shane present, since it writes to PSAPAC; run the smoke checklist and every item collected on #27, recording each result.
+3. **Desktop D1 shell (#28)**: unblocked once the CLI milestone closes (L1-L7 closed by Shane). Write D2's and D4's design docs before their code.
 
 Each L story implements only handlers: the specs already exist in `apps/cli/src/schema.ts`. Follow the design doc's per-story test list.
 

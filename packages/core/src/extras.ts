@@ -156,11 +156,13 @@ export async function addWorklog(
   http: HttpClient,
   key: string,
   input: AddWorklogInput,
+  options: { signal?: AbortSignal } = {},
 ): Promise<Worklog> {
   const issue = parseInput(issueKey, key, 'log work')
   const body = parseInput(addWorklogInput, input, `log work on ${issue}`)
   const raw = await http.request('POST', `${worklogPath(issue)}${AUTO}`, {
     body: worklogBody(body),
+    ...(options.signal !== undefined && { signal: options.signal }),
   })
   return parseResponse(worklogSchema, raw, 'worklog')
 }

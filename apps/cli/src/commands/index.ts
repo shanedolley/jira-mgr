@@ -25,6 +25,11 @@ import { types } from './link/types.js'
 import { list as sprintList } from './sprint/list.js'
 import { set as sprintSet } from './sprint/set.js'
 import { set as statusSet } from './status/set.js'
+import { pause as timerPause } from './timer/pause.js'
+import { resume as timerResume } from './timer/resume.js'
+import { start as timerStart } from './timer/start.js'
+import { status as timerStatus } from './timer/status.js'
+import { stop as timerStop } from './timer/stop.js'
 import { list as viewList } from './view/list.js'
 import { add as worklogAdd } from './worklog/add.js'
 import { del as worklogDelete } from './worklog/delete.js'
@@ -63,4 +68,9 @@ export const HANDLERS = {
   'sprint list': sprintList,
   'sprint set': sprintSet,
   'view list': viewList,
+  'timer start': timerStart,
+  'timer stop': timerStop,
+  'timer status': timerStatus,
+  'timer pause': timerPause,
+  'timer resume': timerResume,
 } as const satisfies { [Id in CommandId]?: Handler<SpecOf<Id>> }
