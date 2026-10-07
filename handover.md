@@ -4,11 +4,12 @@
 
 Checked 2026-10-07.
 
-- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40), C4 (#41) and C5 (#42). Run `git log --oneline -1 origin/main` for the head commit.
+- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40), C4 (#41), C5 (#42) and C6 (#43). Run `git log --oneline -1 origin/main` for the head commit.
 - C4 HTTP client merged in #41 and waits in HIL Review for Shane (it sends credentials).
 - C5 field resolution merged in #42 and is closed.
-- C6 issue search (#14) is built on `c6-issue-search`: `Issue` in `@jira-mgr/core/issue` (renderer-safe, type re-exported from the main entry) and `searchIssuePages` / `searchIssues` in `@jira-mgr/core/search`, unresolved first then Done, ordered by key. Its pull request carries this handover; find it with `gh pr list --head c6-issue-search`.
-- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search` (Node-only); `/issue` is renderer-safe. `jm` still prints only `--help` and `--version`.
+- C6 issue search merged in #43 and is closed.
+- C7 hierarchy (#15) is built on `c7-hierarchy`: `buildHierarchy(issues, options)` in `@jira-mgr/core/hierarchy`, a pure renderer-safe function returning plain `CustomerGroup[]`. Its pull request carries this handover; find it with `gh pr list --head c7-hierarchy`.
+- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search` (Node-only); `/issue` and `/hierarchy` are renderer-safe. `jm` still prints only `--help` and `--version`.
 
 ## Board
 
@@ -16,14 +17,14 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Closed (Done) | #9 C1, #10 C2, #11 C3, #13 C5 | `gh issue list --state closed --limit 200` | 2026-10-07 |
-| Open roadmap issues | 25 (Core 8, CLI 7, Desktop 10); #12 stays open until Shane closes it | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #14 (C6) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| Closed (Done) | #9 C1, #10 C2, #11 C3, #13 C5, #14 C6 | `gh issue list --state closed --limit 200` | 2026-10-07 |
+| Open roadmap issues | 24 (Core 7, CLI 7, Desktop 10); #12 stays open until Shane closes it | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
+| In progress | #15 (C7) | `gh issue list --label status:in-progress` | 2026-10-07 |
 | In AI or HIL review | #12 (C4, HIL) | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `c6-issue-search`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `c7-hierarchy`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -31,7 +32,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (164 pass and 1 skipped in `core`, 8 files, measured on `c6-issue-search` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (194 pass and 1 skipped in `core`, 9 files, measured on `c7-hierarchy` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -54,7 +55,7 @@ No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title
 |---|---|---|
 | none open | | |
 
-Answered 2026-10-07: internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review (adopted by Shane); Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; roadmap approved and merged (#7); Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10. zod approved as core's validation library (C2). View filters are multi-value arrays; `internal` errors exit 1.
+Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors visible as dimmed context (orchestrator decision in C7, reported to Shane); internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review (adopted by Shane); Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; roadmap approved and merged (#7); Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10. zod approved as core's validation library (C2). View filters are multi-value arrays; `internal` errors exit 1.
 
 ## Traps
 
@@ -67,7 +68,7 @@ Answered 2026-10-07: internal stories close as Done after a passing agent review
 - **Ticket guard reads Bash text** (2026-10-07, hit twice). `guard-ticket-moves.py` refuses Bash commands whose text names Jira (the Collibra host, `JM_JIRA_SITE=`, even the word in a `sed` or commit heredoc) unless the program is one it knows sends no request. Write commit messages to a scratch file with the Write tool and pass `git commit -F`. `gh` refuses `--body-file` from a path; pass PR bodies inline as a `--body "$(cat <<'EOF' ... EOF)"` heredoc in a command of their own. Read Jira through `~/.claude/bin/kj collibra`.
 - **msw 3 breaks Vitest's peer range** (2026-10-07). `pnpm add -D msw` resolves 3.x; Vitest wants `^2.4.9`. `@jira-mgr/core` pins `msw@^2`.
 - **Weak regression tests** (2026-10-07). C4's first abort test passed with the bug still present. Reviewers now revert each fix in a scratch copy and confirm its test fails; ask for that on every bug fix.
-- **Auto-merge on green** (2026-10-07). PR #38 merged under Shane's account as soon as CI passed, before its review finished, and a later "ship-it" merge attempt then reported conflicts. Run the review on the local commit before pushing.
+- **ship-it merges on green** (2026-10-07, hit on #38, #40, #42 and #43). The ship-it automation merges a PR under Shane's account as soon as CI passes, and a second merge (ship-it or `gh pr merge`) then reports "merge conflicts" or "merge already in progress". Review the local commit before pushing, never run `gh pr merge` yourself, and treat that ship-it failure as noise once `gh pr view <n> --json state` says MERGED.
 - **Node modules in the renderer** (2026-10-07). Re-exporting `node:fs` code from `@jira-mgr/core`'s main entry makes the desktop build warn. Node-only code goes behind a subpath export such as `@jira-mgr/core/state`.
 - **`security -i` exits 0 on failure and splits long lines** (2026-10-07). A bad command inside `security -i` still exits 0 and can create a junk item, and stdin past 4095 bytes runs as a second command. `@jira-mgr/core/auth` caps token and email length, refuses commands of 4095 bytes or more, and reads the item back after every write. Probe the Keychain only with throwaway service names and delete what you create.
 - **Shell noclobber** (2026-10-07). `>` refuses to overwrite an existing file; a check run redirected to an old log silently did not run. Use a fresh log name per run.

@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, and issue search at `@jira-mgr/core/search`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, and the issue tree at `@jira-mgr/core/hierarchy`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -61,6 +61,19 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 - `signal` goes to the HTTP client, so aborting stops the paging and rejects with the signal's reason.
 - An issue that fails the schema, or a page that is not last but sends no token or repeats one, throws `jira_error`.
 - `Issue` holds `id`, `key`, `summary`, `issueType`, `status` (with `category`), `resolution`, `parentKey`, `assignee`, `labels`, `priority`, `customer`, `engagement`, `sprints`, `startDate`, `dueDate`, `originalEstimateSeconds`, `remainingEstimateSeconds`, `timeRemainingHours`, `created` and `updated`. Times are UTC ISO strings, and a value Jira leaves empty is `null` (`[]` for `sprints`).
+
+## Hierarchy
+
+`@jira-mgr/core/hierarchy` exports `buildHierarchy(issues, options)`. It is pure, has no `node:` imports, and returns plain data that survives IPC. Options: `hideDone`, `assigneeMe` and `hideEmptyCustomers` (the settings toggles), `accountId`, and optionally `customers`, the full Customer option list.
+
+It returns `CustomerGroup[]`, each `{ customer, epics, noEpic }`, and `customer: null` is the "No Customer" group. A `HierarchyNode` holds `issue`, `children`, `doneChildren`, `doneCount`, `contextOnly` and `customerMismatch`.
+
+- An Epic and its children sit under the Epic's Customer. A direct child whose own Customer differs gets `customerMismatch: { own, epic }`, where either side may be `null`. Subtasks nest under their parent and are never flagged.
+- `noEpic` holds issues with no Epic parent in the input, and Subtasks whose parent is not in the input, under their own Customer.
+- Under an open parent, Done children go to `doneChildren` whatever the toggles say. Under a Done parent they stay in `children`. `hideDone` drops a Done Epic or `noEpic` issue with its whole subtree. With `assigneeMe` on, a Done ancestor of a kept open issue stays as context instead, with its other Done children dropped.
+- `assigneeMe` keeps issues assigned to `accountId` plus their ancestors. An ancestor kept only as context has `contextOnly: true`.
+- `hideEmptyCustomers: false` adds a group for every Customer in `customers`, and for every Customer whose issues the toggles hid.
+- Customers sort case-insensitively, then No Customer, then "Collibra (Internal team)" and "Collibra (Internal template)". Epics sort by key descending. Children sort by status (Opportunity, To Do, In Progress, Review, Hold, Done, then any other), then key descending.
 
 ## Test
 
