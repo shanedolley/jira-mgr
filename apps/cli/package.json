@@ -17,7 +17,7 @@
   "devDependencies": {
     "@jira-mgr/config-ts": "workspace:*",
     "@jira-mgr/core": "workspace:*",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.3",
     "tsup": "^8.5.0",
     "typescript": "~6.0.3"
   }
