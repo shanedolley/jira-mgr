@@ -322,14 +322,15 @@ describe('concurrency', () => {
     )
     let age = Infinity
     await startTimer(A, {
-      lock: { waitMs: 2000, staleMs: 100, pollMs: 5 },
+      lock: { waitMs: 5000, staleMs: 1000, pollMs: 5 },
       now: () => {
         const { at } = JSON.parse(readFileSyncText()) as { at: number }
         age = Date.now() - at
         return now()
       },
     })
-    expect(age).toBeLessThan(50)
+    // Stamped at wait start, the age would be at least staleMs; a slow runner adds well under half.
+    expect(age).toBeLessThan(500)
   })
 
   it('does not release a lock that was reclaimed from under a slow holder', async () => {
