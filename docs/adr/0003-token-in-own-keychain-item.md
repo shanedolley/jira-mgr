@@ -19,4 +19,4 @@ Both front ends need the same Jira API token, and the CLI must read it without t
 
 - jira-mgr runs only on macOS, the CLI included. A Linux agent cannot run `jm` without a second store.
 - Rotating the token means logging in again in either front end, and the other picks it up from the shared item.
-- Pick one Keychain access path for both processes. An unsigned Electron binary that calls the Keychain API directly changes identity on each rebuild, so macOS asks for access again. A token passed on a `security` command line shows in the process list.
+- Both processes reach the Keychain through Apple's signed `/usr/bin/security`, so the item's access rule names a binary that never changes and app rebuilds raise no prompt. Reads use `find-generic-password -w`, which prints the token on stdout. Writes send `add-generic-password -U` to `security -i` on stdin, which keeps the token off the command line and out of the process list. A native Keychain module was rejected: an unsigned Electron binary changes identity on each rebuild, so macOS would ask for access again.

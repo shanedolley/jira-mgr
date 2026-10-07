@@ -13,6 +13,8 @@ A Linear-style Electron app and an agent-friendly CLI (`jm`) for one Jira projec
 - The app's login screen and `jm auth login` ask for site URL, project key, email and API token, and store the token in a macOS Keychain item of the app's own, which both read (Q1, Q26).
 - One site and project at a time. On login the app resolves Customer, Engagement, Sprint and Start date by name from the project's create metadata, caches the ids, and allows overrides in a settings file. Switching project means logging in again (Q36).
 - The settings file also holds the timer settings: rounding step, reminder threshold and reminder interval (Q52, Q55).
+- The app and CLI reach the Keychain through `/usr/bin/security`, writing through `security -i` on stdin ([ADR-0003](../adr/0003-token-in-own-keychain-item.md)).
+- Non-secret state lives in `~/Library/Application Support/jira-mgr/`, Electron's default userData folder, which the CLI also computes: `settings.json`, `views.json`, `timer.json` and `fields.json`.
 
 ## Hierarchy and List
 
@@ -52,6 +54,7 @@ A Linear-style Electron app and an agent-friendly CLI (`jm`) for one Jira projec
 
 - Binary `jm`, noun-verb commands: `jm issue list/get/create/edit/delete/tree`, `jm comment add/edit/delete`, `jm worklog add/edit/delete`, `jm timer start/stop/status/pause/resume`, `jm link add/remove/types`, `jm attach add/remove`, `jm sprint set/list`, `jm status set`, `jm field options <field>`, `jm auth login` (Q32).
 - Output: human tables on a TTY, JSON when piped, `--json` to force (Q12).
+- Descriptions and comments: `jm` reads and prints Markdown, converted to and from ADF in `core`. `--json` output carries the raw ADF, and `--adf <file>` accepts raw ADF for anything Markdown can't express.
 - One command schema drives `--help`, `jm help --json` and a generated reference at `docs/reference/cli.md`. The root `AGENTS.md` stays the repo's agent instructions, as in Nisaba. Exit codes: 0 ok, 2 validation, 3 not found, 4 permission, 5 Jira error (Q12).
 - Every command is open to agents with no extra guard beyond delete's `--confirm` (Q3). Your kothar rule that only `kothar:project-manager` moves tickets is not enforced for `jm`, because the ticket guard ignores Collibra.
 
