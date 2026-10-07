@@ -116,6 +116,59 @@ describe('run', () => {
     }
   })
 
+  it('an unknown option never echoes the value after =', async () => {
+    const cases = [
+      ['multi', 'x', '--need', 'n', '--nope=SECRET'],
+      ['multi', 'x', '--need', 'n', "--nope=SE'CRET"],
+    ]
+    for (const argv of cases) {
+      const piped = fakeIo()
+      expect(await run(argv, piped.io, deps)).toBe(2)
+      expect(JSON.parse(piped.stdout)).toEqual({
+        error: { code: 'validation_failed', message: "unknown option '--nope=<redacted>'" },
+      })
+      const tty = fakeIo({ stdoutIsTTY: true, stderrIsTTY: true, env: NO_COLOR })
+      expect(await run(argv, tty.io, deps)).toBe(2)
+      expect(tty.stderr).toBe("jm: unknown option '--nope=<redacted>'\n")
+      for (const text of [piped.stdout, tty.stdout, tty.stderr]) expect(text).not.toContain('CRET')
+    }
+  })
+
+  it('a newline in an unknown option value cannot defeat the redaction', async () => {
+    for (const value of ['SE\nCRET', 'SE\r\nCRET', "SE'\nCRET'"]) {
+      const f = fakeIo()
+      expect(await run(['multi', 'x', '--need', 'n', `--nope=${value}`], f.io, deps)).toBe(2)
+      expect(JSON.parse(f.stdout)).toEqual({
+        error: { code: 'validation_failed', message: "unknown option '--nope=<redacted>'" },
+      })
+      expect(f.stdout).not.toContain('CRET')
+    }
+  })
+
+  it('too many arguments reports the count and never the operands', async () => {
+    for (const operand of ['SECRET', 'SE\nCRET']) {
+      const f = fakeIo()
+      expect(await run(['multi', 'x', operand, '--need', 'n'], f.io, deps)).toBe(2)
+      expect(JSON.parse(f.stdout)).toEqual({
+        error: {
+          code: 'validation_failed',
+          message: "too many arguments for 'multi'. Expected 1 argument but got 2.",
+        },
+      })
+      const tty = fakeIo({ stdoutIsTTY: true, stderrIsTTY: true, env: NO_COLOR })
+      expect(await run(['multi', 'x', operand, '--need', 'n'], tty.io, deps)).toBe(2)
+      expect(tty.stderr).toBe(
+        "jm: too many arguments for 'multi'. Expected 1 argument but got 2.\n",
+      )
+    }
+  })
+
+  it('an unknown option without a value keeps its message', async () => {
+    const f = fakeIo()
+    expect(await run(['multi', 'x', '--need', 'n', '--nope'], f.io, deps)).toBe(2)
+    expect(JSON.parse(f.stdout)).toMatchObject({ error: { message: "unknown option '--nope'" } })
+  })
+
   it('--help and --version exit 0', async () => {
     for (const argv of [['--help'], ['multi', '--help'], ['grp', '--help']]) {
       const f = fakeIo()

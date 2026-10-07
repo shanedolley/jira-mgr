@@ -2,11 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). CLI stories are user-facing, so after their agent review they go to Shane in HIL Review.
+Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). The CLI chain runs L2, L3, L4, L5, L6, L7 in order; a blocker merged and waiting in HIL Review counts as satisfied (see Traps). CLI stories are user-facing, so after their agent review they go to Shane in HIL Review. Desktop waits on all of CLI.
 
-1. **Finish L1 command schema (#21)** on `l1-command-schema`: review, push, CI (ship-it merges), proof, then HIL Review.
-2. **L2 auth (#22)**: blocked only by L1. Adds `getCurrentUser` and a `./test/msw` export to core, per the design doc's Rollout.
-3. **L3 reading (#23)**: after L2; note on #23 about `--view my-issues`.
+1. **Finish L2 auth (#22)** on `l2-auth`: review, push, CI (ship-it merges), proof, then HIL Review.
+2. **L3 reading (#23)**: after L2; note on #23 about `--view my-issues`; adds core `getIssue` with description and subtasks, tree printing and status colour per the design.
+3. **L4 writing (#24)**: after L3.
 
 Each L story implements only handlers: the specs already exist in `apps/cli/src/schema.ts`. Follow the design doc's per-story test list.
 

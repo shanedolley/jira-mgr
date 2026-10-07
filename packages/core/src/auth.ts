@@ -6,6 +6,7 @@ import { JiraMgrError } from './errors.js'
 import { resolveFields } from './fields.js'
 import { createHttpClient } from './http.js'
 import { readSettings, writeFields, writeSettings } from './state.js'
+import { currentUser, parseResponse, type CurrentUser } from './validate.js'
 
 const SECURITY = '/usr/bin/security'
 const KEYCHAIN_SERVICE = 'jira-mgr'
@@ -185,7 +186,7 @@ async function verify(
   email: string,
   token: string,
   timeoutMs: number,
-): Promise<void> {
+): Promise<CurrentUser> {
   let response: Response
   try {
     response = await fetch(`${siteUrl}/rest/api/3/myself`, {
@@ -218,17 +219,19 @@ async function verify(
       `Jira answered ${String(response.status)} to the login check.`,
     )
   }
+  const raw: unknown = await response.json().catch(() => undefined)
+  return parseResponse(currentUser, raw, 'login check')
 }
 
 /**
  * Verifies the credentials against Jira and resolves the custom field ids, then stores the token
  * in the Keychain, the rest in settings and the ids in `fields.json`. A missing or ambiguous
- * field fails the login before anything is stored.
+ * field fails the login before anything is stored. Returns the account the check answered with.
  */
 export async function login(
   input: LoginInput,
   deps: { keychain?: Keychain; timeoutMs?: number; now?: () => Date } = {},
-): Promise<void> {
+): Promise<CurrentUser> {
   const parsed = loginSchema.safeParse(input)
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
@@ -237,7 +240,7 @@ export async function login(
   const { siteUrl, projectKey, email, token } = parsed.data
   assertStorable(email, token)
   const settings = await readSettings()
-  await verify(siteUrl, email, token, deps.timeoutMs ?? VERIFY_TIMEOUT_MS)
+  const user = await verify(siteUrl, email, token, deps.timeoutMs ?? VERIFY_TIMEOUT_MS)
   // The token is not stored yet, so the client signs with the credentials just verified.
   const http = createHttpClient({
     credentials: () => Promise.resolve({ siteUrl, email, token }),
@@ -260,6 +263,7 @@ export async function login(
     // The new login is complete, so a failed cleanup must not fail it. `logout` removes stragglers.
     await keychain.delete(settings.email).catch(() => undefined)
   }
+  return user
 }
 
 /** Removes every jira-mgr Keychain item and the email from settings. Safe to run when logged out. */

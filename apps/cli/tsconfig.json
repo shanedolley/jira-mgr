@@ -1,4 +1,4 @@
 {
   "extends": "@jira-mgr/config-ts/node.json",
-  "include": ["src", "tsup.config.ts", "package.json"]
+  "include": ["src", "tsup.config.ts", "vitest.config.ts", "package.json"]
 }

@@ -11,7 +11,7 @@ import {
   type Recorded,
 } from '../test/msw.js'
 import { createHttpClient } from './http.js'
-import { getFieldOptions, searchAssignableUsers, suggestLabels } from './lookups.js'
+import { getCurrentUser, getFieldOptions, searchAssignableUsers, suggestLabels } from './lookups.js'
 
 const client = createHttpClient({
   credentials: () => Promise.resolve({ siteUrl: JIRA_SITE, email: 'a@b.co', token: 'x' }),
@@ -19,6 +19,34 @@ const client = createHttpClient({
 })
 
 usePsapacState()
+
+describe('getCurrentUser', () => {
+  it('returns the account id and display name from the recorded /myself', async () => {
+    const requests = serveRecorded(() => HttpResponse.json(loadFixture('myself')))
+    expect(await getCurrentUser(client)).toEqual({
+      accountId: '712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34',
+      displayName: 'Shane Dolley',
+    })
+    expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual(['GET /rest/api/3/myself'])
+  })
+
+  it('maps a 401 to permission_denied', async () => {
+    serveRecorded(() => HttpResponse.json({ message: 'no' }, { status: 401 }))
+    expect((await failure(getCurrentUser(client))).code).toBe('permission_denied')
+  })
+
+  it('throws jira_error when the response lacks the account id', async () => {
+    serveRecorded(() => HttpResponse.json({ displayName: 'x' }))
+    expect((await failure(getCurrentUser(client))).code).toBe('jira_error')
+  })
+
+  it('passes the abort signal to the request', async () => {
+    serveRecorded(() => HttpResponse.json(loadFixture('myself')))
+    const controller = new AbortController()
+    controller.abort()
+    await expect(getCurrentUser(client, { signal: controller.signal })).rejects.toThrow()
+  })
+})
 
 describe('suggestLabels', () => {
   it('returns the recorded suggestions as plain label text', async () => {

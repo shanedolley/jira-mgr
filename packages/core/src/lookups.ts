@@ -3,7 +3,15 @@ import { z } from 'zod'
 import { JiraMgrError } from './errors.js'
 import { fetchAll, getFieldIds } from './fields.js'
 import type { HttpClient } from './http.js'
-import { parseInput, parseResponse, projectKeyOrSettings } from './validate.js'
+import {
+  currentUser,
+  parseInput,
+  parseResponse,
+  projectKeyOrSettings,
+  type CurrentUser,
+} from './validate.js'
+
+export type { CurrentUser }
 
 const MAX_USERS = 50
 const searchText = z.string().max(200)
@@ -21,6 +29,15 @@ export async function suggestLabels(http: HttpClient, prefix: string): Promise<s
     `/rest/api/3/jql/autocompletedata/suggestions?fieldName=labels&fieldValue=${encodeURIComponent(text)}`,
   )
   return parseResponse(suggestions, raw, 'label suggestions').results.map((r) => r.value)
+}
+
+/** The account the stored token authenticates as. Throws `permission_denied` when Jira rejects it. */
+export async function getCurrentUser(
+  http: HttpClient,
+  options: { signal?: AbortSignal } = {},
+): Promise<CurrentUser> {
+  const raw = await http.request('GET', '/rest/api/3/myself', options)
+  return parseResponse(currentUser, raw, 'current user')
 }
 
 const assignableUsers = z.array(

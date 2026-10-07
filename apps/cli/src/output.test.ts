@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { colourOn, paint, renderTable, stripControl, truncate, ttyOf, type Tty } from './output.js'
+import {
+  colourOn,
+  localDateTime,
+  paint,
+  renderRecord,
+  renderTable,
+  stripControl,
+  truncate,
+  ttyOf,
+  type Tty,
+} from './output.js'
 import { fakeIo } from './test-io.js'
 
 const plain = (columns: number): Tty => ({ columns, style: (_, text) => text })
@@ -62,5 +72,20 @@ describe('output', () => {
   it('truncate ends in an ellipsis within the limit', () => {
     expect(truncate('abcdef', 4)).toBe('abc…')
     expect(truncate('abcd', 4)).toBe('abcd')
+  })
+
+  it('records align their values and strip control characters', () => {
+    const rows = [
+      ['Site', 'https://a.example'],
+      ['Account id', 'x\u001b[31my'],
+    ] as const
+    expect(renderRecord(plain(80), rows)).toBe('Site:       https://a.example\nAccount id: x[31my')
+    const bold: Tty = { columns: 80, style: (format, text) => `<${String(format)}>${text}` }
+    expect(renderRecord(bold, [['Site', 'a']])).toBe('<bold>Site: a')
+  })
+
+  it('local times print as YYYY-MM-DD HH:mm in the machine zone', () => {
+    expect(localDateTime(new Date(2026, 9, 7, 13, 5).toISOString())).toBe('2026-10-07 13:05')
+    expect(localDateTime(new Date(2026, 0, 2, 3, 4).toISOString())).toBe('2026-01-02 03:04')
   })
 })

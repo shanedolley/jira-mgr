@@ -15,6 +15,11 @@ export const duration = z
 /** The id of a comment, worklog, link, attachment or sprint: digits, so it cannot alter a path. */
 export const jiraId = z.string().regex(/^[1-9]\d*$/, 'Not a Jira id such as 10042.')
 
+/** What `GET /rest/api/3/myself` says about the account, trimmed to what clients use. */
+export const currentUser = z.object({ accountId: z.string(), displayName: z.string() })
+
+export type CurrentUser = z.infer<typeof currentUser>
+
 /** Throws `validation_failed` naming each bad field. Nothing has been sent yet. */
 export function parseInput<T extends z.ZodType>(
   schema: T,

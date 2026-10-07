@@ -35,7 +35,7 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 
 `@jira-mgr/core/auth` exports `login`, `logout` and `getCredentials`.
 
-- `login({ siteUrl, projectKey, email, token })` accepts only an `https://<name>.atlassian.net` site with no path, port or userinfo. It checks the token with `GET /rest/api/3/myself` (no redirects), resolves the custom fields (see Field Resolution), then stores the token in the Keychain, `siteUrl`, `projectKey` and `email` in `settings.json`, and the ids in `fields.json`. A 401 or 403 throws `permission_denied`, and a field failure throws `validation_failed`; either stores nothing.
+- `login({ siteUrl, projectKey, email, token })` accepts only an `https://<name>.atlassian.net` site with no path, port or userinfo. It checks the token with `GET /rest/api/3/myself` (no redirects), resolves the custom fields (see Field Resolution), then stores the token in the Keychain, `siteUrl`, `projectKey` and `email` in `settings.json`, and the ids in `fields.json`. A 401 or 403 throws `permission_denied`, and a field failure throws `validation_failed`; either stores nothing. It returns `{ accountId, displayName }` from the check's response, so a caller needs no second `/myself` call; a response without them throws `jira_error` and stores nothing.
 - `logout()` deletes every `jira-mgr` Keychain item, even when `settings.json` is corrupt, and clears `email` from settings. A missing item is not an error. `login` deletes the previous account's item when the email changes.
 - `getCredentials()` returns `{ siteUrl, email, token }`, or throws `permission_denied` ("Not logged in") when settings hold no email or the Keychain holds no token. A `siteUrl` in settings that fails the login site check throws `validation_failed`, so the token never goes to a tampered site.
 
@@ -189,9 +189,10 @@ Three subpaths cover the secondary operations. Each function takes an `HttpClien
 
 - `suggestLabels(http, prefix)` returns label names from Jira's autocomplete. Jira suggests from every project on the site, so a client wanting only project labels filters further. The prefix is percent-encoded.
 - `searchAssignableUsers(http, query, { projectKey? })` returns active users assignable in the project as `{ accountId, displayName, avatarUrl }`, at most 50, and drops the email address.
+- `getCurrentUser(http, { signal? })` returns `{ accountId, displayName }` for the account the token authenticates as, from `GET /rest/api/3/myself`. A 401 throws `permission_denied`.
 - `getFieldOptions(http, field)` returns `{ id, name }[]` for `customer`, `engagement`, `priority`, `issueType` or `status`. Customer, Engagement and Priority come from the project's create metadata, so Priority lists the project's 11 priorities, not the site's 20. `status` lists each status of the project once.
 
-Recorded fixtures back every response mapping: `comments-psapac-666`, `worklogs-psapac-666`, `issue-links-psapac-666` and `-664` (the same link seen from both ends), `issue-attachments-psapac-3017`, `issuelinktype`, `attachment-meta`, `board-psapac`, `board-sprints-active-future`, `board-sprints-all`, `label-suggestions`, `assignable-users` and `project-statuses`. Tests record each request's method, path, query and body, and never reach Jira.
+Recorded fixtures back every response mapping: `comments-psapac-666`, `worklogs-psapac-666`, `issue-links-psapac-666` and `-664` (the same link seen from both ends), `issue-attachments-psapac-3017`, `issuelinktype`, `attachment-meta`, `board-psapac`, `board-sprints-active-future`, `board-sprints-all`, `label-suggestions`, `assignable-users`, `project-statuses` and `myself`. Tests record each request's method, path, query and body, and never reach Jira.
 
 ## Timer
 
@@ -237,6 +238,6 @@ The app and the CLI both write `timer.json`, so each operation runs under an exc
 pnpm --filter @jira-mgr/core test
 ```
 
-Vitest runs `<file>.test.ts` beside the source. `pnpm test:live` sets `JM_LIVE_JIRA=1`, the opt-in for tests that read the live PSAPAC Jira. Tests never write to Jira. Integration tests run against an MSW fake fed by the recorded PSAPAC responses in `fixtures/`, served through `test/msw.ts`.
+Vitest runs `<file>.test.ts` beside the source. `pnpm test:live` sets `JM_LIVE_JIRA=1`, the opt-in for tests that read the live PSAPAC Jira. Tests never write to Jira. Integration tests run against an MSW fake fed by the recorded PSAPAC responses in `fixtures/`, served through `test/msw.ts`, which the CLI imports as `@jira-mgr/core/test/msw`, with `@jira-mgr/core/test/setup` as its shared Vitest setup file.
 
 Set `JM_LIVE_KEYCHAIN=1` on macOS to run `auth.live.test.ts`, one test against the real `security` binary, using a throwaway service name it deletes afterwards.

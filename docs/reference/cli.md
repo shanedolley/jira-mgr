@@ -26,6 +26,151 @@ With `--json`, or whenever stdout is piped, stdout carries exactly one JSON valu
 
 Every error code, with its fix, is in [errors.md](errors.md).
 
+## auth
+
+### jm auth login
+
+```
+jm auth login [--site <url>] [--project <key>] [--email <text>] [--token-stdin]
+```
+
+Verifies the credentials against Jira, saves the site, project and email to the settings file and the token to the Keychain. On a terminal it prompts for a missing site, project, email or token. The token never travels in a flag.
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--site <url>` | text | no |  | The Jira site URL. Defaults to the settings file. |
+| `--project <key>` | text | no |  | The Jira project key. Defaults to the settings file. |
+| `--email <text>` | text | no |  | The account email. Defaults to the settings file. |
+| `--token-stdin` | boolean | no |  | Read the API token from stdin. |
+
+#### Examples
+
+```sh
+# Log in, prompting for what is missing.
+jm auth login
+```
+
+```sh
+# Log in without prompts, reading the token from stdin.
+jm auth login --site https://example.atlassian.net --project PSAPAC --email me@example.com --token-stdin
+```
+
+#### Output
+
+The account that is now logged in.
+
+```json
+{
+  "data": {
+    "siteUrl": "https://example.atlassian.net",
+    "projectKey": "PSAPAC",
+    "email": "me@example.com",
+    "accountId": "5b10ac8d82e05b22cc7d4ef5",
+    "displayName": "Shane Dolley"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | A value is missing and there is no terminal to prompt on. |
+| 4 | `permission_denied` | Jira refuses the token. |
+
+#### Effects
+
+Writes: state, keychain.
+
+Calls:
+
+- `@jira-mgr/core/auth#login`
+
+### jm auth status
+
+```
+jm auth status
+```
+
+Show who is logged in
+
+#### Examples
+
+```sh
+# Show the logged-in account.
+jm auth status
+```
+
+#### Output
+
+The logged-in account and when the custom fields were last resolved.
+
+```json
+{
+  "data": {
+    "siteUrl": "https://example.atlassian.net",
+    "projectKey": "PSAPAC",
+    "email": "me@example.com",
+    "accountId": "5b10ac8d82e05b22cc7d4ef5",
+    "displayName": "Shane Dolley",
+    "fieldsResolvedAt": "2026-10-06T23:10:00.000Z"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 4 | `permission_denied` | No one is logged in. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/auth#getCredentials`
+- `@jira-mgr/core/state#readFields`
+- `@jira-mgr/core/lookups#getCurrentUser`
+
+### jm auth logout
+
+```
+jm auth logout
+```
+
+Remove the stored token
+
+#### Examples
+
+```sh
+# Log out. Succeeds when already logged out.
+jm auth logout
+```
+
+#### Output
+
+Confirms the logout.
+
+```json
+{
+  "data": {
+    "loggedOut": true
+  }
+}
+```
+
+#### Effects
+
+Writes: keychain, state.
+
+Calls:
+
+- `@jira-mgr/core/auth#logout`
+
 ## help
 
 ### jm help
