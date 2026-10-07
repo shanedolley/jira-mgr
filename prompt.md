@@ -4,9 +4,9 @@
 
 Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). The CLI chain runs L3, L4, L5, L6, L7 in order; a blocker merged and waiting in HIL Review counts as satisfied (see Traps). CLI stories go to Shane in HIL Review after their agent review. Desktop waits on all of CLI.
 
-1. **Finish L3 reading (#23)** on `l3-reading`: review, push, CI (ship-it merges), proof, then HIL Review.
-2. **L4 writing (#24)**: issue create, edit, delete, status set; Markdown in through `markdownToAdf`, `--adf <file>` for raw ADF.
-3. **L5 extras (#25)**: after L4.
+1. **Finish L4 writing (#24)** on `l4-writing`: review, push, CI (ship-it merges), proof, then HIL Review.
+2. **L5 extras (#25)**: comment, worklog, link, attach, sprint set (and the list commands Shane approved).
+3. **L6 timer (#26)**: after L5; `jm timer stop` needing confirmation exits 2 without `--confirm` or `--time`.
 
 Each L story implements only handlers: the specs already exist in `apps/cli/src/schema.ts`. Follow the design doc's per-story test list.
 

@@ -5,11 +5,15 @@ import { logout } from './auth/logout.js'
 import { status } from './auth/status.js'
 import { options } from './field/options.js'
 import { help } from './help.js'
+import { create } from './issue/create.js'
+import { del } from './issue/delete.js'
+import { edit } from './issue/edit.js'
 import { get } from './issue/get.js'
 import { list } from './issue/list.js'
 import { tree } from './issue/tree.js'
 import { types } from './link/types.js'
 import { list as sprintList } from './sprint/list.js'
+import { set as statusSet } from './status/set.js'
 import { list as viewList } from './view/list.js'
 
 /** Command id to handler. A spec with no entry here stays out of the CLI, its help and the reference. */
@@ -21,6 +25,10 @@ export const HANDLERS = {
   'issue list': list,
   'issue tree': tree,
   'issue get': get,
+  'issue create': create,
+  'issue edit': edit,
+  'issue delete': del,
+  'status set': statusSet,
   'field options': options,
   'link types': types,
   'sprint list': sprintList,

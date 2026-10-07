@@ -533,8 +533,9 @@ export const COMMANDS = [
     exits: [
       {
         code: 'validation_failed',
-        when: 'A name is unknown or ambiguous, or two description inputs are given.',
+        when: 'A name is unknown or ambiguous, two description inputs are given, a Subtask has no `--parent`, or `--parent` is outside the project in settings.',
       },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
     ],
     writes: ['jira'],
     calls: [
@@ -601,7 +602,13 @@ export const COMMANDS = [
         description: 'Remove a label.',
         conflicts: ['label'],
       },
-      { name: 'parent', type: 'issue-key', valueName: 'key', description: 'The parent issue.' },
+      {
+        name: 'parent',
+        type: 'issue-key',
+        valueName: 'key',
+        description:
+          'The parent issue. The Customer and Engagement are not copied from the new parent; pass `--customer` and `--engagement` to change them.',
+      },
       { name: 'customer', type: 'text', valueName: 'name-or-id', description: 'The Customer.' },
       { name: 'engagement', type: 'text', valueName: 'name-or-id', description: 'The Engagement.' },
       {
@@ -614,7 +621,8 @@ export const COMMANDS = [
         type: 'enum',
         valueName: 'type',
         choices: ['Story', 'Task', 'Bug'],
-        description: 'Change the issue type.',
+        description:
+          'Change the issue type. Only a Story, Task or Bug can change, and only to one of the three.',
       },
     ],
     examples: [
@@ -628,18 +636,20 @@ export const COMMANDS = [
       },
     ],
     output: {
-      summary: 'The issue key and the names of the fields sent.',
-      example: { key: 'PSAPAC-12', changed: ['assignee', 'duedate'] },
+      summary: 'The issue key and the names of the options sent, each once.',
+      example: { key: 'PSAPAC-12', changed: ['assignee', 'due'] },
     },
     exits: [
       {
         code: 'validation_failed',
-        when: 'Nothing is given to change, or a name is unknown or ambiguous.',
+        when: 'Nothing is given to change, a name is unknown or ambiguous, `--type` is given for an issue that is not a Story, Task or Bug, or the key or `--parent` is outside the project in settings.',
       },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
       { code: 'not_found', when: 'The issue does not exist.' },
     ],
     writes: ['jira'],
     calls: [
+      '@jira-mgr/core/search#getIssue',
       '@jira-mgr/core/write#editIssue',
       '@jira-mgr/core/lookups#getFieldOptions',
       '@jira-mgr/core/lookups#searchAssignableUsers',
@@ -673,8 +683,9 @@ export const COMMANDS = [
     exits: [
       {
         code: 'validation_failed',
-        when: '`--confirm` is missing, or the issue has subtasks and `--with-subtasks` is missing.',
+        when: '`--confirm` is missing, the issue has subtasks and `--with-subtasks` is missing, or the key is outside the project in settings.',
       },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
       { code: 'not_found', when: 'The issue does not exist.' },
     ],
     writes: ['jira'],
@@ -699,8 +710,9 @@ export const COMMANDS = [
     exits: [
       {
         code: 'validation_failed',
-        when: 'The status is unreachable from the current one; the message lists the available statuses.',
+        when: 'The status is unreachable from the current one (the message lists the available statuses), or the key is outside the project in settings.',
       },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
       { code: 'not_found', when: 'The issue does not exist.' },
     ],
     writes: ['jira'],

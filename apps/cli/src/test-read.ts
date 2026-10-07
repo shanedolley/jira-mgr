@@ -57,9 +57,13 @@ export function searchPhases(requests: readonly Recorded[]): ('unresolved' | 'do
     .map((r) => ((r.body as { jql: string }).jql.includes('!= Done') ? 'unresolved' : 'done'))
 }
 
-/** Runs `argv` piped, the way an agent would, with the shared client unless `deps` brings its own. */
-export async function runJson(argv: string[], deps: Deps = { http }) {
-  const f = fakeIo()
+/** Runs `argv` piped, the way an agent would, with the shared client unless `deps` brings its own. `io` sets stdin and the like. */
+export async function runJson(
+  argv: string[],
+  deps: Deps = { http },
+  io: Parameters<typeof fakeIo>[0] = {},
+) {
+  const f = fakeIo(io)
   const code = await run(argv, f.io, deps)
   const body = f.stdout === '' ? undefined : (JSON.parse(f.stdout) as Envelope)
   return { code, f, body, data: body?.data, error: body?.error }

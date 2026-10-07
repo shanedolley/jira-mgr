@@ -538,6 +538,283 @@ Calls:
 - `@jira-mgr/core/search#getIssue`
 - `@jira-mgr/core/adf#adfToMarkdown`
 
+### jm issue create
+
+```
+jm issue create [--type <type>] --summary <text> --customer <name-or-id> --engagement <name-or-id> [--parent <key>] [--description <markdown>] [--description-file <file>] [--adf <file>] [--assignee <assignee>] [--priority <name-or-id>] [--label <text>] [--start <date>] [--due <date>] [--estimate <duration>] [--time-remaining <number>]
+```
+
+Creates an issue. Customer and Engagement are required; name them in any case or by option id. Give at most one of the three description inputs.
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--type <type>` | enum | no | `Story` | The issue type. One of Epic, Story, Task, Bug, Subtask. |
+| `--summary <text>` | text | yes |  | The summary line. |
+| `--customer <name-or-id>` | text | yes |  | The Customer. |
+| `--engagement <name-or-id>` | text | yes |  | The Engagement. |
+| `--parent <key>` | issue-key | no |  | The parent issue. |
+| `--description <markdown>` | markdown | no |  | Description as Markdown. Conflicts with `--description-file`, `--adf`. |
+| `--description-file <file>` | file | no |  | Read the description as Markdown from a file, or `-` for stdin. Conflicts with `--description`, `--adf`. |
+| `--adf <file>` | file | no |  | Read the description as an Atlassian Document Format file, or `-` for stdin. Conflicts with `--description`, `--description-file`. |
+| `--assignee <assignee>` | text | no |  | Assign to `me`, an account id or a name that matches one user. |
+| `--priority <name-or-id>` | text | no |  | The priority. |
+| `--label <text>` | text | no |  | A label. Repeat the flag for more. Repeatable. |
+| `--start <date>` | date | no |  | The start date, YYYY-MM-DD. |
+| `--due <date>` | date | no |  | The due date, YYYY-MM-DD. |
+| `--estimate <duration>` | duration | no |  | The original estimate, such as `1d 4h`. |
+| `--time-remaining <number>` | number | no |  | The Time remaining field value. |
+
+#### Examples
+
+```sh
+# Create a Story under an Epic.
+jm issue create --summary "Build the loader" --customer "Acme Corp" --engagement "Data migration" --parent PSAPAC-10
+```
+
+```sh
+# Create a Bug with a Markdown description from a file.
+jm issue create --type Bug --summary "Loader drops rows" --customer "Acme Corp" --engagement "Data migration" --description-file bug.md
+```
+
+#### Output
+
+The new issue.
+
+```json
+{
+  "data": {
+    "key": "PSAPAC-14",
+    "id": "10050",
+    "url": "https://example.atlassian.net/browse/PSAPAC-14"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | A name is unknown or ambiguous, two description inputs are given, a Subtask has no `--parent`, or `--parent` is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/write#createIssue`
+- `@jira-mgr/core/lookups#getFieldOptions`
+- `@jira-mgr/core/lookups#searchAssignableUsers`
+- `@jira-mgr/core/adf#markdownToAdf`
+
+### jm issue edit
+
+```
+jm issue edit <key> [--summary <text>] [--description <markdown>] [--description-file <file>] [--adf <file>] [--clear-description] [--assignee <assignee>] [--start <date>] [--due <date>] [--time-remaining <number>] [--priority <name-or-id>] [--label <text>] [--add-label <text>] [--remove-label <text>] [--parent <key>] [--customer <name-or-id>] [--engagement <name-or-id>] [--estimate <duration>] [--type <type>]
+```
+
+Changes only the fields you pass. A flag marked clearable takes `none` to empty the field. `--label` replaces the labels and conflicts with `--add-label` and `--remove-label`.
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--summary <text>` | text | no |  | The summary line. |
+| `--description <markdown>` | markdown | no |  | Description as Markdown. Conflicts with `--description-file`, `--adf`. |
+| `--description-file <file>` | file | no |  | Read the description as Markdown from a file, or `-` for stdin. Conflicts with `--description`, `--adf`. |
+| `--adf <file>` | file | no |  | Read the description as an Atlassian Document Format file, or `-` for stdin. Conflicts with `--description`, `--description-file`. |
+| `--clear-description` | boolean | no |  | Empty the description. Conflicts with `--description`, `--description-file`, `--adf`. |
+| `--assignee <assignee>` | text | no |  | Assign to `me`, an account id or a name that matches one user. Pass `none` to clear it. `none` clears it. |
+| `--start <date>` | date | no |  | The start date. Pass `none` to clear it. `none` clears it. |
+| `--due <date>` | date | no |  | The due date. Pass `none` to clear it. `none` clears it. |
+| `--time-remaining <number>` | number | no |  | The Time remaining field value. Pass `none` to clear it. `none` clears it. |
+| `--priority <name-or-id>` | text | no |  | The priority. |
+| `--label <text>` | text | no |  | Replace the labels with these. Repeatable. Conflicts with `--add-label`, `--remove-label`. |
+| `--add-label <text>` | text | no |  | Add a label. Repeatable. Conflicts with `--label`. |
+| `--remove-label <text>` | text | no |  | Remove a label. Repeatable. Conflicts with `--label`. |
+| `--parent <key>` | issue-key | no |  | The parent issue. The Customer and Engagement are not copied from the new parent; pass `--customer` and `--engagement` to change them. |
+| `--customer <name-or-id>` | text | no |  | The Customer. |
+| `--engagement <name-or-id>` | text | no |  | The Engagement. |
+| `--estimate <duration>` | duration | no |  | The original estimate, such as `1d 4h`. |
+| `--type <type>` | enum | no |  | Change the issue type. Only a Story, Task or Bug can change, and only to one of the three. One of Story, Task, Bug. |
+
+#### Examples
+
+```sh
+# Assign to yourself and set a due date.
+jm issue edit PSAPAC-12 --assignee me --due 2026-10-14
+```
+
+```sh
+# Unassign and add a label.
+jm issue edit PSAPAC-12 --assignee none --add-label etl
+```
+
+#### Output
+
+The issue key and the names of the options sent, each once.
+
+```json
+{
+  "data": {
+    "key": "PSAPAC-12",
+    "changed": [
+      "assignee",
+      "due"
+    ]
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | Nothing is given to change, a name is unknown or ambiguous, `--type` is given for an issue that is not a Story, Task or Bug, or the key or `--parent` is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/search#getIssue`
+- `@jira-mgr/core/write#editIssue`
+- `@jira-mgr/core/lookups#getFieldOptions`
+- `@jira-mgr/core/lookups#searchAssignableUsers`
+- `@jira-mgr/core/adf#markdownToAdf`
+
+### jm issue delete
+
+```
+jm issue delete <key> [--confirm] [--with-subtasks]
+```
+
+Deletes the issue for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too.
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--confirm` | boolean | no |  | Confirm the permanent delete. |
+| `--with-subtasks` | boolean | no |  | Delete the issue's subtasks too. |
+
+#### Examples
+
+```sh
+# Delete an issue with no subtasks.
+jm issue delete PSAPAC-12 --confirm
+```
+
+```sh
+# Delete an issue and its subtasks.
+jm issue delete PSAPAC-12 --confirm --with-subtasks
+```
+
+#### Output
+
+The deleted key and the subtasks deleted with it.
+
+```json
+{
+  "data": {
+    "key": "PSAPAC-12",
+    "deletedSubtasks": [
+      "PSAPAC-13"
+    ]
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | `--confirm` is missing, the issue has subtasks and `--with-subtasks` is missing, or the key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/search#getIssue`
+- `@jira-mgr/core/write#deleteIssue`
+
+## status
+
+### jm status set
+
+```
+jm status set <key> <status>
+```
+
+Move an issue to a status
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+| `status` | text | yes | The status name in any case, or its id. |
+
+#### Examples
+
+```sh
+# Start work on an issue.
+jm status set PSAPAC-12 "In Progress"
+```
+
+#### Output
+
+The issue, its status and whether a transition ran.
+
+```json
+{
+  "data": {
+    "key": "PSAPAC-12",
+    "status": "In Progress",
+    "changed": true
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | The status is unreachable from the current one (the message lists the available statuses), or the key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/search#getIssue`
+- `@jira-mgr/core/write#transitionIssue`
+
 ## link
 
 ### jm link types

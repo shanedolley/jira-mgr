@@ -420,3 +420,27 @@ describe('jm auth login', () => {
     })
   })
 })
+
+describe('jm auth login stdin limit', () => {
+  it('refuses a token on stdin past 4096 bytes, storing nothing and sending nothing', async () => {
+    const requests = serveJira()
+    const { items, calls, keychain } = fakeSecurity()
+    const f = fakeIo({ stdin: 'x'.repeat(100_000) })
+    expect(await run([...FLAGS, '--token-stdin'], f.io, { keychain })).toBe(2)
+    expect(JSON.parse(f.stdout)).toMatchObject({
+      error: { code: 'validation_failed', message: 'The API token on stdin is too long.' },
+    })
+    expect(requests).toEqual([])
+    expect(calls).toEqual([])
+    expect(items.size).toBe(0)
+  })
+
+  it('accepts a token of exactly 4096 bytes up to the core limit check', async () => {
+    serveJira()
+    const { keychain } = fakeSecurity()
+    const f = fakeIo({ stdin: 'x'.repeat(4096) })
+    // Core refuses a token over 1024 bytes, so this fails there, not on the stdin limit.
+    expect(await run([...FLAGS, '--token-stdin'], f.io, { keychain })).toBe(2)
+    expect(f.stdout).not.toContain('too long')
+  })
+})

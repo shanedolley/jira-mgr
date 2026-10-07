@@ -19,7 +19,13 @@ export function fakeIo(options: Options = {}) {
   const io: Io = {
     stdout: { write: (text) => out.push(text) },
     stderr: { write: (text) => err.push(text) },
-    readStdin: () => Promise.resolve(options.stdin ?? ''),
+    // Like the real reader, stops at one byte past the limit.
+    readStdin: (maxBytes) =>
+      Promise.resolve(
+        Buffer.from(options.stdin ?? '')
+          .subarray(0, maxBytes + 1)
+          .toString('utf8'),
+      ),
     prompt: (question, hidden) => {
       asked.push({ question, hidden })
       options.onPrompt?.(asked.length)

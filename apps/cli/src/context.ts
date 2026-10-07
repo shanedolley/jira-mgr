@@ -10,8 +10,8 @@ import type { CommandSpec, InputOf } from './schema.js'
 export interface Io {
   stdout: { write(text: string): unknown }
   stderr: { write(text: string): unknown }
-  /** Reads all of stdin. */
-  readStdin(): Promise<string>
+  /** Reads stdin, stopping once it holds more than `maxBytes`: the text is then at least that long, so the caller can refuse it. */
+  readStdin(maxBytes: number): Promise<string>
   /** Asks one question on stderr and reads one line from the terminal. `hidden` never echoes the answer. */
   prompt(question: string, hidden: boolean): Promise<string>
   stdinIsTTY: boolean
@@ -22,6 +22,23 @@ export interface Io {
   env: Readonly<Record<string, string | undefined>>
   /** Aborted on Ctrl-C. */
   signal: AbortSignal
+}
+
+/** Collects chunks until they pass `maxBytes`, then stops pulling more, and returns at most `maxBytes + 1` bytes as text. */
+export async function readLimited(
+  chunks: AsyncIterable<Buffer>,
+  maxBytes: number,
+): Promise<string> {
+  const read: Buffer[] = []
+  let size = 0
+  for await (const chunk of chunks) {
+    read.push(chunk)
+    size += chunk.length
+    if (size > maxBytes) break
+  }
+  return Buffer.concat(read)
+    .subarray(0, maxBytes + 1)
+    .toString('utf8')
 }
 
 /** The real process: the first Ctrl-C aborts the signal, the second kills the process. */
@@ -38,11 +55,7 @@ export function nodeIo(): Io {
   return {
     stdout: process.stdout,
     stderr: process.stderr,
-    readStdin: async () => {
-      const chunks: Buffer[] = []
-      for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
-      return Buffer.concat(chunks).toString('utf8')
-    },
+    readStdin: (maxBytes) => readLimited(process.stdin, maxBytes),
     prompt: (question, hidden) =>
       ask(process.stdin, process.stderr, question, hidden, () => {
         controller.abort()
