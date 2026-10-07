@@ -4,13 +4,13 @@
 
 Checked 2026-10-07.
 
-- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40), C4 (#41), C5 (#42), C6 (#43) and C7 (#44). Run `git log --oneline -1 origin/main` for the head commit.
+- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40), C4 (#41), C5 (#42), C6 (#43), C7 (#44) and C9 (#45). Run `git log --oneline -1 origin/main` for the head commit.
 - C4 HTTP client merged in #41; Shane reviewed and closed #12.
 - C5 field resolution merged in #42 and is closed.
 - C6 issue search merged in #43 and is closed.
 - C7 hierarchy merged in #44 and is closed.
-- C9 ADF and Markdown (#17) is built on `c9-adf-markdown`: `adfToMarkdown` and `markdownToAdf` in `@jira-mgr/core/adf`, lossless on a no-edit round trip through `adf` fences, `<adf-node>` tags and `<!--adf-->` notes (see `packages/core/README.md`). Its pull request carries this handover; find it with `gh pr list --head c9-adf-markdown`.
-- Shane asked to stop after C9 (2026-10-07). The next session starts from "Start here" in `prompt.md`.
+- C9 ADF and Markdown merged in #45 and is closed: `adfToMarkdown` and `markdownToAdf` in `@jira-mgr/core/adf`, lossless on a no-edit round trip through `adf` fences, `<adf-node>` tags and `<!--adf-->` notes (see `packages/core/README.md`).
+- Work stopped after C9 at Shane's request (2026-10-07). No story is claimed. The next session starts from "Start here" in `prompt.md`.
 - Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search` (Node-only); `/issue`, `/hierarchy` and `/adf` are renderer-safe. `jm` still prints only `--help` and `--version`.
 
 ## Board
@@ -19,14 +19,14 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Closed (Done) | #9 C1, #10 C2, #11 C3, #12 C4, #13 C5, #14 C6, #15 C7 | `gh issue list --state closed --limit 200` | 2026-10-07 |
-| Open roadmap issues | 22 (Core 5, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #17 (C9) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| Closed (Done) | #9 C1, #10 C2, #11 C3, #12 C4, #13 C5, #14 C6, #15 C7, #17 C9 | `gh issue list --state closed --limit 200` | 2026-10-07 |
+| Open roadmap issues | 21 (Core 4, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
+| In progress | none | `gh issue list --label status:in-progress` | 2026-10-07 |
 | In AI or HIL review | none | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `c9-adf-markdown`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: none. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -34,7 +34,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (730 pass and 1 skipped in `core`, 10 files, measured on `c9-adf-markdown` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (730 pass and 1 skipped in `core`, 10 files, measured on `main` at bdf09d3 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -43,7 +43,7 @@ All from the repository root, under Node 24 (see Traps).
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #40 merge, 0355d37 (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #45 merge, bdf09d3 (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
 
 ## Environments
 
