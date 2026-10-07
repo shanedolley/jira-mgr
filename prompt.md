@@ -2,11 +2,12 @@
 
 ## Start Here
 
-Measured 2026-10-07 by reading open issues' blockers. The CLI is built (L1-L6 merged, all in HIL Review for Shane). Nothing can proceed without Shane:
+Measured 2026-10-08 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and `gh issue list --state open --limit 200`. #21 to #26 are closed. L7 (#27) ran with Shane on 2026-10-08. Unblocked work, in order:
 
-1. **L7 live check (#27)**: run it with Shane present, since it writes to PSAPAC. Work through `docs/runbooks/` (write the smoke checklist there first if absent) and every item collected on #27 (type change, remaining estimate, sprint moves on board 1706, worklog `adjustEstimate=auto`, attachment upload, foreign comment and worklog ids). Create throwaway issues for the writes and delete them afterwards with Shane's go-ahead; record each result on #27.
-2. **Shane's HIL reviews**: #21-#26 wait on him; the CLI milestone closes when L1-L7 close.
-3. **Desktop D1 shell (#28)**: unblocked once the CLI milestone closes. Write D2's and D4's design docs before their code.
+1. **#60**, worklog edit and delete act on a worklog from another issue (core; High, data loss). Read the worklog first and compare its issue with the key, refuse otherwise, and test it against the MSW fake. Update `docs/reference/` if an error code changes.
+2. **#61**, the doubled full stop in Jira error messages and the empty ADF doc as a worklog `comment`. Both are small CLI output fixes.
+3. **Shane's HIL review of #27**: it moves to `status:hil-review` once the runbook PR merges. Nothing else to build on it.
+4. **Desktop D1 (#28)** once Shane closes #27. Write D2's and D4's design docs before their code.
 
 ## Reading Order
 
@@ -32,7 +33,8 @@ Comment on the issue: the question, each option with its cost and what it buys, 
 
 ## Not Alone
 
-- Any write to live Jira (PSAPAC): creating, editing, transitioning or deleting issues, comments, worklogs, links or attachments. Tests never write. L7's live smoke check needs Shane present.
+- Any write to live Jira (PSAPAC): creating, editing, transitioning or deleting issues, comments, worklogs, links or attachments. Tests never write. Re-running the write section of [the L7 runbook](docs/runbooks/l7-smoke-check.md) needs Shane present.
+- Running `jm` by hand without `JM_STATE_DIR` set to a scratch folder. The real state folder holds Shane's timer and views.
 - Merging a Dependabot major version bump.
 - Code signing, notarisation, or anything that costs money.
 - Changing an accepted ADR's decision; write a new ADR instead.
