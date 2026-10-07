@@ -4,9 +4,9 @@
 
 Measured 2026-10-07 by reading every open Core issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). CLI and Desktop issues wait on all of Core.
 
-1. **C8 views and search (#16)**: no open blockers.
-2. **C10 issue writes (#18)**: no open blockers (C5 and C9 closed). CLI writes take Markdown through `markdownToAdf`.
-3. **C11 issue extras (#19)**: blocked by C10.
+1. **Finish C10 issue writes (#18)** on `c10-issue-writes`: review, push, CI (ship-it merges), proof; internal story, so the project manager moves it to Done.
+2. **C8 views and search (#16)**: no open blockers.
+3. **C11 issue extras (#19)**: blocked only by C10.
 4. **C12 timer engine (#20)**: blocked by C11.
 
 ## Reading Order

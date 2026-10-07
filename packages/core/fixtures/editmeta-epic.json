@@ -1,0 +1,936 @@
+{
+  "fields": {
+    "issuetype": {
+      "required": false,
+      "schema": {
+        "type": "issuetype",
+        "system": "issuetype"
+      },
+      "name": "Issue Type",
+      "key": "issuetype",
+      "operations": [],
+      "allowedValues": []
+    },
+    "parent": {
+      "required": false,
+      "schema": {
+        "type": "issuelink",
+        "system": "parent"
+      },
+      "name": "Parent",
+      "key": "parent",
+      "hasDefaultValue": false,
+      "operations": [
+        "set"
+      ]
+    },
+    "customfield_14850": {
+      "required": true,
+      "schema": {
+        "type": "option",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:select",
+        "customId": 14850
+      },
+      "name": "Engagement",
+      "key": "customfield_14850",
+      "operations": [
+        "set"
+      ],
+      "allowedValues": [
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16450",
+          "value": "AI Governance",
+          "id": "16450"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/27483",
+          "value": "AIAF",
+          "id": "27483",
+          "color": "PURPLE_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21683",
+          "value": "Account Management / Business Development",
+          "id": "21683",
+          "color": "GREY"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21731",
+          "value": "Coaching or Education Services",
+          "id": "21731",
+          "color": "MAGENTA"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21236",
+          "value": "Critical Data Element (CDE)",
+          "id": "21236",
+          "color": "ORANGE"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26667",
+          "value": "DQO Cloud",
+          "id": "26667",
+          "color": "YELLOW_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15870",
+          "value": "DQO (On Prem)",
+          "id": "15870"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16487",
+          "value": "DLM - Data / Records Lifecycle Management",
+          "id": "16487"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25720",
+          "value": "Ignite Premier",
+          "id": "25720",
+          "color": "GREEN_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21732",
+          "value": "Ignite Premium (DIP & DQ)",
+          "id": "21732",
+          "color": "GREY_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/36694",
+          "value": "Ignite Standard",
+          "id": "36694",
+          "color": "GREEN"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21006",
+          "value": "Ignite Ultimate",
+          "id": "21006"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15868",
+          "value": "Engagement Management",
+          "id": "15868"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/24258",
+          "value": "Ironclad (BHP Privacy Team)",
+          "id": "24258",
+          "color": "GREY_DARKEST"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/22264",
+          "value": "Non Collibra Engagement",
+          "id": "22264",
+          "color": "GREY_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16485",
+          "value": "PoC",
+          "id": "16485"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/36693",
+          "value": "REA Ultimate",
+          "id": "36693",
+          "color": "YELLOW"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15869",
+          "value": "REA ",
+          "id": "15869"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/27133",
+          "value": "Snowflake (Nexus)",
+          "id": "27133",
+          "color": "GREY_DARKEST"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16054",
+          "value": "Time & Materials",
+          "id": "16054"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21466",
+          "value": "Value Consulting",
+          "id": "21466",
+          "color": "RED"
+        }
+      ]
+    },
+    "description": {
+      "required": false,
+      "schema": {
+        "type": "string",
+        "system": "description"
+      },
+      "name": "Description",
+      "key": "description",
+      "operations": [
+        "set"
+      ]
+    },
+    "customfield_14851": {
+      "required": false,
+      "schema": {
+        "type": "string",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:textfield",
+        "customId": 14851
+      },
+      "name": "Contacts",
+      "key": "customfield_14851",
+      "operations": [
+        "set"
+      ]
+    },
+    "customfield_16136": {
+      "required": false,
+      "schema": {
+        "type": "option",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:select",
+        "customId": 16136
+      },
+      "name": "PS Project Templates",
+      "key": "customfield_16136",
+      "operations": [
+        "set"
+      ],
+      "allowedValues": [
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21928",
+          "value": "AI Governance",
+          "id": "21928",
+          "color": "PURPLE_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21237",
+          "value": "Critical Data Element (CDE)",
+          "id": "21237",
+          "color": "YELLOW"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/26666",
+          "value": "DQO Cloud",
+          "id": "26666",
+          "color": "ORANGE_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21197",
+          "value": "DQO Rapid Start (On Prem)",
+          "id": "21197",
+          "color": "RED"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21196",
+          "value": "Resident Architect (REA)",
+          "id": "21196"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/27482",
+          "value": "AIAF",
+          "id": "27482",
+          "color": "ORANGE_DARKER"
+        }
+      ]
+    },
+    "customfield_14199": {
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": "Goals",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:goals",
+        "customId": 14199
+      },
+      "name": "Goals",
+      "key": "customfield_14199",
+      "operations": [
+        "set"
+      ],
+      "allowedValues": []
+    },
+    "fixVersions": {
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": "version",
+        "system": "fixVersions"
+      },
+      "name": "Fix versions",
+      "key": "fixVersions",
+      "operations": [
+        "set",
+        "add",
+        "remove"
+      ],
+      "allowedValues": [
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/version/31865",
+          "id": "31865",
+          "description": "BHP Sentinel documentation and planning to be completed. This will form the backbone of the remaining project",
+          "name": "BHP Sentinel: Planning Completed",
+          "archived": false,
+          "released": false,
+          "startDate": "2026-09-07",
+          "userStartDate": "07-Sep-2026",
+          "projectId": 12606
+        }
+      ]
+    },
+    "customfield_13600": {
+      "required": false,
+      "schema": {
+        "type": "team",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:atlassian-team",
+        "customId": 13600,
+        "configuration": {
+          "com.atlassian.jira.plugin.system.customfieldtypes:atlassian-team": true
+        }
+      },
+      "name": "Team",
+      "key": "customfield_13600",
+      "autoCompleteUrl": "https://engineering-collibra.atlassian.net/gateway/api/v1/recommendations",
+      "operations": [
+        "set"
+      ]
+    },
+    "attachment": {
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": "attachment",
+        "system": "attachment"
+      },
+      "name": "Attachment",
+      "key": "attachment",
+      "operations": [
+        "set",
+        "copy"
+      ]
+    },
+    "customfield_14849": {
+      "required": true,
+      "schema": {
+        "type": "option",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:select",
+        "customId": 14849
+      },
+      "name": "Customer",
+      "key": "customfield_14849",
+      "operations": [
+        "set"
+      ],
+      "allowedValues": [
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25068",
+          "value": "ACU",
+          "id": "25068",
+          "color": "GREEN_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/36640",
+          "value": "ANZ",
+          "id": "36640",
+          "color": "GREEN"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15856",
+          "value": "Australia Post",
+          "id": "15856"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25718",
+          "value": "AIS (Advanced Info Service)",
+          "id": "25718",
+          "color": "RED_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21730",
+          "value": "Australian Retirement Trust",
+          "id": "21730",
+          "color": "GREEN"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21203",
+          "value": "Axiata XL Indonesia",
+          "id": "21203",
+          "color": "GREEN"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15857",
+          "value": "Bank of East Asia",
+          "id": "15857"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21798",
+          "value": "Bendigo Bank",
+          "id": "21798",
+          "color": "GREY_DARKEST"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16120",
+          "value": "BHP",
+          "id": "16120"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15858",
+          "value": "Coles",
+          "id": "15858"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15927",
+          "value": "DBS Bank Ltd.",
+          "id": "15927"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21199",
+          "value": "Dept. Communities & Justice",
+          "id": "21199",
+          "color": "TEAL"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21104",
+          "value": "Dialog Axiata",
+          "id": "21104",
+          "color": "ORANGE"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25721",
+          "value": "GEL (Great Eastern Life)",
+          "id": "25721",
+          "color": "TEAL_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15859",
+          "value": "IAG",
+          "id": "15859"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16483",
+          "value": "Jera",
+          "id": "16483"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15860",
+          "value": "Macquarie",
+          "id": "15860"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25103",
+          "value": "Maybank",
+          "id": "25103",
+          "color": "GREEN_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21103",
+          "value": "MAS Holdings",
+          "id": "21103",
+          "color": "GREY_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15861",
+          "value": "NAB",
+          "id": "15861"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21198",
+          "value": "Ocean Network Express",
+          "id": "21198",
+          "color": "TEAL"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21005",
+          "value": "Orica",
+          "id": "21005"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21268",
+          "value": "Petronas",
+          "id": "21268",
+          "color": "ORANGE"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21202",
+          "value": "Powerlink Transmission Services",
+          "id": "21202",
+          "color": "PURPLE"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16486",
+          "value": "QBE",
+          "id": "16486"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25102",
+          "value": "Rio Tinto",
+          "id": "25102",
+          "color": "GREY_DARKEST"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15862",
+          "value": "RACV",
+          "id": "15862"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15863",
+          "value": "Santos",
+          "id": "15863"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21105",
+          "value": "SG Temasek",
+          "id": "21105",
+          "color": "TEAL"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15867",
+          "value": "Woolworths",
+          "id": "15867"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15864",
+          "value": "Suncorp",
+          "id": "15864"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15865",
+          "value": "Sydney Water",
+          "id": "15865"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25101",
+          "value": "Techcom Bank",
+          "id": "25101",
+          "color": "YELLOW_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21796",
+          "value": "TLC - The Lottery Corporation",
+          "id": "21796",
+          "color": "RED_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/25719",
+          "value": "The University of Sydney",
+          "id": "25719",
+          "color": "ORANGE_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21200",
+          "value": "TMR - Dept. Transport & Main Roads QLD",
+          "id": "21200",
+          "color": "GREY_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15866",
+          "value": "TfNSW (Transport for NSW)",
+          "id": "15866"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21201",
+          "value": "Treasury Wines Estates",
+          "id": "21201",
+          "color": "GREY"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16087",
+          "value": "Worley",
+          "id": "16087"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16451",
+          "value": "Collibra (Internal team)",
+          "id": "16451"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21979",
+          "value": "Collibra (Internal template)",
+          "id": "21979",
+          "color": "ORANGE_DARKER"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/36508",
+          "value": "ABN AMRO (EMEA)",
+          "id": "36508",
+          "color": "RED"
+        }
+      ]
+    },
+    "summary": {
+      "required": true,
+      "schema": {
+        "type": "string",
+        "system": "summary"
+      },
+      "name": "Summary",
+      "key": "summary",
+      "operations": [
+        "set"
+      ]
+    },
+    "issuerestriction": {
+      "required": false,
+      "schema": {
+        "type": "issuerestriction",
+        "system": "issuerestriction"
+      },
+      "name": "Restrict to",
+      "key": "issuerestriction",
+      "operations": [
+        "set"
+      ],
+      "allowedValues": []
+    },
+    "customfield_14147": {
+      "required": false,
+      "schema": {
+        "type": "any",
+        "custom": "com.atlassian.jira.plugins.jira-development-integration-plugin:vulnerabilitycf",
+        "customId": 14147
+      },
+      "name": "Vulnerability",
+      "key": "customfield_14147",
+      "operations": [
+        "set"
+      ]
+    },
+    "reporter": {
+      "required": false,
+      "schema": {
+        "type": "user",
+        "system": "reporter"
+      },
+      "name": "Reporter",
+      "key": "reporter",
+      "autoCompleteUrl": "https://engineering-collibra.atlassian.net/rest/api/3/user/recommend?context=Reporter&issueKey=PSAPAC-3116",
+      "operations": [
+        "set"
+      ]
+    },
+    "customfield_15212": {
+      "required": false,
+      "schema": {
+        "type": "string",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:textfield",
+        "customId": 15212
+      },
+      "name": "Outcome",
+      "key": "customfield_15212",
+      "operations": [
+        "set"
+      ]
+    },
+    "priority": {
+      "required": false,
+      "schema": {
+        "type": "priority",
+        "system": "priority"
+      },
+      "name": "Priority",
+      "key": "priority",
+      "operations": [
+        "set"
+      ],
+      "allowedValues": [
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/11067",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/major.svg",
+          "name": "Problem",
+          "id": "11067"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/1",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/blocker_new.svg",
+          "name": "Blocker",
+          "id": "1"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/2",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/critical_new.svg",
+          "name": "Critical",
+          "id": "2"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/3",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/major_new.svg",
+          "name": "Major",
+          "id": "3"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/4",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/minor_new.svg",
+          "name": "Minor",
+          "id": "4"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/5",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/trivial_new.svg",
+          "name": "Trivial",
+          "id": "5"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/10033",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priority_major.gif",
+          "name": "Question",
+          "id": "10033"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/10034",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priority_major.gif",
+          "name": "Business critical",
+          "id": "10034"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/10035",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priority_major.gif",
+          "name": "Major problem",
+          "id": "10035"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/11100",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/medium.svg",
+          "name": "P1",
+          "id": "11100"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/priority/11101",
+          "iconUrl": "https://engineering-collibra.atlassian.net/images/icons/priorities/medium.svg",
+          "name": "P2",
+          "id": "11101"
+        }
+      ]
+    },
+    "customfield_14129": {
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": "design.field.name",
+        "custom": "com.atlassian.jira.plugins.jira-development-integration-plugin:designcf",
+        "customId": 14129
+      },
+      "name": "Design",
+      "key": "customfield_14129",
+      "autoCompleteUrl": "",
+      "operations": [
+        "set"
+      ]
+    },
+    "customfield_13810": {
+      "required": false,
+      "schema": {
+        "type": "string",
+        "custom": "com.pyxis.greenhopper.jira:jsw-issue-color",
+        "customId": 13810
+      },
+      "name": "Issue colour",
+      "key": "customfield_13810",
+      "operations": [
+        "set"
+      ]
+    },
+    "labels": {
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": "string",
+        "system": "labels"
+      },
+      "name": "Labels",
+      "key": "labels",
+      "autoCompleteUrl": "https://engineering-collibra.atlassian.net/rest/api/1.0/labels/1449957/suggest?query=",
+      "operations": [
+        "add",
+        "set",
+        "remove"
+      ]
+    },
+    "customfield_11600": {
+      "required": false,
+      "schema": {
+        "type": "any",
+        "custom": "com.pyxis.greenhopper.jira:gh-lexo-rank",
+        "customId": 11600
+      },
+      "name": "Rank",
+      "key": "customfield_11600",
+      "operations": [
+        "set"
+      ]
+    },
+    "customfield_10116": {
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": "option",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:multicheckboxes",
+        "customId": 10116
+      },
+      "name": "Flagged",
+      "key": "customfield_10116",
+      "operations": [
+        "add",
+        "set",
+        "remove"
+      ],
+      "allowedValues": [
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/33795",
+          "value": "Impediment",
+          "id": "33795"
+        }
+      ]
+    },
+    "customfield_13800": {
+      "required": false,
+      "schema": {
+        "type": "any",
+        "custom": "com.atlassian.jira.plugins.jira-development-integration-plugin:devsummarycf",
+        "customId": 13800
+      },
+      "name": "Development",
+      "key": "customfield_13800",
+      "operations": [
+        "set"
+      ]
+    },
+    "environment": {
+      "required": false,
+      "schema": {
+        "type": "string",
+        "system": "environment"
+      },
+      "name": "Environment",
+      "key": "environment",
+      "operations": [
+        "set"
+      ]
+    },
+    "customfield_14915": {
+      "required": false,
+      "schema": {
+        "type": "option",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:select",
+        "customId": 14915
+      },
+      "name": "Partner",
+      "key": "customfield_14915",
+      "operations": [
+        "set"
+      ],
+      "allowedValues": [
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15922",
+          "value": "Arthur solutions",
+          "id": "15922"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15923",
+          "value": "Billigence",
+          "id": "15923"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/16484",
+          "value": "Capgemini",
+          "id": "16484"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15924",
+          "value": "EPAM",
+          "id": "15924"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21004",
+          "value": "Google Cloud",
+          "id": "21004"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15925",
+          "value": "intelia",
+          "id": "15925"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21136",
+          "value": "Nagarro",
+          "id": "21136",
+          "color": "GREEN"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/15926",
+          "value": "NCS",
+          "id": "15926"
+        },
+        {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/customFieldOption/21799",
+          "value": "Deloitte",
+          "id": "21799",
+          "color": "GREEN_DARKER"
+        }
+      ]
+    },
+    "duedate": {
+      "required": false,
+      "schema": {
+        "type": "date",
+        "system": "duedate"
+      },
+      "name": "Due date",
+      "key": "duedate",
+      "operations": [
+        "set"
+      ]
+    },
+    "customfield_13808": {
+      "required": false,
+      "schema": {
+        "type": "date",
+        "custom": "com.atlassian.jira.plugin.system.customfieldtypes:datepicker",
+        "customId": 13808
+      },
+      "name": "Start date",
+      "key": "customfield_13808",
+      "operations": [
+        "set"
+      ]
+    },
+    "comment": {
+      "required": false,
+      "schema": {
+        "type": "comments-page",
+        "system": "comment"
+      },
+      "name": "Comment",
+      "key": "comment",
+      "operations": [
+        "add",
+        "edit",
+        "remove"
+      ]
+    },
+    "issuelinks": {
+      "required": false,
+      "schema": {
+        "type": "array",
+        "items": "issuelinks",
+        "system": "issuelinks"
+      },
+      "name": "Linked work items",
+      "key": "issuelinks",
+      "autoCompleteUrl": "https://engineering-collibra.atlassian.net/rest/api/3/issue/picker?currentProjectId=&showSubTaskParent=true&showSubTasks=true&currentIssueKey=PSAPAC-3116&query=",
+      "operations": [
+        "add",
+        "copy"
+      ]
+    },
+    "assignee": {
+      "required": false,
+      "schema": {
+        "type": "user",
+        "system": "assignee"
+      },
+      "name": "Assignee",
+      "key": "assignee",
+      "autoCompleteUrl": "https://engineering-collibra.atlassian.net/rest/api/3/user/assignable/search?issueKey=PSAPAC-3116&query=",
+      "operations": [
+        "set"
+      ]
+    }
+  }
+}
