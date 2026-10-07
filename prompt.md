@@ -4,10 +4,10 @@
 
 Measured 2026-10-07 by reading every open Core issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). CLI and Desktop issues wait on all of Core.
 
-1. **Finish C4 HTTP client (#12)**: review passed; pushed on `c4-http-client`. Watch CI, post proof, and have the project manager move the issue to HIL Review (it handles credentials).
-2. **C9 ADF and Markdown (#17)**: no open blockers; can start now.
-3. **C5 field resolution (#13)**: blocked only by C4. Use `createHttpClient` from `@jira-mgr/core/http`.
-4. **C6 issue search (#14)**: blocked by C5. C10 (#18) waits on C5 and C9.
+1. **Finish C5 field resolution (#13)** on `c5-field-resolution`: review, push, CI, proof; internal story, so the project manager moves it to Done.
+2. **C9 ADF and Markdown (#17)**: no open blockers.
+3. **C6 issue search (#14)**: blocked only by C5.
+4. **C10 issue writes (#18)**: blocked by C5 and C9.
 
 ## Reading Order
 

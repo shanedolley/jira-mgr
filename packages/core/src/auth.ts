@@ -3,7 +3,9 @@ import { spawn } from 'node:child_process'
 import { z } from 'zod'
 
 import { JiraMgrError } from './errors.js'
-import { readSettings, writeSettings } from './state.js'
+import { resolveFields } from './fields.js'
+import { createHttpClient } from './http.js'
+import { readSettings, writeFields, writeSettings } from './state.js'
 
 const SECURITY = '/usr/bin/security'
 const KEYCHAIN_SERVICE = 'jira-mgr'
@@ -218,10 +220,14 @@ async function verify(
   }
 }
 
-/** Verifies the credentials against Jira, then stores the token in the Keychain and the rest in settings. */
+/**
+ * Verifies the credentials against Jira and resolves the custom field ids, then stores the token
+ * in the Keychain, the rest in settings and the ids in `fields.json`. A missing or ambiguous
+ * field fails the login before anything is stored.
+ */
 export async function login(
   input: LoginInput,
-  deps: { keychain?: Keychain; timeoutMs?: number } = {},
+  deps: { keychain?: Keychain; timeoutMs?: number; now?: () => Date } = {},
 ): Promise<void> {
   const parsed = loginSchema.safeParse(input)
   if (!parsed.success) {
@@ -232,6 +238,19 @@ export async function login(
   assertStorable(email, token)
   const settings = await readSettings()
   await verify(siteUrl, email, token, deps.timeoutMs ?? VERIFY_TIMEOUT_MS)
+  // The token is not stored yet, so the client signs with the credentials just verified.
+  const http = createHttpClient({
+    credentials: () => Promise.resolve({ siteUrl, email, token }),
+    timeoutMs: deps.timeoutMs,
+  })
+  const ids = await resolveFields(http, projectKey, settings.fieldOverrides)
+  // fields.json goes first, so a failed write of it leaves no token or settings behind.
+  await writeFields({
+    site: siteUrl,
+    project: projectKey,
+    resolvedAt: (deps.now?.() ?? new Date()).toISOString(),
+    ids,
+  })
   const keychain = deps.keychain ?? createKeychain()
   await keychain.set(email, token)
   await writeSettings({ ...settings, siteUrl, projectKey, email })

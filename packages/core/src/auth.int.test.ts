@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { delay, http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { server, JIRA_SITE } from '../test/msw.js'
+import { server, JIRA_SITE, serveCreatemeta } from '../test/msw.js'
 import {
   createKeychain,
   getCredentials,
@@ -15,7 +15,7 @@ import {
   type SecurityRunner,
 } from './auth.js'
 import { JiraMgrError } from './errors.js'
-import { readSettings, writeSettings } from './state.js'
+import { readFields, readSettings, writeSettings } from './state.js'
 
 const EMAIL = 'shane@koinon.com.au'
 const OTHER_EMAIL = 'someone@example.com'
@@ -56,6 +56,8 @@ let dir: string
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'jm-auth-'))
   process.env.JM_STATE_DIR = dir
+  // login resolves the custom fields after /myself; a test that needs other metadata serves it again.
+  serveCreatemeta()
 })
 
 afterEach(async () => {
@@ -246,6 +248,76 @@ describe('login', () => {
     const { keychain, calls } = fakeSecurity()
     expect((await failure(login(input, { keychain }))).code).toBe('jira_error')
     expect(calls).toEqual([])
+  })
+
+  it('resolves the custom fields and writes fields.json', async () => {
+    serveMyself(200)
+    await login(input, {
+      keychain: fakeSecurity().keychain,
+      now: () => new Date('2026-10-07T01:02:03.000Z'),
+    })
+    expect(await readFields()).toEqual({
+      site: JIRA_SITE,
+      project: 'PSAPAC',
+      resolvedAt: '2026-10-07T01:02:03.000Z',
+      ids: {
+        customer: 'customfield_14849',
+        engagement: 'customfield_14850',
+        sprint: 'customfield_10600',
+        startDate: 'customfield_13808',
+        timeRemaining: 'customfield_21785',
+      },
+    })
+  })
+
+  it('fails on a missing field and stores nothing', async () => {
+    serveMyself(200)
+    serveCreatemeta({ edit: (_type, fields) => fields.filter((f) => f.name !== 'Sprint') })
+    const { keychain, calls } = fakeSecurity()
+    const error = await failure(login(input, { keychain }))
+    expect(error.code).toBe('validation_failed')
+    expect(error.message).toContain('Sprint (missing)')
+    expect(calls).toEqual([])
+    expect((await readSettings()).email).toBeUndefined()
+    expect(await readFields()).toBeNull()
+  })
+
+  it('fails on an ambiguous field and stores nothing', async () => {
+    serveMyself(200)
+    serveCreatemeta({
+      edit: (type, fields) =>
+        type === 'epic' ? [...fields, { key: 'customfield_99999', name: 'Customer' }] : fields,
+    })
+    const { keychain, calls } = fakeSecurity()
+    const error = await failure(login(input, { keychain }))
+    expect(error.message).toContain('Customer (ambiguous: customfield_14849, customfield_99999)')
+    expect(calls).toEqual([])
+    expect(await readFields()).toBeNull()
+  })
+
+  it('fails when createmeta for one issue type answers 500 and stores nothing', async () => {
+    serveMyself(200)
+    server.use(
+      http.get(`${JIRA_SITE}/rest/api/3/issue/createmeta/PSAPAC/issuetypes/11502`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    )
+    const { keychain, calls } = fakeSecurity()
+    expect((await failure(login(input, { keychain }))).code).toBe('jira_error')
+    expect(calls).toEqual([])
+    expect((await readSettings()).email).toBeUndefined()
+    expect(await readFields()).toBeNull()
+  })
+
+  it('applies fieldOverrides from settings', async () => {
+    serveMyself(200)
+    serveCreatemeta({
+      edit: (type, fields) =>
+        type === 'epic' ? [...fields, { key: 'customfield_99999', name: 'Customer' }] : fields,
+    })
+    await writeSettings({ fieldOverrides: { customer: 'customfield_99999' } })
+    await login(input, { keychain: fakeSecurity().keychain })
+    expect((await readFields())?.ids.customer).toBe('customfield_99999')
   })
 
   it('refuses a redirect and never contacts the target', async () => {

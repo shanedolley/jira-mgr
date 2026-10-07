@@ -4,9 +4,10 @@
 
 Checked 2026-10-07.
 
-- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) and C3 (#40). Run `git log --oneline -1 origin/main` for the head commit.
-- C4 HTTP client (#12) is on `c4-http-client`: `@jira-mgr/core/http` with Basic auth, JSON and multipart, abortable `Retry-After` retries, status mapping and redacted `JM_DEBUG` lines. Its security review passed on the third round, with mutation checks proving each regression test. Its pull request carries this handover; find it with `gh pr list --head c4-http-client`.
-- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http` (Node-only). `jm` still prints only `--help` and `--version`.
+- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40) and C4 (#41). Run `git log --oneline -1 origin/main` for the head commit.
+- C4 HTTP client merged in #41 and waits in HIL Review for Shane (it sends credentials).
+- C5 field resolution (#13) is built on `c5-field-resolution`: `@jira-mgr/core/fields` resolves the five custom fields by name during `login`, and `getFieldIds()` returns them with overrides. Its pull request carries this handover; find it with `gh pr list --head c5-field-resolution`.
+- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields` (Node-only). `jm` still prints only `--help` and `--version`.
 
 ## Board
 
@@ -15,13 +16,13 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 | Measure | Value | Command | Date |
 |---|---|---|---|
 | Closed (Done) | #9 C1, #10 C2, #11 C3 | `gh issue list --state closed --limit 200` | 2026-10-07 |
-| Open roadmap issues | 26 (Core 9, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #12 (C4) | `gh issue list --label status:in-progress` | 2026-10-07 |
-| In AI or HIL review | none | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
+| Open roadmap issues | 26 (Core 9, CLI 7, Desktop 10); #12 stays open until Shane closes it | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
+| In progress | #13 (C5) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| In AI or HIL review | #12 (C4, HIL) | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `c4-http-client`, pushed after its review passed. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `c5-field-resolution`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -29,7 +30,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (130 pass and 1 skipped in `core`, 6 files, measured on `c4-http-client` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (149 pass and 1 skipped in `core`, 7 files, measured on `c5-field-resolution` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -42,7 +43,7 @@ No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title
 
 ## Environments
 
-- Jira: Collibra site `engineering-collibra.atlassian.net`, project PSAPAC. PSAPAC's measured shape (issue types, field ids, statuses, link types, sprints, counts) is in [round 2](docs/discovery/2026-10-07-product-grilling/round-2.md), measured 2026-10-07.
+- Jira: Collibra site `engineering-collibra.atlassian.net`, project PSAPAC. PSAPAC's measured shape (issue types, field ids, statuses, link types, sprints, counts) is in [round 2](docs/discovery/2026-10-07-product-grilling/round-2.md), measured 2026-10-07. Correction from the recorded createmeta fixtures (2026-10-07): Sprint (10600) is on Task, Bug, Story and Subtask, absent only on Epic; Start date (13808) is on Bug, Story and Epic, absent on Task and Subtask. Field presence comes from createmeta and editmeta, not from round 2.
 - Credentials: `~/.claude/bin/kj collibra` reads the Keychain item `kothar-jira-collibra` with `COLLIBRA_JIRA_EMAIL`, and the fixture recorder borrows that token through `JM_JIRA_TOKEN`. jira-mgr's own item (service `jira-mgr`, account = email) is written by `login` from `@jira-mgr/core/auth`, but no real login has run, so it does not exist (`security find-generic-password -s jira-mgr` exits 44, 2026-10-07).
 - Recorded fixtures are committed as recorded, with no scrubbing (Q60). Never record request headers.
 
