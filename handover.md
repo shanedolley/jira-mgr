@@ -4,12 +4,14 @@
 
 Checked 2026-10-07.
 
-- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40), C4 (#41), C5 (#42) and C6 (#43). Run `git log --oneline -1 origin/main` for the head commit.
-- C4 HTTP client merged in #41 and waits in HIL Review for Shane (it sends credentials).
+- `main` holds the scaffold (#1), roadmap and handover (#7), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5), C1 (#38), C2 (#39) C3 (#40), C4 (#41), C5 (#42), C6 (#43) and C7 (#44). Run `git log --oneline -1 origin/main` for the head commit.
+- C4 HTTP client merged in #41; Shane reviewed and closed #12.
 - C5 field resolution merged in #42 and is closed.
 - C6 issue search merged in #43 and is closed.
-- C7 hierarchy (#15) is built on `c7-hierarchy`: `buildHierarchy(issues, options)` in `@jira-mgr/core/hierarchy`, a pure renderer-safe function returning plain `CustomerGroup[]`. Its pull request carries this handover; find it with `gh pr list --head c7-hierarchy`.
-- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search` (Node-only); `/issue` and `/hierarchy` are renderer-safe. `jm` still prints only `--help` and `--version`.
+- C7 hierarchy merged in #44 and is closed.
+- C9 ADF and Markdown (#17) is built on `c9-adf-markdown`: `adfToMarkdown` and `markdownToAdf` in `@jira-mgr/core/adf`, lossless on a no-edit round trip through `adf` fences, `<adf-node>` tags and `<!--adf-->` notes (see `packages/core/README.md`). Its pull request carries this handover; find it with `gh pr list --head c9-adf-markdown`.
+- Shane asked to stop after C9 (2026-10-07). The next session starts from "Start here" in `prompt.md`.
+- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search` (Node-only); `/issue`, `/hierarchy` and `/adf` are renderer-safe. `jm` still prints only `--help` and `--version`.
 
 ## Board
 
@@ -17,14 +19,14 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Closed (Done) | #9 C1, #10 C2, #11 C3, #13 C5, #14 C6 | `gh issue list --state closed --limit 200` | 2026-10-07 |
-| Open roadmap issues | 24 (Core 7, CLI 7, Desktop 10); #12 stays open until Shane closes it | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #15 (C7) | `gh issue list --label status:in-progress` | 2026-10-07 |
-| In AI or HIL review | #12 (C4, HIL) | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
+| Closed (Done) | #9 C1, #10 C2, #11 C3, #12 C4, #13 C5, #14 C6, #15 C7 | `gh issue list --state closed --limit 200` | 2026-10-07 |
+| Open roadmap issues | 22 (Core 5, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
+| In progress | #17 (C9) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| In AI or HIL review | none | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `c7-hierarchy`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `c9-adf-markdown`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -32,7 +34,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (194 pass and 1 skipped in `core`, 9 files, measured on `c7-hierarchy` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (730 pass and 1 skipped in `core`, 10 files, measured on `c9-adf-markdown` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -55,7 +57,7 @@ No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title
 |---|---|---|
 | none open | | |
 
-Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors visible as dimmed context (orchestrator decision in C7, reported to Shane); internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review (adopted by Shane); Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; roadmap approved and merged (#7); Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10. zod approved as core's validation library (C2). View filters are multi-value arrays; `internal` errors exit 1.
+Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors visible as dimmed context (orchestrator decision in C7, reported to Shane); internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review (adopted by Shane); Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; roadmap approved and merged (#7); Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10. zod approved as core's validation library (C2); `marked` approved as core's Markdown lexer (C9). View filters are multi-value arrays; `internal` errors exit 1.
 
 ## Traps
 

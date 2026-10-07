@@ -1,0 +1,33 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "523823",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/523823",
+  "key": "PSAPAC-19",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "mediaSingle",
+          "attrs": {
+            "layout": "align-start"
+          },
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "f06ee6e2-999b-491f-acb0-f299310206ec",
+                "alt": "image-20250512-035614.png",
+                "collection": "",
+                "height": 738,
+                "width": 1322
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

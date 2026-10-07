@@ -1,0 +1,1458 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "1087754",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1087754",
+  "key": "PSAPAC-1637",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Migrate DLM Op Model to DEV"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Prepare a “safe” cma file containing just the custom DLM asset types and their relations to themselves (i.e. excluding relations to OOTB asset types) including:"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Custom Asset Types",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Jurisdiction (Local) (NOTE: This is NOT the asset type of the same name used in Data Privacy)"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: Line of Business "
+                            },
+                            {
+                              "type": "text",
+                              "text": "operates within / is jurisdiction for",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Jurisdiction (Local) relation"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Location (of a Server) (optional)",
+                      "marks": [
+                        {
+                          "type": "strike"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Regulator"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Obligation"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: Obligation "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / complies with",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Policy relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: Obligation "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / complies with",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Data Domain relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove Obligation "
+                            },
+                            {
+                              "type": "text",
+                              "text": "requires / is required by",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Data Quality Rule relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove Obligation "
+                            },
+                            {
+                              "type": "text",
+                              "text": "has data quality dimension / is data quality dimension of",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Data Quality Dimension relation"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Retention & Disposal Schedule"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: Policy "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / complies with",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Retention & Disposal Schedule"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: Retention & Disposal Schedule "
+                            },
+                            {
+                              "type": "text",
+                              "text": "sequences disposal of / disposal sequenced by",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " System relation relation"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Retention Instance (the asset type formerly known as “Applied Sentence”)"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: Retention Instance "
+                            },
+                            {
+                              "type": "text",
+                              "text": "authorises disposal of records in / disposal authorised by",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " System relation"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Calendar"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: Calendar "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / constrains records to those within",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Data Domain relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: Calendar "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / constrains records to those within",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " System relation"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Server (hosts a System in a given Location, used for data sovereignty traceability) (optional)",
+                      "marks": [
+                        {
+                          "type": "strike"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Remove: System ",
+                              "marks": [
+                                {
+                                  "type": "strike"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": "is hosted in / hosts",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                },
+                                {
+                                  "type": "strike"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Location relation",
+                              "marks": [
+                                {
+                                  "type": "strike"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Existing BHP Asset Type Op Model Integration:",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Domain"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Obligation "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / complies with",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Data Domain relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Calendar "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / constrains records to those within",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Data Domain relation"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Concept (used as a de facto Data Domain sub-type, NOT as intended per Guided Stewardship Op Model)"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Obligation "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / complies with",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Data Concept relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Calendar "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / constrains records to those within",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Data Concept relation"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Business Application (the OOTB “System” asset type which has been renamed"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Calendar "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / constrains records to those within",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Business Application relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Retention Instance "
+                            },
+                            {
+                              "type": "text",
+                              "text": "authorises disposal of records in / disposal authorised by",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Business Application relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Business Application ",
+                              "marks": [
+                                {
+                                  "type": "strike"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": "is hosted in / hosts",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                },
+                                {
+                                  "type": "strike"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Location relation",
+                              "marks": [
+                                {
+                                  "type": "strike"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Line of Business"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Line of Business "
+                            },
+                            {
+                              "type": "text",
+                              "text": "operates within / is jurisdiction for",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Jurisdiction (Local) relation"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Policy"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Obligation "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / complies with",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Policy relation"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Add: Policy "
+                            },
+                            {
+                              "type": "text",
+                              "text": "applies to / complies with",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Retention & Disposal Schedule"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Manual Page Layout:",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Jurisdiction (Local) (NOTE: This is NOT the asset type of the same name used in Data Privacy)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Location (of a Server) (optional)",
+                      "marks": [
+                        {
+                          "type": "strike"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Regulator"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Obligation"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Retention & Disposal Schedule"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Retention Instance (the asset type formerly known as “Applied Sentence”)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Calendar"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Server",
+                      "marks": [
+                        {
+                          "type": "strike"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Policy"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Business Application"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Domain"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Concept"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Line of Business"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Ignoring the following BHP custom asset types:"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Domain Template"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "To Do:"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Add:"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Business Qualifier "
+                            },
+                            {
+                              "type": "text",
+                              "text": "qualifies / is qualified by",
+                              "marks": [
+                                {
+                                  "type": "em"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "text": " Asset to target asset types as required (Traceability Diagrams filtering)"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Traceability Diagrams",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Lifecycle Management (Simple)"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Views in Communities & Domains",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Governance"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Business Qualifiers"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Calendars"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Data Retention & Disposal Schedules"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Jurisdictions & Locations"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Obligations"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Regulators"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Sample Content"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Jurisdictions for BHP"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Australia (and States/Territories), Chile, Brazil, Canada, Peru, United States of America"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Calendars"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Australia FY"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

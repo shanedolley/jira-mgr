@@ -1,0 +1,107 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "699688",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/699688",
+  "key": "PSAPAC-686",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph"
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Hi Vani,"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "As you are aware, we did a logic change in the Ataccama Collibra post processing Integration plan and as part of the change going forward all failing Metrics that have a closed issue attached to it, will have a new Issue created to track the Threshold breach (previously the closed Issue's description was getting updated without a status change)"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "After turning on the new logic, we are finding a lot of metrics trying to create a new Issue but the API call returning a 403 error. When we tried to debug the JSON call, the error message is as below "
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"statusCode\":403,\"titleMessage\":\"Not authorized\",\"helpMessage\":\"Sign in or contact your administrator to change your permissions.\",\"userMessage\":\"You don't have view permissions for all the representations.\",\"errorCode\":\"noViewPermissionResources\",\"properties\":{}}"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "This is strange as there is an already existing closed Issue attached with these metrics suggesting the behavious change of the call being a recent issue."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Can you please look into this and help us with resolving the problem so that we can flag metrics failure appropriately going forward ?"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Please find a few examples of metrics that are failing to create an issue due to this 403 response below for your reference and analysis."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Kindly let me know if you need any further details from my end."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Thanks,"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Sriman"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

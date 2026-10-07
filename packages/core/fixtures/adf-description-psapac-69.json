@@ -1,0 +1,30 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "527728",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/527728",
+  "key": "PSAPAC-69",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "mediaGroup",
+          "content": [
+            {
+              "type": "media",
+              "attrs": {
+                "type": "file",
+                "id": "d33c9feb-9b28-4f5c-a692-b69f4f799c9e",
+                "collection": ""
+              }
+            }
+          ]
+        },
+        {
+          "type": "paragraph"
+        }
+      ]
+    }
+  }
+}

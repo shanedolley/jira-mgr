@@ -1,0 +1,45 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "672744",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/672744",
+  "key": "PSAPAC-298",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Created stories for 4 REA Qtr Reviews and scheduled in the calendar "
+            },
+            {
+              "type": "inlineCard",
+              "attrs": {
+                "url": "https://engineering-collibra.atlassian.net/browse/PSAPAC-3"
+              }
+            },
+            {
+              "type": "text",
+              "text": " "
+            },
+            {
+              "type": "hardBreak"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Will need to add review 3 & 4 to future sprints next year"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "695876",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/695876",
+  "key": "PSAPAC-619",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "https://productresources.collibra.com/docs/collibra/dqc/latest/Content/DataQuality/DQAdmin/Pendo.htm",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://productresources.collibra.com/docs/collibra/dqc/latest/Content/DataQuality/DQAdmin/Pendo.htm"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "This was NOT configured during Rapid Start as requested. Customer will now need to raise a CR for network team."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "CR will need to include details of data sent."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "mediaInline",
+              "attrs": {
+                "id": "ece60a2a-91d4-48d5-8037-bdf6d49da42f",
+                "collection": "",
+                "type": "file"
+              }
+            },
+            {
+              "type": "text",
+              "text": " "
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "1094163",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1094163",
+  "key": "PSAPAC-1693",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "An IAG colleague had sent a message to Charles asking if Collibra can automatically create data products that are described in a DBT manifest that is ingested into Collibra"
+            }
+          ],
+          "attrs": {
+            "localId": "ef4094692b9b"
+          }
+        },
+        {
+          "type": "orderedList",
+          "attrs": {
+            "order": 1,
+            "localId": "e9e5945df6a6"
+          },
+          "content": [
+            {
+              "type": "listItem",
+              "attrs": {
+                "localId": "3bbe317f42a4"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Low priority and only if there is time life"
+                    }
+                  ],
+                  "attrs": {
+                    "localId": "cf5cdee64750"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

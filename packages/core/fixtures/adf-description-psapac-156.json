@@ -1,0 +1,28 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "537328",
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/537328",
+  "key": "PSAPAC-156",
+  "fields": {
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "blockquote",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Collibra Edge was installed in the UAT environment; however, we couldn't establish connectivity to Collibra DGC due to the elevated permissions required for Edge execution. The proposal was rejected by DBS internal security. Collibra professional services team has reviewed this and suggests a discussion is held between the REA and the DBS security team."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
