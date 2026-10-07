@@ -181,23 +181,40 @@ describe('worklogs', () => {
     )
     await editWorklog(client, 'PSAPAC-666', '120440', { timeSpent: '2h' })
     expect(requests).toMatchObject([
+      { method: 'GET', path: '/rest/api/3/issue/PSAPAC-666/worklog/120440' },
       {
         method: 'PUT',
         path: '/rest/api/3/issue/PSAPAC-666/worklog/120440?adjustEstimate=auto',
         body: { timeSpent: '2h' },
       },
     ])
-    expect(requests[0]?.body).toEqual({ timeSpent: '2h' })
+    expect(requests[1]?.body).toEqual({ timeSpent: '2h' })
   })
 
   it('deletes a worklog with adjustEstimate=auto', async () => {
     const requests = serveRecorded(noContent)
     await deleteWorklog(client, 'PSAPAC-666', '120440')
     expect(requests).toMatchObject([
+      { method: 'GET', path: '/rest/api/3/issue/PSAPAC-666/worklog/120440' },
       {
         method: 'DELETE',
         path: '/rest/api/3/issue/PSAPAC-666/worklog/120440?adjustEstimate=auto',
       },
+    ])
+  })
+
+  it('refuses a worklog of another issue with not_found and sends no write', async () => {
+    // Jira's answer to a read of worklog 177190 through an issue that does not own it.
+    const requests = serveRecorded(() =>
+      HttpResponse.json({ errorMessages: [], errors: {} }, { status: 404 }),
+    )
+    expect(
+      (await failure(editWorklog(client, 'PSAPAC-3067', '177190', { timeSpent: '1h' }))).code,
+    ).toBe('not_found')
+    expect((await failure(deleteWorklog(client, 'PSAPAC-3067', '177190'))).code).toBe('not_found')
+    expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+      'GET /rest/api/3/issue/PSAPAC-3067/worklog/177190',
+      'GET /rest/api/3/issue/PSAPAC-3067/worklog/177190',
     ])
   })
 

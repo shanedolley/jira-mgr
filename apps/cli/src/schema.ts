@@ -885,7 +885,7 @@ export const COMMANDS = [
         when: 'No field is given to change, or the key is outside the project in settings.',
       },
       { code: 'permission_denied', when: 'No project is set in settings.' },
-      { code: 'not_found', when: 'The issue or the worklog does not exist.' },
+      { code: 'not_found', when: 'The issue does not exist, or the worklog is not on that issue.' },
     ],
     writes: ['jira'],
     calls: ['@jira-mgr/core/extras#editWorklog', '@jira-mgr/core/adf#markdownToAdf'],
@@ -902,7 +902,7 @@ export const COMMANDS = [
     exits: [
       { code: 'validation_failed', when: 'The key is outside the project in settings.' },
       { code: 'permission_denied', when: 'No project is set in settings.' },
-      { code: 'not_found', when: 'The issue or the worklog does not exist.' },
+      { code: 'not_found', when: 'The issue does not exist, or the worklog is not on that issue.' },
     ],
     writes: ['jira'],
     calls: ['@jira-mgr/core/extras#deleteWorklog'],

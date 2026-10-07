@@ -1291,7 +1291,7 @@ The edited worklog.
 |---|---|---|
 | 2 | `validation_failed` | No field is given to change, or the key is outside the project in settings. |
 | 4 | `permission_denied` | No project is set in settings. |
-| 3 | `not_found` | The issue or the worklog does not exist. |
+| 3 | `not_found` | The issue does not exist, or the worklog is not on that issue. |
 
 #### Effects
 
@@ -1343,7 +1343,7 @@ The deleted worklog.
 |---|---|---|
 | 2 | `validation_failed` | The key is outside the project in settings. |
 | 4 | `permission_denied` | No project is set in settings. |
-| 3 | `not_found` | The issue or the worklog does not exist. |
+| 3 | `not_found` | The issue does not exist, or the worklog is not on that issue. |
 
 #### Effects
 

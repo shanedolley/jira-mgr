@@ -4,10 +4,9 @@
 
 Measured 2026-10-08 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and `gh issue list --state open --limit 200`. #21 to #26 are closed. L7 (#27) ran with Shane on 2026-10-08. Unblocked work, in order:
 
-1. **#60**, worklog edit and delete act on a worklog from another issue (core; High, data loss). Read the worklog first and compare its issue with the key, refuse otherwise, and test it against the MSW fake. Update `docs/reference/` if an error code changes.
-2. **#61**, the doubled full stop in Jira error messages and the empty ADF doc as a worklog `comment`. Both are small CLI output fixes.
-3. **Shane's HIL review of #27**: it moves to `status:hil-review` once the runbook PR merges. Nothing else to build on it.
-4. **Desktop D1 (#28)** once Shane closes #27. Write D2's and D4's design docs before their code.
+1. **#61**, the doubled full stop in Jira error messages and the empty ADF doc as a worklog `comment`. Both are small CLI output fixes.
+2. **Shane's HIL review of #27 and #60, and his open decision on #27.** #27 is in HIL Review (runbook merged in #62). #60 is fixed on branch `fix-foreign-worklog` (guard: GET the worklog through the given key first; Jira answers a foreign pair with 404, verified live read-only 2026-10-08) and awaits review and a pull request. The decision is whether `jm issue create` reads the new issue back ([comment on #27](https://github.com/shanedolley/jira-mgr/issues/27#issuecomment-6048998036)). Nothing else to build on these.
+3. **Desktop D1 (#28)** once Shane closes #27. Write D2's and D4's design docs before their code.
 
 ## Reading Order
 
