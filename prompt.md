@@ -4,9 +4,9 @@
 
 Measured 2026-10-07 from each open issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`).
 
-1. **C9 ADF and Markdown (#17)**: its only blocker, C1 (#9), is merged and in AI Review.
-2. **C3 credentials (#11)**: unblocked once C2 (#10) merges.
-3. **C4 HTTP client (#12)**: needs C1 and C3. Require an https Atlassian host before sending credentials (C1 review note).
+1. **C4 HTTP client (#12)**: unblocked once C3 (#11) merges. Build on `getCredentials()` from `@jira-mgr/core/auth`; keep the https Atlassian host check.
+2. **C9 ADF and Markdown (#17)**: unblocked; C1 (#9) merged.
+3. **C5 field resolution (#13)**: needs C4.
 
 ## Reading Order
 
