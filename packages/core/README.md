@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, the pure view filters at `@jira-mgr/core/view-filter`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -20,6 +20,16 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 
 - A missing file yields defaults: starter views for `views.json`, `null` for `timer.json` and `fields.json`.
 - A file that is not valid JSON or fails its schema throws `JiraMgrError` with code `validation_failed`, and the message names the file. Writes validate first, then write a temp file and rename it.
+
+### Saved Views
+
+`@jira-mgr/core/state` manages `views.json`. Each call reads, changes and writes the whole file, so the app and the CLI writing at once can lose an edit.
+
+- `findView(idOrName)` returns the view with that id, or failing that that name in any case. It throws `not_found` for an unknown view.
+- `createView(name, { filters, toggles })` returns the new view. Its id is the name as a slug (`Bugs this week` is `bugs-this-week`), with `-2`, `-3` and so on when taken.
+- `renameView(idOrName, name)` keeps the id, filters and toggles.
+- `deleteView(idOrName)` allows deleting the last view. The next `readViews()` then returns `[]`, not the starters: once `views.json` exists, "My issues" and "Current sprint" are ordinary views.
+- A name is trimmed, and an empty one or one that matches another view in any case throws `validation_failed`. Renaming a view to its own name in a new case is allowed.
 
 ## Credentials
 
@@ -64,16 +74,34 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 
 ## Hierarchy
 
-`@jira-mgr/core/hierarchy` exports `buildHierarchy(issues, options)`. It is pure, has no `node:` imports, and returns plain data that survives IPC. Options: `hideDone`, `assigneeMe` and `hideEmptyCustomers` (the settings toggles), `accountId`, and optionally `customers`, the full Customer option list.
+`@jira-mgr/core/hierarchy` exports `buildHierarchy(issues, options)`. It is pure, has no `node:` imports, and returns plain data that survives IPC. Options: `hideDone`, `assigneeMe` and `hideEmptyCustomers` (the settings toggles), `accountId`, and optionally `customers`, the full Customer option list, and `match`, a view's filter predicate (see View Filters).
 
 It returns `CustomerGroup[]`, each `{ customer, epics, noEpic }`, and `customer: null` is the "No Customer" group. A `HierarchyNode` holds `issue`, `children`, `doneChildren`, `doneCount`, `contextOnly` and `customerMismatch`.
 
 - An Epic and its children sit under the Epic's Customer. A direct child whose own Customer differs gets `customerMismatch: { own, epic }`, where either side may be `null`. Subtasks nest under their parent and are never flagged.
 - `noEpic` holds issues with no Epic parent in the input, and Subtasks whose parent is not in the input, under their own Customer.
 - Under an open parent, Done children go to `doneChildren` whatever the toggles say. Under a Done parent they stay in `children`. `hideDone` drops a Done Epic or `noEpic` issue with its whole subtree. With `assigneeMe` on, a Done ancestor of a kept open issue stays as context instead, with its other Done children dropped.
-- `assigneeMe` keeps issues assigned to `accountId` plus their ancestors. An ancestor kept only as context has `contextOnly: true`.
+- `assigneeMe` and `match` keep the issues assigned to `accountId` and the issues `match` accepts (both, when both are set), plus their ancestors. An ancestor kept only as context has `contextOnly: true`.
 - `hideEmptyCustomers: false` adds a group for every Customer in `customers`, and for every Customer whose issues the toggles hid.
 - Customers sort case-insensitively, then No Customer, then "Collibra (Internal team)" and "Collibra (Internal template)". Epics sort by key descending. Children sort by status (Opportunity, To Do, In Progress, Review, Hold, Done, then any other), then key descending.
+
+## View Filters
+
+`@jira-mgr/core/view-filter` is pure and imports nothing from `node:`. A view's `filters` select issues: values within a field are alternatives (OR), and every filtered field must match (AND). An absent or empty list, and a blank `text`, filter nothing.
+
+- `issueMatcher(filters, { accountId })` returns the predicate, or `undefined` when the filters select everything.
+- `filterIssues(issues, filters, { accountId })` returns the matching issues in input order.
+- `applyViewToggles(settings.toggles, view)` returns the toggles to build the hierarchy with. The view's win, since a saved view always holds all three.
+
+| Filter           | Values                                                                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assignee`       | An accountId, or `me` (the `accountId` passed in) or `unassigned` in any case                                                                           |
+| `status`, `type` | A name in any case, or an id                                                                                                                            |
+| `label`          | A label, matched exactly because Jira labels are case-sensitive                                                                                         |
+| `sprint`         | A sprint id, a name in any case, or `current` (any case) for any sprint whose state is `active`. `current` wins over a sprint literally named "Current" |
+| `text`           | A case-insensitive substring of the key or the summary, after trimming                                                                                  |
+
+To show a view as a tree, pass the predicate to `buildHierarchy` as `match`, with no separate filtering pass. It works like "Assignee: me": the matching issues stay, with their ancestors as `contextOnly` context, so a matching Story keeps its Epic. Filtering first would orphan the Story into "No Epic". Leave `match` out when `issueMatcher` returns `undefined`, so an empty view hides exactly what the toggles hide.
 
 ## ADF and Markdown
 

@@ -2,11 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-07 by reading every open Core issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only). CLI and Desktop issues wait on all of Core.
+Measured 2026-10-07 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`, open ones only).
 
-1. **Finish C12 timer engine (#20)** on `c12-timer-engine`: review, push, CI (ship-it merges), proof; internal story, so the project manager moves it to Done.
-2. **C8 views and search (#16)**: no open blockers; the last Core story.
-3. **L1 command schema (#21)**: unblocked once C8 and C12 close. Write its design doc first (docs/design/, from docs/templates/design-doc.md), including `docs/reference/errors.md` (note on #21).
+1. **Finish C8 views and search (#16)** on `c8-views-search`: review, push, CI (ship-it merges), proof; internal story, so the project manager moves it to Done. That completes Core.
+2. **L1 command schema (#21)**: unblocked once C8 closes. Write its design doc first in `docs/design/` from `docs/templates/design-doc.md`, covering the schema, `--help`, `jm help --json`, `scripts/gen-reference.ts` for `docs/reference/cli.md` and `docs/reference/errors.md` (note on #21), output modes and exit codes. CLI output is user-facing, so L1-L7 go to Shane in HIL Review.
+3. **L2 auth (#22)**: after L1.
 
 ## Reading Order
 

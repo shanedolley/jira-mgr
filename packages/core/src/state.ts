@@ -94,7 +94,7 @@ export type SavedView = z.infer<typeof savedViewSchema>
 export type TimerState = z.infer<typeof timerSchema>
 export type ResolvedFields = z.infer<typeof fieldsSchema>
 
-/** The `Current sprint` starter filters on this sprint value in the list, which the client resolves. */
+/** The `Current sprint` starter's `current` sprint value matches any active sprint (see view-filter). */
 const STARTER_VIEWS: SavedView[] = [
   {
     id: 'my-issues',
@@ -191,3 +191,67 @@ export const writeTimer = timerFile.write
 /** Returns `null` when the field ids have not been resolved yet. */
 export const readFields = fieldsFile.read
 export const writeFields = fieldsFile.write
+
+const slug = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'view'
+
+const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+
+function cleanName(name: string, views: SavedView[], ownId?: string): string {
+  const trimmed = name.trim()
+  if (trimmed === '') throw new JiraMgrError('validation_failed', 'A view name cannot be empty.')
+  if (views.some((v) => v.id !== ownId && sameName(v.name, trimmed))) {
+    throw new JiraMgrError('validation_failed', `A view named "${trimmed}" already exists.`)
+  }
+  return trimmed
+}
+
+function locate(views: SavedView[], idOrName: string): SavedView {
+  const found =
+    views.find((v) => v.id === idOrName) ?? views.find((v) => sameName(v.name, idOrName))
+  if (found === undefined) throw new JiraMgrError('not_found', `No view "${idOrName}".`)
+  return found
+}
+
+/** The view with this id, or failing that this name (any case). Throws `not_found`. */
+export async function findView(idOrName: string): Promise<SavedView> {
+  return locate(await readViews(), idOrName)
+}
+
+/**
+ * Adds a view. Its id is the name as a slug (`Bugs this week` is `bugs-this-week`), numbered when
+ * taken. Names are trimmed, non-empty and unique in any case, else `validation_failed`.
+ */
+// ponytail: read-modify-write with no lock, so the app and the CLI writing at once can lose an edit.
+export async function createView(
+  name: string,
+  view: Pick<SavedView, 'filters' | 'toggles'>,
+): Promise<SavedView> {
+  const views = await readViews()
+  const clean = cleanName(name, views)
+  const base = slug(clean)
+  let id = base
+  for (let n = 2; views.some((v) => v.id === id); n++) id = `${base}-${String(n)}`
+  const created = { id, name: clean, filters: view.filters, toggles: view.toggles }
+  await writeViews([...views, created])
+  return created
+}
+
+/** Renames a view, found by id or name; the id stays. Throws `not_found` or `validation_failed`. */
+export async function renameView(idOrName: string, name: string): Promise<SavedView> {
+  const views = await readViews()
+  const old = locate(views, idOrName)
+  const renamed = { ...old, name: cleanName(name, views, old.id) }
+  await writeViews(views.map((v) => (v === old ? renamed : v)))
+  return renamed
+}
+
+/** Deletes a view, found by id or name, the last one included. Throws `not_found`. */
+export async function deleteView(idOrName: string): Promise<void> {
+  const views = await readViews()
+  const old = locate(views, idOrName)
+  await writeViews(views.filter((v) => v !== old))
+}

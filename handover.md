@@ -4,10 +4,11 @@
 
 Checked 2026-10-07.
 
-- `main` holds the scaffold (#1), roadmap and handover (#7, #46), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5) and Core stories C1-C7 and C9-C11 (#38-#45, #47, #48). Run `git log --oneline -1 origin/main` for the head commit.
-- Core subpaths: `@jira-mgr/core` (errors and the `Issue` type, renderer-safe), `/issue`, `/hierarchy`, `/adf`, `/timer-calc` (renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search`, `/write`, `/extras`, `/sprints`, `/lookups`, `/timer` (Node-only). `jm` still prints only `--help` and `--version`.
+- `main` holds the scaffold (#1), roadmap and handover (#7, #46), the `deps-dev` scope fix (#8), three Dependabot bumps (#2, #4, #5) and Core stories C1-C7 and C9-C12 (#38-#45, #47-#49). Run `git log --oneline -1 origin/main` for the head commit.
+- Core subpaths: `@jira-mgr/core` (errors and the `Issue` type, renderer-safe), `/issue`, `/hierarchy`, `/adf`, `/timer-calc`, `/view-filter` (renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search`, `/write`, `/extras`, `/sprints`, `/lookups`, `/timer` (Node-only). `jm` still prints only `--help` and `--version`.
 - C11 issue extras merged in #48 and is closed: `@jira-mgr/core/extras`, `/sprints`, `/lookups`.
-- C12 timer engine (#20) is built on `c12-timer-engine`: pure rules in `@jira-mgr/core/timer-calc` (renderer-safe) and the locked `timer.json` operations in `@jira-mgr/core/timer` (Node-only). Its pull request carries this handover; find it with `gh pr list --head c12-timer-engine`.
+- C12 timer engine merged in #49 and is closed: `@jira-mgr/core/timer-calc` (renderer-safe) and `@jira-mgr/core/timer` (Node-only, locked `timer.json`).
+- C8 views and search (#16), the last Core story, is built on `c8-views-search`: `issueMatcher`, `filterIssues` and `applyViewToggles` in `@jira-mgr/core/view-filter` (renderer-safe), view create, rename, delete and lookup in `/state`, and a `match` option on `buildHierarchy`. Its pull request carries this handover; find it with `gh pr list --head c8-views-search`.
 - Live-check items for L7 are collected on #27: type change, remaining estimate, sprint moves on the simple board, worklog `adjustEstimate=auto`, attachment upload. Link direction was verified live on 2026-10-07 with Shane's approval (link 642179 created and deleted): the issue named `inwardIssue` in a POST is the blocker.
 - Client-side rules core leaves to the CLI and app (C11 findings): label suggestions are site-wide, so filter to project labels if wanted (Q35); hide undated sprints such as "PS TEMPLATES" behind "Show all" (Q20); priorities come from createmeta (11 for PSAPAC), not `/priority` (20 site-wide).
 
@@ -17,14 +18,14 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Closed (Done) | #9-#15, #17-#19 (C1-C7, C9-C11) | `gh issue list --state closed --limit 200` | 2026-10-07 |
-| Open roadmap issues | 19 (Core 2, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | #20 (C12) | `gh issue list --label status:in-progress` | 2026-10-07 |
+| Closed (Done) | #9-#15, #17-#20 (C1-C7, C9-C12) | `gh issue list --state closed --limit 200` | 2026-10-07 |
+| Open roadmap issues | 18 (Core 1, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
+| In progress | #16 (C8) | `gh issue list --label status:in-progress` | 2026-10-07 |
 | In AI or HIL review | none | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: only `c12-timer-engine`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `c8-views-search`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -32,7 +33,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (968 pass and 1 skipped in `core`, 17 files, measured on `c12-timer-engine` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (1005 pass and 1 skipped in `core`, 18 files, measured on `c8-views-search` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -41,7 +42,7 @@ All from the repository root, under Node 24 (see Traps).
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #48 merge, 244f04a (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last `main` run: success on the PR #49 merge, db1db2b (`gh run list --workflow ci.yml --branch main --limit 1`, 2026-10-07).
 
 ## Environments
 
@@ -75,3 +76,4 @@ Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue 
 - **Recorded search pages never end** (2026-10-07). Fixtures recorded mid-phase all carry `isLast: false`; tests serve page 2 with the token dropped and `isLast: true`. Record from the end of a phase if a test needs a genuine last page.
 - **Reviewers can be confidently wrong about Jira semantics** (2026-10-07). C11's reviewer called the link direction reversed, citing a third-party issue; a live check proved the builder right. When builder and reviewer disagree on Jira behaviour and only a write can settle it, ask Shane for one reversible live check rather than picking a side.
 - **Timer guard matches keys, not timers** (2026-10-07, accepted). `expectRunning` compares the issue key, so if the CLI stops and restarts the same issue while the app's stop dialog is open, confirming logs the dialog's time against the new timer too (two worklogs). Rare; add an `expectStarted` check if it ever bites.
+- **views.json has no lock** (2026-10-07, accepted). View create, rename and delete use atomic writes but no lock, so an app and a CLI editing views at the same moment can lose one edit. Reuse the timer's lock if it ever bites.
