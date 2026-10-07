@@ -2,12 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-07 with `gh issue list --state open --limit 200` and each issue's dependencies.
+Measured 2026-10-07 from each open issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`).
 
-1. **C2 state files (#10)**: no blockers. Unblocks C3, C5, C8 and C12.
-2. **C9 ADF and Markdown (#17)**: blocked only by C1 (#9), which is in review.
-3. **C3 credentials (#11)**: blocked by C2.
-4. **C4 HTTP client (#12)**: blocked by C1 and C3.
+1. **C9 ADF and Markdown (#17)**: its only blocker, C1 (#9), is merged and in AI Review.
+2. **C3 credentials (#11)**: unblocked once C2 (#10) merges.
+3. **C4 HTTP client (#12)**: needs C1 and C3. Require an https Atlassian host before sending credentials (C1 review note).
 
 ## Reading Order
 
@@ -21,7 +20,7 @@ Measured 2026-10-07 with `gh issue list --state open --limit 200` and each issue
 2. Claim the next unblocked issue: comment the branch, add `status:in-progress` through `kothar:project-manager`.
 3. Cut a branch from `origin/main`. Read the issue and every file it touches.
 4. Build the smallest change that meets the criteria, with its test.
-5. Run `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm e2e` for desktop work. Read the pass and fail counts.
+5. Run `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm e2e` for desktop work. Read the pass and fail counts. Commit locally and have a reviewer other than the builder pass it before pushing, since a green PR may merge at once.
 6. Run `/autonomous:update`, so the handover lands in the story's commit.
 7. Commit with `Refs #n`, push, open the pull request, watch CI with `gh pr checks <n> --watch`.
 8. On green CI, merge (Shane's standing rule in his global instructions), then clean up the branch.

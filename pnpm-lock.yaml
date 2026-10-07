@@ -142,6 +142,10 @@ importers:
   packages/config-ts: {}
 
   packages/core:
+    dependencies:
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
     devDependencies:
       '@jira-mgr/config-ts':
         specifier: workspace:*
