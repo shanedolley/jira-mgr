@@ -15,6 +15,8 @@ Jira holds the data and the rules, so `core` tests run against a fake Jira.
 ## The Fake
 
 - `core` tests run against an MSW server that replays recorded PSAPAC responses. Record the responses once and commit them as fixtures exactly as recorded. Do not scrub or obfuscate any data: the repository and the app are approved to hold PSAPAC data. A recording saves response bodies only, never request headers, so tokens never reach a fixture.
+- Record a fixture with `pnpm fixture:record -- <name> <GET|POST> <path> [json-body]`, which reads `JM_JIRA_SITE`, `JM_JIRA_EMAIL` and `JM_JIRA_TOKEN` from the environment and writes `packages/core/fixtures/<name>.json`. It refuses every write except the `POST` that searches. See [scripts](../../scripts/README.md#record-a-fixture).
+- Serve a fixture in a test with `serveFixture(method, path, name)` from `packages/core/test/msw.ts`. The setup file fails any request with no handler and resets handlers after each test.
 - Refresh a fixture when Jira's response shape changes, and record why in the pull request. `docs/how-to/refresh-fixtures.md` holds the steps once written.
 - The fake answers writes with canned responses and records the requests, so a test asserts what core would send.
 - End-to-end tests start the same fake and point the CLI or the app at it.

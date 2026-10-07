@@ -20,4 +20,4 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 pnpm --filter @jira-mgr/core test
 ```
 
-Vitest runs `<file>.test.ts` beside the source. `pnpm test:live` sets `JM_LIVE_JIRA=1`, the opt-in for tests that read the live PSAPAC Jira. Tests never write to Jira. Integration tests will run against an MSW fake fed by recorded PSAPAC responses.
+Vitest runs `<file>.test.ts` beside the source. `pnpm test:live` sets `JM_LIVE_JIRA=1`, the opt-in for tests that read the live PSAPAC Jira. Tests never write to Jira. Integration tests run against an MSW fake fed by the recorded PSAPAC responses in `fixtures/`, served through `test/msw.ts`.

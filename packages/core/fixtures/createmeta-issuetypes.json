@@ -1,0 +1,87 @@
+{
+  "startAt": 0,
+  "maxResults": 50,
+  "total": 5,
+  "issueTypes": [
+    {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11500",
+      "id": "11500",
+      "description": "A small, distinct piece of work.",
+      "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12018?size=medium",
+      "name": "Task",
+      "untranslatedName": "Task",
+      "subtask": false,
+      "hierarchyLevel": 0,
+      "scope": {
+        "type": "PROJECT",
+        "project": {
+          "id": "12606"
+        }
+      }
+    },
+    {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11501",
+      "id": "11501",
+      "description": "A problem or error.",
+      "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12003?size=medium",
+      "name": "Bug",
+      "untranslatedName": "Bug",
+      "subtask": false,
+      "hierarchyLevel": 0,
+      "scope": {
+        "type": "PROJECT",
+        "project": {
+          "id": "12606"
+        }
+      }
+    },
+    {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11502",
+      "id": "11502",
+      "description": "Created by Jira Agile - do not edit or delete. Issue type for a user story.",
+      "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12015?size=medium",
+      "name": "Story",
+      "untranslatedName": "Story",
+      "subtask": false,
+      "hierarchyLevel": 0,
+      "scope": {
+        "type": "PROJECT",
+        "project": {
+          "id": "12606"
+        }
+      }
+    },
+    {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11503",
+      "id": "11503",
+      "description": "A collection of related bugs, stories, and tasks.",
+      "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12007?size=medium",
+      "name": "Epic",
+      "untranslatedName": "Epic",
+      "subtask": false,
+      "hierarchyLevel": 1,
+      "scope": {
+        "type": "PROJECT",
+        "project": {
+          "id": "12606"
+        }
+      }
+    },
+    {
+      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issuetype/11504",
+      "id": "11504",
+      "description": "Subtasks track small pieces of work that are part of a larger task.",
+      "iconUrl": "https://engineering-collibra.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/12016?size=medium",
+      "name": "Subtask",
+      "untranslatedName": "Subtask",
+      "subtask": true,
+      "hierarchyLevel": -1,
+      "scope": {
+        "type": "PROJECT",
+        "project": {
+          "id": "12606"
+        }
+      }
+    }
+  ]
+}
