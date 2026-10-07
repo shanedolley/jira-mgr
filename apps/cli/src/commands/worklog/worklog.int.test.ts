@@ -164,8 +164,8 @@ describe('jm worklog edit', () => {
     const { code, data } = await runJson(['worklog', 'edit', KEY, '120440', '--time', '2h'])
     expect(code).toBe(0)
     expectShape(data, spec('worklog edit')?.output.example)
-    expect(calls(requests)).toEqual([`PUT ${ONE}${AUTO}`])
-    expect(requests[0]?.body).toEqual({ timeSpent: '2h' })
+    expect(calls(requests)).toEqual([`GET ${ONE}`, `PUT ${ONE}${AUTO}`])
+    expect(requests[1]?.body).toEqual({ timeSpent: '2h' })
   })
 
   it('edits the start and the comment together', async () => {
@@ -180,7 +180,7 @@ describe('jm worklog edit', () => {
       '--comment',
       'Redone',
     ])
-    expect(requests[0]?.body).toEqual({
+    expect(requests[1]?.body).toEqual({
       started: '2026-10-06T00:00:00.000+0000',
       comment: markdownToAdf('Redone'),
     })
@@ -212,6 +212,14 @@ describe('jm worklog edit', () => {
     serveExtras(issueNotFound)
     expect((await runJson(['worklog', 'edit', KEY, '1', '--time', '2h'])).code).toBe(3)
   })
+
+  it('exits 3 for a worklog of another issue, with no write', async () => {
+    const requests = serveExtras()
+    const { code, error } = await runJson(['worklog', 'edit', KEY, '177190', '--time', '2h'])
+    expect(code).toBe(3)
+    expect(error?.code).toBe('not_found')
+    expect(calls(requests)).toEqual([`GET ${WORKLOGS}/177190`])
+  })
 })
 
 describe('jm worklog delete', () => {
@@ -221,7 +229,7 @@ describe('jm worklog delete', () => {
     expect(code).toBe(0)
     expectShape(data, spec('worklog delete')?.output.example)
     expect(data).toEqual({ key: KEY, worklogId: '120440' })
-    expect(calls(requests)).toEqual([`DELETE ${ONE}${AUTO}`])
+    expect(calls(requests)).toEqual([`GET ${ONE}`, `DELETE ${ONE}${AUTO}`])
   })
 
   it('prints the result on a terminal', async () => {
@@ -240,6 +248,14 @@ describe('jm worklog delete', () => {
   it('exits 3 for a worklog that does not exist', async () => {
     serveExtras(issueNotFound)
     expect((await runJson(['worklog', 'delete', KEY, '1'])).code).toBe(3)
+  })
+
+  it('exits 3 for a worklog of another issue, with no write', async () => {
+    const requests = serveExtras()
+    const { code, error } = await runJson(['worklog', 'delete', KEY, '177190'])
+    expect(code).toBe(3)
+    expect(error?.code).toBe('not_found')
+    expect(calls(requests)).toEqual([`GET ${WORKLOGS}/177190`])
   })
 })
 

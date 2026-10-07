@@ -167,6 +167,14 @@ export async function addWorklog(
   return parseResponse(worklogSchema, raw, 'worklog')
 }
 
+/**
+ * Jira applies a write to worklog `id` even when it belongs to another issue, but answers a read
+ * of that pair with 404. Reading first turns a foreign id into `not_found` before any write.
+ */
+async function requireOwnWorklog(http: HttpClient, key: string, worklogId: string): Promise<void> {
+  await http.request('GET', `${worklogPath(key)}/${worklogId}`)
+}
+
 /** Changes a worklog. Jira moves the remaining estimate by the difference (`adjustEstimate=auto`). */
 export async function editWorklog(
   http: HttpClient,
@@ -180,6 +188,7 @@ export async function editWorklog(
     'edit the worklog',
   )
   const body = parseInput(editWorklogInput, input, `edit worklog ${ids.worklogId}`)
+  await requireOwnWorklog(http, ids.key, ids.worklogId)
   const raw = await http.request('PUT', `${worklogPath(ids.key)}/${ids.worklogId}${AUTO}`, {
     body: worklogBody(body),
   })
@@ -197,6 +206,7 @@ export async function deleteWorklog(
     { key, worklogId },
     'delete the worklog',
   )
+  await requireOwnWorklog(http, ids.key, ids.worklogId)
   await http.request('DELETE', `${worklogPath(ids.key)}/${ids.worklogId}${AUTO}`)
 }
 

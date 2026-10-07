@@ -40,6 +40,12 @@ export function serveExtras(respond?: (request: Recorded) => Response | undefine
     if (route.endsWith('/worklog') && method === 'GET') {
       return Response.json(fixture('worklogs-psapac-666'))
     }
+    if (method === 'GET' && /\/worklog\/\d+$/.test(route)) {
+      // Jira answers 404 for a worklog id read through an issue that does not own it.
+      return route.endsWith('/120440')
+        ? Response.json(list('worklogs-psapac-666', 'worklogs')[0])
+        : issueNotFound()
+    }
     if (/\/worklog(\/\d+)?$/.test(route) && (method === 'POST' || method === 'PUT')) {
       return Response.json(list('worklogs-psapac-666', 'worklogs')[0])
     }
