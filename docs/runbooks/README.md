@@ -2,6 +2,12 @@
 
 Steps to follow under pressure: one file per problem or chore, started from [the template](../templates/runbook.md).
 
+Written:
+
+| Runbook | For |
+|---|---|
+| [`l7-smoke-check.md`](l7-smoke-check.md) | Checking every `jm` command against live PSAPAC, with throwaway issues for the writes |
+
 Planned, each written with the code it covers:
 
 | Runbook | For | Written in |
