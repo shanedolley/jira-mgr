@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from 'node:timers/promises'
+
 import { CommanderError } from 'commander'
 
 import { JiraMgrError, EXIT_CODES, type ErrorCode } from '@jira-mgr/core'
@@ -16,6 +18,9 @@ import {
 } from './output.js'
 import { buildProgram } from './program.js'
 import { COMMANDS } from './schema.js'
+
+/** The longest `run` waits for a state-writing command to settle after Ctrl-C. */
+const SETTLE_MS = 10_000
 
 const isEpipe = (error: unknown): boolean =>
   (error as NodeJS.ErrnoException | undefined)?.code === 'EPIPE'
@@ -81,10 +86,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<num
   const ctx = createContext(io, deps, json, specs, handlers)
 
   let outcome: { handler: Handler; data: unknown } | undefined
+  let writesState = false
   const program = buildProgram(
     specs,
     handlers,
     async (spec, input) => {
+      writesState = spec.writes.includes('state')
       const handler = handlers[idOf(spec)]
       if (handler) outcome = { handler, data: await handler.run(input, ctx) }
     },
@@ -108,12 +115,37 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<num
   })
   interrupted.catch(() => undefined)
 
+  const parsing = program.parseAsync([...argv], { from: 'user' })
+  parsing.catch(() => undefined) // the race may end first; its late failure is not news
+  /**
+   * A command that writes state may be half done when Ctrl-C lands, such as a stopped timer whose
+   * worklog is still in flight. `bin` exits right after 130, so let it settle first, which its
+   * aborted request makes quick. A second Ctrl-C kills the process, and the wait is capped. What the command says about its
+   * state (the timer paused, say) goes to stderr.
+   */
+  const interruptedExit = async () => {
+    if (writesState) {
+      const settled = await Promise.race([
+        parsing.then(
+          () => undefined,
+          (error: unknown) => error,
+        ),
+        sleep(SETTLE_MS, undefined, { ref: false }),
+      ])
+      // The restore may have failed or only half worked, and the person should know before 130.
+      if (settled instanceof JiraMgrError) {
+        io.stderr.write(
+          `${paint(io, io.stderrIsTTY, 'red', 'jm:')} ${stripControl(settled.message)}\n`,
+        )
+      }
+    }
+    return INTERRUPTED
+  }
+
   try {
-    const parsing = program.parseAsync([...argv], { from: 'user' })
-    parsing.catch(() => undefined) // the race may end first; its late failure is not news
     await Promise.race([parsing, interrupted])
   } catch (error) {
-    if (io.signal.aborted) return INTERRUPTED
+    if (io.signal.aborted) return interruptedExit()
     if (isEpipe(error)) return 0
     if (
       error instanceof CommanderError &&
@@ -123,7 +155,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<num
     }
     return fail(toFailure(error, argv), error, io, json, flagged)
   }
-  if (io.signal.aborted) return INTERRUPTED
+  if (io.signal.aborted) return interruptedExit()
 
   if (!outcome) return 0
   const { handler, data } = outcome
