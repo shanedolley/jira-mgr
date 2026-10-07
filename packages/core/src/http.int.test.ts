@@ -368,6 +368,21 @@ describe('error mapping', () => {
     })
   })
 
+  it.each([
+    ['Issue does not exist or you do not have permission to see it.', 'see it. Check the key'],
+    ['Issue does not exist', 'exist. Check the key'],
+    ['Is it there?', 'there? Check the key'],
+  ])("ends a sentence once after Jira's message %j", async (message, tail) => {
+    server.use(
+      http.get(`${JIRA_SITE}/rest/api/3/issue/PSAPAC-1`, () =>
+        HttpResponse.json({ errorMessages: [message] }, { status: 404 }),
+      ),
+    )
+    const error = await rejection(client().api.request('GET', '/rest/api/3/issue/PSAPAC-1'))
+    expect(error.message).toContain(tail)
+    expect(error.message).not.toMatch(/[.!?]{2}/)
+  })
+
   it('uses the first field error when there are no error messages', async () => {
     server.use(
       http.post(`${JIRA_SITE}/rest/api/3/issue`, () =>

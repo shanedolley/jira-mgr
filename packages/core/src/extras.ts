@@ -95,7 +95,12 @@ const worklogSchema = z
     created: jiraTime,
     updated: jiraTime,
   })
-  .transform((w) => ({ ...w, author: w.author ?? null, comment: w.comment ?? null }))
+  // Jira sends an empty ADF doc for a worklog with no comment; it reads as no comment.
+  .transform((w) => ({
+    ...w,
+    author: w.author ?? null,
+    comment: w.comment == null || w.comment.content.length === 0 ? null : w.comment,
+  }))
 
 export type Worklog = z.infer<typeof worklogSchema>
 

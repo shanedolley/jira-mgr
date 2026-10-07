@@ -1,5 +1,5 @@
 import { markdownToAdf } from '@jira-mgr/core/adf'
-import { usePsapacState } from '@jira-mgr/core/test/msw'
+import { loadFixture, usePsapacState } from '@jira-mgr/core/test/msw'
 import { describe, expect, it } from 'vitest'
 
 import { COMMANDS } from '../../schema.js'
@@ -28,6 +28,21 @@ describe('jm worklog list', () => {
     ])
     expect(calls(requests)).toEqual([`GET ${WORKLOGS}?startAt=0&maxResults=50`])
     expect(f.stderr).toBe('')
+  })
+
+  it('reads an empty worklog comment as null', async () => {
+    const [one] = (loadFixture('worklogs-psapac-666') as unknown as { worklogs: object[] }).worklogs
+    serveExtras(({ method, path }) =>
+      method === 'GET' && path.startsWith(WORKLOGS)
+        ? Response.json({
+            total: 1,
+            worklogs: [{ ...one, comment: { version: 1, type: 'doc', content: [] } }],
+          })
+        : undefined,
+    )
+    const { code, data } = await runJson(['worklog', 'list', KEY])
+    expect(code).toBe(0)
+    expect((data as { comment: unknown }[]).map((w) => w.comment)).toEqual([null])
   })
 
   it('prints a table on a terminal', async () => {
