@@ -6,3 +6,4 @@ export function appTitle(version: string): string {
 }
 
 export * from './errors.js'
+export type { Issue } from './issue.js'
