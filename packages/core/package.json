@@ -13,7 +13,8 @@
     "./http": "./src/http.ts",
     "./issue": "./src/issue.ts",
     "./search": "./src/search.ts",
-    "./state": "./src/state.ts"
+    "./state": "./src/state.ts",
+    "./write": "./src/write.ts"
   },
   "scripts": {
     "typecheck": "tsc",

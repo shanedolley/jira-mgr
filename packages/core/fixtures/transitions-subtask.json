@@ -1,0 +1,125 @@
+{
+  "expand": "transitions",
+  "transitions": [
+    {
+      "id": "2",
+      "name": "Hold",
+      "to": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11855",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Hold",
+        "id": "11855",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        }
+      },
+      "hasScreen": false,
+      "isGlobal": true,
+      "isInitial": false,
+      "isAvailable": true,
+      "isConditional": false,
+      "isLooped": false
+    },
+    {
+      "id": "3",
+      "name": "Review",
+      "to": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11954",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Review",
+        "id": "11954",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        }
+      },
+      "hasScreen": false,
+      "isGlobal": true,
+      "isInitial": false,
+      "isAvailable": true,
+      "isConditional": false,
+      "isLooped": false
+    },
+    {
+      "id": "11",
+      "name": "To Do",
+      "to": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11822",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "To Do",
+        "id": "11822",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        }
+      },
+      "hasScreen": false,
+      "isGlobal": true,
+      "isInitial": false,
+      "isAvailable": true,
+      "isConditional": false,
+      "isLooped": false
+    },
+    {
+      "id": "21",
+      "name": "In Progress",
+      "to": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11823",
+        "description": "This work item is being actively worked on at the moment by the assignee.",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "In Progress",
+        "id": "11823",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        }
+      },
+      "hasScreen": false,
+      "isGlobal": true,
+      "isInitial": false,
+      "isAvailable": true,
+      "isConditional": false,
+      "isLooped": false
+    },
+    {
+      "id": "31",
+      "name": "Done",
+      "to": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/status/11824",
+        "description": "",
+        "iconUrl": "https://engineering-collibra.atlassian.net/",
+        "name": "Done",
+        "id": "11824",
+        "statusCategory": {
+          "self": "https://engineering-collibra.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        }
+      },
+      "hasScreen": false,
+      "isGlobal": true,
+      "isInitial": false,
+      "isAvailable": true,
+      "isConditional": false,
+      "isLooped": false
+    }
+  ]
+}

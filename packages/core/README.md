@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -121,6 +121,17 @@ Markdown is a trust boundary, so every note, tag and fence is validated when rea
 ### Dependency
 
 `marked` is a runtime dependency of core, used only for its lexer (`Lexer` with GFM). Core maps the tokens to ADF itself and never calls marked's HTML renderer. Writing a GFM block and inline parser by hand would cost more than the dependency: marked is MIT licensed, has no install scripts and no dependencies, and runs in a browser.
+
+## Issue Writes
+
+`@jira-mgr/core/write` exports `createIssue`, `editIssue`, `deleteIssue` and `transitionIssue`. It reads the project from settings and the custom field ids from `getFieldIds()`, so it is Node-only. Every function takes an `HttpClient` first and validates its input with zod before sending anything. Bad input throws `validation_failed` naming the field, and a Jira failure maps as in HTTP Client.
+
+- `createIssue(http, input)` posts `POST /rest/api/3/issue` and returns `{ key, id }`. Required: `type` (`Epic`, `Story`, `Task`, `Bug` or `Subtask`), `summary`, `customerId` and `engagementId` (option ids, required on every type, Task and Bug included). A `Subtask` also needs `parentKey`. Core does not check fields per type: a field the type lacks, such as `timeRemainingHours` on a Bug, goes to Jira, whose 400 maps to `validation_failed` naming the field in the message and `details.errors`. Optional: `description` (ADF, validated with `adfDocSchema`; convert Markdown with `markdownToAdf`), `assignee` (account id), `priorityId`, `labels`, `startDate` and `dueDate` (`YYYY-MM-DD`), `originalEstimate` (a Jira duration such as `2h 30m`) and `timeRemainingHours`.
+- `editIssue(http, key, input)` sends one `PUT /rest/api/3/issue/{key}` holding only the fields in `input`. It takes the create fields except `type`, plus `parentKey`, and `type` limited to `Story`, `Task` and `Bug` (Q23; any other type is refused). `null` clears `assignee`, `startDate`, `dueDate`, `description` and `timeRemainingHours`. `labels` replaces the labels; `addLabels` and `removeLabels` change some, and cannot be combined with `labels`. `originalEstimate` goes as `update.timetracking: [{ edit: { originalEstimate } }]`, so Jira keeps the remaining estimate. An edit with no fields, or only empty `addLabels` and `removeLabels`, is refused. Core does not read the current type, so an Epic or Subtask asked to become a Story goes to Jira, which answers 400 if it refuses.
+- `deleteIssue(http, key, { deleteSubtasks })` sends `DELETE /rest/api/3/issue/{key}?deleteSubtasks=true|false`. The flag has no default: a call without a boolean is refused.
+- `transitionIssue(http, key, status)` reads `GET /rest/api/3/issue/{key}/transitions`, picks the transition whose target status has that id or name (case-insensitive), and posts it. A status the issue cannot reach throws `validation_failed` listing the ones it can, in `details.available`. The transition's own name is not matched: the recorded Epic transition 3 is named `REVIEW` and reaches `Review`.
+
+Recorded `editmeta-*` and `transitions-*` fixtures for a Story, a Subtask and an Epic back the field shapes; a test checks that every field `editIssue` sends is settable on each type. Tests record the requests and never reach Jira.
 
 ## Test
 

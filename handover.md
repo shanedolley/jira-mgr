@@ -10,8 +10,8 @@ Checked 2026-10-07.
 - C6 issue search merged in #43 and is closed.
 - C7 hierarchy merged in #44 and is closed.
 - C9 ADF and Markdown merged in #45 and is closed: `adfToMarkdown` and `markdownToAdf` in `@jira-mgr/core/adf`, lossless on a no-edit round trip through `adf` fences, `<adf-node>` tags and `<!--adf-->` notes (see `packages/core/README.md`).
-- Work stopped after C9 at Shane's request (2026-10-07). No story is claimed. The next session starts from "Start here" in `prompt.md`.
-- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search` (Node-only); `/issue`, `/hierarchy` and `/adf` are renderer-safe. `jm` still prints only `--help` and `--version`.
+- C10 issue writes (#18) is built on `c10-issue-writes`: `createIssue`, `editIssue`, `deleteIssue`, `transitionIssue` in `@jira-mgr/core/write`, tested against MSW only. Whether Jira accepts a type change is unverified until L7 (noted on #27). Its pull request carries this handover; find it with `gh pr list --head c10-issue-writes`.
+- Core subpaths: `@jira-mgr/core` (errors, renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search`, `/write` (Node-only); `/issue`, `/hierarchy` and `/adf` are renderer-safe. `jm` still prints only `--help` and `--version`.
 
 ## Board
 
@@ -21,12 +21,12 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Closed (Done) | #9 C1, #10 C2, #11 C3, #12 C4, #13 C5, #14 C6, #15 C7, #17 C9 | `gh issue list --state closed --limit 200` | 2026-10-07 |
 | Open roadmap issues | 21 (Core 4, CLI 7, Desktop 10) | `gh issue list --state open --limit 200 --json milestone` | 2026-10-07 |
-| In progress | none | `gh issue list --label status:in-progress` | 2026-10-07 |
+| In progress | #18 (C10) | `gh issue list --label status:in-progress` | 2026-10-07 |
 | In AI or HIL review | none | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-07 |
 
 ## Open Pull Requests
 
-Checked 2026-10-07 with `gh pr list --state open`: none. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-07 with `gh pr list --state open`: only `c10-issue-writes`, once its review passes. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -34,7 +34,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (730 pass and 1 skipped in `core`, 10 files, measured on `main` at bdf09d3 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
+| `pnpm test` | Vitest unit tests (797 pass and 1 skipped in `core`, 11 files, measured on `c10-issue-writes` 2026-10-07) | Nothing external: Jira calls hit the MSW fake, which fails any unhandled request |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron smoke test | A local Electron window, no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -47,7 +47,7 @@ No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title
 
 ## Environments
 
-- Jira: Collibra site `engineering-collibra.atlassian.net`, project PSAPAC. PSAPAC's measured shape (issue types, field ids, statuses, link types, sprints, counts) is in [round 2](docs/discovery/2026-10-07-product-grilling/round-2.md), measured 2026-10-07. Correction from the recorded createmeta fixtures (2026-10-07): Sprint (10600) is on Task, Bug, Story and Subtask, absent only on Epic; Start date (13808) is on Bug, Story and Epic, absent on Task and Subtask. Field presence comes from createmeta and editmeta, not from round 2.
+- Jira: Collibra site `engineering-collibra.atlassian.net`, project PSAPAC. PSAPAC's measured shape (issue types, field ids, statuses, link types, sprints, counts) is in [round 2](docs/discovery/2026-10-07-product-grilling/round-2.md), measured 2026-10-07. Correction from the recorded createmeta fixtures (2026-10-07): Sprint (10600) is on Task, Bug, Story and Subtask, absent only on Epic; Start date (13808) is on Bug, Story and Epic, absent on Task and Subtask. Field presence comes from createmeta and editmeta, not from round 2. Editmeta (C10 fixtures): Subtask has no Priority; `issuetype` is listed with no operations, allowed values Task, Bug and Story; transition 3 on Epics is named "REVIEW", so match transitions by target status.
 - Credentials: `~/.claude/bin/kj collibra` reads the Keychain item `kothar-jira-collibra` with `COLLIBRA_JIRA_EMAIL`, and the fixture recorder borrows that token through `JM_JIRA_TOKEN`. jira-mgr's own item (service `jira-mgr`, account = email) is written by `login` from `@jira-mgr/core/auth`, but no real login has run, so it does not exist (`security find-generic-password -s jira-mgr` exits 44, 2026-10-07).
 - Recorded fixtures are committed as recorded, with no scrubbing (Q60). Never record request headers.
 
