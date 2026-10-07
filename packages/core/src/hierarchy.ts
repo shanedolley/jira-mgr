@@ -1,0 +1,156 @@
+import type { Issue } from './issue.js'
+
+export type CustomerOption = NonNullable<Issue['customer']>
+
+export interface HierarchyOptions {
+  hideDone: boolean
+  assigneeMe: boolean
+  hideEmptyCustomers: boolean
+  /** The signed-in user, matched by "Assignee: me". */
+  accountId: string
+  /** Every Customer option. With `hideEmptyCustomers` off, the ones with no visible issue still show. */
+  customers?: CustomerOption[]
+}
+
+export interface HierarchyNode {
+  issue: Issue
+  /** Open children, then Done children of a Done parent, in display order. */
+  children: HierarchyNode[]
+  /** Done children of an open parent, behind the "N done" chip. */
+  doneChildren: HierarchyNode[]
+  doneCount: number
+  /** True when "Assignee: me" kept the issue only as an ancestor of a matching one. */
+  contextOnly: boolean
+  /** Set on a direct child of an Epic whose Customer differs from the Epic's. */
+  customerMismatch: { own: CustomerOption | null; epic: CustomerOption | null } | null
+}
+
+export interface CustomerGroup {
+  /** `null` is the "No Customer" group. */
+  customer: CustomerOption | null
+  epics: HierarchyNode[]
+  /** The "No Epic" group: issues with no Epic, and Subtasks whose parent is not loaded. */
+  noEpic: HierarchyNode[]
+}
+
+const STATUS_ORDER = ['Opportunity', 'To Do', 'In Progress', 'Review', 'Hold', 'Done']
+const INTERNAL_CUSTOMERS = ['Collibra (Internal team)', 'Collibra (Internal template)']
+
+const isEpic = (i: Issue) => i.issueType.hierarchyLevel >= 1
+const isDone = (i: Issue) => i.status.category === 'done'
+const keyNumber = (i: Issue) => Number(i.key.slice(i.key.lastIndexOf('-') + 1))
+const byKeyDesc = (a: Issue, b: Issue) => keyNumber(b) - keyNumber(a)
+
+function statusRank(i: Issue): number {
+  const rank = STATUS_ORDER.indexOf(i.status.name)
+  return rank === -1 ? STATUS_ORDER.length : rank
+}
+
+const byStatusThenKey = (a: Issue, b: Issue) => statusRank(a) - statusRank(b) || byKeyDesc(a, b)
+
+/** Ordinary Customers first, then No Customer, then the internal ones. */
+function customerRank(c: CustomerOption | null): number {
+  if (c === null) return 1
+  return INTERNAL_CUSTOMERS.includes(c.value) ? 2 : 0
+}
+
+function byCustomer(a: CustomerGroup, b: CustomerGroup): number {
+  return (
+    customerRank(a.customer) - customerRank(b.customer) ||
+    (a.customer?.value ?? '').localeCompare(b.customer?.value ?? '', 'en', { sensitivity: 'base' })
+  )
+}
+
+/**
+ * Builds the Customer, Epic, issue, Subtask tree. Pure and serialisable. Nothing in the input
+ * changes.
+ */
+export function buildHierarchy(issues: Issue[], options: HierarchyOptions): CustomerGroup[] {
+  const byKey = new Map(issues.map((i) => [i.key, i]))
+  /** The loaded ancestors of an issue, nearest first. */
+  function ancestors(issue: Issue): Issue[] {
+    const found: Issue[] = []
+    for (let p = byKey.get(issue.parentKey ?? ''); p !== undefined && !found.includes(p);) {
+      found.push(p)
+      p = byKey.get(p.parentKey ?? '')
+    }
+    return found
+  }
+  const context = new Set<string>()
+  const keep = new Set<string>(issues.map((i) => i.key))
+  // Done ancestors of a kept open issue: "Hide done" must not hide that issue, so they stay as context.
+  const rescued = new Set<string>()
+
+  if (options.assigneeMe) {
+    const mine = issues.filter((i) => i.assignee?.accountId === options.accountId)
+    keep.clear()
+    for (const i of mine) keep.add(i.key)
+    for (const i of mine) {
+      for (const ancestor of ancestors(i)) {
+        if (!keep.has(ancestor.key)) context.add(ancestor.key)
+        if (!isDone(i) && isDone(ancestor)) rescued.add(ancestor.key)
+      }
+    }
+    for (const key of context) keep.add(key)
+  }
+
+  const kids = new Map<string, Issue[]>()
+  for (const i of issues) {
+    if (isEpic(i) || i.parentKey === null || !byKey.has(i.parentKey) || !keep.has(i.key)) continue
+    const siblings = kids.get(i.parentKey)
+    if (siblings === undefined) kids.set(i.parentKey, [i])
+    else siblings.push(i)
+  }
+
+  function node(issue: Issue, epic: Issue | null): HierarchyNode {
+    const open = !isDone(issue)
+    const listed = kids.get(issue.key) ?? []
+    // A Done parent shows only as context, so its Done children stay hidden unless rescued.
+    const all =
+      open || !options.hideDone ? listed : listed.filter((c) => !isDone(c) || rescued.has(c.key))
+    const build = (list: Issue[]) =>
+      list.sort(byStatusThenKey).map((c) => node(c, isEpic(issue) ? issue : null))
+    const doneChildren = open ? build(all.filter(isDone)) : []
+    const children = build(open ? all.filter((c) => !isDone(c)) : all)
+    const own = issue.customer
+    const mismatch = epic !== null && (own?.id ?? null) !== (epic.customer?.id ?? null)
+    return {
+      issue,
+      children,
+      doneChildren,
+      doneCount: doneChildren.length,
+      contextOnly: context.has(issue.key),
+      customerMismatch: mismatch ? { own, epic: epic.customer } : null,
+    }
+  }
+
+  const groups = new Map<string, CustomerGroup>()
+  const group = (customer: CustomerOption | null) => {
+    const id = customer?.id ?? ''
+    const found = groups.get(id)
+    if (found !== undefined) return found
+    const created: CustomerGroup = { customer, epics: [], noEpic: [] }
+    groups.set(id, created)
+    return created
+  }
+
+  // A root is an Epic, or an issue whose parent is not loaded.
+  const roots = issues.filter((i) => isEpic(i) || i.parentKey === null || !byKey.has(i.parentKey))
+  for (const root of roots) {
+    const shown =
+      keep.has(root.key) && !(options.hideDone && isDone(root) && !rescued.has(root.key))
+    if (!shown && options.hideEmptyCustomers) continue
+    const g = group(root.customer)
+    if (!shown) continue
+    ;(isEpic(root) ? g.epics : g.noEpic).push(node(root, null))
+  }
+  if (!options.hideEmptyCustomers) for (const c of options.customers ?? []) group(c)
+
+  return [...groups.values()]
+    .map((g) => ({
+      ...g,
+      epics: g.epics.sort((a, b) => byKeyDesc(a.issue, b.issue)),
+      noEpic: g.noEpic.sort((a, b) => byStatusThenKey(a.issue, b.issue)),
+    }))
+    .sort(byCustomer)
+}

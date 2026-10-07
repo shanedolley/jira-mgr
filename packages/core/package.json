@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./auth": "./src/auth.ts",
     "./fields": "./src/fields.ts",
+    "./hierarchy": "./src/hierarchy.ts",
     "./http": "./src/http.ts",
     "./issue": "./src/issue.ts",
     "./search": "./src/search.ts",
