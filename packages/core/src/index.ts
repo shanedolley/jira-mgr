@@ -4,3 +4,5 @@ export const APP_NAME = 'jira-mgr'
 export function appTitle(version: string): string {
   return `${APP_NAME} ${version}`
 }
+
+export * from './errors.js'

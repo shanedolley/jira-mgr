@@ -1,0 +1,198 @@
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { JiraMgrError } from './errors.js'
+import {
+  readFields,
+  readSettings,
+  readTimer,
+  readViews,
+  stateDir,
+  writeFields,
+  writeSettings,
+  writeTimer,
+  writeViews,
+} from './state.js'
+
+let dir: string
+
+beforeEach(async () => {
+  dir = await mkdtemp(join(tmpdir(), 'jm-state-'))
+  process.env.JM_STATE_DIR = dir
+})
+
+afterEach(async () => {
+  delete process.env.JM_STATE_DIR
+  await rm(dir, { recursive: true, force: true })
+})
+
+async function validationError(promise: Promise<unknown>): Promise<JiraMgrError> {
+  const error = await promise.then(
+    () => undefined,
+    (e: unknown) => e,
+  )
+  expect(error).toBeInstanceOf(JiraMgrError)
+  return error as JiraMgrError
+}
+
+describe('stateDir', () => {
+  it('defaults to the Application Support folder', () => {
+    delete process.env.JM_STATE_DIR
+    expect(stateDir()).toMatch(/Library\/Application Support\/jira-mgr$/)
+  })
+
+  it('ignores an empty JM_STATE_DIR', () => {
+    process.env.JM_STATE_DIR = ''
+    expect(stateDir()).toMatch(/Library\/Application Support\/jira-mgr$/)
+  })
+
+  it('honours JM_STATE_DIR', () => {
+    expect(stateDir()).toBe(dir)
+  })
+})
+
+describe('absent files', () => {
+  it('yields default settings', async () => {
+    expect(await readSettings()).toEqual({
+      fieldOverrides: {},
+      timer: { rounding: '5m', reminderThresholdHours: 8, reminderIntervalMinutes: 60 },
+      toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
+    })
+  })
+
+  it('yields the starter views', async () => {
+    const views = await readViews()
+    expect(views.map((v) => v.name)).toEqual(['My issues', 'Current sprint'])
+  })
+
+  it('yields null for the timer and the resolved fields', async () => {
+    expect(await readTimer()).toBeNull()
+    expect(await readFields()).toBeNull()
+  })
+})
+
+describe('round trip', () => {
+  it('keeps settings', async () => {
+    const settings = await readSettings()
+    settings.siteUrl = 'https://engineering-collibra.atlassian.net'
+    settings.projectKey = 'PSAPAC'
+    settings.email = 'a@example.com'
+    settings.fieldOverrides = { sprint: 'customfield_1' }
+    settings.timer.rounding = '15m'
+    settings.toggles.hideDone = false
+    await writeSettings(settings)
+    expect(await readSettings()).toEqual(settings)
+  })
+
+  it('keeps views', async () => {
+    const views = await readViews()
+    views.push({
+      id: 'v3',
+      name: 'Bugs',
+      filters: { type: ['Bug', 'Task'], status: ['To Do'], text: 'login' },
+      toggles: { hideDone: false, assigneeMe: true, hideEmptyCustomers: false },
+    })
+    await writeViews(views)
+    expect(await readViews()).toEqual(views)
+  })
+
+  it('keeps a paused timer and clears it', async () => {
+    const timer = {
+      issueKey: 'PSAPAC-1',
+      segments: [
+        { start: '2026-10-07T01:00:00.000Z', end: '2026-10-07T02:00:00.000Z' },
+        { start: '2026-10-07T03:00:00.000Z', end: null },
+      ],
+    }
+    await writeTimer(timer)
+    expect(await readTimer()).toEqual(timer)
+    await writeTimer(null)
+    expect(await readTimer()).toBeNull()
+  })
+
+  it('keeps resolved fields', async () => {
+    const fields = {
+      site: 'https://engineering-collibra.atlassian.net',
+      project: 'PSAPAC',
+      resolvedAt: '2026-10-07T01:00:00.000Z',
+      ids: {
+        customer: 'customfield_14849',
+        engagement: 'customfield_14850',
+        sprint: 'customfield_10600',
+        startDate: 'customfield_13808',
+        timeRemaining: 'customfield_1',
+      },
+    }
+    await writeFields(fields)
+    expect(await readFields()).toEqual(fields)
+  })
+})
+
+describe('corrupt files', () => {
+  it('rejects a corrupt fields.json, naming the file', async () => {
+    await writeFile(join(dir, 'fields.json'), JSON.stringify({ site: 'x' }))
+    const error = await validationError(readFields())
+    expect(error.code).toBe('validation_failed')
+    expect(error.message).toContain(join(dir, 'fields.json'))
+  })
+
+  it('rejects a single-string filter', async () => {
+    const view = { id: 'v', name: 'V', filters: { type: 'Bug' }, toggles: {} }
+    await writeFile(join(dir, 'views.json'), JSON.stringify([view]))
+    const error = await validationError(readViews())
+    expect(error.message).toContain('filters.type')
+  })
+
+  it('rejects bad JSON, naming the file', async () => {
+    await writeFile(join(dir, 'settings.json'), '{ nope')
+    const error = await validationError(readSettings())
+    expect(error.code).toBe('validation_failed')
+    expect(error.message).toContain(join(dir, 'settings.json'))
+  })
+
+  it('rejects an invalid shape, naming the file', async () => {
+    await writeFile(join(dir, 'views.json'), JSON.stringify([{ id: 'x' }]))
+    const error = await validationError(readViews())
+    expect(error.code).toBe('validation_failed')
+    expect(error.message).toContain(join(dir, 'views.json'))
+  })
+
+  it('rejects an out-of-range value', async () => {
+    await writeFile(join(dir, 'settings.json'), JSON.stringify({ timer: { rounding: '7m' } }))
+    const error = await validationError(readSettings())
+    expect(error.message).toContain('timer.rounding')
+  })
+
+  it('refuses to write an invalid value and leaves the file alone', async () => {
+    await writeTimer({ issueKey: 'PSAPAC-1', segments: [] })
+    const error = await validationError(writeTimer({ issueKey: '', segments: [] }))
+    expect(error.code).toBe('validation_failed')
+    expect(await readTimer()).toEqual({ issueKey: 'PSAPAC-1', segments: [] })
+  })
+})
+
+describe('invalid writes', () => {
+  it('word the error for a rejected write and leave settings.json intact', async () => {
+    const settings = await readSettings()
+    settings.projectKey = 'PSAPAC'
+    await writeSettings(settings)
+    const error = await validationError(
+      writeSettings({ ...settings, timer: { ...settings.timer, rounding: '7m' as '5m' } }),
+    )
+    expect(error.code).toBe('validation_failed')
+    expect(error.message).toContain('file is unchanged')
+    expect(error.message).not.toContain('delete it')
+    expect(await readSettings()).toEqual(settings)
+  })
+})
+
+describe('atomic write', () => {
+  it('leaves no temp file behind', async () => {
+    await writeSettings(await readSettings())
+    await writeSettings(await readSettings())
+    expect(await readdir(dir)).toEqual(['settings.json'])
+  })
+})
