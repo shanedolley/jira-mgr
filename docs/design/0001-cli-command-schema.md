@@ -1,0 +1,497 @@
+# 0001: CLI Command Schema
+
+**Status:** accepted
+**Owner:** @shanedolley
+**Refs:** #21
+
+## Problem
+
+`jm` prints only `--help` and `--version` (`apps/cli/src/index.ts`). Stories L2 to L6 (#22 to #26) add about forty commands for people and agents. Q12 requires one command schema to drive `--help`, `jm help --json` and `docs/reference/cli.md`, so the three never drift. Without the schema, the output contract and the exit codes fixed before L2, each story would invent its own flags, output shapes and error handling, and agents would script against a moving target.
+
+## Goals
+
+- One schema, `apps/cli/src/schema.ts`, defines every command in L2 to L6. Later stories write handlers only.
+- Commander's tree, `--help`, `jm help --json`, `docs/reference/cli.md` and `docs/reference/errors.md` all derive from that schema and the error table in core. A test or a CI diff fails when any of them drifts.
+- Output is a table on a TTY, and JSON when piped or given `--json`, in one envelope for success and failure.
+- Exit codes are 0, 2, 3, 4 and 5, plus 1 for `internal`, mapped from `JiraMgrError` and from Commander's own errors.
+- No new runtime dependency.
+
+## Design
+
+### Layout
+
+```
+apps/cli/src/
+  index.ts                 bin entry: run(process.argv.slice(2), nodeIo()), sets process.exitCode
+  run.ts                   builds the program, parses, dispatches, maps errors, prints
+  schema.ts                CommandSpec types, GLOBAL_OPTIONS, NOUNS and COMMANDS (data only)
+  program.ts               buildProgram(specs, handlers, onAction, out): Commander from the schema; helpText
+  help.ts                  helpDoc(specs, handlers): the jm help --json document; helpExtras(spec)
+  values.ts                one parser per value type, built on zod
+  output.ts                envelope, tables, colour, control-character stripping (tree printing and status colour arrive with issue tree in L3)
+  context.ts               Context and its factory
+  resolve.ts               names to ids: Customer, Engagement, priority, assignee, sprint, link phrase (L4, L5)
+  commands/index.ts        HANDLERS registry: command id to handler
+  commands/<noun>/<verb>.ts  one handler module per command
+```
+
+`schema.ts` holds the whole tree from L1 on. `commands/index.ts` lists only the handlers built so far. A spec without a handler stays out of Commander, `--help`, `jm help --json` and the reference, so nothing documents a command that does not run yet.
+
+### Schema Shape
+
+```ts
+type ValueType =
+  | 'text' | 'markdown' | 'file' | 'issue-key' | 'id'
+  | 'date' | 'datetime' | 'duration' | 'number' | 'integer'
+  | 'enum' | 'boolean'
+
+interface ArgSpec {
+  name: string                    // kebab-case; the input key is its camelCase form
+  type: ValueType
+  description: string
+  optional?: boolean              // required unless set; optional args follow required ones
+  variadic?: boolean              // last arg only; collects into an array
+  choices?: readonly string[]     // type 'enum' only
+}
+
+interface OptionSpec {
+  name: string                    // 'with-subtasks' gives --with-subtasks and input key withSubtasks
+  type: ValueType
+  description: string
+  valueName?: string              // --parent <key>; defaults to the type
+  choices?: readonly string[]     // type 'enum' only, matched in any case
+  required?: boolean
+  default?: string | number | boolean
+  repeatable?: boolean            // --label a --label b gives ['a', 'b']
+  clearable?: boolean             // the value `none`, in any case, becomes null
+  conflicts?: readonly string[]   // other option names
+}
+
+interface CommandSpec {
+  path: readonly [string, ...string[]]   // ['issue', 'list']; the id is path.join(' ')
+  summary: string                        // one line, for parent help and tables
+  description?: string                   // longer help; defaults to summary
+  args?: readonly ArgSpec[]
+  options?: readonly OptionSpec[]
+  examples: readonly { command: string; description: string }[]   // at least one
+  output: { summary: string; example: unknown }                  // example is the data JSON carries
+  exits?: readonly { code: ErrorCode; when: string }[]           // command-specific cases only
+  writes: readonly ('jira' | 'state' | 'keychain')[]             // [] for a read
+  calls: readonly string[]               // '@jira-mgr/core/write#deleteIssue'
+}
+
+const NOUNS: Record<string, string>     // noun to summary, for `jm issue --help`
+const GLOBAL_OPTIONS: readonly OptionSpec[]   // [{ name: 'json', type: 'boolean', ... }]
+const COMMANDS = [/* ... */] as const satisfies readonly CommandSpec[]
+```
+
+`CommandId` is the union of every `path.join(' ')`. `InputOf<Spec>` maps a spec to its handler's input type: `text`, `markdown`, `file`, `issue-key`, `id`, `date`, `duration` and `enum` give `string`, `datetime` gives `Date`, `number` and `integer` give `number`, `boolean` gives `boolean`. `repeatable` and `variadic` wrap it in an array, `clearable` adds `null`, and a value that is neither required nor defaulted adds `undefined`. Handlers therefore get typed input and trust it, per the [TypeScript standard](../standards/typescript.md#validation).
+
+A handler module exports one object:
+
+```ts
+interface Handler<S extends CommandSpec, T> {
+  run(input: InputOf<S>, ctx: Context): Promise<T> | T   // T becomes `data` in the envelope
+  render(data: T, tty: Tty): string                  // the TTY form; '' prints nothing
+}
+
+interface Context {
+  http(): HttpClient           // created on first use, so help, auth and timer status skip the Keychain
+  me(): Promise<CurrentUser>   // L2, with getCurrentUser: memoised; only commands using `me` call it
+  io: Io                       // stdout, stderr, readStdin(), isTTY flags, columns, env, signal
+  now(): Date
+  signal: AbortSignal          // aborted on SIGINT, passed to every core call that takes one
+  keychain?: Keychain          // tests inject a fake; auth commands use it
+  json: boolean                // the envelope is on, which `help` reads
+  specs: readonly CommandSpec[]   // the specs and handlers this run knows, which `help` reads
+  handlers: HandlerMap
+}
+```
+
+L1 ships `Context` without `me()`, because `getCurrentUser` is an L2 core addition.
+
+`run(argv, io, deps?)` takes optional `deps: { http?, keychain?, now?, specs?, handlers? }`. Production passes none; tests inject a fixed-credential client, a fake Keychain and test-only commands.
+
+### Value Types
+
+`values.ts` gives each type one zod schema, used as Commander's `argParser`. A parse failure throws Commander's `InvalidArgumentError`, which exits 2.
+
+| Type | Accepts | Handler gets |
+|---|---|---|
+| `text` | Any non-empty string | The string |
+| `markdown` | Markdown text | The string; the handler calls `markdownToAdf` |
+| `file` | A path, or `-` for stdin. At most one option per command takes `-` | The path; the handler reads it |
+| `issue-key` | `PSAPAC-12` in any case | `PSAPAC-12` |
+| `id` | Digits, such as `10042` | The string |
+| `date` | `YYYY-MM-DD`, a calendar date with no zone | The string |
+| `datetime` | ISO 8601 with an offset or `Z`, or `YYYY-MM-DD HH:mm` and `YYYY-MM-DDTHH:mm` in the machine's local zone (`TZ` applies) | A `Date`; core sends UTC |
+| `duration` | Jira units `w`, `d`, `h`, `m`, spaced or not: `1h30m`, `1h 30m`, `90m`. Decimals are refused | Jira's spaced form, `1h 30m` |
+| `number` | A decimal of 0 or more | A number |
+| `integer` | A whole number of 1 or more | A number |
+| `enum` | One of `choices`, in any case | The choice as the schema spells it |
+| `boolean` | The flag's presence | `true` |
+
+Output times follow core: UTC ISO strings in JSON, and local `YYYY-MM-DD HH:mm` on a TTY.
+
+### Commander
+
+`buildProgram` walks the specs that have handlers:
+
+1. The root is `new Command('jm')` with `.version(pkg.version)`, `.helpCommand(false)`, `.exitOverride()`, `GLOBAL_OPTIONS` (so `jm --json issue list` works as well as `jm issue list --json`), and `.configureOutput()` routing help to the `out` argument and silencing Commander's own error printing, since `run` prints errors. `out` carries the help writers, the width and the colour choice, so `help` can capture Commander's text.
+2. Each `path` prefix becomes a parent command described from `NOUNS`. The last segment is the leaf, with `.summary()`, `.description()`, one `.argument()` per arg (`<key>`, `[key]`, `<file...>`) and one `new Option()` per option plus `GLOBAL_OPTIONS`. `required` maps to `.makeOptionMandatory()`, `choices` to `.choices()`, `default` to `.default()`, `conflicts` to `.conflicts()`, `repeatable` to a collecting parser.
+3. `.addHelpText('after', helpExtras(spec))` appends Examples, Output and Exit codes, rendered from the spec. Commander writes the rest of `--help` from the same spec fields.
+4. `.action()` hands the parsed values, renamed to `InputOf<Spec>` keys, to `run`.
+
+`allowExcessArguments` is already `false` in Commander 15, so a stray argument exits 2.
+
+### Help
+
+`jm help [command...] [--json]` is itself a spec, `help`, with a handler from L1. Without `--json` on a TTY it prints Commander's help for that command. With `--json`, or piped, it prints the help document in the envelope:
+
+```json
+{
+  "data": {
+    "name": "jm",
+    "version": "0.1.0",
+    "globalOptions": [{ "name": "json", "flag": "--json", "type": "boolean", "description": "..." }],
+    "exitCodes": [
+      { "exit": 0, "code": null, "meaning": "Success" },
+      { "exit": 2, "code": "validation_failed", "meaning": "...", "fix": "..." }
+    ],
+    "commands": [
+      {
+        "id": "issue delete",
+        "usage": "jm issue delete <key> [--confirm] [--with-subtasks]",
+        "summary": "...", "description": "...",
+        "args": [], "options": [], "examples": [],
+        "output": { "summary": "...", "example": { "key": "PSAPAC-12", "deletedSubtasks": [] } },
+        "exits": [{ "code": "validation_failed", "exit": 2, "when": "--confirm is missing" }],
+        "writes": ["jira"], "calls": ["@jira-mgr/core/write#deleteIssue"]
+      }
+    ]
+  }
+}
+```
+
+Each option entry carries `flag`, `type`, `valueName`, `required`, `default`, `repeatable`, `clearable`, `choices` and `conflicts`. `jm help issue delete --json` prints the one command object. An unknown command exits 2.
+
+`exitCodes` comes from `EXIT_CODES` and a new `ERROR_HELP: Record<ErrorCode, { meaning: string; fix: string }>` beside it in `packages/core/src/errors.ts`. The `Record` type makes a new code without help text fail the typecheck.
+
+### Reference
+
+`scripts/gen-reference.ts` runs the built binary, `node apps/cli/dist/index.js help --json`, and renders two files from `data`:
+
+- `docs/reference/cli.md`: global options, the envelope, the exit codes, then a `##` section per noun and a `###` section per command with usage, description, an arguments table, an options table (flag, type, required, default, description), examples, the output example, command-specific exits, writes and core calls.
+- `docs/reference/errors.md`: one row per code with its exit code, meaning and fix.
+
+Reading the binary's JSON, not importing `schema.ts`, keeps scripts from importing across packages and lets Node's type stripping run the script, which cannot follow the CLI's `.js` import specifiers. The reference also documents exactly what agents receive.
+
+Root `package.json` gains `"docs:reference": "pnpm --filter @jira-mgr/cli build && node scripts/gen-reference.ts"`. `docs/` is in `.prettierignore`, so generated tables need no formatting pass. CI's `checks` job adds, after `pnpm build`, `pnpm docs:reference && git diff --exit-code -- docs/reference`.
+
+`docs/reference/core.md` (TypeDoc) stays out of L1: it needs a new dev dependency and nothing waits on it. The AGENTS.md row says so until a story adds it.
+
+### Output
+
+**Mode.** JSON mode is on when `--json` is in argv (before any bare `--`) or `stdout` is not a TTY. `run` decides before parsing, so a Commander error also prints JSON when piped. `--help` and `--version` always print plain text.
+
+**Envelope.** stdout carries exactly one JSON value:
+
+| Case | stdout |
+|---|---|
+| Success | `{"data": <result>}` |
+| Failure | `{"error": {"code": "...", "message": "...", "details": ...}}` |
+
+`details` is `JiraMgrError.details` after a JSON round trip, omitted when undefined. Core already fills it with what an agent acts on: `{ status, errorMessages, errors }` from Jira, `available` statuses, `runningIssueKey` and `expectedIssueKey`, the timer's `draft`, `timer` and `restored`, a state file's `path` and `issues`. `cause` never prints. Core puts no token in `details`, and `run` adds nothing to it. JSON is compact when piped and indented two spaces when `--json` is given on a TTY.
+
+**TTY.** `render` writes the result to stdout. Errors go to stderr as `jm: <message>` and nothing goes to stdout. An empty list prints nothing to stdout and `No issues match.` (or the noun's equivalent) to stderr.
+
+**Markdown.** Descriptions and comments print as Markdown on a TTY, unrendered. JSON carries the raw ADF in `description` and `body`, as the grilling record decides, plus `descriptionMarkdown` and `bodyMarkdown` from `adfToMarkdown`, because an agent's piped output is always JSON and would otherwise never see Markdown. Input is Markdown through `--description`, `--body` or `--comment`, from a file or stdin through `--description-file` and `--body-file`, or raw ADF through `--adf <file>`. Each command's description inputs conflict with each other. Core validates `--adf` with `adfDocSchema`.
+
+**Tables.** `output.ts` pads columns with two spaces and a bold header, with no dependency. `jm issue list` shows `KEY TYPE STATUS ASSIGNEE CUSTOMER SUMMARY`. ASSIGNEE truncates at 20 characters and CUSTOMER at 24, and SUMMARY takes what remains of `stdout.columns` (100 when unknown), with a minimum of 20. Truncation ends in `…`.
+
+**Tree.** Arrives in L3 with `issue tree`. It prints two spaces per level:
+
+```
+Acme Corp
+  PSAPAC-100  Epic     In Progress  Data migration
+    PSAPAC-120  Story    To Do        Build the loader  [Customer: Beta Ltd, Epic: Acme Corp]
+      PSAPAC-121  Subtask  In Progress  Write the tests
+    +3 done
+  No Epic
+    PSAPAC-130  Story    Review       Fix the login
+No Customer
+  ...
+```
+
+Type pads to 7 characters and status to the longest status shown. A context-only row is dimmed, or suffixed ` (context)` without colour. A Done chip reads `+N done`. JSON is core's `CustomerGroup[]` unchanged.
+
+**Colour.** `util.styleText` from Node, with `NO_COLOR`, `FORCE_COLOR` and the stream's TTY state decided in `output.ts`. L1 ships the `paint` helper; status colour arrives with the tables in L3. Status colour follows the status category: none for to do, blue for in progress, green for done. A mismatch is yellow, and the `jm:` error prefix red. JSON never carries colour.
+
+**Control characters.** On a TTY, `output.ts` strips C0 and C1 control characters except newline and tab from every string it prints, so Jira text cannot drive the terminal. JSON escapes them already.
+
+**Streams.** stdout holds the result only. stderr holds progress (`Loaded 300 issues`, only when stderr is a TTY), warnings and TTY-mode errors. `JM_DEBUG=1` adds core's request lines and, for `internal` errors, the stack.
+
+### Exit Codes
+
+| Exit | Code | Raised by |
+|---|---|---|
+| 0 | | Success, `--help`, `--version`, an idempotent no-op |
+| 1 | `internal` | Any error that is not a `JiraMgrError` or a Commander error. Message: `Unexpected error: <message>. Run with JM_DEBUG=1 for the stack.` |
+| 2 | `validation_failed` | Every Commander error: `unknownOption`, `unknownCommand`, `missingArgument`, `optionMissingArgument`, `missingMandatoryOptionValue`, `invalidArgument`, `conflictingOption`, `excessArguments`, and `commander.help` (a noun with no verb, or bare `jm`) |
+| 3 | `not_found` | |
+| 4 | `permission_denied` | Includes "Not logged in" |
+| 5 | `jira_error` | |
+| 130 | | Ctrl-C: the signal aborts core calls, and nothing prints to stdout |
+
+`JiraMgrError` maps through `EXIT_CODES`. Commander's `commander.helpDisplayed` and `commander.version` exit 0. An `EPIPE` on stdout, as when piping to `head`, exits 0 silently. `docs/standards/errors-and-logging.md` gains the success envelope and the 1 and 130 rows in L1.
+
+### Safety
+
+- **Delete.** `jm issue delete <key>` without `--confirm` exits 2 before any request: `Deleting PSAPAC-12 is permanent. Pass --confirm.` With `--confirm`, it reads the issue's subtasks through `getIssue`. With subtasks and no `--with-subtasks`, it exits 2 with `PSAPAC-12 has subtasks PSAPAC-13, PSAPAC-14. Pass --with-subtasks to delete them too.` and `details.subtasks`. Otherwise it calls `deleteIssue` with `deleteSubtasks` set to whether the flag was given (Q9).
+- **No other guard** (Q3 a). Every other command, status changes included, runs for any caller. Comment, worklog, link and attachment deletes need no `--confirm`.
+- **Token.** No flag carries the token, since argv shows in `ps`. `jm auth login` reads it from a hidden TTY prompt, or from stdin with `--token-stdin`.
+- **Prompts.** Only `jm auth login` prompts, and only on a TTY, for a missing site, project, email or token. Every other command exits 2 naming the missing value, on a TTY or not. This replaces the CLI README's rule that every command prompts.
+- **Views.** `--view` takes an id or a name in any case through `findView`: `--view my-issues` or `--view "My issues"`. An unknown view exits 3. The CLI only reads `views.json`.
+- **Timer guard.** `--expect <key>` passes `expectRunning` to core: the command acts only when that issue's timer runs. `jm timer stop --time` needs `--expect`, as core requires. A draft with `needsConfirmation` (over the threshold, or across midnight) makes `jm timer stop` and a switching `jm timer start` exit 2 with the draft in `details`, unless `--confirm` logs it as is or `--time` (with `--expect`) replaces it (Q55).
+- **Names.** Customer, Engagement and priority accept a name in any case or an option id, matched against `getFieldOptions`. An unknown or ambiguous name exits 2 listing the choices. `--assignee` accepts `me`, an account id, or a query that `searchAssignableUsers` matches to exactly one user.
+
+### Idempotence
+
+What an agent can rely on:
+
+| Command | Repeated or redundant call |
+|---|---|
+| Every read | Safe |
+| `jm status set` to the current status | Exits 0 with `changed: false` and sends no transition |
+| `jm issue edit` with the current values | Jira accepts it; nothing changes |
+| `jm sprint set` to the issue's sprint | Jira accepts it |
+| `jm auth logout` | Exits 0 when already logged out |
+| `jm timer start` on the running issue | No-op; a paused timer resumes |
+| `jm timer stop` with no timer | Exits 0 with `data: null` |
+| `jm timer pause` or `resume` | No-op when already paused or running; exits 3 with no timer |
+| A delete or remove of something gone | Exits 3 |
+| `issue create`, `comment add`, `worklog add`, `attach add`, `link add` | Not idempotent: each call adds another |
+
+A write that fails with `jira_error` or `internal` after the request left may have gone through, and core's message says so. Re-read before retrying a non-idempotent write.
+
+### Commands
+
+Every command also takes `--json`. Types follow the value types table. `R` marks a required option. Arguments are required unless shown in brackets.
+
+#### auth (L2)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm auth login` | `--site <url>`, `--project <key>`, `--email <text>` (each defaults to settings, else prompts on a TTY, else exits 2); `--token-stdin` | `auth#login`, `lookups#getCurrentUser` | state, keychain | `{ siteUrl, projectKey, email, accountId, displayName }` |
+| `jm auth status` | none | `auth#getCredentials`, `state#readFields`, `lookups#getCurrentUser` | none | `{ siteUrl, projectKey, email, accountId, displayName, fieldsResolvedAt }`; exits 4 when logged out |
+| `jm auth logout` | none | `auth#logout` | keychain, state | `{ loggedOut: true }` |
+
+#### issue (L3, L4)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm issue list` | `--view <id-or-name>`; `--search <text>`; repeatable `--assignee <me\|unassigned\|account-id>`, `--status <name-or-id>`, `--label <text>`, `--type <name-or-id>`, `--sprint <id\|name\|current>`; `--mine`; `--show-done`; `--limit <integer>` | `state#findView`, `search#searchIssuePages`, `view-filter#issueMatcher` | none | `Issue[]` |
+| `jm issue tree` | The `issue list` filters except `--limit`, plus `--show-empty-customers` | as `list`, plus `hierarchy#buildHierarchy`, `lookups#getFieldOptions` | none | `CustomerGroup[]` |
+| `jm issue get <key>` | none | `search#getIssue`, `adf#adfToMarkdown` | none | `Issue` plus `description` (ADF or null), `descriptionMarkdown`, `subtasks: { key, summary, status }[]`, `url` |
+| `jm issue create` | `--type <enum: Epic Story Task Bug Subtask>` (default Story); R `--summary <text>`; R `--customer <name-or-id>`; R `--engagement <name-or-id>`; `--parent <key>`; `--description <markdown>` \| `--description-file <file>` \| `--adf <file>`; `--assignee <me\|account-id\|query>`; `--priority <name-or-id>`; repeatable `--label <text>`; `--start <date>`; `--due <date>`; `--estimate <duration>`; `--time-remaining <number>` | `write#createIssue`, `lookups#getFieldOptions`, `lookups#searchAssignableUsers`, `adf#markdownToAdf` | jira | `{ key, id, url }` |
+| `jm issue edit <key>` | `--summary`; the three description inputs or `--clear-description`; clearable `--assignee`, `--start`, `--due`, `--time-remaining`; `--priority`; repeatable `--label` (replaces), conflicting with repeatable `--add-label` and `--remove-label`; `--parent <key>`; `--customer`; `--engagement`; `--estimate <duration>`; `--type <enum: Story Task Bug>` | `write#editIssue` and the create lookups | jira | `{ key, changed: string[] }` (the input field names sent) |
+| `jm issue delete <key>` | `--confirm`; `--with-subtasks` | `search#getIssue`, `write#deleteIssue` | jira | `{ key, deletedSubtasks: string[] }` |
+
+Filters for `list` and `tree`:
+
+- Toggles start at `hideDone: true`, `assigneeMe: false`, `hideEmptyCustomers: true`. A view's toggles replace them, and `--show-done`, `--mine` and `--show-empty-customers` turn one on. The CLI ignores `settings.toggles`, which hold the app's last UI state, so the same command gives the same answer whatever the app last showed.
+- A view's filters apply first. Each filter flag replaces that field's list, and `--search` replaces `text`.
+- With `hideDone` on, the handler stops `searchIssuePages` after the `unresolved` phase, which halves the requests. `issue tree` then has no Done issues to count, so it prints no Done chips; `--show-done` loads both phases.
+- `--mine`, and any `me` assignee value, calls `ctx.me()` once for the account id.
+- `--limit` stops paging once that many issues match.
+
+#### status (L4)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm status set <key> <status>` | Status name in any case, or id | `search#getIssue`, `write#transitionIssue` | jira | `{ key, status, changed }` |
+
+#### comment (L5)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm comment list <key>` | none | `extras#listComments` | none | `IssueComment[]` plus `bodyMarkdown` |
+| `jm comment add <key>` | One of `--body <markdown>`, `--body-file <file>`, `--adf <file>` | `extras#addComment` | jira | the comment |
+| `jm comment edit <key> <comment-id>` | As `add` | `extras#editComment` | jira | the comment |
+| `jm comment delete <key> <comment-id>` | none | `extras#deleteComment` | jira | `{ key, commentId }` |
+
+#### worklog (L5)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm worklog list <key>` | none | `extras#listWorklogs` | none | `Worklog[]` |
+| `jm worklog add <key>` | R `--time <duration>`; `--started <datetime>`; `--comment <markdown>` | `extras#addWorklog` | jira | the worklog |
+| `jm worklog edit <key> <worklog-id>` | `--time`, `--started`, `--comment`; at least one | `extras#editWorklog` | jira | the worklog |
+| `jm worklog delete <key> <worklog-id>` | none | `extras#deleteWorklog` | jira | `{ key, worklogId }` |
+
+#### link (L3, L5)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm link types` | none | `extras#listLinkTypes` | none | `LinkType[]` |
+| `jm link list <key>` | none | `extras#listLinks` | none | `IssueLink[]` |
+| `jm link add <key> <phrase> <other-key>` | none | `extras#listLinkTypes`, `extras#addLink`, `extras#listLinks` | jira | `{ id, type, direction, key, otherKey }` |
+| `jm link remove <link-id>` | none | `extras#removeLink` | jira | `{ linkId }` |
+
+`link add` reads as a sentence: `jm link add PSAPAC-1 blocks PSAPAC-2`, `jm link add PSAPAC-1 "is blocked by" PSAPAC-2`. The phrase matches, in any case, a type's name or outward text (direction `outward`) or its inward text (`inward`). A phrase matching more than one type exits 2 listing them. After the add, `listLinks` finds the new link's id.
+
+#### attach (L5)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm attach list <key>` | none | `extras#listAttachments` | none | `Attachment[]` |
+| `jm attach add <key> <file...>` | none | `extras#addAttachment` | jira | `Attachment[]` |
+| `jm attach remove <attachment-id>` | none | `extras#removeAttachment` | jira | `{ attachmentId }` |
+
+#### sprint (L3, L5)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm sprint list` | `--all` | `sprints#findBoard`, `sprints#listSprints` | none | `Sprint[]` |
+| `jm sprint set <sprint> <key...>` | `<sprint>` is an id, a name in any case, `current` or `backlog`; 1 to 50 keys | `sprints#listSprints`, `sprints#moveToSprint`, `sprints#moveToBacklog` | jira | `{ sprint: { id, name } \| null, keys }` |
+
+Without `--all`, `sprint list` shows the active sprint and dated future sprints (Q20). `--all` adds closed and undated ones. `current` with more than one active sprint exits 2 listing them.
+
+#### field and view (L3)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm field options <field>` | `<field>` is `customer`, `engagement`, `priority`, `issue-type` or `status` | `lookups#getFieldOptions` | none | `{ id, name }[]` |
+| `jm view list` | none | `state#readViews` | none | `SavedView[]` |
+
+#### timer (L6)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm timer start <key>` | `--expect <key>`; `--confirm` | `search#getIssue`, `timer#switchAndLog` | state, jira (when switching) | `{ timer, stopped, logged }` |
+| `jm timer stop` | `--comment <markdown>`; `--time <duration>` (needs `--expect`); `--expect <key>`; `--confirm`; `--discard` (conflicts with `--comment`, `--time`, `--confirm`) | `timer#stopAndLog`, `timer#stopTimer` | state, jira | `{ draft, worklog }`, `{ draft, worklog: null }` with `--discard`, or `null` when idle |
+| `jm timer status` | none | `state#readTimer`, `state#readSettings`, `timer-calc#worklogDraft` | none | `{ issueKey, state: 'running' \| 'paused', elapsedSeconds, draft }` or `null` |
+| `jm timer pause` | none | `timer#pauseTimer` | state | as `status` |
+| `jm timer resume` | none | `timer#resumeTimer` | state | as `status` |
+
+`timer start` reads the issue for its type, then reads the timer and computes its draft to apply the confirmation rule before calling `switchAndLog`.
+
+#### help (L1)
+
+| Command | Arguments and options | Calls | Writes | Data |
+|---|---|---|---|---|
+| `jm help [command...]` | none | none | none | The help document, or one command |
+
+### Core Additions
+
+The CLI needs four small, additive core changes, each in the story that first uses it:
+
+| Story | Change |
+|---|---|
+| L1 | `ERROR_HELP` in `packages/core/src/errors.ts` |
+| L2 | `getCurrentUser(http)` in `@jira-mgr/core/lookups`: `GET /rest/api/3/myself` to `{ accountId, displayName }`, with a recorded `myself` fixture. `./test/msw` added to core's `exports`, pointing at `test/msw.ts`, so CLI tests share the fake |
+| L3 | `getIssue(http, key)` in `@jira-mgr/core/search`: one issue with `description` (ADF or null) and `subtasks`, with a recorded fixture |
+
+### Testing
+
+**In-process.** CLI tests call `run(argv, io, deps)` from `apps/cli/src/run.ts` with a fake `io` (string buffers, `stdoutIsTTY` and `stderrIsTTY` flags, `columns`, `env` with `NO_COLOR`) and read the exit code, stdout and stderr. Handler tests sit beside their handler as `<verb>.int.test.ts`, start the MSW server from `@jira-mgr/core/test/msw`, call `usePsapacState()`, and inject `createHttpClient({ credentials, sleep })` so no test touches the Keychain or waits. They assert the requests core sent (`serveRecorded`), the envelope, and the exit code. `argv` never holds pnpm's `--`.
+
+**Binary.** `apps/cli`'s `test` script becomes `tsup && vitest run`, so the bundle exists before its smoke tests and CI needs no reordering. `bin.test.ts` spawns the bundle with no Jira: through `node scripts/jm.ts -- --version`, covering the `--` strip; `help --json`, which must equal the in-process document; and `nope`, which must exit 2 with the error envelope. Handler tests stay in-process, because MSW cannot intercept a child process and core refuses any site but `https://<name>.atlassian.net`. `docs/standards/testing.md` changes its CLI row to match in L1.
+
+**Shape.** `expectShape` arrives in L2, with the first handler tests. Each handler test calls `expectShape(json.data, spec.output.example)`, which checks that the keys match recursively, using the first element of an array. The example in the schema then cannot drift from what the handler returns.
+
+**L1 tests:**
+
+| File | Test |
+|---|---|
+| `schema.test.ts` | `every command path is unique` |
+| | `option and argument names are kebab-case and unique within a command, globals included` |
+| | `enum values carry choices and only enum values do` |
+| | `optional arguments follow required ones and only the last is variadic` |
+| | `conflicts name options of the same command` |
+| | `every exit names a known error code` |
+| | `every example starts with jm and the command path and parses without error` |
+| | `every command has a summary, an output example and at least one example` |
+| `program.test.ts` | `the Commander tree holds exactly the commands with handlers` |
+| | `each leaf's flags equal its spec's options plus the global options` |
+| | `--help prints the summary, every flag, every example and the exit codes` |
+| | `a spec without a handler is absent from help` |
+| `help.test.ts` | `help --json lists the commands with handlers` |
+| | `help with a command path prints that command only` |
+| | `help for an unknown command exits 2` |
+| | `exit codes list every error code with its meaning and fix` |
+| `run.test.ts` (test-only command injected through `deps`) | `each JiraMgrError code exits with its mapped code` |
+| | `each Commander error exits 2 with validation_failed` |
+| | `--help and --version exit 0` |
+| | `bare jm and a noun with no verb exit 2` |
+| | `a non-JiraMgrError exits 1 as internal without a stack` |
+| | `JM_DEBUG=1 prints the stack of an internal error to stderr` |
+| | `piped output is the JSON envelope` |
+| | `--json on a TTY prints indented JSON` |
+| | `a TTY failure prints jm: message to stderr and nothing to stdout` |
+| | `a piped failure prints the error envelope to stdout` |
+| | `details pass through and cause never prints` |
+| | `an aborted signal exits 130` |
+| | `EPIPE on stdout exits 0` |
+| `values.test.ts` | `issue keys normalise to upper case and refuse PSAPAC-0` |
+| | `durations accept 1h30m and print 1h 30m, and refuse 1.5h` |
+| | `datetimes read an offset, Z and local time` |
+| | `dates refuse anything but YYYY-MM-DD` |
+| | `enums match in any case and return the schema spelling` |
+| | `clearable values turn none into null` |
+| `output.test.ts` | `tables pad columns and truncate the summary to the width` |
+| | `no colour without a TTY or with NO_COLOR` |
+| | `control characters are stripped on a TTY` |
+| `bin.test.ts` | `pnpm's -- is dropped before the CLI sees it` |
+| | `the bundle's help --json equals the in-process document` |
+| | `an unknown command exits 2 with the error envelope` |
+
+CI's `git diff --exit-code -- docs/reference` proves the committed reference matches the schema.
+
+**Handler tests, L2 to L6.** Each command gets a success test asserting the requests sent and the envelope, one TTY render test, and a test per row of its `exits`. Beyond those:
+
+- auth: `login reads the token from stdin with --token-stdin`; `login without a TTY or --token-stdin exits 2 naming the token`; `status exits 4 when logged out`; `logout exits 0 when logged out`.
+- issue list and tree: `--view resolves an id and a name in any case`; `an unknown view exits 3`; `a filter flag replaces the view's field`; `hidden done skips the done phase`; `--show-done loads both phases`; `--limit stops paging`; `--mine asks for the current user once`; `settings toggles are ignored`; `the tree prints mismatches, context rows and Done chips`.
+- issue get: `JSON carries the ADF and the Markdown description`; `an unknown key exits 3`.
+- issue create and edit: `Customer and Engagement resolve by name in any case`; `an unknown or ambiguous name exits 2 listing choices`; `Markdown becomes ADF`; `two description inputs exit 2`; `none clears the assignee, dates and time remaining`; `--label conflicts with --add-label`; `an edit with nothing to change exits 2`.
+- issue delete: `without --confirm nothing is sent`; `subtasks without --with-subtasks exit 2 naming them`; `--with-subtasks sends deleteSubtasks=true`.
+- status set: `the current status sends no transition`; `an unreachable status exits 2 listing the available ones`.
+- link add: `blocks reads outward`; `is blocked by reads inward`; `a type name reads outward`; `an ambiguous phrase exits 2`; `the new link's id is returned`.
+- sprint: `list hides undated future sprints without --all`; `set backlog moves to the backlog`; `set current with two active sprints exits 2`.
+- timer: `start refuses an Epic`; `start logs the running timer before switching`; `stop logs the draft`; `stop --discard logs nothing`; `stop with no timer exits 0 with null`; `stop --time without --expect exits 2`; `a draft needing confirmation exits 2 without --confirm`; `--expect naming another issue exits 2`; `pause with no timer exits 3`; `a failed worklog keeps the timer paused and exits with core's code`.
+
+## Alternatives
+
+| Option | For | Against |
+|---|---|---|
+| **Declarative specs, Commander built from them** (chosen) | Plain data that `help --json` serialises as it stands; Commander mapping is a short loop; per-type zod parsers validate at the boundary | Cross-field rules beyond `conflicts` live in handlers or core |
+| Zod input schemas converted to JSON Schema, Commander built from that | One schema both validates and documents; JSON Schema suits agents | Arguments, short flags and examples need metadata zod does not hold; walking JSON Schema into Commander is more code than the specs it replaces |
+| Hand-written Commander, help scraped for the reference | No schema to maintain | The drift Q12 forbids |
+| Spec beside each handler in `commands/<noun>/<verb>.ts` | Spec and code in one file | L1 could not fix the full tree without stub handlers, and stubs would leak into help |
+| Bare JSON on success, no `data` key | Shorter `jq` paths | Nothing can sit beside the result later without breaking scripts, and an agent tells success from failure by guessing at the shape |
+| `gen-reference.ts` imports `schema.ts` | No build needed | A relative import across packages, and Node's type stripping cannot follow `.js` specifiers |
+| CLI tests spawn the bundle with MSW preloaded into the child | Exercises the real binary | Needs a preload that rebuilds handlers from a file per test; slower; in-process `run()` covers the same code |
+| Server-side JQL for list filters | Fewer pages for narrow filters | A second filter semantics beside core's `view-filter`, which the app shares |
+
+## Rollout
+
+| Story | Ships |
+|---|---|
+| L1 (#21) | `schema.ts` with every command; `program.ts`, `run.ts`, `help.ts`, `values.ts`, `output.ts` (envelope, tables, colour, control characters), `context.ts` (without `me()`); the `help` handler; `ERROR_HELP`; `scripts/gen-reference.ts` and `pnpm docs:reference`; generated `cli.md` and `errors.md`; the CI drift step; updates to `docs/reference/README.md` (`errors.md` becomes generated), `AGENTS.md` (generated files, core.md deferred), `apps/cli/README.md` (prompt rule, layout), `scripts/README.md`, and the testing and errors standards |
+| L2 (#22) | auth handlers, `getCurrentUser` and `ctx.me()`, the core test export, `expectShape` |
+| L3 (#23) | issue list, tree and get; field options; view list; link types; sprint list; `getIssue`; tree printing and status colour in `output.ts` |
+| L4 (#24) | issue create, edit and delete; status set; `resolve.ts` |
+| L5 (#25) | comment, worklog, link (list, add, remove), attach, sprint set |
+| L6 (#26) | timer |
+| L7 (#27) | A smoke checklist in `docs/runbooks/` with one line per command in `cli.md`, run against PSAPAC |
+
+Each story adds handlers to `commands/index.ts` and regenerates the reference. A spec change after L1 is a public contract change and goes to Shane first, per `AGENTS.md`. `jm` has no users beyond Shane yet, so backing out is a revert of the story's pull request.
+
+## Open Questions
+
+None remain open. Shane answered all four on 2026-10-07, each with the recommended option, and the design above carries the answers:
+
+- **Envelope.** Success prints `{"data": ...}` and failure prints `{"error": {...}}`, not a bare result.
+- **Additions to Q32.** `jm comment list`, `jm worklog list`, `jm link list` and `jm attach list` show the ids that edit and remove need. `jm view list` shows view ids, and `jm sprint set` takes `backlog`.
+- **Long timers.** A `jm timer stop`, or a switching `jm timer start`, whose draft needs confirmation (past the threshold or across midnight) exits 2 unless `--confirm` or `--time` is given. This applies Q55 to the CLI on top of Q51.
+- **Markdown in JSON.** JSON carries `descriptionMarkdown` and `bodyMarkdown` beside the raw ADF in `description` and `body`.

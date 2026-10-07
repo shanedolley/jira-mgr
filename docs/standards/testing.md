@@ -7,10 +7,10 @@ Jira holds the data and the rules, so `core` tests run against a fake Jira.
 | Units: parsing, mapping, ADF conversion, formatting | Vitest | `<file>.test.ts` beside the source | Nothing external |
 | `core` integration | Vitest and MSW | `<file>.int.test.ts` beside the source | The MSW fake |
 | Live read-only checks | Vitest | `<file>.live.test.ts` beside the source | Real PSAPAC, reads only |
-| CLI end to end | Vitest driving the built binary | `e2e/` | The MSW fake |
+| CLI | Vitest calling `run(argv, io, deps)` in process, plus a few smoke tests of the built binary | `apps/cli/src/` beside the source | The MSW fake, except the binary smoke tests, which need no Jira |
 | Desktop end to end | Playwright's Electron driver | `e2e/` | The MSW fake |
 
-`pnpm test` runs the first two layers. `pnpm test:live` runs the live layer, and `pnpm e2e` runs both end-to-end layers.
+`pnpm test` runs the first two layers and the CLI tests, which build the bundle first. `pnpm test:live` runs the live layer, and `pnpm e2e` runs the desktop end-to-end layer.
 
 ## The Fake
 
@@ -19,7 +19,7 @@ Jira holds the data and the rules, so `core` tests run against a fake Jira.
 - Serve a fixture in a test with `serveFixture(method, path, name)` from `packages/core/test/msw.ts`. The setup file fails any request with no handler and resets handlers after each test.
 - Refresh a fixture when Jira's response shape changes, and record why in the pull request. `docs/how-to/refresh-fixtures.md` holds the steps once written.
 - The fake answers writes with canned responses and records the requests, so a test asserts what core would send.
-- End-to-end tests start the same fake and point the CLI or the app at it.
+- Desktop end-to-end tests start the same fake and point the app at it. CLI tests call `run()` in process and inject a client, because MSW cannot intercept a child process and core refuses any site but `https://<name>.atlassian.net`.
 
 ## Live Tests
 

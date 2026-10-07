@@ -38,8 +38,9 @@ Regenerate these; never edit them by hand:
 | File | Regenerate with |
 |---|---|
 | `pnpm-lock.yaml` | `pnpm install` |
-| `docs/reference/cli.md` | `pnpm docs:reference`, which runs `scripts/gen-reference.ts` (planned for the CLI milestone) |
-| `docs/reference/core.md` | `pnpm docs:reference`, which runs `scripts/gen-reference.ts` (planned for the CLI milestone) |
+| `docs/reference/cli.md` | `pnpm docs:reference`, which runs `scripts/gen-reference.ts` |
+| `docs/reference/errors.md` | `pnpm docs:reference` |
+| `docs/reference/core.md` | Not generated yet: it needs a TypeDoc dev dependency, which a later story adds |
 
 ## Commands
 
@@ -58,3 +59,4 @@ Root `package.json` scripts are the source of truth.
 | `pnpm test:live` | Runs the read-only PSAPAC tests. Needs `JM_LIVE_JIRA=1` and a stored token |
 | `pnpm e2e` | Runs the Playwright Electron tests in `e2e/` |
 | `pnpm jm -- <args>` | Runs the built CLI |
+| `pnpm docs:reference` | Builds the CLI and regenerates `docs/reference/cli.md` and `errors.md` |

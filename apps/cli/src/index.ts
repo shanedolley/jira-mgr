@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-import { appTitle } from '@jira-mgr/core'
-import { Command } from 'commander'
+import { nodeIo } from './context.js'
+import { run } from './run.js'
 
-import pkg from '../package.json' with { type: 'json' }
-
-const program = new Command('jm').description(appTitle(pkg.version)).version(pkg.version)
-
-await program.parseAsync()
+const code = await run(process.argv.slice(2), nodeIo())
+process.exitCode = code
+// An interrupted request may keep the event loop alive, so do not wait for it.
+if (code === 130) process.exit(code)
