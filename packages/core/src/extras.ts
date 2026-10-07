@@ -284,6 +284,28 @@ export async function addLink(http: HttpClient, input: AddLinkInput): Promise<vo
   })
 }
 
+const linkEnd = z.object({ key: z.string() })
+
+/** One link read by its id: its type and the keys of the two issues it joins. */
+export async function getLink(
+  http: HttpClient,
+  linkId: string,
+): Promise<{ id: string; type: LinkType; inwardKey: string; outwardKey: string }> {
+  const id = parseInput(jiraId, linkId, 'read the link')
+  const raw = await http.request('GET', `/rest/api/3/issueLink/${id}`)
+  const link = parseResponse(
+    z.object({ id: z.string(), type: linkType, inwardIssue: linkEnd, outwardIssue: linkEnd }),
+    raw,
+    'link',
+  )
+  return {
+    id: link.id,
+    type: link.type,
+    inwardKey: link.inwardIssue.key,
+    outwardKey: link.outwardIssue.key,
+  }
+}
+
 /** Removes a link by its id, as `listLinks` reports it. */
 export async function removeLink(http: HttpClient, linkId: string): Promise<void> {
   const id = parseInput(jiraId, linkId, 'remove the link')
@@ -326,22 +348,36 @@ export async function listAttachments(http: HttpClient, key: string): Promise<At
 
 const addAttachmentInput = z.strictObject({
   key: issueKey,
-  filename: z.string().min(1).max(255),
-  content: z.union([z.instanceof(Blob), z.instanceof(Uint8Array)]),
+  files: z
+    .array(
+      z.strictObject({
+        filename: z.string().min(1).max(255),
+        content: z.union([z.instanceof(Blob), z.instanceof(Uint8Array)]),
+      }),
+    )
+    .min(1),
 })
 
+/** An upload gets this long, plus `UPLOAD_MS_PER_MB` for each megabyte, since a large file outlasts a read's timeout. */
+const UPLOAD_BASE_MS = 30_000
+const UPLOAD_MS_PER_MB = 10_000
+
 /**
- * Uploads a file as multipart. It reads the site's `uploadLimit` first (100 MB on PSAPAC) and
- * refuses a larger file, or a site with attachments off, before sending any bytes.
+ * Uploads files as multipart, one request each, in order. It reads the site's `uploadLimit` once
+ * (100 MB on PSAPAC) and refuses the whole batch, before any bytes are sent, when attachments are
+ * off or any file is over it. A failure after the first upload names the files already attached,
+ * in the message and in `details.attached`.
  */
-export async function addAttachment(
+export async function addAttachments(
   http: HttpClient,
   key: string,
-  file: { filename: string; content: Blob | Uint8Array },
+  files: { filename: string; content: Blob | Uint8Array }[],
 ): Promise<Attachment[]> {
-  const input = parseInput(addAttachmentInput, { key, ...file }, 'attach the file')
-  const blob =
-    input.content instanceof Blob ? input.content : new Blob([new Uint8Array(input.content)])
+  const input = parseInput(addAttachmentInput, { key, files }, 'attach the files')
+  const blobs = input.files.map(({ filename, content }) => ({
+    filename,
+    blob: content instanceof Blob ? content : new Blob([new Uint8Array(content)]),
+  }))
   const meta = parseResponse(
     attachmentMeta,
     await http.request('GET', '/rest/api/3/attachment/meta'),
@@ -350,20 +386,43 @@ export async function addAttachment(
   if (!meta.enabled) {
     throw new JiraMgrError('validation_failed', 'Attachments are turned off on this Jira site.')
   }
-  if (blob.size > meta.uploadLimit) {
-    throw new JiraMgrError(
-      'validation_failed',
-      `${input.filename} is ${String(blob.size)} bytes, over this site's limit of ${String(meta.uploadLimit)}. Attach a smaller file.`,
-      { details: { size: blob.size, uploadLimit: meta.uploadLimit } },
-    )
+  for (const { filename, blob } of blobs) {
+    if (blob.size > meta.uploadLimit) {
+      throw new JiraMgrError(
+        'validation_failed',
+        `${filename} is ${String(blob.size)} bytes, over this site's limit of ${String(meta.uploadLimit)}. Attach a smaller file.`,
+        { details: { size: blob.size, uploadLimit: meta.uploadLimit } },
+      )
+    }
   }
-  const form = new FormData()
-  form.append('file', blob, input.filename)
-  const raw = await http.request('POST', `/rest/api/3/issue/${input.key}/attachments`, {
-    body: form,
-  })
-  return parseResponse(z.array(attachmentSchema), raw, 'attachment upload')
+  const attached: Attachment[] = []
+  for (const { filename, blob } of blobs) {
+    const form = new FormData()
+    form.append('file', blob, filename)
+    try {
+      const raw = await http.request('POST', `/rest/api/3/issue/${input.key}/attachments`, {
+        body: form,
+        timeoutMs: UPLOAD_BASE_MS + Math.ceil(blob.size / 1_000_000) * UPLOAD_MS_PER_MB,
+      })
+      attached.push(...parseResponse(z.array(attachmentSchema), raw, 'attachment upload'))
+    } catch (error) {
+      if (!(error instanceof JiraMgrError) || attached.length === 0) throw error
+      const names = attached.map((a) => a.filename).join(', ')
+      throw new JiraMgrError(error.code, `${error.message} Already attached: ${names}.`, {
+        details: { error: error.details, attached },
+        cause: error,
+      })
+    }
+  }
+  return attached
 }
+
+/** Uploads one file as multipart. See `addAttachments`. */
+export const addAttachment = (
+  http: HttpClient,
+  key: string,
+  file: { filename: string; content: Blob | Uint8Array },
+): Promise<Attachment[]> => addAttachments(http, key, [file])
 
 /** Removes an attachment by its id. */
 export async function removeAttachment(http: HttpClient, attachmentId: string): Promise<void> {

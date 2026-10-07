@@ -5,6 +5,7 @@ import { failure, JIRA_SITE, loadFixture, noContent, serveRecorded } from '../te
 import { markdownToAdf } from './adf.js'
 import {
   addAttachment,
+  addAttachments,
   addComment,
   addLink,
   addWorklog,
@@ -12,6 +13,7 @@ import {
   deleteWorklog,
   editComment,
   editWorklog,
+  getLink,
   listAttachments,
   listComments,
   listLinks,
@@ -21,7 +23,7 @@ import {
   removeLink,
   type AddLinkInput,
 } from './extras.js'
-import { createHttpClient } from './http.js'
+import { createHttpClient, type HttpClient } from './http.js'
 
 const client = createHttpClient({
   credentials: () => Promise.resolve({ siteUrl: JIRA_SITE, email: 'a@b.co', token: 'x' }),
@@ -335,6 +337,24 @@ describe('links', () => {
     },
   )
 
+  it('reads one link by id, with its type and the keys of both issues', async () => {
+    const requests = serveRecorded(() => HttpResponse.json(fixture('issue-link-551838')))
+    expect(await getLink(client, '551838')).toEqual({
+      id: '551838',
+      type: { id: '10000', name: 'Blocks', inward: 'is blocked by', outward: 'blocks' },
+      inwardKey: 'PSAPAC-666',
+      outwardKey: 'PSAPAC-664',
+    })
+    expect(requests).toMatchObject([{ method: 'GET', path: '/rest/api/3/issueLink/551838' }])
+  })
+
+  it('refuses a bad link id for getLink before any request, and a link with no issue as jira_error', async () => {
+    const requests = serveRecorded(() => HttpResponse.json({ id: '1', type: {} }))
+    expect((await failure(getLink(client, '1/../2'))).code).toBe('validation_failed')
+    expect(requests).toEqual([])
+    expect((await failure(getLink(client, '1'))).code).toBe('jira_error')
+  })
+
   it('removes a link by id', async () => {
     const requests = serveRecorded(noContent)
     await removeLink(client, '551838')
@@ -458,6 +478,96 @@ describe('attachments', () => {
     )
     expect(error.code).toBe('validation_failed')
     expect(requests.map((r) => r.method)).toEqual(['GET'])
+  })
+
+  it('reads the limit once for several files and uploads them in order', async () => {
+    const requests = serve()
+    const result = await addAttachments(client, 'PSAPAC-3017', [
+      { filename: 'a.txt', content: new Uint8Array(1) },
+      { filename: 'b.txt', content: new Uint8Array(2) },
+    ])
+    expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+      'GET /rest/api/3/attachment/meta',
+      'POST /rest/api/3/issue/PSAPAC-3017/attachments',
+      'POST /rest/api/3/issue/PSAPAC-3017/attachments',
+    ])
+    expect(requests.slice(1).map((r) => ((r.body as FormData).get('file') as File).name)).toEqual([
+      'a.txt',
+      'b.txt',
+    ])
+    expect(result).toHaveLength(2)
+  })
+
+  it('refuses the whole batch when a later file is over the limit, before any upload', async () => {
+    const requests = serve(meta({ uploadLimit: 5 }))
+    const error = await failure(
+      addAttachments(client, 'PSAPAC-3017', [
+        { filename: 'small.bin', content: new Uint8Array(5) },
+        { filename: 'big.bin', content: new Uint8Array(6) },
+      ]),
+    )
+    expect(error.code).toBe('validation_failed')
+    expect(error.message).toContain('big.bin is 6 bytes')
+    expect(requests.map((r) => r.method)).toEqual(['GET'])
+  })
+
+  it('names the files already attached when a later upload fails', async () => {
+    let uploads = 0
+    const requests = serveRecorded(({ method }) => {
+      if (method === 'GET') return meta()()
+      uploads += 1
+      return uploads === 1
+        ? uploaded()
+        : HttpResponse.json({ errorMessages: ['Boom'] }, { status: 500 })
+    })
+    const error = await failure(
+      addAttachments(client, 'PSAPAC-3017', [
+        { filename: 'a.txt', content: new Uint8Array(1) },
+        { filename: 'b.txt', content: new Uint8Array(1) },
+      ]),
+    )
+    expect(error.code).toBe('jira_error')
+    expect(error.message).toMatch(/Already attached: 1f4a1\.png\.$/)
+    expect((error.details as { attached: { id: string }[] }).attached.map((a) => a.id)).toEqual([
+      '652124',
+    ])
+    expect(requests.map((r) => r.method)).toEqual(['GET', 'POST', 'POST'])
+  })
+
+  it('does not name attachments when the first upload fails', async () => {
+    serveRecorded(({ method }) =>
+      method === 'GET' ? meta()() : HttpResponse.json({ errorMessages: ['Boom'] }, { status: 500 }),
+    )
+    const error = await failure(
+      addAttachment(client, 'PSAPAC-3017', { filename: 'a.txt', content: new Uint8Array(1) }),
+    )
+    expect(error.message).not.toContain('Already attached')
+  })
+
+  it('gives each upload a timeout that grows with its size, and the read the default', async () => {
+    const calls: { method: string; timeoutMs: number | undefined }[] = []
+    const fake: HttpClient = {
+      request: (method, _path, options) => {
+        calls.push({ method, timeoutMs: options?.timeoutMs })
+        return Promise.resolve(
+          method === 'GET'
+            ? fixture('attachment-meta')
+            : [
+                (fixture('issue-attachments-psapac-3017').fields as { attachment: unknown[] })
+                  .attachment[0],
+              ],
+        )
+      },
+    }
+    await addAttachments(fake, 'PSAPAC-3017', [
+      { filename: 'tiny.bin', content: new Uint8Array(1) },
+      { filename: 'three.bin', content: new Uint8Array(2_000_001) },
+    ])
+    expect(calls).toEqual([
+      { method: 'GET', timeoutMs: undefined },
+      { method: 'POST', timeoutMs: 40_000 },
+      { method: 'POST', timeoutMs: 60_000 },
+    ])
   })
 
   it('removes an attachment by id', async () => {

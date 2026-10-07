@@ -815,6 +815,544 @@ Calls:
 - `@jira-mgr/core/search#getIssue`
 - `@jira-mgr/core/write#transitionIssue`
 
+## comment
+
+### jm comment list
+
+```
+jm comment list <key>
+```
+
+List the comments on an issue
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Examples
+
+```sh
+# List the comments, oldest first.
+jm comment list PSAPAC-12
+```
+
+#### Output
+
+An array of comments, each with its body as ADF and as Markdown.
+
+```json
+{
+  "data": [
+    {
+      "id": "10500",
+      "author": {
+        "accountId": "5b10ac8d82e05b22cc7d4ef5",
+        "displayName": "Shane Dolley"
+      },
+      "body": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Checked."
+              }
+            ]
+          }
+        ]
+      },
+      "created": "2026-10-06T23:10:00.000Z",
+      "updated": "2026-10-06T23:10:00.000Z",
+      "bodyMarkdown": "Checked."
+    }
+  ]
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/extras#listComments`
+- `@jira-mgr/core/adf#adfToMarkdown`
+
+### jm comment add
+
+```
+jm comment add <key> [--body <markdown>] [--body-file <file>] [--adf <file>]
+```
+
+Give one of `--body`, `--body-file` or `--adf`.
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--body <markdown>` | markdown | no |  | Body as Markdown. Conflicts with `--body-file`, `--adf`. |
+| `--body-file <file>` | file | no |  | Read the body as Markdown from a file, or `-` for stdin. Conflicts with `--body`, `--adf`. |
+| `--adf <file>` | file | no |  | Read the body as an Atlassian Document Format file, or `-` for stdin. Conflicts with `--body`, `--body-file`. |
+
+#### Examples
+
+```sh
+# Add a Markdown comment.
+jm comment add PSAPAC-12 --body "Checked."
+```
+
+#### Output
+
+The new comment.
+
+```json
+{
+  "data": {
+    "id": "10500",
+    "author": {
+      "accountId": "5b10ac8d82e05b22cc7d4ef5",
+      "displayName": "Shane Dolley"
+    },
+    "body": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Checked."
+            }
+          ]
+        }
+      ]
+    },
+    "created": "2026-10-06T23:10:00.000Z",
+    "updated": "2026-10-06T23:10:00.000Z"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | No body input is given, or more than one, or the key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#addComment`
+- `@jira-mgr/core/adf#markdownToAdf`
+
+### jm comment edit
+
+```
+jm comment edit <key> <comment-id> [--body <markdown>] [--body-file <file>] [--adf <file>]
+```
+
+Give one of `--body`, `--body-file` or `--adf`.
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+| `comment-id` | id | yes | The comment id from `comment list`. |
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--body <markdown>` | markdown | no |  | Body as Markdown. Conflicts with `--body-file`, `--adf`. |
+| `--body-file <file>` | file | no |  | Read the body as Markdown from a file, or `-` for stdin. Conflicts with `--body`, `--adf`. |
+| `--adf <file>` | file | no |  | Read the body as an Atlassian Document Format file, or `-` for stdin. Conflicts with `--body`, `--body-file`. |
+
+#### Examples
+
+```sh
+# Replace a comment.
+jm comment edit PSAPAC-12 10500 --body "Checked twice."
+```
+
+#### Output
+
+The edited comment.
+
+```json
+{
+  "data": {
+    "id": "10500",
+    "author": {
+      "accountId": "5b10ac8d82e05b22cc7d4ef5",
+      "displayName": "Shane Dolley"
+    },
+    "body": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Checked."
+            }
+          ]
+        }
+      ]
+    },
+    "created": "2026-10-06T23:10:00.000Z",
+    "updated": "2026-10-06T23:10:00.000Z"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | No body input is given, or more than one, or the key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue or the comment does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#editComment`
+- `@jira-mgr/core/adf#markdownToAdf`
+
+### jm comment delete
+
+```
+jm comment delete <key> <comment-id>
+```
+
+Delete a comment
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+| `comment-id` | id | yes | The comment id from `comment list`. |
+
+#### Examples
+
+```sh
+# Delete a comment.
+jm comment delete PSAPAC-12 10500
+```
+
+#### Output
+
+The deleted comment.
+
+```json
+{
+  "data": {
+    "key": "PSAPAC-12",
+    "commentId": "10500"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | The key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue or the comment does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#deleteComment`
+
+## worklog
+
+### jm worklog list
+
+```
+jm worklog list <key>
+```
+
+List the worklogs on an issue
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Examples
+
+```sh
+# List the worklogs.
+jm worklog list PSAPAC-12
+```
+
+#### Output
+
+An array of worklogs.
+
+```json
+{
+  "data": [
+    {
+      "id": "10600",
+      "author": {
+        "accountId": "5b10ac8d82e05b22cc7d4ef5",
+        "displayName": "Shane Dolley"
+      },
+      "timeSpent": "1h 30m",
+      "timeSpentSeconds": 5400,
+      "started": "2026-10-06T23:10:00.000Z",
+      "comment": null,
+      "created": "2026-10-06T23:10:00.000Z",
+      "updated": "2026-10-06T23:10:00.000Z"
+    }
+  ]
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/extras#listWorklogs`
+
+### jm worklog add
+
+```
+jm worklog add <key> --time <duration> [--started <datetime>] [--comment <markdown>]
+```
+
+Log time on an issue
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--time <duration>` | duration | yes |  | Time spent, such as `1h 30m`. |
+| `--started <datetime>` | datetime | no |  | When the work started. Defaults to now. |
+| `--comment <markdown>` | markdown | no |  | A comment, as Markdown. |
+
+#### Examples
+
+```sh
+# Log an hour and a half, started now.
+jm worklog add PSAPAC-12 --time 1h30m
+```
+
+```sh
+# Log time from yesterday morning, local time.
+jm worklog add PSAPAC-12 --time 2h --started "2026-10-06 09:00" --comment "Pairing"
+```
+
+#### Output
+
+The new worklog.
+
+```json
+{
+  "data": {
+    "id": "10600",
+    "author": {
+      "accountId": "5b10ac8d82e05b22cc7d4ef5",
+      "displayName": "Shane Dolley"
+    },
+    "timeSpent": "1h 30m",
+    "timeSpentSeconds": 5400,
+    "started": "2026-10-06T23:10:00.000Z",
+    "comment": null,
+    "created": "2026-10-06T23:10:00.000Z",
+    "updated": "2026-10-06T23:10:00.000Z"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | The key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#addWorklog`
+- `@jira-mgr/core/adf#markdownToAdf`
+
+### jm worklog edit
+
+```
+jm worklog edit <key> <worklog-id> [--time <duration>] [--started <datetime>] [--comment <markdown>]
+```
+
+Give at least one of `--time`, `--started` and `--comment`.
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+| `worklog-id` | id | yes | The worklog id from `worklog list`. |
+
+#### Options
+
+| Flag | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--time <duration>` | duration | no |  | Time spent, such as `1h 30m`. |
+| `--started <datetime>` | datetime | no |  | When the work started. |
+| `--comment <markdown>` | markdown | no |  | A comment, as Markdown. |
+
+#### Examples
+
+```sh
+# Change the time spent.
+jm worklog edit PSAPAC-12 10600 --time 2h
+```
+
+#### Output
+
+The edited worklog.
+
+```json
+{
+  "data": {
+    "id": "10600",
+    "author": {
+      "accountId": "5b10ac8d82e05b22cc7d4ef5",
+      "displayName": "Shane Dolley"
+    },
+    "timeSpent": "1h 30m",
+    "timeSpentSeconds": 5400,
+    "started": "2026-10-06T23:10:00.000Z",
+    "comment": null,
+    "created": "2026-10-06T23:10:00.000Z",
+    "updated": "2026-10-06T23:10:00.000Z"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | No field is given to change, or the key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue or the worklog does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#editWorklog`
+- `@jira-mgr/core/adf#markdownToAdf`
+
+### jm worklog delete
+
+```
+jm worklog delete <key> <worklog-id>
+```
+
+Delete a worklog
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+| `worklog-id` | id | yes | The worklog id from `worklog list`. |
+
+#### Examples
+
+```sh
+# Delete a worklog.
+jm worklog delete PSAPAC-12 10600
+```
+
+#### Output
+
+The deleted worklog.
+
+```json
+{
+  "data": {
+    "key": "PSAPAC-12",
+    "worklogId": "10600"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | The key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue or the worklog does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#deleteWorklog`
+
 ## link
 
 ### jm link types
@@ -856,6 +1394,347 @@ Writes: nothing.
 Calls:
 
 - `@jira-mgr/core/extras#listLinkTypes`
+
+### jm link list
+
+```
+jm link list <key>
+```
+
+List the links on an issue
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Examples
+
+```sh
+# List the links, each seen from PSAPAC-12.
+jm link list PSAPAC-12
+```
+
+#### Output
+
+An array of links, each seen from the issue.
+
+```json
+{
+  "data": [
+    {
+      "id": "10800",
+      "type": {
+        "id": "10000",
+        "name": "Blocks",
+        "inward": "is blocked by",
+        "outward": "blocks"
+      },
+      "direction": "outward",
+      "issue": {
+        "key": "PSAPAC-13",
+        "summary": "Write the tests",
+        "status": "To Do"
+      }
+    }
+  ]
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/extras#listLinks`
+
+### jm link add
+
+```
+jm link add <key> <phrase> <other-key>
+```
+
+Reads as a sentence: `jm link add PSAPAC-1 blocks PSAPAC-2`. The phrase matches, in any case, a link type's name or outward text, or its inward text. A phrase that matches more than one type is refused. Not idempotent: each call adds another link.
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue the phrase describes. |
+| `phrase` | text | yes | A link type name or phrase, such as `blocks` or `is blocked by`. |
+| `other-key` | issue-key | yes | The other issue. |
+
+#### Examples
+
+```sh
+# PSAPAC-1 blocks PSAPAC-2.
+jm link add PSAPAC-1 blocks PSAPAC-2
+```
+
+```sh
+# PSAPAC-1 is blocked by PSAPAC-2.
+jm link add PSAPAC-1 "is blocked by" PSAPAC-2
+```
+
+#### Output
+
+The new link.
+
+```json
+{
+  "data": {
+    "id": "10800",
+    "type": "Blocks",
+    "direction": "outward",
+    "key": "PSAPAC-1",
+    "otherKey": "PSAPAC-2"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | The phrase matches no link type, or more than one, or a key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | An issue does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#listLinkTypes`
+- `@jira-mgr/core/extras#addLink`
+- `@jira-mgr/core/extras#listLinks`
+
+### jm link remove
+
+```
+jm link remove <link-id>
+```
+
+Reads the link first, and refuses it unless both issues it joins are in the project in settings.
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `link-id` | id | yes | The link id from `link list`. |
+
+#### Examples
+
+```sh
+# Remove a link.
+jm link remove 10800
+```
+
+#### Output
+
+The removed link.
+
+```json
+{
+  "data": {
+    "linkId": "10800"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | An issue the link joins is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The link does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#getLink`
+- `@jira-mgr/core/extras#removeLink`
+
+## attach
+
+### jm attach list
+
+```
+jm attach list <key>
+```
+
+List the attachments on an issue
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+
+#### Examples
+
+```sh
+# List the attachments.
+jm attach list PSAPAC-12
+```
+
+#### Output
+
+An array of attachments.
+
+```json
+{
+  "data": [
+    {
+      "id": "10700",
+      "filename": "notes.txt",
+      "size": 120,
+      "mimeType": "text/plain",
+      "created": "2026-10-06T23:10:00.000Z",
+      "author": {
+        "accountId": "5b10ac8d82e05b22cc7d4ef5",
+        "displayName": "Shane Dolley"
+      },
+      "contentUrl": "https://example.atlassian.net/rest/api/3/attachment/content/10700"
+    }
+  ]
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: nothing.
+
+Calls:
+
+- `@jira-mgr/core/extras#listAttachments`
+
+### jm attach add
+
+```
+jm attach add <key> <file...>
+```
+
+Attach files to an issue
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `key` | issue-key | yes | The issue key. |
+| `file...` | file | yes | A file path. Give one or more. |
+
+#### Examples
+
+```sh
+# Attach two files.
+jm attach add PSAPAC-12 notes.txt screenshot.png
+```
+
+#### Output
+
+The new attachments.
+
+```json
+{
+  "data": [
+    {
+      "id": "10700",
+      "filename": "notes.txt",
+      "size": 120,
+      "mimeType": "text/plain",
+      "created": "2026-10-06T23:10:00.000Z",
+      "author": {
+        "accountId": "5b10ac8d82e05b22cc7d4ef5",
+        "displayName": "Shane Dolley"
+      },
+      "contentUrl": "https://example.atlassian.net/rest/api/3/attachment/content/10700"
+    }
+  ]
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | A path is not a readable regular file, or is `-`; a file is over the site upload limit; attachments are off; the key is outside the project in settings. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The issue does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#addAttachments`
+
+### jm attach remove
+
+```
+jm attach remove <attachment-id>
+```
+
+Remove an attachment
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `attachment-id` | id | yes | The attachment id from `attach list`. |
+
+#### Examples
+
+```sh
+# Remove an attachment.
+jm attach remove 10700
+```
+
+#### Output
+
+The removed attachment.
+
+```json
+{
+  "data": {
+    "attachmentId": "10700"
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 3 | `not_found` | The attachment does not exist. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/extras#removeAttachment`
 
 ## sprint
 
@@ -912,6 +1791,71 @@ Calls:
 
 - `@jira-mgr/core/sprints#findBoard`
 - `@jira-mgr/core/sprints#listSprints`
+
+### jm sprint set
+
+```
+jm sprint set <sprint> <key...>
+```
+
+Move issues to a sprint or the backlog
+
+#### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `sprint` | text | yes | A sprint id, a name in any case, `current` or `backlog`. |
+| `key...` | issue-key | yes | One to 50 issue keys. |
+
+#### Examples
+
+```sh
+# Move two issues to the active sprint.
+jm sprint set current PSAPAC-12 PSAPAC-13
+```
+
+```sh
+# Move an issue back to the backlog.
+jm sprint set backlog PSAPAC-12
+```
+
+#### Output
+
+The sprint, or null for the backlog, and the keys moved.
+
+```json
+{
+  "data": {
+    "sprint": {
+      "id": 7,
+      "name": "Sprint 7"
+    },
+    "keys": [
+      "PSAPAC-12",
+      "PSAPAC-13"
+    ]
+  }
+}
+```
+
+#### Exits
+
+| Exit | Code | When |
+|---|---|---|
+| 2 | `validation_failed` | The sprint matches none, or `current` with none or more than one active sprint; more than 50 keys; a key outside the project. |
+| 4 | `permission_denied` | No project is set in settings. |
+| 3 | `not_found` | The project has no board that supports sprints. |
+
+#### Effects
+
+Writes: jira.
+
+Calls:
+
+- `@jira-mgr/core/sprints#findBoard`
+- `@jira-mgr/core/sprints#listSprints`
+- `@jira-mgr/core/sprints#moveToSprint`
+- `@jira-mgr/core/sprints#moveToBacklog`
 
 ## field
 

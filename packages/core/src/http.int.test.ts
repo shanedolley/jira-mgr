@@ -493,6 +493,24 @@ describe('error mapping', () => {
     expect(error.message).toContain('did not finish within')
   })
 
+  it("lets a request's timeoutMs override the client's, longer or shorter", async () => {
+    server.use(
+      http.get(`${JIRA_SITE}/rest/api/3/myself`, async () => {
+        await delay(150)
+        return HttpResponse.json({ accountId: 'a' })
+      }),
+    )
+    const longer = client({ timeoutMs: 50 }).api.request('GET', '/rest/api/3/myself', {
+      timeoutMs: 5000,
+    })
+    await expect(longer).resolves.toEqual({ accountId: 'a' })
+    const error = await rejection(
+      client({ timeoutMs: 5000 }).api.request('GET', '/rest/api/3/myself', { timeoutMs: 20 }),
+    )
+    expect(error.code).toBe('jira_error')
+    expect(error.message).toContain('did not finish within 0.02 seconds')
+  })
+
   it('rethrows the caller abort unchanged', async () => {
     server.use(
       http.get(`${JIRA_SITE}/rest/api/3/myself`, async () => {

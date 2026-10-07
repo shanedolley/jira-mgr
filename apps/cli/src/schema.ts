@@ -749,7 +749,11 @@ export const COMMANDS = [
     ],
     output: { summary: 'The new comment.', example: COMMENT },
     exits: [
-      { code: 'validation_failed', when: 'No body input is given, or more than one.' },
+      {
+        code: 'validation_failed',
+        when: 'No body input is given, or more than one, or the key is outside the project in settings.',
+      },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
       { code: 'not_found', when: 'The issue does not exist.' },
     ],
     writes: ['jira'],
@@ -772,7 +776,11 @@ export const COMMANDS = [
     ],
     output: { summary: 'The edited comment.', example: COMMENT },
     exits: [
-      { code: 'validation_failed', when: 'No body input is given, or more than one.' },
+      {
+        code: 'validation_failed',
+        when: 'No body input is given, or more than one, or the key is outside the project in settings.',
+      },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
       { code: 'not_found', when: 'The issue or the comment does not exist.' },
     ],
     writes: ['jira'],
@@ -787,7 +795,11 @@ export const COMMANDS = [
     ],
     examples: [{ command: 'jm comment delete PSAPAC-12 10500', description: 'Delete a comment.' }],
     output: { summary: 'The deleted comment.', example: { key: 'PSAPAC-12', commentId: '10500' } },
-    exits: [{ code: 'not_found', when: 'The issue or the comment does not exist.' }],
+    exits: [
+      { code: 'validation_failed', when: 'The key is outside the project in settings.' },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
+      { code: 'not_found', when: 'The issue or the comment does not exist.' },
+    ],
     writes: ['jira'],
     calls: ['@jira-mgr/core/extras#deleteComment'],
   },
@@ -834,7 +846,11 @@ export const COMMANDS = [
       },
     ],
     output: { summary: 'The new worklog.', example: WORKLOG },
-    exits: [{ code: 'not_found', when: 'The issue does not exist.' }],
+    exits: [
+      { code: 'validation_failed', when: 'The key is outside the project in settings.' },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
+      { code: 'not_found', when: 'The issue does not exist.' },
+    ],
     writes: ['jira'],
     calls: ['@jira-mgr/core/extras#addWorklog', '@jira-mgr/core/adf#markdownToAdf'],
   },
@@ -864,7 +880,11 @@ export const COMMANDS = [
     ],
     output: { summary: 'The edited worklog.', example: WORKLOG },
     exits: [
-      { code: 'validation_failed', when: 'No field is given to change.' },
+      {
+        code: 'validation_failed',
+        when: 'No field is given to change, or the key is outside the project in settings.',
+      },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
       { code: 'not_found', when: 'The issue or the worklog does not exist.' },
     ],
     writes: ['jira'],
@@ -879,7 +899,11 @@ export const COMMANDS = [
     ],
     examples: [{ command: 'jm worklog delete PSAPAC-12 10600', description: 'Delete a worklog.' }],
     output: { summary: 'The deleted worklog.', example: { key: 'PSAPAC-12', worklogId: '10600' } },
-    exits: [{ code: 'not_found', when: 'The issue or the worklog does not exist.' }],
+    exits: [
+      { code: 'validation_failed', when: 'The key is outside the project in settings.' },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
+      { code: 'not_found', when: 'The issue or the worklog does not exist.' },
+    ],
     writes: ['jira'],
     calls: ['@jira-mgr/core/extras#deleteWorklog'],
   },
@@ -950,7 +974,11 @@ export const COMMANDS = [
       },
     },
     exits: [
-      { code: 'validation_failed', when: 'The phrase matches no link type, or more than one.' },
+      {
+        code: 'validation_failed',
+        when: 'The phrase matches no link type, or more than one, or a key is outside the project in settings.',
+      },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
       { code: 'not_found', when: 'An issue does not exist.' },
     ],
     writes: ['jira'],
@@ -966,9 +994,18 @@ export const COMMANDS = [
     args: [{ name: 'link-id', type: 'id', description: 'The link id from `link list`.' }],
     examples: [{ command: 'jm link remove 10800', description: 'Remove a link.' }],
     output: { summary: 'The removed link.', example: { linkId: '10800' } },
-    exits: [{ code: 'not_found', when: 'The link does not exist.' }],
+    description:
+      'Reads the link first, and refuses it unless both issues it joins are in the project in settings.',
+    exits: [
+      {
+        code: 'validation_failed',
+        when: 'An issue the link joins is outside the project in settings.',
+      },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
+      { code: 'not_found', when: 'The link does not exist.' },
+    ],
     writes: ['jira'],
-    calls: ['@jira-mgr/core/extras#removeLink'],
+    calls: ['@jira-mgr/core/extras#getLink', '@jira-mgr/core/extras#removeLink'],
   },
 
   // attach (L5)
@@ -996,9 +1033,16 @@ export const COMMANDS = [
       },
     ],
     output: { summary: 'The new attachments.', example: [ATTACHMENT] },
-    exits: [{ code: 'not_found', when: 'The issue does not exist.' }],
+    exits: [
+      {
+        code: 'validation_failed',
+        when: 'A path is not a readable regular file, or is `-`; a file is over the site upload limit; attachments are off; the key is outside the project in settings.',
+      },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
+      { code: 'not_found', when: 'The issue does not exist.' },
+    ],
     writes: ['jira'],
-    calls: ['@jira-mgr/core/extras#addAttachment'],
+    calls: ['@jira-mgr/core/extras#addAttachments'],
   },
   {
     path: ['attach', 'remove'],
@@ -1054,11 +1098,14 @@ export const COMMANDS = [
     exits: [
       {
         code: 'validation_failed',
-        when: 'The sprint matches none, or `current` with more than one active sprint; more than 50 keys.',
+        when: 'The sprint matches none, or `current` with none or more than one active sprint; more than 50 keys; a key outside the project.',
       },
+      { code: 'permission_denied', when: 'No project is set in settings.' },
+      { code: 'not_found', when: 'The project has no board that supports sprints.' },
     ],
     writes: ['jira'],
     calls: [
+      '@jira-mgr/core/sprints#findBoard',
       '@jira-mgr/core/sprints#listSprints',
       '@jira-mgr/core/sprints#moveToSprint',
       '@jira-mgr/core/sprints#moveToBacklog',
