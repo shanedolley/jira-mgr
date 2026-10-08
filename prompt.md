@@ -2,10 +2,10 @@
 
 ## Start Here
 
-Measured 2026-10-08 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and `gh issue list --state open --limit 200`. #21 to #26 are closed. L7 (#27) ran with Shane on 2026-10-08. Work in order:
+Measured 2026-10-08 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. The CLI milestone's code is all merged; #27, #60 and #61 sit in HIL Review. Work in order:
 
-1. **Shane's HIL review of #27, #60 and #61, and his open decision on #27.** #27 is in HIL Review (runbook merged in #62). #60 is merged in PR #63 (516669f) and in HIL Review. #61 is merged in PR #64 (845f979) and in HIL Review. The decision is whether `jm issue create` reads the new issue back ([comment on #27](https://github.com/shanedolley/jira-mgr/issues/27#issuecomment-6048998036)). Nothing else to build on these.
-2. **Desktop D1 (#28)** once Shane closes #27. Write D2's and D4's design docs before their code.
+1. **Desktop D1 shell (#28).** Its blockers #21 to #26 are closed and #27 is in HIL Review with nothing left to build, so D1 is unblocked for building (handover trap "HIL blockers stay open"). Write D2's and D4's design docs before their code.
+2. **Shane's HIL review of #27, #60 and #61, and his open decision on #27**, whether `jm issue create` reads the new issue back ([comment on #27](https://github.com/shanedolley/jira-mgr/issues/27#issuecomment-6048998036)). On an answer, add a CLI story for the chosen option. Nothing else to build on these.
 
 ## Reading Order
 
