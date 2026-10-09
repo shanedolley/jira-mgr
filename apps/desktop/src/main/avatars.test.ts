@@ -160,6 +160,8 @@ describe('createAvatarFetcher', () => {
     expect(calls).toHaveLength(201)
     await fetcher.get(url(200))
     expect(calls).toHaveLength(201)
+    await fetcher.get(url(1))
+    expect(calls).toHaveLength(201)
     await fetcher.get(url(0))
     expect(calls).toHaveLength(202)
   })

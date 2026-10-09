@@ -53,7 +53,7 @@ export interface AvatarFetcher {
 /**
  * Fetches profile images for the renderer. Https only. Jira credentials go to the Jira site's own
  * host and to no other. A redirect is never followed, so a host cannot bounce a request, and its
- * credentials, elsewhere. Each URL is fetched once per session, a miss included.
+ * credentials, elsewhere. Each URL is fetched once while cached, a miss included; a refused URL is never fetched.
  */
 export function createAvatarFetcher(deps: {
   credentials: () => Promise<Credentials>
