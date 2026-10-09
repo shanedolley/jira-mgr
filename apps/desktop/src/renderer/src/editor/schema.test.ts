@@ -167,5 +167,9 @@ describe('the editor schema', () => {
     expect(readAdfAttr(panel, 'inline')).toBeNull()
     expect(readAdfAttr(panel, 'block')).toMatchObject({ type: 'panel' })
     expect(readAdfAttr(mention, 'inline')).toMatchObject({ type: 'mention' })
+    // A type core has never seen could be either kind, as core treats it.
+    const unknown = JSON.stringify({ type: 'futureNode' })
+    expect(readAdfAttr(unknown, 'block')).toMatchObject({ type: 'futureNode' })
+    expect(readAdfAttr(unknown, 'inline')).toMatchObject({ type: 'futureNode' })
   })
 })

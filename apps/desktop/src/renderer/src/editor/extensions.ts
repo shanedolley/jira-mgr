@@ -1,4 +1,4 @@
-import { adfNodeSchema, type AdfNode } from '@jira-mgr/core/adf'
+import { adfNodeSchema, isBlockNode, isInlineNode, type AdfNode } from '@jira-mgr/core/adf'
 import {
   Extension,
   getSchema,
@@ -72,23 +72,9 @@ export function readAdfAttr(raw: string | null, kind: Kind): AdfNode | null {
   const parsed = adfNodeSchema.safeParse(value)
   if (!parsed.success) return null
   const node = parsed.data
-  const inline = INLINE_ONLY.has(node.type)
-  return kind === 'inline' ? (inline ? node : null) : inline ? null : node
+  // Core's rule, so a type neither side knows counts as either kind.
+  return kind === 'inline' ? (isInlineNode(node) ? node : null) : isBlockNode(node) ? node : null
 }
-
-/** Types that only sit inside a paragraph, as `isInlineNode` in core knows them. */
-const INLINE_ONLY = new Set([
-  'text',
-  'hardBreak',
-  'mention',
-  'emoji',
-  'date',
-  'status',
-  'inlineCard',
-  'mediaInline',
-  'placeholder',
-  'inlineExtension',
-])
 
 /** The node a read-only atom stores, as the clipboard carries it. */
 const atomHtml = (node: PMNode) => JSON.stringify(node.attrs.node)

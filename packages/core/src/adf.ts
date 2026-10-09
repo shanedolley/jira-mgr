@@ -6,6 +6,8 @@ import { JiraMgrError } from './errors.js'
 export {
   adfDocSchema,
   adfNodeSchema,
+  isBlockNode,
+  isInlineNode,
   type AdfDoc,
   type AdfMark,
   type AdfNode,
