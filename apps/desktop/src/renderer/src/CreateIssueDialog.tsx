@@ -41,6 +41,7 @@ import {
 } from './properties'
 import { useCreateIssue, useFieldOptions, useSprints, useUsers } from './queries'
 import { useDebounced } from './useDebounced'
+import { TypeIcon } from './TypeIcon'
 
 interface CreateIssueDialogProps {
   /** The issue `C` was pressed on, whose Epic, Customer and Engagement the form starts with. */
@@ -151,7 +152,12 @@ export function CreateIssueDialog({
   const parentOptions: PickerOption[] = parentList.shown.map((p) => ({
     id: p.key,
     label: p.summary,
-    leading: <span className="shrink-0 font-mono text-xs text-muted">{p.key}</span>,
+    leading: (
+      <>
+        <TypeIcon type={p.issueType} />
+        <span className="shrink-0 font-mono text-xs text-muted">{p.key}</span>
+      </>
+    ),
   }))
 
   function chooseParent(key: string) {

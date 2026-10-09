@@ -2,6 +2,7 @@ import { memo } from 'react'
 
 import { StatusDot } from './StatusDot'
 import { ROW_HEIGHT, type TreeRow as Row } from './tree'
+import { TypeIcon } from './TypeIcon'
 
 /** The DOM id of a row, which the Tree's `aria-activedescendant` points at. */
 export const rowDomId = (id: string) => `tree-row-${id}`
@@ -99,6 +100,7 @@ function Content({ row }: { row: Row }) {
       const tone = contextOnly ? 'text-muted' : ''
       return (
         <>
+          <TypeIcon type={issue.issueType} />
           <StatusDot status={issue.status} />
           <span className="w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
           <span className={`min-w-0 flex-1 truncate ${tone} ${isEpic ? 'font-medium' : ''}`}>

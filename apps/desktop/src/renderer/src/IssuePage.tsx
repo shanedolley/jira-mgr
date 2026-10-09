@@ -13,6 +13,7 @@ import { LoadError } from './LoadError'
 import { StatusDot } from './StatusDot'
 import { SummaryEditor } from './SummaryEditor'
 import { useIssueDetail } from './queries'
+import { TypeIcon } from './TypeIcon'
 import { removeUploadsOf } from './uploads'
 
 interface IssuePageProps {
@@ -59,6 +60,7 @@ function PageBody({
         <div className="max-w-3xl space-y-6">
           <div className="space-y-2">
             <h1 className="flex items-center gap-2 font-mono text-xs text-muted">
+              <TypeIcon type={issue.issueType} />
               <StatusDot status={issue.status} />
               {issue.key}
             </h1>
