@@ -1,8 +1,8 @@
 import { getLink, removeLink } from '@jira-mgr/core/extras'
+import { assertInProject } from '@jira-mgr/core/state'
 
 import type { Handler } from '../../context.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 
 /**
  * `jm link remove <link-id>`: no `--confirm`, per the design's safety rules (Q3 a). A link id

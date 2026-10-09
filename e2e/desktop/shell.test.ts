@@ -42,8 +42,17 @@ test.afterEach(async () => {
   await rm(stateDir, { recursive: true, force: true })
 })
 
+interface FakeJira {
+  counts: Counts
+  releaseEdit: () => void
+}
 const counts = () =>
-  app.evaluate(() => (globalThis as unknown as { __fakeJira: Counts }).__fakeJira)
+  app.evaluate(() => (globalThis as unknown as { __fakeJira: FakeJira }).__fakeJira.counts)
+/** Lets the fake Jira answer the oldest edit it holds. Call it once `counts().edits` shows the edit arrived. */
+const releaseEdit = () =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as { __fakeJira: FakeJira }).__fakeJira.releaseEdit()
+  })
 
 async function logIn(token = TOKEN) {
   await window.getByLabel('Site URL').fill(SITE)
@@ -91,16 +100,20 @@ test('updates a summary before Jira answers, and restores it when Jira refuses',
   await detail.getByRole('button', { name: 'Edit summary' }).click()
   await detail.getByLabel('Summary').fill('Migrate the reports')
   await detail.getByRole('button', { name: 'Save' }).click()
-  // Both the detail and the list show it while the fake still holds the request.
+  // The fake holds the edit until released, so Jira has not answered while both views show it.
+  await expect.poll(async () => (await counts()).edits).toBe(1)
   await expect(detail.getByRole('heading', { name: 'Migrate the reports' })).toBeVisible()
   await expect(window.getByRole('button', { name: /Migrate the reports/ })).toBeVisible()
   expect((await counts()).applied).toBe(0)
+  await releaseEdit()
   await expect.poll(async () => (await counts()).applied).toBe(1)
 
   await detail.getByRole('button', { name: 'Edit summary' }).click()
   await detail.getByLabel('Summary').fill('reject me')
   await detail.getByRole('button', { name: 'Save' }).click()
+  await expect.poll(async () => (await counts()).edits).toBe(2)
   await expect(detail.getByRole('heading', { name: 'reject me' })).toBeVisible()
+  await releaseEdit()
   await expect(detail.getByRole('alert')).toContainText('shows its old one again')
   await expect(detail.getByRole('heading', { name: 'Migrate the reports' })).toBeVisible()
   await expect(window.getByRole('button', { name: /reject me/ })).toHaveCount(0)
@@ -155,4 +168,18 @@ test('follows the system theme and lets the toggle override it', async () => {
   await window.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'System' }).click()
   expect(await attribute()).toBeNull()
   expect(await background()).toBe(light)
+})
+
+test('refuses every permission request from the page', async () => {
+  // Electron grants notifications and the like unless the main process refuses them.
+  const answer = await window.evaluate<string>('Notification.requestPermission()')
+  expect(answer).toBe('denied')
+})
+
+test('opens its window without taking focus from the user', async () => {
+  const focused = await app.evaluate(({ BrowserWindow }) => {
+    const [first] = BrowserWindow.getAllWindows()
+    return first?.isFocused() ?? null
+  })
+  expect(focused).toBe(false)
 })

@@ -17,6 +17,6 @@ app.setPath('userData', join(stateDir, 'electron'))
 
 const jira = createFakeJira()
 globalThis.fetch = jira.fetch
-;(globalThis as { __fakeJira?: unknown }).__fakeJira = jira.counts
+;(globalThis as { __fakeJira?: unknown }).__fakeJira = jira
 
-start(createBackend({ keychain: createFakeKeychain() }))
+start(createBackend({ keychain: createFakeKeychain() }), { inactive: true })

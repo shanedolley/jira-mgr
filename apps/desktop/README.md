@@ -21,32 +21,34 @@ src/preload/    preload script: the only bridge to the renderer
 src/renderer/   React renderer
 ```
 
-| File                             | Holds                                                                                               |
-| -------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `src/shared/ipc.ts`              | `IpcContract`, one entry per channel, and `JmApi`, the type of `window.jm`                          |
-| `src/main/handlers.ts`           | One handler per channel: validates the argument with zod, calls the backend, returns an `IpcResult` |
-| `src/main/backend.ts`            | The only code that calls `@jira-mgr/core`: login, logout, issue list, summary edit                  |
-| `src/main/app.ts`                | Window creation, handler registration, window focus events                                          |
-| `src/main/e2e.ts`                | Test entry: the same app on a fake Jira and a fake Keychain. Not the package's `main`               |
-| `src/renderer/src/ipc.ts`        | `call(channel, args)`: sends a request and throws a `JiraMgrError` on failure                       |
-| `src/renderer/src/queries.ts`    | TanStack Query hooks over `call`                                                                    |
-| `src/renderer/src/optimistic.ts` | The summary mutation: optimistic update, rollback, refetch                                          |
-| `src/renderer/src/focus.ts`      | Feeds the Electron window's focus to TanStack Query                                                 |
-| `src/renderer/src/theme.ts`      | System, light or dark; the choice sits in `localStorage`                                            |
+| File                             | Holds                                                                                                                              |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/ipc.ts`              | `IpcContract`, one entry per channel, and `JmApi`, the type of `window.jm`                                                         |
+| `src/main/handlers.ts`           | One handler per channel: validates the argument with zod, calls the backend, returns an `IpcResult`                                |
+| `src/main/backend.ts`            | The only code that calls `@jira-mgr/core`: login, logout, issue list, summary edit                                                 |
+| `src/main/app.ts`                | Window creation, handler registration, window focus events                                                                         |
+| `src/main/trust.ts`              | Decides whether an IPC request came from our own page                                                                              |
+| `src/main/e2e.ts`                | Test entry: the same app on a fake Jira and a fake Keychain, with windows that open without taking focus. Not the package's `main` |
+| `src/renderer/src/ipc.ts`        | `call(channel, args)`: sends a request and throws a `JiraMgrError` on failure                                                      |
+| `src/renderer/src/queries.ts`    | TanStack Query hooks over `call`                                                                                                   |
+| `src/renderer/src/optimistic.ts` | The summary mutation: optimistic update, rollback, refetch                                                                         |
+| `src/renderer/src/focus.ts`      | Feeds the Electron window's focus to TanStack Query                                                                                |
+| `src/renderer/src/theme.ts`      | System, light or dark; the choice sits in `localStorage`                                                                           |
 
 ## IPC
 
 - Add a channel in three places: the `IpcContract` entry and the `CHANNELS` list in `src/shared/ipc.ts`, a zod schema in `argSchemas` and a handler in `createHandlers` in `src/main/handlers.ts`. The compiler fails when one is missing.
 - Every handler returns `{ ok: true, data }` or `{ ok: false, error: { code, message } }`, the core error shape. A thrown `Error` loses its fields crossing IPC, so nothing throws across it. An error that is not a `JiraMgrError` becomes `internal` with a fixed message.
+- Main answers only the main frame of one of its own windows while that frame shows the app's page (`src/main/trust.ts`). It refuses every permission request from the page, such as notifications and camera.
 - Main validates every argument at the boundary. The schemas check shape and length; core owns the deeper rules and answers `validation_failed`.
-- The token goes renderer to main once, at login, and stays in main. No channel returns it, and no error message or log line carries it.
+- The token goes renderer to main once, at login, and stays in main. No channel returns it, and no error message or log line carries it, with `JM_DEBUG=1` too, which logs stack frames and never the message. The login mutation has `gcTime: 0`, so the cache drops the token with the login screen. Until then it sits in the renderer's memory, as the typed value does.
 - Window focus travels the other way: main sends `window:focus`, and the renderer hands it to TanStack Query's focus manager. Chromium raises `visibilitychange` only when a window hides, so the default would miss a switch back from another app.
 
 ## Rules
 
 - Context isolation and the sandbox stay on, and Node integration stays off. The renderer reaches the main process only through `contextBridge` in the preload script.
 - The renderer imports only the renderer-safe core entry points: `@jira-mgr/core`, `/issue`, `/hierarchy`, `/adf`, `/timer-calc` and `/view-filter`. Node-only entry points (`/auth`, `/http`, `/search`, `/write`, `/state` and the rest) belong to the main process.
-- The main process calls `@jira-mgr/core` and nothing else. Business rules live there. The one rule kept here, that a write refuses an issue outside the settings project, mirrors the CLI's and moves to core when a third caller needs it.
+- The main process calls `@jira-mgr/core` and nothing else. Business rules live there. The write guard that refuses an issue outside the settings project is core's `assertInProject`, shared with the CLI.
 - electron-vite bundles `@jira-mgr/core`, `zod` and the other `devDependencies`. Dependencies stay external in the main process.
 - The package emits CommonJS, not ES modules, so the preload script can run in the sandbox. `electron.vite.config.ts` lists the main entries under `lib`, because `rollupOptions.input` drops the CommonJS and `electron` external settings with Vite 8.
 - The e2e entry (`out/main/e2e.js`) is test code built beside the real one. D10 packaging must leave it out of the app.

@@ -1,19 +1,35 @@
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { APP_NAME } from '@jira-mgr/core'
-import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, ipcMain, session, type IpcMainInvokeEvent } from 'electron'
 
 import { CHANNELS, WINDOW_FOCUS_EVENT } from '../shared/ipc'
 import type { Backend } from './backend'
 import { createHandlers } from './handlers'
+import { isTrustedFrame } from './trust'
 
-/** Only our own windows may call the backend. */
-function fromOurWindow(event: IpcMainInvokeEvent): boolean {
-  return BrowserWindow.fromWebContents(event.sender) !== null
+/** The one page a window loads: the dev server in development, the built file otherwise. */
+function rendererUrl(): string {
+  return (
+    process.env.ELECTRON_RENDERER_URL ??
+    pathToFileURL(join(__dirname, '../renderer/index.html')).href
+  )
 }
 
-function createWindow(): void {
+/** Only the main frame of one of our own windows, showing our own page, may call the backend. */
+function fromOurWindow(event: IpcMainInvokeEvent): boolean {
+  const window = BrowserWindow.fromWebContents(event.sender)
+  return (
+    window !== null &&
+    isTrustedFrame(event.senderFrame, window.webContents.mainFrame, rendererUrl())
+  )
+}
+
+function createWindow(inactive: boolean): void {
   const window = new BrowserWindow({
+    // A test run shows its window without taking focus, so it never steals the user's keystrokes.
+    show: !inactive,
     width: 1200,
     height: 800,
     minWidth: 900,
@@ -46,16 +62,28 @@ function createWindow(): void {
     sendFocus(false)
   })
 
-  const rendererUrl = process.env.ELECTRON_RENDERER_URL
-  if (rendererUrl) {
-    void window.loadURL(rendererUrl)
+  if (inactive) {
+    window.once('ready-to-show', () => {
+      window.showInactive()
+    })
+  }
+
+  const devUrl = process.env.ELECTRON_RENDERER_URL
+  if (devUrl) {
+    void window.loadURL(devUrl)
   } else {
     void window.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
+export interface StartOptions {
+  /** Open windows without focus. Only the e2e entry sets it. */
+  inactive?: boolean
+}
+
 /** Registers the IPC handlers for `backend` and opens the window once Electron is ready. */
-export function start(backend: Backend): void {
+export function start(backend: Backend, options: StartOptions = {}): void {
+  const inactive = options.inactive ?? false
   const handlers = createHandlers(backend)
   for (const channel of CHANNELS) {
     ipcMain.handle(channel, (event, raw: unknown) =>
@@ -66,9 +94,15 @@ export function start(backend: Backend): void {
   }
 
   void app.whenReady().then(() => {
-    createWindow()
+    // The app asks for no permission (camera, notifications, geolocation and the rest), so refuse all.
+    // Timer reminders use main-process notifications, which this does not affect.
+    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => {
+      callback(false)
+    })
+    session.defaultSession.setPermissionCheckHandler(() => false)
+    createWindow(inactive)
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      if (BrowserWindow.getAllWindows().length === 0) createWindow(inactive)
     })
   })
 

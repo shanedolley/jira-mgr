@@ -56,6 +56,21 @@ export function toIpcError(error: unknown): IpcError {
 }
 
 /**
+ * The `at ...` lines of an error's stack, without its header. The header holds the message,
+ * which may span lines, start a line with `at` and carry issue text or a token, so the header is
+ * cut off first and only lines that start like a frame stay.
+ */
+export function stackFrames(error: unknown): string {
+  if (!(error instanceof Error) || error.stack === undefined) return ''
+  const header = `${error.name}: ${error.message}`
+  const body = error.stack.startsWith(header) ? error.stack.slice(header.length) : error.stack
+  return body
+    .split('\n')
+    .filter((line) => /^\s+at /.test(line))
+    .join('\n')
+}
+
+/**
  * One handler per channel. Each validates its argument, calls the backend and returns a result
  * that is `ok` or carries the core error shape. A handler never throws and never echoes the input.
  */
@@ -90,8 +105,10 @@ export function createHandlers(
         const mapped = toIpcError(error)
         // Names the channel and code only: messages may carry issue text.
         log(`jm ipc ${channel} failed: ${mapped.code}`)
-        if (process.env.JM_DEBUG === '1' && error instanceof Error)
-          log(error.stack ?? error.message)
+        if (process.env.JM_DEBUG === '1') {
+          const frames = stackFrames(error)
+          if (frames !== '') log(frames)
+        }
         return { ok: false, error: mapped }
       }
     }

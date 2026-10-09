@@ -23,6 +23,8 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 
 ### Saved Views
 
+`assertInProject(key)` in `@jira-mgr/core/state` throws before any request when an issue key is outside the project in settings (`validation_failed`) or no project is set (`permission_denied`). Every client calls it before a write, so the CLI and the desktop app refuse the same keys.
+
 `@jira-mgr/core/state` manages `views.json`. Each call reads, changes and writes the whole file, so the app and the CLI writing at once can lose an edit.
 
 - `findView(idOrName)` returns the view with that id, or failing that that name in any case. It throws `not_found` for an unknown view.

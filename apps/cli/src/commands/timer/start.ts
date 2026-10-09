@@ -1,11 +1,11 @@
 import type { Worklog } from '@jira-mgr/core/extras'
 import { getIssue } from '@jira-mgr/core/search'
+import { assertInProject } from '@jira-mgr/core/state'
 import { switchAndLog } from '@jira-mgr/core/timer'
 import { assertTimeable, type WorklogDraft } from '@jira-mgr/core/timer-calc'
 
 import type { Handler } from '../../context.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 import { describeTimer, renderStatus, withConfirmationHint, type TimerStatus } from './shared.js'
 
 interface Started {

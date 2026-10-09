@@ -1,8 +1,8 @@
-import { JiraMgrError, type Issue } from '@jira-mgr/core'
+import type { Issue } from '@jira-mgr/core'
 import { createKeychain, getCredentials, login, logout, type Keychain } from '@jira-mgr/core/auth'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
 import { searchIssues } from '@jira-mgr/core/search'
-import { readSettings } from '@jira-mgr/core/state'
+import { assertInProject, readSettings } from '@jira-mgr/core/state'
 import { editIssue } from '@jira-mgr/core/write'
 
 import type { LoginArgs, SessionState, SetSummaryArgs } from '../shared/ipc'
@@ -51,16 +51,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     listIssues: () => searchIssues(http, { phases: ['unresolved'] }),
     async setSummary({ key, summary }) {
       // The same guard the CLI applies: this app manages the settings project only.
-      const { projectKey } = await readSettings()
-      if (projectKey === undefined) {
-        throw new JiraMgrError('permission_denied', 'No project is set. Log in first.')
-      }
-      if (key.slice(0, key.lastIndexOf('-')) !== projectKey.toUpperCase()) {
-        throw new JiraMgrError(
-          'validation_failed',
-          `${key} is not in ${projectKey}. This app manages the ${projectKey} project only.`,
-        )
-      }
+      await assertInProject(key)
       await editIssue(http, key, { summary })
     },
   }

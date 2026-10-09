@@ -1,8 +1,8 @@
 import { addComment, type IssueComment } from '@jira-mgr/core/extras'
+import { assertInProject } from '@jira-mgr/core/state'
 
 import type { Handler } from '../../context.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 import { readBody } from './body.js'
 
 /** `jm comment add <key>`: one comment from Markdown or raw ADF. */

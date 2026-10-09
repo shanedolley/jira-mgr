@@ -1,8 +1,8 @@
 import { JiraMgrError } from '@jira-mgr/core'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Backend } from './backend'
-import { createHandlers } from './handlers'
+import { createHandlers, stackFrames } from './handlers'
 
 const TOKEN = 'ATATT3xFfGF0-secret_token=ABC123'
 
@@ -119,5 +119,38 @@ describe('errors', () => {
     expect(JSON.stringify(result)).not.toContain(TOKEN)
     expect(log).toHaveBeenCalledWith('jm ipc issues:list failed: internal')
     expect(JSON.stringify(log.mock.calls)).not.toContain(TOKEN)
+  })
+})
+
+describe('JM_DEBUG', () => {
+  afterEach(() => {
+    delete process.env.JM_DEBUG
+  })
+
+  it('logs the stack frames of an unexpected error, never its message', async () => {
+    process.env.JM_DEBUG = '1'
+    const log = vi.fn<(line: string) => void>()
+    // A multi-line message whose second line looks like a frame, as a hostile one could.
+    const error = new TypeError(`fetch failed for ${TOKEN}\n    at secret ${TOKEN}`)
+    const { backend } = fakeBackend({ listIssues: () => Promise.reject(error) })
+    await createHandlers(backend, log)['issues:list'](undefined)
+
+    expect(log.mock.calls.length).toBe(2)
+    expect(log.mock.calls[1]?.[0]).toMatch(/^\s+at /)
+    expect(JSON.stringify(log.mock.calls)).not.toContain(TOKEN)
+    expect(JSON.stringify(log.mock.calls)).not.toContain('fetch failed')
+  })
+
+  it('logs no stack without JM_DEBUG', async () => {
+    const log = vi.fn<(line: string) => void>()
+    const { backend } = fakeBackend({ listIssues: () => Promise.reject(new TypeError('boom')) })
+    await createHandlers(backend, log)['issues:list'](undefined)
+    expect(log.mock.calls.length).toBe(1)
+  })
+})
+
+describe('stackFrames', () => {
+  it('is empty for a value that is not an error', () => {
+    expect(stackFrames('boom')).toBe('')
   })
 })

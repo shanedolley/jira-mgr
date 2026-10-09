@@ -255,3 +255,22 @@ export async function deleteView(idOrName: string): Promise<void> {
   const old = locate(views, idOrName)
   await writeViews(views.filter((v) => v !== old))
 }
+
+/**
+ * Refuses an issue key outside the project in settings, since a client manages that project
+ * only. Throws before any request: `permission_denied` when no project is set, and
+ * `validation_failed` when the key belongs to another project.
+ */
+export async function assertInProject(key: string): Promise<void> {
+  const { projectKey } = await readSettings()
+  if (projectKey === undefined) {
+    throw new JiraMgrError('permission_denied', 'No project is set. Run `jm auth login`.')
+  }
+  const project = key.slice(0, key.lastIndexOf('-'))
+  if (project !== projectKey.toUpperCase()) {
+    throw new JiraMgrError(
+      'validation_failed',
+      `${key} is not in ${projectKey}. jm manages the ${projectKey} project only.`,
+    )
+  }
+}

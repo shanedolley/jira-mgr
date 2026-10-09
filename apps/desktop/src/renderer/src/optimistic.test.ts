@@ -70,4 +70,32 @@ describe('summaryMutation', () => {
     await expect(done).rejects.toBeInstanceOf(JiraMgrError)
     expect(summaries()).toEqual(['One, edited again', 'Two'])
   })
+
+  it('refetches only once the last edit in flight settles', async () => {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(issuesKey, [issue('PSAPAC-1', 'One'), issue('PSAPAC-2', 'Two')])
+    const requests = { 'PSAPAC-1': deferred<null>(), 'PSAPAC-2': deferred<null>() }
+    const options = summaryMutation(
+      client,
+      ({ key }) => requests[key as keyof typeof requests].promise,
+    )
+    const first = new MutationObserver(client, options)
+    const second = new MutationObserver(client, options)
+    const stale = () => client.getQueryState(issuesKey)?.isInvalidated
+
+    const firstDone = first.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    const secondDone = second.mutate({ key: 'PSAPAC-2', summary: 'Two, edited' })
+    await expect
+      .poll(() => client.getQueryData<Issue[]>(issuesKey)?.map((i) => i.summary))
+      .toEqual(['One, edited', 'Two, edited'])
+
+    // The first edit settles while the second is in flight: a refetch now would bring back "Two".
+    requests['PSAPAC-1'].resolve(null)
+    await firstDone
+    expect(stale()).toBe(false)
+
+    requests['PSAPAC-2'].resolve(null)
+    await secondDone
+    expect(stale()).toBe(true)
+  })
 })

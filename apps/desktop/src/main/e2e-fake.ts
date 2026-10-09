@@ -14,12 +14,9 @@ export interface FakeJiraCounts {
   searches: number
   /** Edits received. */
   edits: number
-  /** Edits applied, which happens after `EDIT_DELAY_MS`. */
+  /** Edits applied, which happens when a test calls `releaseEdit`. */
   applied: number
 }
-
-/** Long enough for a test to see the optimistic summary before Jira has answered. */
-const EDIT_DELAY_MS = 600
 
 const FIELDS = {
   customer: 'customfield_1',
@@ -65,7 +62,12 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
 /** A `fetch` that serves the Jira calls login, search and edit make. Any other URL throws. */
-export function createFakeJira(): { fetch: typeof fetch; counts: FakeJiraCounts } {
+export function createFakeJira(): {
+  fetch: typeof fetch
+  counts: FakeJiraCounts
+  /** Lets the oldest held edit proceed. The test waits for `counts.edits` first, so one is held. */
+  releaseEdit: () => void
+} {
   const issues = [
     issue(4, 'Migrate the dashboards', 'story', 'doing'),
     issue(3, 'Fix the export timeout', 'bug', 'todo'),
@@ -73,6 +75,8 @@ export function createFakeJira(): { fetch: typeof fetch; counts: FakeJiraCounts 
     issue(1, 'Kick off the engagement', 'story', 'doing'),
   ]
   const counts: FakeJiraCounts = { searches: 0, edits: 0, applied: 0 }
+  // Every edit waits here, so a test sees the optimistic state with Jira's answer still pending.
+  const held: (() => void)[] = []
 
   const fakeFetch = async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : input)
@@ -106,7 +110,7 @@ export function createFakeJira(): { fetch: typeof fetch; counts: FakeJiraCounts 
       }
       const target = issues.find((i) => i.key === edit[1])
       if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
-      await new Promise((resolve) => setTimeout(resolve, EDIT_DELAY_MS))
+      await new Promise<void>((resolve) => held.push(resolve))
       if (body.fields.summary === REJECTED_SUMMARY) {
         return json(
           { errorMessages: [], errors: { summary: 'The fake refuses this summary.' } },
@@ -119,7 +123,13 @@ export function createFakeJira(): { fetch: typeof fetch; counts: FakeJiraCounts 
     }
     return json({ errorMessages: [`The e2e fake has no ${method} ${path}.`] }, 404)
   }
-  return { fetch: fakeFetch, counts }
+  return {
+    fetch: fakeFetch,
+    counts,
+    releaseEdit: () => {
+      held.shift()?.()
+    },
+  }
 }
 
 /** Core's real Keychain code over an in-memory `security`. */
