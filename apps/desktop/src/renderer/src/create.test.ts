@@ -7,6 +7,7 @@ import {
   defaultParent,
   deleteFailureNotes,
   describeCreated,
+  describeLate,
   initialDraft,
   listWords,
   missingFields,
@@ -325,6 +326,57 @@ describe('describeCreated', () => {
 
     expect(notice.notes.at(-1)).toBe('No sprint.')
     expect(notice.warned).toBe(true)
+  })
+})
+
+describe('describeLate', () => {
+  const draft: CreateDraft = {
+    ...initialDraft(byKey('P-1'), ISSUES),
+    summary: 'Write it',
+    estimate: '2h',
+  }
+  const held = (changes: Partial<Issue>) => ({
+    ...issue('P-9', { parent: 'P-1', customer: ACME, engagement: NORTH }),
+    summary: 'Write it',
+    originalEstimateSeconds: 7200,
+    sprints: [],
+    ...changes,
+    description: null,
+    subtasks: [],
+  })
+  const read = (changes: Partial<Issue>) => ({ key: 'P-9', issue: held(changes) })
+  const first = (changes: Partial<Issue>) =>
+    describeCreated(draft, { key: 'P-9', warning: null, issue: held(changes) })
+
+  it('names what the automation changed after the first read saw nothing', () => {
+    const late = describeLate(draft, first({}), read({ customer: BETA, labels: ['PSAPAC'] }))
+
+    expect(late).toEqual({
+      title: 'Jira changed P-9 after it was created',
+      notes: ['Customer is Beta Ltd (you chose Acme).', 'Jira added the label PSAPAC.'],
+      warned: false,
+    })
+  })
+
+  it('leaves out what the first notice already said', () => {
+    const early = { labels: ['PSAPAC'], originalEstimateSeconds: 14400 }
+    const late = describeLate(draft, first(early), read({ ...early, customer: BETA }))
+
+    expect(late?.notes).toEqual(['Customer is Beta Ltd (you chose Acme).'])
+  })
+
+  it('says nothing when the late read adds nothing', () => {
+    expect(describeLate(draft, first({}), read({}))).toBeNull()
+    const early = { labels: ['PSAPAC'] }
+    expect(describeLate(draft, first(early), read(early))).toBeNull()
+  })
+
+  it('names every change when the first read failed', () => {
+    const failed = describeCreated(draft, { key: 'P-9', issue: null, warning: 'Could not read.' })
+
+    expect(describeLate(draft, failed, read({ labels: ['PSAPAC'] }))?.notes).toEqual([
+      'Jira added the label PSAPAC.',
+    ])
   })
 })
 

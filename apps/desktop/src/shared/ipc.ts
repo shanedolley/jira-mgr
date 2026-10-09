@@ -308,6 +308,15 @@ export const WINDOW_FOCUS_EVENT = 'window:focus'
 /** Main to renderer: an `IssuesProgress` for each page a load fetches. */
 export const ISSUES_PROGRESS_EVENT = 'issues:progress'
 
+/** Main to renderer: a `LateRead` about 10 s after a create, once the PSAPAC automation has run. */
+export const LATE_READ_EVENT = 'issues:lateRead'
+
+/** A new issue read again after the automation had time to rewrite it. */
+export interface LateRead {
+  key: string
+  issue: IssueDetail
+}
+
 /** The core error shape. Thrown `Error` objects lose their fields crossing IPC, so only these travel. */
 export interface IpcError {
   code: ErrorCode
@@ -324,4 +333,6 @@ export type JmApi = {
   onWindowFocus(listener: (focused: boolean) => void): () => void
   /** Subscribes to the progress of issue loads. Returns the unsubscribe function. */
   onIssuesProgress(listener: (progress: IssuesProgress) => void): () => void
+  /** Subscribes to the second read of each created issue. Returns the unsubscribe function. */
+  onLateRead(listener: (read: LateRead) => void): () => void
 }

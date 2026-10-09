@@ -5,9 +5,9 @@ import { join } from 'node:path'
 import { JiraMgrError } from '@jira-mgr/core'
 import type { HttpClient } from '@jira-mgr/core/http'
 import { writeFields, writeSettings } from '@jira-mgr/core/state'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createBackend } from './backend'
+import { createBackend, type ProgressSender } from './backend'
 
 const SITE = 'https://team.atlassian.net'
 
@@ -223,6 +223,115 @@ describe('createIssue', () => {
 
     expect(error).toMatchObject({ code: 'validation_failed' })
     expect(requests).toEqual([])
+  })
+})
+
+describe('late read', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function window(open = true) {
+    const state = { open, reads: [] as unknown[] }
+    const to: ProgressSender = {
+      sendProgress: () => undefined,
+      isOpen: () => state.open,
+      sendLateRead: (read) => state.reads.push(read),
+    }
+    return { state, to }
+  }
+  const gets = (requests: Request[]) => requests.filter((r) => r.method === 'GET').length
+
+  it('reads the issue again after the delay and sends it to the window', async () => {
+    const { http, requests } = routedHttp(accepts)
+    const { state, to } = window()
+    await createBackend({ http, lateReadMs: 5000 }).createIssue(NEW, to)
+    const before = gets(requests)
+
+    await vi.advanceTimersByTimeAsync(4999)
+    expect(state.reads).toEqual([])
+    await vi.advanceTimersByTimeAsync(1)
+
+    // Core reads its field ids from disk first, which fake timers do not advance.
+    await vi.waitFor(() => {
+      expect(state.reads).toHaveLength(1)
+    })
+    expect(gets(requests)).toBe(before + 1)
+    expect(state.reads).toMatchObject([{ key: 'PSAPAC-9', issue: { key: 'PSAPAC-9' } }])
+  })
+
+  it('schedules nothing without a window to tell', async () => {
+    const { http, requests } = routedHttp(accepts)
+    await createBackend({ http, lateReadMs: 5000 }).createIssue(NEW)
+    const before = requests.length
+
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(requests).toHaveLength(before)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('does nothing when the window closed before the timer fired', async () => {
+    const { http, requests } = routedHttp(accepts)
+    const { state, to } = window()
+    await createBackend({ http, lateReadMs: 5000 }).createIssue(NEW, to)
+    const before = requests.length
+    state.open = false
+
+    await vi.advanceTimersByTimeAsync(5000)
+
+    expect(requests).toHaveLength(before)
+    expect(state.reads).toEqual([])
+  })
+
+  it('sends nothing when the issue is gone by then', async () => {
+    let gone = false
+    const { http, requests } = routedHttp((request) => {
+      if (gone && request.method === 'GET') throw new JiraMgrError('not_found', 'Gone.')
+      return accepts(request)
+    })
+    const { state, to } = window()
+    await createBackend({ http, lateReadMs: 5000 }).createIssue(NEW, to)
+    const before = gets(requests)
+    gone = true
+
+    await vi.advanceTimersByTimeAsync(5000)
+    await vi.waitFor(() => {
+      expect(gets(requests)).toBe(before + 1)
+    })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(state.reads).toEqual([])
+  })
+
+  it('cancels the pending read on logout and on dispose', async () => {
+    const { http } = routedHttp(accepts)
+    const { state, to } = window()
+    const backend = createBackend({
+      http,
+      lateReadMs: 5000,
+      keychain: {
+        get: () => Promise.resolve('token'),
+        set: () => Promise.resolve(),
+        delete: () => Promise.resolve(),
+        deleteAll: () => Promise.resolve(),
+      },
+    })
+    await backend.createIssue(NEW, to)
+    await backend.createIssue(NEW, to)
+    expect(vi.getTimerCount()).toBe(2)
+
+    await backend.logout()
+    expect(vi.getTimerCount()).toBe(0)
+
+    await backend.createIssue(NEW, to)
+    backend.dispose()
+    expect(vi.getTimerCount()).toBe(0)
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(state.reads).toEqual([])
   })
 })
 

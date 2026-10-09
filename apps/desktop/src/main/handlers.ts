@@ -339,7 +339,9 @@ export function createHandlers(
       await backend.setSprint(args)
       return null
     }),
-    'issues:create': handle('issues:create', (args) => backend.createIssue(args)),
+    'issues:create': handle('issues:create', (args, progress) =>
+      backend.createIssue(args, progress),
+    ),
     'issues:delete': handle('issues:delete', (args) => backend.deleteIssue(args)),
     'sprints:list': handle('sprints:list', (args) => backend.listSprints(args)),
     'users:search': handle('users:search', (args) => backend.searchUsers(args)),

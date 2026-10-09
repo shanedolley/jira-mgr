@@ -51,7 +51,7 @@ interface CreateIssueDialogProps {
   me: CurrentUser | undefined
   onClose: () => void
   /** Called after each create. `more` is true when the modal stays open for the next one. */
-  onCreated: (result: CreatedIssue, notice: Notice, more: boolean) => void
+  onCreated: (result: CreatedIssue, notice: Notice, more: boolean, draft: CreateDraft) => void
   returnFocus: () => void
 }
 
@@ -126,7 +126,7 @@ export function CreateIssueDialog({
     create.mutate(args, {
       onSuccess: (result) => {
         const notice = describeCreated(draft, result)
-        onCreated(result, notice, more)
+        onCreated(result, notice, more, draft)
         if (more) {
           setLast(notice)
           setDraft(nextDraft(draft))

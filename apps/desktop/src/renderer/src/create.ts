@@ -13,6 +13,7 @@ import type {
   CreatedIssue,
   CreateType,
   FieldChoice,
+  LateRead,
   SprintOption,
 } from '../../shared/ipc'
 import { currentSprint, type Person } from './properties'
@@ -248,6 +249,19 @@ export function describeCreated(draft: CreateDraft, result: CreatedIssue): Notic
   }
   if (warning !== null) notes.push(warning)
   return { title: `Created ${key}: ${issue.summary}`, notes, warned }
+}
+
+/**
+ * What to tell the user when the second read of a created issue shows more automation. It compares
+ * with the form again, not with the first read, and leaves out what `shown` already said. `null`
+ * when nothing is new.
+ */
+export function describeLate(draft: CreateDraft, shown: Notice, read: LateRead): Notice | null {
+  const notes = describeCreated(draft, { key: read.key, issue: read.issue, warning: null }).notes
+  const fresh = notes.filter((note) => !shown.notes.includes(note))
+  return fresh.length === 0
+    ? null
+    : { title: `Jira changed ${read.key} after it was created`, notes: fresh, warned: false }
 }
 
 /** "a", "a and b", "a, b and c". */

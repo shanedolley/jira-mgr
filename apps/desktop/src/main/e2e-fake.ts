@@ -127,6 +127,8 @@ export interface FakeJiraCounts {
 export interface FakeJiraOptions {
   /** Open Stories to add under one open Epic of the internal Customer, which sorts last, for the virtual window. */
   bulk?: number
+  /** Applies the PSAPAC automation this many ms after a create, not at once, as the live rule does. */
+  lateAutomationMs?: number
 }
 
 const FIELDS = {
@@ -849,14 +851,18 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       // The live PSAPAC automation rewrites every new issue: it labels it, sets a 4h original
       // estimate with nothing remaining, and on a Task also replaces the Customer, the parent and
       // the sprint the request sent (handover Traps, T2 on 2026-10-08).
-      raw.fields.labels.push('PSAPAC')
-      raw.fields.timetracking = { originalEstimateSeconds: 14400, remainingEstimateSeconds: 0 }
-      raw.fields[FIELDS.timeRemaining] = 0
-      if (typeKey === 'task') {
-        raw.fields[FIELDS.customer] = CUSTOMERS.internal
-        raw.fields.parent = { key: 'PSAPAC-50' }
-        raw.fields[FIELDS.sprint] = SPRINTS.filter((s) => s.id === 5)
+      const automate = () => {
+        raw.fields.labels.push('PSAPAC')
+        raw.fields.timetracking = { originalEstimateSeconds: 14400, remainingEstimateSeconds: 0 }
+        raw.fields[FIELDS.timeRemaining] = 0
+        if (typeKey === 'task') {
+          raw.fields[FIELDS.customer] = CUSTOMERS.internal
+          raw.fields.parent = { key: 'PSAPAC-50' }
+          raw.fields[FIELDS.sprint] = SPRINTS.filter((s) => s.id === 5)
+        }
       }
+      if (options.lateAutomationMs === undefined) automate()
+      else setTimeout(automate, options.lateAutomationMs)
       issues.push(raw)
       counts.applied++
       return json({ id: raw.id, key: raw.key }, 201)

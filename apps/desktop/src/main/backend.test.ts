@@ -154,6 +154,8 @@ function progressRecorder() {
     sendProgress(p) {
       sent.push(p)
     },
+    isOpen: () => true,
+    sendLateRead: () => undefined,
   }
   return { progress, sent }
 }
