@@ -38,7 +38,8 @@ export interface CustomerGroup {
   noEpic: HierarchyNode[]
 }
 
-const STATUS_ORDER = ['Opportunity', 'To Do', 'In Progress', 'Review', 'Hold', 'Done']
+/** The statuses in display order (Q21). Any other status sorts after them. */
+export const STATUS_ORDER = ['Opportunity', 'To Do', 'In Progress', 'Review', 'Hold', 'Done']
 const INTERNAL_CUSTOMERS = ['Collibra (Internal team)', 'Collibra (Internal template)']
 
 const isEpic = (i: Issue) => i.issueType.hierarchyLevel >= 1
@@ -83,25 +84,33 @@ export function buildHierarchy(issues: Issue[], options: HierarchyOptions): Cust
   }
   const context = new Set<string>()
   const keep = new Set<string>(issues.map((i) => i.key))
-  // Done ancestors of a kept open issue: "Hide done" must not hide that issue, so they stay as context.
+  // Done ancestors of an open issue: "Hide done" must not hide that issue, so they stay as context.
   const rescued = new Set<string>()
 
-  if (options.assigneeMe || options.match) {
-    const wanted = issues.filter(
-      (i) =>
-        (!options.assigneeMe || i.assignee?.accountId === options.accountId) &&
-        (options.match?.(i) ?? true),
-    )
+  const filtered = options.assigneeMe || options.match
+  const wanted = filtered
+    ? issues.filter(
+        (i) =>
+          (!options.assigneeMe || i.assignee?.accountId === options.accountId) &&
+          (options.match?.(i) ?? true),
+      )
+    : issues
+  const matched = new Set(wanted.map((i) => i.key))
+  if (filtered) {
     keep.clear()
-    for (const i of wanted) keep.add(i.key)
-    for (const i of wanted) {
-      for (const ancestor of ancestors(i)) {
-        if (!keep.has(ancestor.key)) context.add(ancestor.key)
-        if (!isDone(i) && isDone(ancestor)) rescued.add(ancestor.key)
+    for (const key of matched) keep.add(key)
+  }
+  for (const i of wanted) {
+    for (const ancestor of ancestors(i)) {
+      if (filtered && !matched.has(ancestor.key)) context.add(ancestor.key)
+      if (!isDone(i) && isDone(ancestor)) {
+        rescued.add(ancestor.key)
+        // With no filter every issue matches, so "Hide done" is what makes the Done ancestor context.
+        if (!filtered && options.hideDone) context.add(ancestor.key)
       }
     }
-    for (const key of context) keep.add(key)
   }
+  for (const key of context) keep.add(key)
 
   const kids = new Map<string, Issue[]>()
   for (const i of issues) {

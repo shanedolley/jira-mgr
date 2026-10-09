@@ -40,7 +40,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **No Epic group** | The group under a Customer for stories without an Epic. | orphans, unparented |
 | **Mismatch badge** | The mark on a child whose Customer differs from its Epic's, with a one-click fix that copies the Epic's Customer. | warning |
 | **Done chip** | The "N done" chip under an open parent that reveals its hidden Done children. | |
-| **Hide done** | The toggle that hides Done parents with their whole subtree. On at first launch. | archive |
+| **Hide done** | The toggle that hides Done parents with their whole subtree, except a Done parent of an open issue, which stays as dimmed context. On at first launch. | archive |
 | **Saved view** | A named filter you create, rename and delete, stored as local JSON that the CLI also reads. | filter, query |
 | **Palette** | The Cmd+K search over commands and loaded issues. | command bar, omnibox |
 | **Peek** | The space-bar preview of an issue. | quick view |

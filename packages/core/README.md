@@ -84,9 +84,10 @@ It returns `CustomerGroup[]`, each `{ customer, epics, noEpic }`, and `customer:
 
 - An Epic and its children sit under the Epic's Customer. A direct child whose own Customer differs gets `customerMismatch: { own, epic }`, where either side may be `null`. Subtasks nest under their parent and are never flagged.
 - `noEpic` holds issues with no Epic parent in the input, and Subtasks whose parent is not in the input, under their own Customer.
-- Under an open parent, Done children go to `doneChildren` whatever the toggles say. Under a Done parent they stay in `children`. `hideDone` drops a Done Epic or `noEpic` issue with its whole subtree. With `assigneeMe` on, a Done ancestor of a kept open issue stays as context instead, with its other Done children dropped.
+- Under an open parent, Done children go to `doneChildren` whatever the toggles say. Under a Done parent they stay in `children`. `hideDone` drops a Done Epic or `noEpic` issue with its whole subtree, unless an open issue sits below it. A Done ancestor of an open issue stays as context (`contextOnly: true`), with or without `assigneeMe` or `match`, and its other Done children are dropped.
 - `assigneeMe` and `match` keep the issues assigned to `accountId` and the issues `match` accepts (both, when both are set), plus their ancestors. An ancestor kept only as context has `contextOnly: true`.
 - `hideEmptyCustomers: false` adds a group for every Customer in `customers`, and for every Customer whose issues the toggles hid.
+- `STATUS_ORDER` is the status display order, exported so a client lists statuses in the same order.
 - Customers sort case-insensitively, then No Customer, then "Collibra (Internal team)" and "Collibra (Internal template)". Epics sort by key descending. Children sort by status (Opportunity, To Do, In Progress, Review, Hold, Done, then any other), then key descending.
 
 ## View Filters
