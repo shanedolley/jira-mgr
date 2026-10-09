@@ -44,4 +44,5 @@ Comment on the issue: the question, each option with its cost and what it buys, 
 - `architecture-decisions` for a decision that is hard to reverse, surprising and a real trade-off.
 - Design docs for L1, D2 and D4 from `docs/templates/design-doc.md`, before their code.
 - `impeccable` and `frontend-design` for Desktop UI work.
+- Compare Desktop UI against the Linear screenshots and tokens in [docs/design/linear/](docs/design/linear/README.md), captured 2026-10-09 at Shane's request; attach a screenshot of the app beside the matching Linear one in the pull request.
 - `writing-clearly-and-concisely` rules for every doc, commit and comment.
