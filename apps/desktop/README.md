@@ -10,6 +10,8 @@ pnpm build   # writes apps/desktop/out
 pnpm test    # Vitest: IPC validation, backend loads, tree model, optimistic update, queries
 ```
 
+`pnpm package` (from the repository root) builds the app and assembles the unsigned `dist/jira-mgr.app`. [Install the Desktop App](../../docs/how-to/install-desktop-app.md) covers installing it.
+
 `pnpm dev` and a normal launch read and write the real state folder and Keychain item. Set `JM_STATE_DIR` to a scratch folder for any manual run that must not touch them.
 
 ## Layout
@@ -69,8 +71,8 @@ src/renderer/   React renderer
 - The main process calls `@jira-mgr/core` and nothing else. Business rules live there. The write guard that refuses an issue outside the settings project is core's `assertInProject`, shared with the CLI.
 - electron-vite bundles `@jira-mgr/core`, `zod` and the other `devDependencies`. Dependencies stay external in the main process.
 - The package emits CommonJS, not ES modules, so the preload script can run in the sandbox. `electron.vite.config.ts` lists the main entries under `lib`, because `rollupOptions.input` drops the CommonJS and `electron` external settings with Vite 8.
-- The e2e entry (`out/main/e2e.js`) is test code built beside the real one. D10 packaging must leave it out of the app.
-- No code signing and no auto-update: the app builds and runs locally.
+- The e2e entry (`out/main/e2e.js`) is test code built beside the real one. `scripts/package.ts` leaves it out of the app, and fails the package if `e2e.js`, a fake Jira marker or a `require` of anything but `electron` and `node:` built-ins reaches it. Keep every runtime import bundled: the packaged app has no `node_modules`.
+- The package is Electron's prebuilt `Electron.app` with `out/` as its app, renamed and signed ad hoc, so it needs no packaging dependency. No code signing identity and no auto-update: the app builds and runs locally.
 
 ## Known Limits
 
