@@ -1,9 +1,11 @@
-import type { Issue } from '@jira-mgr/core'
+import { JiraMgrError, type Issue } from '@jira-mgr/core'
 import { createKeychain, getCredentials, login, logout, type Keychain } from '@jira-mgr/core/auth'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
-import { getCurrentUser, getFieldOptions } from '@jira-mgr/core/lookups'
-import { searchIssuePages } from '@jira-mgr/core/search'
+import { assertTypeChangeAllowed, type IssueDetail } from '@jira-mgr/core/issue'
+import { getCurrentUser, getFieldOptions, searchAssignableUsers } from '@jira-mgr/core/lookups'
+import { getIssue, searchIssuePages } from '@jira-mgr/core/search'
+import { findBoard, listSprints, moveToBacklog, moveToSprint } from '@jira-mgr/core/sprints'
 import {
   assertInProject,
   createView,
@@ -14,20 +16,29 @@ import {
   writeSettings,
   type SavedView,
 } from '@jira-mgr/core/state'
-import { editIssue } from '@jira-mgr/core/write'
+import { editIssue, listTransitions, transitionIssue } from '@jira-mgr/core/write'
 
 import type {
   CreateViewArgs,
   CurrentUser,
   DeleteViewArgs,
+  EditIssueArgs,
+  FieldChoice,
+  FieldOptionsArgs,
   IssuePhase,
   IssuesProgress,
   ListIssuesArgs,
+  KeyArgs,
   LoginArgs,
   RenameViewArgs,
   SessionState,
+  SetSprintArgs,
+  SetStatusArgs,
   SetSummaryArgs,
+  SprintOption,
+  StatusOption,
   Toggles,
+  UserOption,
 } from '../shared/ipc'
 
 /** What a handler gives the backend to report on the window that asked. */
@@ -43,6 +54,15 @@ export interface Backend {
   /** One phase of the project's issues, or `null` when a newer load of the phase or a logout aborted it. */
   listIssues(args: ListIssuesArgs, progress: ProgressSender): Promise<Issue[] | null>
   setSummary(args: SetSummaryArgs): Promise<void>
+  /** One issue with its description and subtasks, read afresh. */
+  getIssue(args: KeyArgs): Promise<IssueDetail>
+  editIssue(args: EditIssueArgs): Promise<void>
+  listTransitions(args: KeyArgs): Promise<StatusOption[]>
+  setStatus(args: SetStatusArgs): Promise<void>
+  setSprint(args: SetSprintArgs): Promise<void>
+  listSprints(args: { all: boolean }): Promise<SprintOption[]>
+  searchUsers(args: { query: string }): Promise<UserOption[]>
+  listFieldOptions(args: FieldOptionsArgs): Promise<FieldChoice[]>
   getMe(): Promise<CurrentUser>
   listCustomers(): Promise<CustomerOption[]>
   getToggles(): Promise<Toggles>
@@ -138,6 +158,44 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       // The same guard the CLI applies: this app manages the settings project only.
       await assertInProject(key)
       await editIssue(http, key, { summary })
+    },
+    getIssue: ({ key }) => getIssue(http, key),
+    async editIssue({ key, changes }) {
+      // The same guards the CLI applies: this app manages the settings project only, a new
+      // parent included, and only a Story, Task or Bug can change type.
+      await assertInProject(key)
+      if (changes.parentKey !== undefined) await assertInProject(changes.parentKey)
+      if (changes.type !== undefined) {
+        assertTypeChangeAllowed(key, (await getIssue(http, key)).issueType.name)
+      }
+      await editIssue(http, key, changes)
+    },
+    async listTransitions({ key }) {
+      return (await listTransitions(http, key)).map(({ to }) => ({
+        id: to.id,
+        name: to.name,
+        category: to.category,
+      }))
+    },
+    async setStatus({ key, statusId }) {
+      await assertInProject(key)
+      await transitionIssue(http, key, statusId)
+    },
+    async setSprint({ key, sprintId }) {
+      await assertInProject(key)
+      if (sprintId === null) await moveToBacklog(http, [key])
+      else await moveToSprint(http, sprintId, [key])
+    },
+    async listSprints({ all }) {
+      const board = await findBoard(http)
+      if (board === null) {
+        throw new JiraMgrError('not_found', 'The project has no board that supports sprints.')
+      }
+      return listSprints(http, board.id, { all })
+    },
+    searchUsers: ({ query }) => searchAssignableUsers(http, query),
+    async listFieldOptions({ field }) {
+      return getFieldOptions(http, field)
     },
     getMe: () => getCurrentUser(http),
     async listCustomers() {
