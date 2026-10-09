@@ -17,18 +17,31 @@ app.setPath('userData', join(stateDir, 'electron'))
 
 // JM_E2E_BULK adds that many open Stories, for the virtual window test.
 const bulk = Number(process.env.JM_E2E_BULK ?? '0')
-const jira = createFakeJira({ bulk: Number.isInteger(bulk) && bulk > 0 ? bulk : 0 })
+// JM_E2E_LATE_AUTOMATION_MS delays the fake's automation rule, and JM_E2E_LATE_READ_MS shortens the
+// app's second read of a created issue, so a test sees the late toast without a 10 s wait.
+const lateAutomationMs = process.env.JM_E2E_LATE_AUTOMATION_MS
+const lateReadMs = process.env.JM_E2E_LATE_READ_MS
+const jira = createFakeJira({
+  bulk: Number.isInteger(bulk) && bulk > 0 ? bulk : 0,
+  ...(lateAutomationMs !== undefined && { lateAutomationMs: Number(lateAutomationMs) }),
+})
 globalThis.fetch = jira.fetch
 ;(globalThis as { __fakeJira?: unknown }).__fakeJira = jira
 
-start(createBackend({ keychain: createFakeKeychain() }), {
-  inactive: true,
-  // Stand-ins that count, so a test never opens a browser or waits on a native dialog.
-  openExternal: (url) => {
-    jira.counts.openExternal.push(url)
+start(
+  createBackend({
+    keychain: createFakeKeychain(),
+    ...(lateReadMs !== undefined && { lateReadMs: Number(lateReadMs) }),
+  }),
+  {
+    inactive: true,
+    // Stand-ins that count, so a test never opens a browser or waits on a native dialog.
+    openExternal: (url) => {
+      jira.counts.openExternal.push(url)
+    },
+    confirmQuit: () => {
+      jira.counts.quitPrompts++
+      return true
+    },
   },
-  confirmQuit: () => {
-    jira.counts.quitPrompts++
-    return true
-  },
-})
+)

@@ -42,6 +42,7 @@ import type {
   ImageResult,
   IssuePhase,
   IssuesProgress,
+  LateRead,
   ListIssuesArgs,
   KeyArgs,
   LoginArgs,
@@ -64,7 +65,16 @@ import { desktopMessage } from './messages'
 /** What a handler gives the backend to report on the window that asked. */
 export interface ProgressSender {
   sendProgress(progress: IssuesProgress): void
+  /** False once the window is gone. */
+  isOpen(): boolean
+  sendLateRead(read: LateRead): void
 }
+
+/**
+ * How long after a create the issue is read again. PSAPAC's automation sets the estimates within
+ * about 1 s and the label, Customer, parent and sprint within about 10 s (handover Traps).
+ */
+export const LATE_READ_MS = 10_000
 
 /** Everything the renderer can ask of Jira, in terms of core. The token never leaves this module. */
 export interface Backend {
@@ -93,9 +103,10 @@ export interface Backend {
   /**
    * Creates an issue, moves it into the sprint when one is given, and reads it back, so the
    * result shows what Jira holds after any automation rule ran. Once the issue exists a failed
-   * later step is a `warning` on the result, never a throw, so the key is not lost.
+   * later step is a `warning` on the result, never a throw, so the key is not lost. With
+   * `progress`, it also reads the issue once more after `LATE_READ_MS` and sends that to the window.
    */
-  createIssue(args: CreateIssueArgs): Promise<CreatedIssue>
+  createIssue(args: CreateIssueArgs, progress?: ProgressSender): Promise<CreatedIssue>
   /** Deletes an issue, and its subtasks only when asked and only the ones the caller was shown. */
   deleteIssue(args: DeleteIssueArgs): Promise<DeletedIssue>
   listSprints(args: { all: boolean }): Promise<SprintOption[]>
@@ -110,6 +121,8 @@ export interface Backend {
   createView(args: CreateViewArgs): Promise<SavedView>
   renameView(args: RenameViewArgs): Promise<SavedView>
   deleteView(args: DeleteViewArgs): Promise<void>
+  /** Cancels the pending second reads. The app calls it on quit. */
+  dispose(): void
 }
 
 export interface BackendDeps {
@@ -118,6 +131,8 @@ export interface BackendDeps {
   http?: HttpClient
   /** Tests inject a clock for the media index's 30 second windows. */
   now?: () => number
+  /** Tests and the e2e entry shorten the wait before a created issue is read again. */
+  lateReadMs?: number
 }
 
 /** The key a `createIssue` that could not read the new issue back carries in its details. */
@@ -143,6 +158,28 @@ export function createBackend(deps: BackendDeps = {}): Backend {
   }
 
   const media = createMediaIndex(http, deps.now)
+
+  /** The second reads waiting to fire, one per created issue. Logout and quit clear them. */
+  const lateReads = new Set<NodeJS.Timeout>()
+  function clearLateReads() {
+    for (const timer of lateReads) clearTimeout(timer)
+    lateReads.clear()
+  }
+  function scheduleLateRead(key: string, to: ProgressSender) {
+    const timer = setTimeout(() => {
+      lateReads.delete(timer)
+      if (!to.isOpen()) return
+      getIssue(http, key).then(
+        (issue) => {
+          if (to.isOpen()) to.sendLateRead({ key, issue })
+        },
+        () => {
+          // Deleted since, or Jira is unreachable: the first read stands and there is nothing to add.
+        },
+      )
+    }, deps.lateReadMs ?? LATE_READ_MS)
+    lateReads.add(timer)
+  }
 
   /** The load running for each phase. A newer load of a phase, and a logout, abort it. */
   const loads = new Map<IssuePhase, AbortController>()
@@ -200,6 +237,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       for (const controller of loads.values()) controller.abort()
       loads.clear()
       media.clear()
+      clearLateReads()
       await logout({ keychain })
       return getSession()
     },
@@ -269,7 +307,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       if (sprintId === null) await moveToBacklog(http, [key])
       else await moveToSprint(http, sprintId, [key])
     },
-    async createIssue({ sprintId, ...input }) {
+    async createIssue({ sprintId, ...input }, progress) {
       // The same guard the CLI applies: this app manages the settings project only.
       if (input.parentKey !== undefined) await assertInProject(input.parentKey)
       let key: string
@@ -309,6 +347,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
           }
         }
       }
+      if (progress !== undefined) scheduleLateRead(key, progress)
       return { key, issue, warning }
     },
     async deleteIssue({ key, deleteSubtasks, subtasks: shown }) {
@@ -367,5 +406,6 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       inViewOrder(() => createView(name, { filters, toggles })),
     renameView: ({ id, name }) => inViewOrder(() => renameView(id, name)),
     deleteView: ({ id }) => inViewOrder(() => deleteView(id)),
+    dispose: clearLateReads,
   }
 }

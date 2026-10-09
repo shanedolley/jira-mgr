@@ -26,7 +26,13 @@ import { Sidebar } from './Sidebar'
 import { Toast } from './Toast'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
-import { createContext, deleteFailureNotes, type Notice } from './create'
+import {
+  createContext,
+  deleteFailureNotes,
+  describeLate,
+  type CreateDraft,
+  type Notice,
+} from './create'
 import { filterChoices, hasFilters } from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
 import {
@@ -39,6 +45,7 @@ import {
   useToggles,
   useUnresolvedIssues,
 } from './queries'
+import { applyUnaskedRead } from './optimistic'
 import { describeEdit, undoStack } from './undo'
 import { useUndo } from './useUndo'
 import {
@@ -403,6 +410,23 @@ export function Shell({ session }: { session: Session }) {
     [client],
   )
 
+  // The PSAPAC automation rewrites a new issue after the create's own read-back. Main reads it
+  // again later; each create waits here with its form and first notice, and an unknown key (from
+  // before a logout) is ignored.
+  const created = useRef(new Map<string, { draft: CreateDraft; notice: Notice }>())
+  useEffect(
+    () =>
+      window.jm.onLateRead((read) => {
+        const first = created.current.get(read.key)
+        if (first === undefined) return
+        created.current.delete(read.key)
+        applyUnaskedRead(client, read.issue)
+        const late = describeLate(first.draft, first.notice, read)
+        if (late !== null) setNotice({ notice: late, openKey: read.key })
+      }),
+    [client],
+  )
+
   const dismissNotice = useCallback(() => {
     setNotice(null)
   }, [])
@@ -649,11 +673,12 @@ export function Shell({ session }: { session: Session }) {
           onClose={() => {
             setCreating(null)
           }}
-          onCreated={(result, created, more) => {
+          onCreated={(result, first, more, draft) => {
+            created.current.set(result.key, { draft, notice: first })
             if (!more) setCreating(null)
             setPendingSelect(result.issue === null ? null : result.key)
             if (!more)
-              setNotice({ notice: created, openKey: result.issue === null ? null : result.key })
+              setNotice({ notice: first, openKey: result.issue === null ? null : result.key })
           }}
           returnFocus={focusTree}
         />

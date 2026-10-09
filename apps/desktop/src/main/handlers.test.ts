@@ -17,6 +17,8 @@ function progressRecorder() {
     sendProgress(p) {
       sent.push(p)
     },
+    isOpen: () => true,
+    sendLateRead: () => undefined,
   }
   return { progress, sent }
 }
@@ -58,6 +60,7 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     createView: record('createView', VIEW),
     renameView: record('renameView', VIEW),
     deleteView: record('deleteView', undefined),
+    dispose: () => undefined,
     ...overrides,
   }
   return { backend, calls }
@@ -236,7 +239,7 @@ describe('issues:create', () => {
     const result = await createHandlers(backend)['issues:create'](full, noProgress)
     expect(result).toMatchObject({ ok: true })
     expect(calls).toEqual([
-      { method: 'createIssue', args: [{ ...full, summary: 'Write the runbook' }] },
+      { method: 'createIssue', args: [{ ...full, summary: 'Write the runbook' }, noProgress] },
     ])
   })
 })

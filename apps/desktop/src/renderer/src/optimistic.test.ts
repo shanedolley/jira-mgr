@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   applyCreated,
   applyFreshIssue,
+  applyUnaskedRead,
   deleteMutation,
   doneKey,
   issueDetailKey,
@@ -464,6 +465,46 @@ describe('applyFreshIssue', () => {
     applyFreshIssue(client, fresh)
     expect(client.getQueryData<Issue[]>(unresolvedKey)?.[0]).not.toHaveProperty('subtasks')
     expect(client.getQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'))?.subtasks).toHaveLength(1)
+  })
+})
+
+describe('applyUnaskedRead', () => {
+  const options = (client: QueryClient, send: () => Promise<unknown>) =>
+    issueMutation(
+      client,
+      send,
+      () => ({ summary: 'Edited' }),
+      () => Promise.resolve(detail(issue('PSAPAC-1', 'Edited'))),
+    )
+
+  it('puts the read into the caches when no edit of the issue is in flight', () => {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
+
+    applyUnaskedRead(client, detail(issue('PSAPAC-1', 'Read')))
+
+    expect(summariesOf(client, unresolvedKey)).toEqual(['Read'])
+  })
+
+  it('leaves the optimistic value of an edit in flight alone, and takes reads again once it settles', async () => {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
+    const request = deferred<null>()
+    const edit = new MutationObserver(
+      client,
+      options(client, () => request.promise),
+    )
+    const done = edit.mutate({ key: 'PSAPAC-1' })
+    await expect.poll(() => summariesOf(client, unresolvedKey)).toEqual(['Edited'])
+
+    applyUnaskedRead(client, detail(issue('PSAPAC-1', 'Stale')))
+    expect(summariesOf(client, unresolvedKey)).toEqual(['Edited'])
+    expect(client.getQueryData(issueDetailKey('PSAPAC-1'))).toBeUndefined()
+
+    request.resolve(null)
+    await done
+    applyUnaskedRead(client, detail(issue('PSAPAC-1', 'Later')))
+    expect(summariesOf(client, unresolvedKey)).toEqual(['Later'])
   })
 })
 

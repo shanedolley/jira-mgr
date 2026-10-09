@@ -3,8 +3,10 @@ import { contextBridge, ipcRenderer } from 'electron'
 import {
   CHANNELS,
   ISSUES_PROGRESS_EVENT,
+  LATE_READ_EVENT,
   WINDOW_FOCUS_EVENT,
   type IssuesProgress,
+  type LateRead,
   type JmApi,
 } from '../shared/ipc'
 
@@ -33,6 +35,16 @@ const api = {
     ipcRenderer.on(ISSUES_PROGRESS_EVENT, forward)
     return () => {
       ipcRenderer.removeListener(ISSUES_PROGRESS_EVENT, forward)
+    }
+  },
+  onLateRead(listener) {
+    const forward = (_event: unknown, read: unknown) => {
+      const { key, issue } = read as LateRead
+      listener({ key, issue })
+    }
+    ipcRenderer.on(LATE_READ_EVENT, forward)
+    return () => {
+      ipcRenderer.removeListener(LATE_READ_EVENT, forward)
     }
   },
 } as JmApi
