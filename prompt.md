@@ -2,15 +2,14 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (6 open issues, one page), `gh pr list --state open` and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep it current, and remove every stale reference (branch names that are gone, features listed as planned that exist, wrong counts, dead links) in the pull request that changes the code. Work in order:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (7 open issues, one page), `gh pr list --state open` and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep it current, and remove every stale reference (branch names that are gone, features listed as planned that exist, wrong counts, dead links) in the pull request that changes the code. Work in order:
 
-1. **Land #94 (D13 profile images, #86)**: ready, security review and delta review passed, rebased onto the D12 merge. Wait for CI on the rebased head, merge by hand, then have `kothar:project-manager` move #86 to `status:hil-review`. Leave `apps/desktop/README.md` avatar text to this pull request.
-2. **Review and open the pull request for D5 activity (#32)** from `d5-activity` (worktree `jira-mgr-d5`, pushed, no pull request; review by 32-d5-review). Rebase it onto `main` first. It carries design doc 0004 and the README text for D5, so its docs land with it. Two criteria stay unproven until Shane is present: an image embedded in a comment rendering in live Jira (one reversible live write) and the real native save dialog (one manual `pnpm dev` check).
-3. **Land the e2e flake fixes** from `fix-e2e-flakes-1010` (local only, worktree `jira-mgr-flakes`; review by flakes-review): the `views.test.ts` ENOENT race and the `AdfEditor` caret bug at `editor.test.ts:562`. Push, open the pull request, merge on green. Then fix `shell.test.ts:101` once its cause is known, and update the "Flaky e2e tests" trap.
-4. **The out-of-order edit bug**: two quick edits to one field can reach Jira out of order (`optimistic.ts`). Find it with `gh issue list --label bug --state open`; it had no issue number at the last check.
-5. **D9 timer (#36)**, blocked by #32: start it once D5 merges.
-6. **D11 click-to-edit summary (#83)**, unblocked: build it in a worktree of its own after D5 merges, since it touches `IssuePage` and `SummaryEditor.tsx`.
-7. **Waiting on Shane** (he closes issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #84, the late-automation toast, is there now; #85 (D12, merged in #88) goes there once its criteria proof is posted; #86 follows #94. The two D5 live checks need him present.
+1. **Review and open the pull request for D5 activity (#32)** from `d5-activity` (worktree `jira-mgr-d5`, pushed, no pull request; review by 32-d5-review). Rebase it onto `main` first. It carries design doc 0004 and the README text for D5, so its docs land with it. Two criteria stay unproven until Shane is present: an image embedded in a comment rendering in live Jira (one reversible live write) and the real native save dialog (one manual `pnpm dev` check).
+2. **Land the e2e flake fixes** from `fix-e2e-flakes-1010` (local only, worktree `jira-mgr-flakes`): the `views.test.ts` ENOENT race, the `AdfEditor` caret bug at `editor.test.ts:562` and the `shell.test.ts:101` launch race (ff7ea14, not yet reviewed). Review, push, open the pull request, merge on green.
+3. **Bug #96, two quick edits to one field reach Jira out of order** (`optimistic.ts`): In Progress in worktree `jira-mgr-96` on `96-ordered-edits`, debugger 96-ordered-edits. Review and land it.
+4. **D9 timer (#36)**, blocked by #32: start it once D5 merges.
+5. **D11 click-to-edit summary (#83)**, unblocked: build it in a worktree of its own after D5 merges, since it touches `IssuePage` and `SummaryEditor.tsx`.
+6. **Waiting on Shane** (he closes issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #84 (late-automation toast), #85 (D12 icons) and #86 (D13 profile images). The two D5 live checks need him present.
 
 Merge one pull request at a time and rebase the next onto `main` before its CI result counts (see Traps in the handover). Run e2e on one worker and never in several worktrees at once.
 
