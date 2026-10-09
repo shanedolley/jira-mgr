@@ -4,9 +4,9 @@
 
 Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
 
-1. **Desktop D4 editor (#31)**, parked in HIL Review with `question`: no answer from Shane as of 2026-10-09. When he answers on #31, remove `question`, move it back to In Progress and build from `d4-editor`. D5 activity (#32) and then D9 timer (#36) wait on it.
-2. **Live checks with Shane present:** #67's read-back create (steps on #67), D6's create and delete, and D4's image embed once built. Run them together, then move #67 to HIL Review.
-3. Nothing else is unblocked: the other open issues (#28, #29, #30, #33, #34, #35, #37) are built and wait on Shane's HIL review. Stop and report.
+1. **Desktop D4 editor (#31)**, In Progress in worktree `/Users/shanedolley/Development/personal/jira-mgr-d4` on `d4-editor`. Finish the build, have a reviewer pass it, then run the live image-embed check with Shane before the pull request merges. D5 activity (#32) and then D9 timer (#36) wait on it.
+2. **Live check with Shane present:** D6's create and delete in the app (#33), alongside D4's image embed.
+3. Nothing else is unblocked: #28, #29, #30, #33, #34, #35, #37 and #67 are built and wait on Shane's HIL review. Stop and report.
 
 ## Reading Order
 
