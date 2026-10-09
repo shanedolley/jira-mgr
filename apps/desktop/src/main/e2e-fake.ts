@@ -930,7 +930,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       // Jira redirects to the media service, with the file id in the path and a token the real
       // one adds and this does not.
       return new Response(null, {
-        status: 302,
+        status: 303,
         headers: {
           Location: `https://api.media.atlassian.com/file/${found.mediaId}/binary?client=fake&dl=true&name=${encodeURIComponent(found.filename)}`,
         },
