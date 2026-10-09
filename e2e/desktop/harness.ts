@@ -25,6 +25,8 @@ export interface Counts {
   openExternal: string[]
   /** Times the quit prompt was raised. */
   quitPrompts: number
+  /** Every avatar request, in order, and whether it carried an Authorization header. */
+  avatarFetches: { url: string; authorized: boolean }[]
 }
 
 interface FakeJira {

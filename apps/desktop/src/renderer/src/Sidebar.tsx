@@ -2,9 +2,10 @@ import { useState, useSyncExternalStore, type ReactNode } from 'react'
 
 import type { Session } from '../../shared/ipc'
 import { DiscardDialog } from './DiscardDialog'
+import { Avatar } from './Avatar'
 import { ThemeToggle } from './ThemeToggle'
 import { draftCount, subscribeDrafts } from './drafts'
-import { useLogout } from './queries'
+import { useLogout, useMe } from './queries'
 
 export function Sidebar({
   session,
@@ -19,6 +20,7 @@ export function Sidebar({
   const logout = useLogout()
   const unsaved = useSyncExternalStore(subscribeDrafts, draftCount)
   const [confirming, setConfirming] = useState(false)
+  const me = useMe().data
   const site = new URL(session.siteUrl).hostname
   return (
     <nav
@@ -48,9 +50,12 @@ export function Sidebar({
       <div className="min-h-0 flex-1 overflow-y-auto">{views}</div>
       <div className="space-y-2 border-t border-line p-3">
         <ThemeToggle />
-        <p className="truncate text-xs text-muted" title={session.email}>
-          {session.email}
-        </p>
+        <div className="flex items-center gap-2">
+          {me !== undefined && <Avatar person={me} />}
+          <p className="min-w-0 truncate text-xs text-muted" title={session.email}>
+            {session.email}
+          </p>
+        </div>
         <button
           type="button"
           disabled={logout.isPending}

@@ -223,6 +223,17 @@ export interface FieldChoice {
 export interface CurrentUser {
   accountId: string
   displayName: string
+  avatarUrl: string | null
+}
+
+export interface AvatarArgs {
+  url: string
+}
+
+/** A profile image as main checked it. The renderer makes a blob URL from `bytes`. */
+export interface AvatarImage {
+  type: ImageType
+  bytes: Uint8Array
 }
 
 /**
@@ -257,6 +268,8 @@ export interface IpcContract {
   'users:search': { args: { query: string }; result: UserOption[] }
   'fields:options': { args: FieldOptionsArgs; result: FieldChoice[] }
   'user:me': { args: undefined; result: CurrentUser }
+  /** A profile image by URL, fetched and checked by main. Fails with `not_found` when it will not load. */
+  'avatars:get': { args: AvatarArgs; result: AvatarImage }
   'fields:customers': { args: undefined; result: CustomerOption[] }
   'settings:getToggles': { args: undefined; result: Toggles }
   'settings:setToggles': { args: Toggles; result: Toggles }
@@ -290,6 +303,7 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'users:search': true,
   'fields:options': true,
   'user:me': true,
+  'avatars:get': true,
   'fields:customers': true,
   'settings:getToggles': true,
   'settings:setToggles': true,

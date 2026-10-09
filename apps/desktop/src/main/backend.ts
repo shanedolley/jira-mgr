@@ -5,7 +5,7 @@ import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import { addAttachment, attachmentMediaId } from '@jira-mgr/core/extras'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
 import { assertTypeChangeAllowed, type IssueDetail } from '@jira-mgr/core/issue'
-import { getCurrentUser, getFieldOptions, searchAssignableUsers } from '@jira-mgr/core/lookups'
+import { getFieldOptions, getProfile, searchAssignableUsers } from '@jira-mgr/core/lookups'
 import { getIssue, searchIssuePages } from '@jira-mgr/core/search'
 import { findBoard, listSprints, moveToBacklog, moveToSprint } from '@jira-mgr/core/sprints'
 import {
@@ -36,6 +36,8 @@ import type {
   DeletedIssue,
   DeleteViewArgs,
   EditIssueArgs,
+  AvatarArgs,
+  AvatarImage,
   FieldChoice,
   FieldOptionsArgs,
   ImageArgs,
@@ -58,6 +60,7 @@ import type {
   Toggles,
   UserOption,
 } from '../shared/ipc'
+import { createAvatarFetcher } from './avatars'
 import { imageType, uploadFilename } from './images'
 import { createMediaIndex } from './media'
 import { desktopMessage } from './messages'
@@ -113,6 +116,7 @@ export interface Backend {
   searchUsers(args: { query: string }): Promise<UserOption[]>
   listFieldOptions(args: FieldOptionsArgs): Promise<FieldChoice[]>
   getMe(): Promise<CurrentUser>
+  getAvatar(args: AvatarArgs): Promise<AvatarImage>
   listCustomers(): Promise<CustomerOption[]>
   getToggles(): Promise<Toggles>
   setToggles(toggles: Toggles): Promise<Toggles>
@@ -145,6 +149,7 @@ function createdKey(error: unknown): string | undefined {
 export function createBackend(deps: BackendDeps = {}): Backend {
   const keychain = deps.keychain ?? createKeychain()
   const http = deps.http ?? createHttpClient({ credentials: () => getCredentials({ keychain }) })
+  const avatars = createAvatarFetcher({ credentials: () => getCredentials({ keychain }) })
 
   /** Logged in means settings name a site, project and email, and the Keychain holds a token. */
   async function getSession(): Promise<SessionState> {
@@ -230,6 +235,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     getSession,
     async login(args) {
       await login(args, { keychain })
+      avatars.clear()
       return getSession()
     },
     async logout() {
@@ -239,6 +245,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       media.clear()
       clearLateReads()
       await logout({ keychain })
+      avatars.clear()
       return getSession()
     },
     listIssues,
@@ -384,7 +391,8 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     async listFieldOptions({ field }) {
       return getFieldOptions(http, field)
     },
-    getMe: () => getCurrentUser(http),
+    getMe: () => getProfile(http),
+    getAvatar: ({ url }) => avatars.get(url),
     async listCustomers() {
       const options = await getFieldOptions(http, 'customer')
       return options.map((option) => ({ id: option.id, value: option.name }))

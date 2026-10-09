@@ -3,6 +3,7 @@ import { STATUS_ORDER } from '@jira-mgr/core/hierarchy'
 import { useState } from 'react'
 
 import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
+import { Avatar, withAvatars } from './Avatar'
 import { Picker, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
 import {
@@ -128,7 +129,7 @@ export function AssigneePicker({ issue, issues, me, report }: AssigneeProps) {
   const meUser: Person | undefined =
     me === undefined
       ? undefined
-      : { accountId: me.accountId, displayName: me.displayName, avatarUrl: null }
+      : { accountId: me.accountId, displayName: me.displayName, avatarUrl: me.avatarUrl }
   const choices = assigneeChoices(
     meUser,
     recentAssignees(issues, me?.accountId ?? ''),
@@ -151,7 +152,8 @@ export function AssigneePicker({ issue, issues, me, report }: AssigneeProps) {
       label="Assignee"
       shortcut="A"
       valueText={issue.assignee?.displayName ?? 'Unassigned'}
-      options={assigneeOptions(choices, query, me?.accountId)}
+      leading={<Avatar person={issue.assignee} />}
+      options={withAvatars(assigneeOptions(choices, query, me?.accountId), people)}
       selected={[issue.assignee?.accountId ?? NONE]}
       searchable
       onQuery={setQuery}

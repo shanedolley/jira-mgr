@@ -7,6 +7,7 @@ import { CREATE_TYPES, IMAGE_LIMIT_BYTES, IMAGE_TYPES } from '../shared/ipc'
 import type {
   AddImageArgs,
   ArgsOf,
+  AvatarArgs,
   Channel,
   CreateIssueArgs,
   CreateViewArgs,
@@ -170,6 +171,16 @@ const fieldOptionsArgs: z.ZodType<FieldOptionsArgs> = z.strictObject({
   field: z.enum(['customer', 'engagement', 'priority', 'issueType']),
 })
 
+const avatarArgs: z.ZodType<AvatarArgs> = z.strictObject({
+  url: z
+    .string()
+    .max(2048)
+    .refine(
+      (url) => URL.canParse(url) && new URL(url).protocol === 'https:',
+      'must be an https URL',
+    ),
+})
+
 const listIssuesArgs: z.ZodType<ListIssuesArgs> = z.strictObject({
   phase: z.enum(['unresolved', 'done']),
   loadId: z.number().int().nonnegative(),
@@ -228,6 +239,7 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'users:search': userSearchArgs,
   'fields:options': fieldOptionsArgs,
   'user:me': z.undefined(),
+  'avatars:get': avatarArgs,
   'fields:customers': z.undefined(),
   'settings:getToggles': z.undefined(),
   'settings:setToggles': togglesArgs,
@@ -347,6 +359,7 @@ export function createHandlers(
     'users:search': handle('users:search', (args) => backend.searchUsers(args)),
     'fields:options': handle('fields:options', (args) => backend.listFieldOptions(args)),
     'user:me': handle('user:me', () => backend.getMe()),
+    'avatars:get': handle('avatars:get', (args) => backend.getAvatar(args)),
     'fields:customers': handle('fields:customers', () => backend.listCustomers()),
     'settings:getToggles': handle('settings:getToggles', () => backend.getToggles()),
     'settings:setToggles': handle('settings:setToggles', (args) => backend.setToggles(args)),
