@@ -561,9 +561,10 @@ test('restores an unsaved draft after opening another issue and coming back, wit
 
 test('a failed save reopens with the caret where it was and Cmd+Z undoing the last change', async () => {
   await addDescription()
-  await window.keyboard.type('abc')
-  await window.keyboard.press('ArrowLeft', { delay: 60 })
   await refuseNextEdit(app)
+  await window.keyboard.type('abc')
+  // Saved straight after the caret moves, before the browser reports the move to the editor.
+  await window.keyboard.press('ArrowLeft')
   await window.keyboard.press(`${MOD}+Enter`)
   await expect.poll(edits).toBe(1)
   await releaseEdit(app)

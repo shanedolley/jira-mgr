@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { launch, logIn } from './harness.js'
+import { launch, logIn, readState } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -30,10 +30,9 @@ interface StoredView {
 /** `views.json` as the CLI's `jm view list` reads it. */
 const stored = async () =>
   JSON.parse(await readFile(join(stateDir, 'views.json'), 'utf8')) as StoredView[]
-const settings = async () =>
-  JSON.parse(await readFile(join(stateDir, 'settings.json'), 'utf8')) as {
-    toggles: Record<string, boolean>
-  }
+/** `views.json`, or `null` before the app first writes it. A rename or delete shows, then writes. */
+const storedOrAbsent = () => readState<StoredView[]>(stateDir, 'views.json')
+const settings = () => readState<{ toggles: Record<string, boolean> }>(stateDir, 'settings.json')
 
 const tree = () => window.getByRole('tree', { name: 'Issues' })
 const item = (name: RegExp) => tree().getByRole('treeitem', { name })
@@ -82,7 +81,7 @@ test('lists the starter views, and applying one sets the filters and the toggles
   await expect(item(/PSAPAC-13,/)).toHaveCount(0)
   await expect(item(/PSAPAC-3,/)).toHaveCount(0)
   // The toggles the view set are the toggles now, and settings.json holds them.
-  await expect.poll(async () => (await settings()).toggles.assigneeMe).toBe(true)
+  await expect.poll(async () => (await settings())?.toggles.assigneeMe).toBe(true)
 
   // Changing a toggle or a filter leaves the view.
   await toggle('Assignee: me').click()
@@ -98,6 +97,7 @@ test('creates a view from the filter bar, and the file the CLI reads holds it', 
 
   await expect(apply('Open bugs')).toBeVisible()
   await expect(apply('Open bugs')).toHaveAttribute('aria-current', 'true')
+  // A create waits for main, which answers once the file is written, so the row means it landed.
   const views = await stored()
   expect(views.map((v) => v.name)).toEqual(['My issues', 'Current sprint', 'Open bugs'])
   expect(views[2]).toEqual({
@@ -120,7 +120,7 @@ test('keeps the new view field open on a taken name, and Escape cancels it', asy
   await createView('my ISSUES')
   await expect(window.getByRole('alert')).toContainText('already exists')
   await expect(window.getByLabel('New view name')).toHaveValue('my ISSUES')
-  expect(await stored().catch(() => [])).toHaveLength(0)
+  expect(await storedOrAbsent()).toBeNull()
 
   await window.getByLabel('New view name').fill('Fresh')
   await window.keyboard.press('Enter')
@@ -147,7 +147,9 @@ test('renames a view inline with Enter, cancels with Escape, and restores a refu
   await expect(apply('This sprint')).toBeVisible()
   await expect(apply('This sprint')).toBeFocused()
   await expect(apply('Current sprint')).toHaveCount(0)
-  await expect.poll(async () => (await stored()).map((v) => v.name)).toContain('This sprint')
+  await expect
+    .poll(async () => (await storedOrAbsent())?.map((v) => v.name))
+    .toContain('This sprint')
   // The id stays, so `jm issue list --view current-sprint` keeps working.
   expect((await stored()).map((v) => v.id)).toEqual(['my-issues', 'current-sprint'])
 
@@ -202,7 +204,9 @@ test('deletes a view only after an inline confirmation', async () => {
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect(apply('My issues')).toHaveCount(0)
   await expect(apply('Current sprint')).toBeFocused()
-  await expect.poll(async () => (await stored()).map((v) => v.id)).toEqual(['current-sprint'])
+  await expect
+    .poll(async () => (await storedOrAbsent())?.map((v) => v.id))
+    .toEqual(['current-sprint'])
 
   await window.getByRole('button', { name: 'Delete view Current sprint' }).click()
   await window
@@ -210,7 +214,7 @@ test('deletes a view only after an inline confirmation', async () => {
     .getByRole('button', { name: 'Delete', exact: true })
     .click()
   await expect(window.getByText('No saved views')).toBeVisible()
-  await expect.poll(stored).toEqual([])
+  await expect.poll(storedOrAbsent).toEqual([])
 })
 
 test('moves between views with the arrow keys and renames with F2', async () => {
@@ -236,8 +240,7 @@ test('moves between views with the arrow keys and renames with F2', async () => 
 
 test('shows a view that was added to the file by another program', async () => {
   await open()
-  const views = await stored().catch(() => null)
-  expect(views).toBeNull()
+  expect(await storedOrAbsent()).toBeNull()
   // Created in the app first, so the file exists; then a second writer appends, as the CLI would.
   await createView('First')
   await expect(apply('First')).toBeVisible()
