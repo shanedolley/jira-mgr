@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { loadFixture } from '../test/msw.js'
 import {
   buildHierarchy,
+  STATUS_ORDER,
   type CustomerGroup,
   type HierarchyNode,
   type HierarchyOptions,
@@ -194,11 +195,46 @@ describe('buildHierarchy', () => {
   })
 
   describe('Hide done', () => {
-    it('drops a Done Epic with its whole subtree', () => {
+    it('keeps a Done Epic as context for its open child', () => {
       const tree = build(
         [
           issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
           issue('P-2', { parent: 'P-1' }),
+          issue('P-3', { parent: 'P-1', status: 'Done' }),
+          issue('P-4', { type: 'Epic', customer: BETA }),
+        ],
+        { hideDone: true },
+      )
+
+      expect(names(tree)).toEqual(['Acme', 'beta'])
+      const epic = tree[0]?.epics[0]
+      expect(epic?.contextOnly).toBe(true)
+      expect(keys(epic?.children ?? [])).toEqual(['P-2'])
+      expect(tree[1]?.epics[0]?.contextOnly).toBe(false)
+    })
+
+    it('keeps every Done ancestor of an open Subtask, and drops their other Done children', () => {
+      const tree = build(
+        [
+          issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
+          issue('P-2', { parent: 'P-1', status: 'Done' }),
+          issue('P-3', { parent: 'P-1', status: 'Done' }),
+          issue('P-4', { type: 'Subtask', parent: 'P-2' }),
+        ],
+        { hideDone: true },
+      )
+
+      const epic = tree[0]?.epics[0]
+      expect(keys(epic?.children ?? [])).toEqual(['P-2'])
+      expect(epic?.children[0]?.contextOnly).toBe(true)
+      expect(keys(epic?.children[0]?.children ?? [])).toEqual(['P-4'])
+    })
+
+    it('drops a Done Epic whose children are all Done', () => {
+      const tree = build(
+        [
+          issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
+          issue('P-2', { parent: 'P-1', status: 'Done' }),
           issue('P-3', { type: 'Epic', customer: BETA }),
         ],
         { hideDone: true },
@@ -253,16 +289,6 @@ describe('buildHierarchy', () => {
       const epic = tree[0]?.epics[0]
       expect(epic?.contextOnly).toBe(true)
       expect(keys(epic?.children ?? [])).toEqual(['P-4'])
-    })
-
-    it('hides a Done ancestor of my open issue only when "Assignee: me" is off', () => {
-      const issues = [
-        issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
-        issue('P-2', { parent: 'P-1', assignee: 'me' }),
-      ]
-
-      expect(build(issues, { hideDone: true })).toEqual([])
-      expect(build(issues, { hideDone: true, assigneeMe: true })).toHaveLength(1)
     })
 
     it('keeps everything when off', () => {
@@ -439,5 +465,11 @@ describe('buildHierarchy', () => {
       expect(placed.toSorted()).toEqual(unique.map((i) => i.key).toSorted())
       expect(JSON.parse(JSON.stringify(tree))).toEqual(tree)
     })
+  })
+})
+
+describe('STATUS_ORDER', () => {
+  it('runs Opportunity, To Do, In Progress, Review, Hold, Done', () => {
+    expect(STATUS_ORDER).toEqual(['Opportunity', 'To Do', 'In Progress', 'Review', 'Hold', 'Done'])
   })
 })

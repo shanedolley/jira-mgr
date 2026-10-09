@@ -1,27 +1,10 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-import {
-  _electron as electron,
-  expect,
-  test,
-  type ElectronApplication,
-  type Page,
-} from '@playwright/test'
+import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-// The e2e entry runs the real app on a fake Jira and a fake Keychain, and needs JM_STATE_DIR.
-const entry = fileURLToPath(new URL('../../apps/desktop/out/main/e2e.js', import.meta.url))
-
-const SITE = 'https://fake.atlassian.net'
-const TOKEN = 'good-token'
-/** Counters the fake Jira in the app's main process keeps. */
-interface Counts {
-  searches: number
-  edits: number
-  applied: number
-}
+import { SITE, counts, launch, logIn, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -29,12 +12,7 @@ let stateDir: string
 
 test.beforeEach(async () => {
   stateDir = await mkdtemp(join(tmpdir(), 'jm-e2e-'))
-  app = await electron.launch({
-    // GitHub's Linux runners lack the setuid sandbox helper, so CI runs without it.
-    args: process.env.CI ? ['--no-sandbox', entry] : [entry],
-    env: { ...process.env, JM_STATE_DIR: stateDir },
-  })
-  window = await app.firstWindow()
+  ;({ app, window } = await launch(stateDir))
 })
 
 test.afterEach(async () => {
@@ -42,43 +20,24 @@ test.afterEach(async () => {
   await rm(stateDir, { recursive: true, force: true })
 })
 
-interface FakeJira {
-  counts: Counts
-  releaseEdit: () => void
-}
-const counts = () =>
-  app.evaluate(() => (globalThis as unknown as { __fakeJira: FakeJira }).__fakeJira.counts)
-/** Lets the fake Jira answer the oldest edit it holds. Call it once `counts().edits` shows the edit arrived. */
-const releaseEdit = () =>
-  app.evaluate(() => {
-    ;(globalThis as unknown as { __fakeJira: FakeJira }).__fakeJira.releaseEdit()
-  })
-
-async function logIn(token = TOKEN) {
-  await window.getByLabel('Site URL').fill(SITE)
-  await window.getByLabel('Project key').fill('PSAPAC')
-  await window.getByLabel('Email').fill('me@example.com')
-  await window.getByLabel('API token').fill(token)
-  await window.getByRole('button', { name: 'Log in' }).click()
-}
-
 test('shows the login screen, and keeps it for a token Jira rejects', async () => {
   await expect(window.getByRole('heading', { name: 'Log in to Jira' })).toBeVisible()
-  await logIn('wrong-token')
+  await logIn(window, 'wrong-token')
   await expect(window.getByRole('alert')).toContainText('rejected')
   await expect(window.getByRole('heading', { name: 'Log in to Jira' })).toBeVisible()
 })
 
 test('logs in to the layout and logs out again', async () => {
-  await logIn()
+  await logIn(window)
 
   await expect(window.getByRole('navigation', { name: 'Main' })).toBeVisible()
-  const rows = window.getByRole('list', { name: 'Issues' }).getByRole('button')
-  await expect(rows).toHaveCount(4)
-  await expect(window.getByText('Select an issue to see it here.')).toBeVisible()
+  const tree = window.getByRole('tree', { name: 'Issues' })
+  const row = tree.getByRole('treeitem', { name: /PSAPAC-3,/ })
+  await expect(row).toBeVisible()
+  await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
 
-  await rows.filter({ hasText: 'Fix the export timeout' }).click()
-  const detail = window.getByRole('complementary', { name: 'Issue detail' })
+  await row.click()
+  const detail = window.getByRole('complementary', { name: 'Peek' })
   await expect(detail.getByRole('heading', { name: 'Fix the export timeout' })).toBeVisible()
   await expect(detail.getByText('PSAPAC-3')).toBeVisible()
   await expect(detail.getByText('Bug')).toBeVisible()
@@ -93,44 +52,45 @@ test('logs in to the layout and logs out again', async () => {
 })
 
 test('updates a summary before Jira answers, and restores it when Jira refuses', async () => {
-  await logIn()
-  await window.getByRole('button', { name: /Migrate the dashboards/ }).click()
-  const detail = window.getByRole('complementary', { name: 'Issue detail' })
+  await logIn(window)
+  await window.getByRole('treeitem', { name: /Migrate the dashboards/ }).click()
+  const detail = window.getByRole('complementary', { name: 'Peek' })
 
   await detail.getByRole('button', { name: 'Edit summary' }).click()
   await detail.getByLabel('Summary').fill('Migrate the reports')
   await detail.getByRole('button', { name: 'Save' }).click()
   // The fake holds the edit until released, so Jira has not answered while both views show it.
-  await expect.poll(async () => (await counts()).edits).toBe(1)
+  await expect.poll(async () => (await counts(app)).edits).toBe(1)
   await expect(detail.getByRole('heading', { name: 'Migrate the reports' })).toBeVisible()
-  await expect(window.getByRole('button', { name: /Migrate the reports/ })).toBeVisible()
-  expect((await counts()).applied).toBe(0)
-  await releaseEdit()
-  await expect.poll(async () => (await counts()).applied).toBe(1)
+  await expect(window.getByRole('treeitem', { name: /Migrate the reports/ })).toBeVisible()
+  expect((await counts(app)).applied).toBe(0)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(1)
 
   await detail.getByRole('button', { name: 'Edit summary' }).click()
   await detail.getByLabel('Summary').fill('reject me')
   await detail.getByRole('button', { name: 'Save' }).click()
-  await expect.poll(async () => (await counts()).edits).toBe(2)
+  await expect.poll(async () => (await counts(app)).edits).toBe(2)
   await expect(detail.getByRole('heading', { name: 'reject me' })).toBeVisible()
-  await releaseEdit()
+  await releaseEdit(app)
   await expect(detail.getByRole('alert')).toContainText('shows its old one again')
   await expect(detail.getByRole('heading', { name: 'Migrate the reports' })).toBeVisible()
-  await expect(window.getByRole('button', { name: /reject me/ })).toHaveCount(0)
+  await expect(window.getByRole('treeitem', { name: /reject me/ })).toHaveCount(0)
 })
 
 test('refetches the issues when the window regains focus', async () => {
-  await logIn()
-  await expect(window.getByRole('list', { name: 'Issues' })).toBeVisible()
-  await expect.poll(async () => (await counts()).searches).toBeGreaterThan(0)
-  const before = (await counts()).searches
+  await logIn(window)
+  await expect(window.getByRole('tree', { name: 'Issues' })).toBeVisible()
+  // The Done query is not stale after one focus, so only the unresolved phase refetches.
+  await expect.poll(async () => (await counts(app)).searches.unresolved).toBeGreaterThan(0)
+  const before = (await counts(app)).searches.unresolved
 
   await app.evaluate(({ BrowserWindow }) => {
     const [first] = BrowserWindow.getAllWindows()
     first?.emit('blur')
     first?.emit('focus')
   })
-  await expect.poll(async () => (await counts()).searches).toBeGreaterThan(before)
+  await expect.poll(async () => (await counts(app)).searches.unresolved).toBeGreaterThan(before)
 })
 
 test('follows the system theme and lets the toggle override it', async () => {
@@ -146,7 +106,7 @@ test('follows the system theme and lets the toggle override it', async () => {
   expect(dark).not.toBe(light)
   expect(await attribute()).toBeNull()
 
-  await logIn()
+  await logIn(window)
   const theme = window.getByRole('group', { name: 'Theme' })
   await expect(theme.getByRole('button', { name: 'System' })).toHaveAttribute(
     'aria-pressed',

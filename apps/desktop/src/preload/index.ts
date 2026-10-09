@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-import { CHANNELS, WINDOW_FOCUS_EVENT, type JmApi } from '../shared/ipc'
+import {
+  CHANNELS,
+  ISSUES_PROGRESS_EVENT,
+  WINDOW_FOCUS_EVENT,
+  type IssuesProgress,
+  type JmApi,
+} from '../shared/ipc'
 
 const requests = Object.fromEntries(
   CHANNELS.map((channel) => [channel, (args: unknown) => ipcRenderer.invoke(channel, args)]),
@@ -16,6 +22,17 @@ const api = {
     ipcRenderer.on(WINDOW_FOCUS_EVENT, forward)
     return () => {
       ipcRenderer.removeListener(WINDOW_FOCUS_EVENT, forward)
+    }
+  },
+  onIssuesProgress(listener) {
+    const forward = (_event: unknown, progress: unknown) => {
+      // Main sends the shape; the listener still gets only the three fields, never the Electron event.
+      const { phase, loadId, loaded } = progress as IssuesProgress
+      listener({ phase, loadId, loaded })
+    }
+    ipcRenderer.on(ISSUES_PROGRESS_EVENT, forward)
+    return () => {
+      ipcRenderer.removeListener(ISSUES_PROGRESS_EVENT, forward)
     }
   },
 } as JmApi

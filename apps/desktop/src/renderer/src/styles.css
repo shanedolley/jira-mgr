@@ -68,10 +68,13 @@ body {
   -webkit-app-region: drag;
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  border-radius: 4px;
+/* In the base layer, so a utility such as focus-visible:outline-none can override it. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: 4px;
+  }
 }
 
 button,
@@ -84,4 +87,22 @@ input {
   input {
     transition: none;
   }
+}
+
+/* Lets a control sit in a drag region, such as the Peek's Close button beside the traffic lights. */
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* A native popover menu, placed under the button that opens it. */
+.menu {
+  position-area: block-end span-inline-end;
+  margin: 4px 0 0;
+  inset: auto;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.18);
 }

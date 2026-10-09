@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { APP_NAME } from '@jira-mgr/core'
 import { app, BrowserWindow, ipcMain, session, type IpcMainInvokeEvent } from 'electron'
 
-import { CHANNELS, WINDOW_FOCUS_EVENT } from '../shared/ipc'
+import { CHANNELS, ISSUES_PROGRESS_EVENT, WINDOW_FOCUS_EVENT } from '../shared/ipc'
 import type { Backend } from './backend'
 import { createHandlers } from './handlers'
 import { isTrustedFrame } from './trust'
@@ -83,7 +83,12 @@ export function start(backend: Backend, options: StartOptions = {}): void {
   for (const channel of CHANNELS) {
     ipcMain.handle(channel, (event, raw: unknown) =>
       fromOurWindow(event)
-        ? handlers[channel](raw)
+        ? handlers[channel](raw, {
+            // Progress goes to the window that asked, and not at all once it is gone.
+            sendProgress(progress) {
+              if (!event.sender.isDestroyed()) event.sender.send(ISSUES_PROGRESS_EVENT, progress)
+            },
+          })
         : { ok: false, error: { code: 'permission_denied', message: 'Request refused.' } },
     )
   }

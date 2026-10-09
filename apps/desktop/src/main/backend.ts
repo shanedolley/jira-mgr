@@ -1,19 +1,40 @@
 import type { Issue } from '@jira-mgr/core'
 import { createKeychain, getCredentials, login, logout, type Keychain } from '@jira-mgr/core/auth'
+import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
-import { searchIssues } from '@jira-mgr/core/search'
-import { assertInProject, readSettings } from '@jira-mgr/core/state'
+import { getCurrentUser, getFieldOptions } from '@jira-mgr/core/lookups'
+import { searchIssuePages } from '@jira-mgr/core/search'
+import { assertInProject, readSettings, writeSettings } from '@jira-mgr/core/state'
 import { editIssue } from '@jira-mgr/core/write'
 
-import type { LoginArgs, SessionState, SetSummaryArgs } from '../shared/ipc'
+import type {
+  CurrentUser,
+  IssuePhase,
+  IssuesProgress,
+  ListIssuesArgs,
+  LoginArgs,
+  SessionState,
+  SetSummaryArgs,
+  Toggles,
+} from '../shared/ipc'
+
+/** What a handler gives the backend to report on the window that asked. */
+export interface ProgressSender {
+  sendProgress(progress: IssuesProgress): void
+}
 
 /** Everything the renderer can ask of Jira, in terms of core. The token never leaves this module. */
 export interface Backend {
   getSession(): Promise<SessionState>
   login(args: LoginArgs): Promise<SessionState>
   logout(): Promise<SessionState>
-  listIssues(): Promise<Issue[]>
+  /** One phase of the project's issues, or `null` when a newer load of the phase or a logout aborted it. */
+  listIssues(args: ListIssuesArgs, progress: ProgressSender): Promise<Issue[] | null>
   setSummary(args: SetSummaryArgs): Promise<void>
+  getMe(): Promise<CurrentUser>
+  listCustomers(): Promise<CustomerOption[]>
+  getToggles(): Promise<Toggles>
+  setToggles(toggles: Toggles): Promise<Toggles>
 }
 
 export interface BackendDeps {
@@ -37,6 +58,40 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     return { loggedIn: true, session: { siteUrl, projectKey, email } }
   }
 
+  /** The load running for each phase. A newer load of a phase, and a logout, abort it. */
+  const loads = new Map<IssuePhase, AbortController>()
+  /** Settings writes in call order, so a second toggle press never reads settings from before the first. */
+  let toggleWrites: Promise<unknown> = Promise.resolve()
+
+  async function listIssues(
+    { phase, loadId }: ListIssuesArgs,
+    progress: ProgressSender,
+  ): Promise<Issue[] | null> {
+    loads.get(phase)?.abort()
+    const controller = new AbortController()
+    loads.set(phase, controller)
+    try {
+      const issues: Issue[] = []
+      for await (const page of searchIssuePages(http, {
+        phases: [phase],
+        signal: controller.signal,
+      })) {
+        issues.push(...page.issues)
+        if (!controller.signal.aborted) {
+          progress.sendProgress({ phase, loadId, loaded: page.loaded })
+        }
+      }
+      return controller.signal.aborted ? null : issues
+    } catch (error) {
+      // An aborted load is not a failure: nobody reads its result.
+      if (controller.signal.aborted) return null
+      throw error
+    } finally {
+      // Only this load's own entry: a newer load of the phase may have replaced it.
+      if (loads.get(phase) === controller) loads.delete(phase)
+    }
+  }
+
   return {
     getSession,
     async login(args) {
@@ -44,15 +99,34 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       return getSession()
     },
     async logout() {
+      // No page may be fetched with a token that is going away.
+      for (const controller of loads.values()) controller.abort()
+      loads.clear()
       await logout({ keychain })
       return getSession()
     },
-    // D1 shows unresolved issues only; D2 loads Done in the background.
-    listIssues: () => searchIssues(http, { phases: ['unresolved'] }),
+    listIssues,
     async setSummary({ key, summary }) {
       // The same guard the CLI applies: this app manages the settings project only.
       await assertInProject(key)
       await editIssue(http, key, { summary })
+    },
+    getMe: () => getCurrentUser(http),
+    async listCustomers() {
+      const options = await getFieldOptions(http, 'customer')
+      return options.map((option) => ({ id: option.id, value: option.name }))
+    },
+    async getToggles() {
+      return (await readSettings()).toggles
+    },
+    setToggles(toggles) {
+      const write = toggleWrites.then(async () => {
+        const settings = await readSettings()
+        await writeSettings({ ...settings, toggles })
+        return toggles
+      })
+      toggleWrites = write.catch(() => undefined)
+      return write
     },
   }
 }

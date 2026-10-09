@@ -1,10 +1,24 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { Backend } from './backend'
+import type { Backend, ProgressSender } from './backend'
 import { createHandlers, stackFrames } from './handlers'
 
 const TOKEN = 'ATATT3xFfGF0-secret_token=ABC123'
+const LIST = { phase: 'unresolved', loadId: 1 } as const
+const TOGGLES = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
+
+/** A progress sender that records what a handler reports. */
+function progressRecorder() {
+  const sent: unknown[] = []
+  const progress: ProgressSender = {
+    sendProgress(p) {
+      sent.push(p)
+    },
+  }
+  return { progress, sent }
+}
+const noProgress = progressRecorder().progress
 
 function fakeBackend(overrides: Partial<Backend> = {}) {
   const calls: { method: string; args: unknown[] }[] = []
@@ -21,6 +35,10 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     logout: record('logout', loggedOut),
     listIssues: record('listIssues', []),
     setSummary: record('setSummary', undefined),
+    getMe: record('getMe', { accountId: 'u1', displayName: 'Me' }),
+    listCustomers: record('listCustomers', []),
+    getToggles: record('getToggles', TOGGLES),
+    setToggles: record('setToggles', TOGGLES),
     ...overrides,
   }
   return { backend, calls }
@@ -36,25 +54,30 @@ const login = {
 describe('argument validation', () => {
   it('refuses a login with a missing field before the backend runs', async () => {
     const { backend, calls } = fakeBackend()
-    const result = await createHandlers(backend)['session:login']({ ...login, token: undefined })
+    const result = await createHandlers(backend)['session:login'](
+      { ...login, token: undefined },
+      noProgress,
+    )
     expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
     expect(calls).toEqual([])
   })
 
   it('refuses an unknown field, so the renderer cannot smuggle extra input to core', async () => {
     const { backend, calls } = fakeBackend()
-    const result = await createHandlers(backend)['session:login']({ ...login, admin: true })
+    const result = await createHandlers(backend)['session:login'](
+      { ...login, admin: true },
+      noProgress,
+    )
     expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
     expect(calls).toEqual([])
   })
 
   it('never echoes the token in a validation message', async () => {
     const { backend } = fakeBackend()
-    const result = await createHandlers(backend)['session:login']({
-      ...login,
-      token: TOKEN.repeat(100),
-      email: 42,
-    })
+    const result = await createHandlers(backend)['session:login'](
+      { ...login, token: TOKEN.repeat(100), email: 42 },
+      noProgress,
+    )
     expect(result.ok).toBe(false)
     expect(JSON.stringify(result)).not.toContain(TOKEN)
   })
@@ -67,28 +90,92 @@ describe('argument validation', () => {
     ['no argument', undefined],
   ])('refuses setSummary with %s', async (_name, raw) => {
     const { backend, calls } = fakeBackend()
-    const result = await createHandlers(backend)['issues:setSummary'](raw)
+    const result = await createHandlers(backend)['issues:setSummary'](raw, noProgress)
     expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
     expect(calls).toEqual([])
   })
 
   it('refuses an argument on a channel that takes none', async () => {
     const { backend, calls } = fakeBackend()
-    const result = await createHandlers(backend)['issues:list']({ key: 'PSAPAC-1' })
+    const result = await createHandlers(backend)['user:me']({ key: 'PSAPAC-1' }, noProgress)
     expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
     expect(calls).toEqual([])
   })
 
   it('passes a valid request through, with the summary trimmed', async () => {
     const { backend, calls } = fakeBackend()
-    const result = await createHandlers(backend)['issues:setSummary']({
-      key: 'PSAPAC-12',
-      summary: '  New summary  ',
-    })
+    const result = await createHandlers(backend)['issues:setSummary'](
+      { key: 'PSAPAC-12', summary: '  New summary  ' },
+      noProgress,
+    )
     expect(result).toEqual({ ok: true, data: null })
     expect(calls).toEqual([
       { method: 'setSummary', args: [{ key: 'PSAPAC-12', summary: 'New summary' }] },
     ])
+  })
+})
+
+describe('issue loads', () => {
+  it.each([
+    ['an unknown phase', { phase: 'all', loadId: 1 }],
+    ['a missing load id', { phase: 'done' }],
+    ['a fractional load id', { phase: 'done', loadId: 1.5 }],
+    ['an extra key', { phase: 'done', loadId: 1, pageSize: 5000 }],
+    ['no argument', undefined],
+  ])('issues:list refuses %s', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['issues:list'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it("issues:list passes each page's progress to sendProgress", async () => {
+    const { progress, sent } = progressRecorder()
+    const { backend } = fakeBackend({
+      listIssues(args, to) {
+        to.sendProgress({ ...args, loaded: 100 })
+        to.sendProgress({ ...args, loaded: 200 })
+        return Promise.resolve([])
+      },
+    })
+    const result = await createHandlers(backend)['issues:list'](
+      { phase: 'done', loadId: 7 },
+      progress,
+    )
+    expect(result).toEqual({ ok: true, data: [] })
+    expect(sent).toEqual([
+      { phase: 'done', loadId: 7, loaded: 100 },
+      { phase: 'done', loadId: 7, loaded: 200 },
+    ])
+  })
+
+  it('an aborted load logs nothing', async () => {
+    const log = vi.fn()
+    const { backend } = fakeBackend({ listIssues: () => Promise.resolve(null) })
+    const result = await createHandlers(backend, log)['issues:list'](LIST, noProgress)
+    expect(result).toEqual({ ok: true, data: null })
+    expect(log).not.toHaveBeenCalled()
+  })
+})
+
+describe('toggles', () => {
+  it.each([
+    ['a missing key', { hideDone: true, assigneeMe: false }],
+    ['an extra key', { ...TOGGLES, theme: 'dark' }],
+    ['a non-boolean value', { ...TOGGLES, hideDone: 'yes' }],
+    ['no argument', undefined],
+  ])('settings:setToggles refuses %s', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['settings:setToggles'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('settings:setToggles passes three booleans to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['settings:setToggles'](TOGGLES, noProgress)
+    expect(result).toEqual({ ok: true, data: TOGGLES })
+    expect(calls).toEqual([{ method: 'setToggles', args: [TOGGLES] }])
   })
 })
 
@@ -100,7 +187,7 @@ describe('errors', () => {
           new JiraMgrError('permission_denied', 'Not logged in.', { details: { a: 1 } }),
         ),
     })
-    const result = await createHandlers(backend, () => undefined)['issues:list'](undefined)
+    const result = await createHandlers(backend, () => undefined)['issues:list'](LIST, noProgress)
     expect(result).toEqual({
       ok: false,
       error: { code: 'permission_denied', message: 'Not logged in.' },
@@ -114,7 +201,7 @@ describe('errors', () => {
     const { backend } = fakeBackend({
       listIssues: () => Promise.reject(new TypeError(`fetch failed for token ${TOKEN}`)),
     })
-    const result = await createHandlers(backend, log)['issues:list'](undefined)
+    const result = await createHandlers(backend, log)['issues:list'](LIST, noProgress)
     expect(result).toMatchObject({ ok: false, error: { code: 'internal' } })
     expect(JSON.stringify(result)).not.toContain(TOKEN)
     expect(log).toHaveBeenCalledWith('jm ipc issues:list failed: internal')
@@ -133,7 +220,7 @@ describe('JM_DEBUG', () => {
     // A multi-line message whose second line looks like a frame, as a hostile one could.
     const error = new TypeError(`fetch failed for ${TOKEN}\n    at secret ${TOKEN}`)
     const { backend } = fakeBackend({ listIssues: () => Promise.reject(error) })
-    await createHandlers(backend, log)['issues:list'](undefined)
+    await createHandlers(backend, log)['issues:list'](LIST, noProgress)
 
     expect(log.mock.calls.length).toBe(2)
     expect(log.mock.calls[1]?.[0]).toMatch(/^\s+at /)
@@ -144,7 +231,7 @@ describe('JM_DEBUG', () => {
   it('logs no stack without JM_DEBUG', async () => {
     const log = vi.fn<(line: string) => void>()
     const { backend } = fakeBackend({ listIssues: () => Promise.reject(new TypeError('boom')) })
-    await createHandlers(backend, log)['issues:list'](undefined)
+    await createHandlers(backend, log)['issues:list'](LIST, noProgress)
     expect(log.mock.calls.length).toBe(1)
   })
 })

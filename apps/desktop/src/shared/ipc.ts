@@ -1,4 +1,5 @@
 import type { ErrorCode, Issue } from '@jira-mgr/core'
+import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
 
 /** The site, project and account a login stored. The token never appears here. */
 export interface Session {
@@ -20,6 +21,30 @@ export interface SetSummaryArgs {
   summary: string
 }
 
+/** The two search phases core loads, in load order. */
+export type IssuePhase = 'unresolved' | 'done'
+
+/** The renderer numbers each load it starts, so a superseded load's progress can be told apart. */
+export interface ListIssuesArgs {
+  phase: IssuePhase
+  loadId: number
+}
+
+/** Main to renderer: issues loaded so far in one phase of one load. */
+export interface IssuesProgress {
+  phase: IssuePhase
+  loadId: number
+  loaded: number
+}
+
+/** The three toggles `settings.json` remembers (Q28). */
+export type Toggles = Pick<HierarchyOptions, 'hideDone' | 'assigneeMe' | 'hideEmptyCustomers'>
+
+export interface CurrentUser {
+  accountId: string
+  displayName: string
+}
+
 /**
  * Every request the renderer can make. The preload script, the main process handlers and the
  * renderer all derive their types from this one table, so a channel name or payload cannot drift.
@@ -28,8 +53,13 @@ export interface IpcContract {
   'session:get': { args: undefined; result: SessionState }
   'session:login': { args: LoginArgs; result: SessionState }
   'session:logout': { args: undefined; result: SessionState }
-  'issues:list': { args: undefined; result: Issue[] }
+  /** `null` when a newer load of the same phase, or a logout, aborted this one. */
+  'issues:list': { args: ListIssuesArgs; result: Issue[] | null }
   'issues:setSummary': { args: SetSummaryArgs; result: null }
+  'user:me': { args: undefined; result: CurrentUser }
+  'fields:customers': { args: undefined; result: CustomerOption[] }
+  'settings:getToggles': { args: undefined; result: Toggles }
+  'settings:setToggles': { args: Toggles; result: Toggles }
 }
 
 export type Channel = keyof IpcContract
@@ -42,6 +72,10 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'session:logout': true,
   'issues:list': true,
   'issues:setSummary': true,
+  'user:me': true,
+  'fields:customers': true,
+  'settings:getToggles': true,
+  'settings:setToggles': true,
 }
 
 /** Every channel, for code that builds one function per channel. The table fails to compile when one is missing. */
@@ -49,6 +83,9 @@ export const CHANNELS = Object.keys(CHANNEL_TABLE) as Channel[]
 
 /** Main to renderer: true when the window gains focus, false when it loses it. */
 export const WINDOW_FOCUS_EVENT = 'window:focus'
+
+/** Main to renderer: an `IssuesProgress` for each page a load fetches. */
+export const ISSUES_PROGRESS_EVENT = 'issues:progress'
 
 /** The core error shape. Thrown `Error` objects lose their fields crossing IPC, so only these travel. */
 export interface IpcError {
@@ -64,4 +101,6 @@ export type JmApi = {
 } & {
   /** Subscribes to window focus changes. Returns the unsubscribe function. */
   onWindowFocus(listener: (focused: boolean) => void): () => void
+  /** Subscribes to the progress of issue loads. Returns the unsubscribe function. */
+  onIssuesProgress(listener: (progress: IssuesProgress) => void): () => void
 }
