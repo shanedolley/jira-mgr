@@ -670,3 +670,26 @@ test('pasting HTML from another app cannot plant a mention or any other node', a
   await expect.poll(edits).toBe(1)
   expect(JSON.stringify(await lastBody())).not.toContain('mention')
 })
+
+test('an edit with nothing typed leaves Save off and writes nothing', async () => {
+  await editRich()
+  await expect(save()).toBeDisabled()
+  await window.keyboard.press(`${MOD}+Enter`)
+  // A round trip to the page, so a write that was going to start has started.
+  await window.evaluate(() => 1)
+  await expect(save()).toBeDisabled()
+  expect(await edits()).toBe(0)
+})
+
+test('typing and then deleting it again is no change, so Esc closes with no dialog', async () => {
+  await editRich()
+  await endOfFirstParagraph()
+  await window.keyboard.type('x')
+  await expect(save()).toBeEnabled()
+  await window.keyboard.press('Backspace')
+  await expect(save()).toBeDisabled()
+  await window.keyboard.press('Escape')
+  await expect(discardDialog()).toHaveCount(0)
+  await expect(editor()).toHaveCount(0)
+  expect(await edits()).toBe(0)
+})

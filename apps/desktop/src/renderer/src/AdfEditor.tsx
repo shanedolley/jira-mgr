@@ -22,7 +22,7 @@ import { ImageView } from './ImageView'
 import { ReadOnlyBlock } from './ReadOnlyBlock'
 import { ReadOnlyInline } from './ReadOnlyInline'
 import { IssueKeyContext } from './editor/context'
-import { createExtensions, editorSchema, schemaAccepts, type Behaviour } from './editor/extensions'
+import { createExtensions, schemaAccepts, type Behaviour } from './editor/extensions'
 import { startUpload } from './uploads'
 
 const EMPTY: AdfDoc = { version: 1, type: 'doc', content: [] }
@@ -82,13 +82,27 @@ interface Snapshot {
   blocked: boolean
 }
 
-function snapshotOf(editor: Editor, base: PMNode): Snapshot {
+const baseNodes = new WeakMap<Editor, { json: EditorDoc; node: PMNode }>()
+
+/**
+ * The base as a node of this editor's own schema. Node.eq compares node types by identity, so a
+ * node built from any other Schema, even an identical one, is never equal.
+ */
+function baseNodeOf(editor: Editor, json: EditorDoc): PMNode {
+  const hit = baseNodes.get(editor)
+  if (hit?.json === json) return hit.node
+  const node = editor.schema.nodeFromJSON(json)
+  baseNodes.set(editor, { json, node })
+  return node
+}
+
+function snapshotOf(editor: Editor, base: EditorDoc): Snapshot {
   let blocked = false
   editor.state.doc.descendants((node) => {
     if (node.type.name === 'adfImage' && node.attrs.node === null) blocked = true
     return !blocked
   })
-  return { dirty: !editor.state.doc.eq(base), blocked }
+  return { dirty: !editor.state.doc.eq(baseNodeOf(editor, base)), blocked }
 }
 
 /**
@@ -110,7 +124,7 @@ const sameSnapshot = (a: Snapshot, b: Snapshot | null) =>
 export function AdfEditor(props: AdfEditorProps) {
   const { value, issueKey, editing, frozen = false, hidden = false } = props
   const baseDoc = props.base === undefined ? value : props.base
-  const base = useMemo(() => editorSchema.nodeFromJSON(toEditor(baseDoc)), [baseDoc])
+  const base = useMemo(() => toEditor(baseDoc), [baseDoc])
   const baseRef = useRef(base)
   const [problem, setProblem] = useState<string | null>(null)
 
@@ -163,7 +177,7 @@ export function AdfEditor(props: AdfEditorProps) {
         if (live.current.editing) caretRef.current = updated.state.selection.from
       },
       onUpdate: ({ editor: updated }) => {
-        const dirty = !updated.state.doc.eq(baseRef.current)
+        const dirty = snapshotOf(updated, baseRef.current).dirty
         live.current.onChange(updated.getJSON() as EditorDoc, dirty)
       },
       editorProps: {
