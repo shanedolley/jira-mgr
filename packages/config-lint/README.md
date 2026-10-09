@@ -19,4 +19,4 @@ The root `package.json` points Prettier at `@jira-mgr/config-lint/prettier`. `pn
 
 ## Versions
 
-ESLint stays on 9 and TypeScript on 6.0 until `eslint-plugin-react` and `typescript-eslint` support the next majors.
+ESLint stays on 9 until `eslint-plugin-react` supports the next major. This package keeps TypeScript `~6.0.0` for `typescript-eslint`; every other package is on `~7.0.2`.

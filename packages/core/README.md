@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It will own the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, the pure view filters at `@jira-mgr/core/view-filter`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It owns the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, the pure view filters at `@jira-mgr/core/view-filter`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -21,9 +21,11 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 - A missing file yields defaults: starter views for `views.json`, `null` for `timer.json` and `fields.json`.
 - A file that is not valid JSON or fails its schema throws `JiraMgrError` with code `validation_failed`, and the message names the file. Writes validate first, then write a temp file and rename it.
 
-### Saved Views
+### Project Guard
 
 `assertInProject(key)` in `@jira-mgr/core/state` throws before any request when an issue key is outside the project in settings (`validation_failed`) or no project is set (`permission_denied`). Every client calls it before a write, so the CLI and the desktop app refuse the same keys.
+
+### Saved Views
 
 `@jira-mgr/core/state` manages `views.json`. Each call reads, changes and writes the whole file, so the app and the CLI writing at once can lose an edit.
 
