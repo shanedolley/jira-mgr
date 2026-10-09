@@ -4,10 +4,10 @@
 
 Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
 
-1. **Desktop D3 issue page (#30)**: if its pull request from `d3-issue-page` is still open, finish it before claiming anything else.
-2. **L8 read-back (#67)**: code merged in #69. Its last criterion needs one live create with Shane present (steps on #67, which carries `question`). After it, remove `question` and move #67 to HIL Review.
-3. **Desktop D4 editor (#31)**, blocked only by D3: write its design doc from `docs/templates/design-doc.md` first ([ADR-0005](docs/adr/0005-tiptap-editor-with-adf-round-trip.md)). The ADR chose TipTap but names no packages: the design doc lists the exact `@tiptap/*` packages, and adding them is Ask First, so put that list to Shane with the `question` label before installing.
-4. **Desktop D6 create and delete (#33)** and **D7 keyboard (#34)**, blocked only by D3; they can run in parallel worktrees with D4.
+1. **Desktop D6 create and delete (#33)**, in progress in `../jira-mgr-d6`: finish its pull request.
+2. **Desktop D4 editor (#31)**, in progress on `d4-editor`: commit the reviewed design doc, then wait for Shane's answers on #31 before installing TipTap. If they are still open when the design doc lands, park #31 in HIL Review per Parking.
+3. **Live checks with Shane present:** #67's read-back create and, once D4 is built, D4's image embed. Run them together.
+4. **Desktop D7 keyboard (#34)**, blocked only by D3, after D6 merges (both touch the Shell's key handling).
 
 ## Reading Order
 
