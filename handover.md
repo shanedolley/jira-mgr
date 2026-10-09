@@ -4,7 +4,9 @@
 
 Checked 2026-10-09.
 
-- Desktop D1 shell (#28) is in progress on branch `d1-shell` (claimed 2026-10-09): a typed IPC contract in `apps/desktop/src/shared/ipc.ts` feeds preload, zod-validated main handlers and the renderer; login, logout, sidebar, a flat list of unresolved issues, a detail pane, System/Light/Dark themes, focus refetch through a main-process `window:focus` bridge, and an optimistic summary edit with rollback. `assertInProject` moved from the CLI into `@jira-mgr/core/state`, shared by the CLI and the app with unchanged messages. The e2e runs a second main entry, `out/main/e2e.js`, over an in-memory fake Jira and a fake Keychain; D10 packaging must exclude it.
+- Desktop D1 shell (#28) merged in #68 (94315dc) and sits in HIL Review (2026-10-09): a typed IPC contract in `apps/desktop/src/shared/ipc.ts` feeds preload, zod-validated main handlers and the renderer; login, logout, sidebar, a flat list of unresolved issues, a detail pane, System/Light/Dark themes, focus refetch through a main-process `window:focus` bridge, and an optimistic summary edit with rollback. `assertInProject` moved from the CLI into `@jira-mgr/core/state`, shared by the CLI and the app with unchanged messages. The e2e runs a second main entry, `out/main/e2e.js`, over an in-memory fake Jira and a fake Keychain; D10 packaging must exclude it. Launch with `pnpm dev`, or `pnpm build` then `pnpm --filter @jira-mgr/desktop exec electron .`; both checked against a scratch `JM_STATE_DIR` on 2026-10-09.
+- Desktop D2 issue tree (#29) is in progress on branch `d2-issue-tree` (claimed 2026-10-09), from the accepted design doc [docs/design/0002-issue-tree.md](docs/design/0002-issue-tree.md). Orchestrator decision (2026-10-09): under "Hide done" an open issue keeps its Done ancestors as dimmed context with or without a filter, extending Shane's 2026-10-07 Assignee: me rule; a core /hierarchy change, CLI output unchanged.
+- L8 read-back (#67) is in progress in worktree `../jira-mgr-l8` on branch `l8-read-back` (2026-10-09): `createIssue` in core reads the issue back and `jm issue create` returns the same object as `jm issue get`. A failed read-back after a successful create exits 5 with `jira_error`, the key in `details` and "Do not create it again" in the message. Ctrl-C during the read-back prints the key to stderr; only state writers and `issue create` (handler flag `settlesOnInterrupt`) wait after Ctrl-C, since the other core write functions take no signal yet. Its last criterion, one live create to see whether the read-back already shows the automation's changes, needs Shane present.
 
 - The Core milestone is complete: C1-C12 merged (#38-#45, #47-#50) and closed. Run `git log --oneline -1 origin/main` for the head commit.
 - Core subpaths: `@jira-mgr/core` (errors and the `Issue` type, renderer-safe), `/issue`, `/hierarchy`, `/adf`, `/timer-calc`, `/view-filter` (renderer-safe), `/state`, `/auth`, `/http`, `/fields`, `/search`, `/write`, `/extras`, `/sprints`, `/lookups`, `/timer` (Node-only).
@@ -28,12 +30,12 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Closed (Done) | #9-#27, #60, #61 (all of Core, and L1-L7) | `gh issue list --state closed --limit 200` | 2026-10-09 |
 | Open issues | 11 (CLI 1: #67; Desktop 10: #28-#37) | `gh issue list --state open --limit 200 --json number,milestone` | 2026-10-09 |
-| In progress | #28 | `gh issue list --label status:in-progress` | 2026-10-09 |
-| In AI or HIL review | none | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-09 |
+| In progress | #29, #67 | `gh issue list --label status:in-progress` | 2026-10-09 |
+| In AI or HIL review | HIL Review: #28; none in AI Review | `gh issue list --label status:ai-review` and `--label status:hil-review` | 2026-10-09 |
 
 ## Open Pull Requests
 
-Checked 2026-10-09 with `gh pr list --state open`: none before D1, which opens its pull request from `d1-shell`. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
+Checked 2026-10-09 with `gh pr list --state open`: the L8 pull request from `l8-read-back`; D2 opens one from `d2-issue-tree`. Dependabot #2, #4 and #5 merged; #3 and #6 closed after `@dependabot ignore this major version`.
 
 ## What Runs
 
@@ -41,7 +43,7 @@ All from the repository root, under Node 24 (see Traps).
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests (core 1045 pass and 1 skipped in 18 files; desktop 37 in 7 files; CLI 579 in 34 files, after a `tsup` build; measured on `d1-shell`, 2026-10-09) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests (core 1047 pass and 1 skipped in 18 files; desktop 37 in 7 files; CLI 585 in 34 files, after a `tsup` build; measured on `l8-read-back`, 2026-10-09) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | Same plus `*.live.test.ts` with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only. No live tests exist yet (2026-10-07) |
 | `pnpm e2e` | Builds the desktop app and runs the Playwright Electron shell tests (7 on `d1-shell`, 2026-10-09) through the e2e main entry | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -51,7 +53,7 @@ All from the repository root, under Node 24 (see Traps).
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last code merge on `main`: PR #64 (845f979), CI green (checked 2026-10-08). For the current head run, use `gh run list --workflow ci.yml --branch main --limit 1`.
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last code merge on `main`: PR #68 (94315dc), CI green (checked 2026-10-09). For the current head run, use `gh run list --workflow ci.yml --branch main --limit 1`.
 
 ## Environments
 
@@ -91,7 +93,7 @@ Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue 
 - **Eager promises in tests** (2026-10-07). A C8 test built several rejecting promises in an array before awaiting the first, so a later one could reject unhandled and fail the run intermittently. Fixed in L1 by iterating thunks; build each promise only when you await it.
 - **HIL blockers stay open** (2026-10-07). A story in HIL Review stays open until Shane closes it, so GitHub still lists it as an open blocker (#28 showed #27 open while #27 sat in HIL Review, 2026-10-08). Treat a blocker whose code is merged and that sits in HIL Review as satisfied for building; it only waits on Shane's sign-off.
 - **Timer known limit** (2026-10-07, accepted). A SIGKILL, power loss or second Ctrl-C between core taking the timer and the worklog finishing can still lose the tracked time; one Ctrl-C restores it paused. Documented in packages/core/README.md.
-- **PSAPAC automation rewrites new issues** (2026-10-08, cost: T2 landed in the active sprint under a BHP Epic). An Automation for Jira rule runs after every create: it adds the label `PSAPAC`, sets the original estimate to 14400 with remaining 0, and sets Time remaining (h); on a Task it also replaced the Customer, the parent and the sprint the CLI sent. `issue create` returns only the key, so the caller sees none of it until #67 reads the issue back.
+- **PSAPAC automation rewrites new issues** (2026-10-08, cost: T2 landed in the active sprint under a BHP Epic). An Automation for Jira rule runs after every create: it adds the label `PSAPAC`, sets the original estimate to 14400 with remaining 0, and sets Time remaining (h); on a Task it also replaced the Customer, the parent and the sprint the CLI sent. Until #67 merges, `issue create` returns only the key, so the caller sees none of it; #67 returns the issue read back.
 - **Estimate edits cascade** (2026-10-08). `--estimate` alone sets the remaining estimate to the same value, even from 0, and the rule above then keeps Time remaining (h) equal to the remaining estimate after estimate edits and worklogs. A direct `--time-remaining` edit stuck in the live run.
 - **Wall-clock test bounds flake on CI** - met 2026-10-08 on PR #64: `timer.test.ts` "stamps the lock when it is taken" measured 131 ms against a 50 ms bound on the GitHub runner and cost one CI round. Fixed by widening the gap between the two outcomes (staleMs 1000, bound 500), not by loosening the bound. Size any timing assertion so a slow runner stays well inside it.
 - **Foreign worklog ids are not refused** - resolved 2026-10-08 by #60 (PR #63, 516669f). Jira answers 404 for a comment id from another issue but edited or deleted a worklog id from another issue, and the CLI's project guard checks only the key. `editWorklog` and `deleteWorklog` now GET the worklog through the given key first; Jira answers a foreign pair with 404 (verified live, read-only), which maps to `not_found`.

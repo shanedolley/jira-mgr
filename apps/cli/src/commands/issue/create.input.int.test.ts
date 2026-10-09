@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { usePsapacState, type Recorded } from '@jira-mgr/core/test/msw'
+import { loadFixture, usePsapacState, type Recorded } from '@jira-mgr/core/test/msw'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { runJson, runTty } from '../../test-read.js'
@@ -104,7 +104,27 @@ describe('jm issue create stdin, files and terminal output', () => {
     expect((await runJson(create(...base, '--description-file', file))).code).toBe(0)
   })
 
-  it('strips control characters from the key and link on a terminal', async () => {
+  it('strips control characters from the key and link of the issue read back, on a terminal', async () => {
+    // The read-back's own key is not validated, so Jira text can reach the success line.
+    serveWrites({
+      respond: ({ method, path }) =>
+        method === 'GET' && path.startsWith('/rest/api/3/issue/PSAPAC-14?')
+          ? Response.json({
+              ...(loadFixture('issue-psapac-3066') as object),
+              id: '10050',
+              key: 'PSAPAC-14\u001b]0;pwned\u0007',
+            })
+          : undefined,
+    })
+    const { code, f } = await runTty(create(...base))
+    expect(code).toBe(0)
+    expect(f.stdout).not.toMatch(/\p{Cc}(?<!\n)/u)
+    expect(f.stdout).toContain('Created PSAPAC-14]0;pwned')
+    expect(f.stderr).toBe('')
+  })
+
+  it('strips control characters from a created key that cannot be read back, on a terminal', async () => {
+    // The read-back refuses a key that is not an issue key, so the error names it.
     serveWrites({
       respond: ({ method, path }) =>
         method === 'POST' && path === '/rest/api/3/issue'
@@ -112,8 +132,9 @@ describe('jm issue create stdin, files and terminal output', () => {
           : undefined,
     })
     const { code, f } = await runTty(create(...base))
-    expect(code).toBe(0)
-    expect(f.stdout).not.toMatch(/\p{Cc}(?<!\n)/u)
-    expect(f.stdout).toContain('Created PSAPAC-14]0;pwned')
+    expect(code).toBe(5)
+    expect(f.stdout).toBe('')
+    expect(f.stderr).not.toMatch(/\p{Cc}(?<!\n)/u)
+    expect(f.stderr).toContain('Created PSAPAC-14]0;pwned')
   })
 })

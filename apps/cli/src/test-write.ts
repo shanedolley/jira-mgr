@@ -23,6 +23,14 @@ export function serveWrites(
     if (method === 'POST' && path === '/rest/api/3/issue') {
       return Response.json({ id: '10050', key: 'PSAPAC-14', self: 'https://example.invalid' })
     }
+    // The read-back after a create: the recorded issue under the key the create answered with.
+    if (method === 'GET' && path.startsWith('/rest/api/3/issue/PSAPAC-14?')) {
+      return Response.json({
+        ...(loadFixture('issue-psapac-3066') as object),
+        id: '10050',
+        key: 'PSAPAC-14',
+      })
+    }
     if (method === 'GET' && path.startsWith('/rest/api/3/issue/PSAPAC-3066?')) {
       return Response.json(loadFixture('issue-psapac-3066'))
     }

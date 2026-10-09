@@ -51,11 +51,13 @@ describe('jm issue create', () => {
     )
     expect(code).toBe(0)
     expectShape(data, spec?.output.example)
-    expect(data).toEqual({
+    expect(data).toMatchObject({
       key: 'PSAPAC-14',
       id: '10050',
       url: `${JIRA_SITE}/browse/PSAPAC-14`,
     })
+    // The issue as Jira holds it, not the create response: this field only the read-back carries.
+    expect(data).toHaveProperty('status.name', 'Done')
     expect(created(requests)).toEqual({ fields: { ...BASE_FIELDS, issuetype: { name: 'Story' } } })
     expect(f.stderr).toBe('')
   })
@@ -413,6 +415,65 @@ describe('jm issue create output and failures', () => {
     expect(code).toBe(0)
     expect(f.stdout).toBe(`Created PSAPAC-14  ${JIRA_SITE}/browse/PSAPAC-14\n`)
     expect(f.stderr).toBe('')
+  })
+
+  it('returns the same object as jm issue get for the new key', async () => {
+    serveWrites()
+    const made = await runJson(create(...base))
+    const got = await runJson(['issue', 'get', 'PSAPAC-14'])
+    expect(made.code).toBe(0)
+    expect(got.code).toBe(0)
+    expect(made.data).toEqual(got.data)
+  })
+
+  it('reports the new key in the error when the read-back fails', async () => {
+    const { requests } = serveWrites({
+      respond: ({ method, path }) =>
+        method === 'GET' && path.startsWith('/rest/api/3/issue/PSAPAC-14?')
+          ? Response.json({ errorMessages: ['Issue does not exist.'] }, { status: 404 })
+          : undefined,
+    })
+    const { code, data, error } = await runJson(create(...base))
+    expect(code).toBe(5)
+    expect(data).toBeUndefined()
+    expect(error?.code).toBe('jira_error')
+    expect(error?.message).toContain('Created PSAPAC-14')
+    expect(error?.details).toEqual({ key: 'PSAPAC-14', id: '10050' })
+    expect(created(requests)).toBeDefined()
+    const tty = await runTty(create(...base))
+    expect(tty.code).toBe(5)
+    expect(tty.f.stdout).toBe('')
+    expect(tty.f.stderr).toMatch(/^jm: Created PSAPAC-14, but could not read it back/)
+  })
+
+  it('exits 130 and prints the new key when Ctrl-C lands during the read-back', async () => {
+    const controller = new AbortController()
+    serveWrites({
+      respond: ({ method, path }) => {
+        if (method === 'GET' && path.startsWith('/rest/api/3/issue/PSAPAC-14?')) {
+          controller.abort()
+        }
+        return undefined
+      },
+    })
+    const { code, f } = await runJson(create(...base), undefined, { signal: controller.signal })
+    expect(code).toBe(130)
+    expect(f.stdout).toBe('')
+    expect(f.stderr).toMatch(/^jm: Created PSAPAC-14, but could not read it back/)
+    expect(f.stderr).toContain('jm issue get PSAPAC-14')
+  })
+
+  it('creates nothing and names no key when Ctrl-C lands before the create', async () => {
+    const { requests } = serveWrites()
+    const controller = new AbortController()
+    controller.abort()
+    const { code, f } = await runJson(create(...base), undefined, { signal: controller.signal })
+    expect(code).toBe(130)
+    expect(f.stdout).toBe('')
+    expect(f.stderr).toBe('')
+    expect(requests.filter((r) => r.method === 'POST' && r.path === '/rest/api/3/issue')).toEqual(
+      [],
+    )
   })
 
   it('maps a Jira 400 to exit 2 naming the field', async () => {

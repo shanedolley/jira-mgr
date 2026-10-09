@@ -580,14 +580,79 @@ jm issue create --type Bug --summary "Loader drops rows" --customer "Acme Corp" 
 
 #### Output
 
-The new issue.
+The new issue, read back after the create: the same object as `jm issue get`. PSAPAC automation can change fields after a create, so it may differ from what you sent.
 
 ```json
 {
   "data": {
-    "key": "PSAPAC-14",
-    "id": "10050",
-    "url": "https://example.atlassian.net/browse/PSAPAC-14"
+    "id": "10042",
+    "key": "PSAPAC-12",
+    "summary": "Build the loader",
+    "issueType": {
+      "id": "10001",
+      "name": "Story",
+      "subtask": false,
+      "hierarchyLevel": 0
+    },
+    "status": {
+      "id": "3",
+      "name": "In Progress",
+      "category": "indeterminate"
+    },
+    "resolution": null,
+    "parentKey": "PSAPAC-10",
+    "assignee": {
+      "accountId": "5b10ac8d82e05b22cc7d4ef5",
+      "displayName": "Shane Dolley",
+      "avatarUrl": null
+    },
+    "labels": [
+      "etl"
+    ],
+    "priority": {
+      "id": "3",
+      "name": "Medium"
+    },
+    "customer": {
+      "id": "10100",
+      "value": "Acme Corp"
+    },
+    "engagement": {
+      "id": "10200",
+      "value": "Data migration"
+    },
+    "sprints": [
+      {
+        "id": 7,
+        "name": "Sprint 7",
+        "state": "active"
+      }
+    ],
+    "startDate": "2026-10-01",
+    "dueDate": "2026-10-14",
+    "originalEstimateSeconds": 28800,
+    "remainingEstimateSeconds": 14400,
+    "timeRemainingHours": null,
+    "created": "2026-09-28T01:02:03.000Z",
+    "updated": "2026-10-06T23:10:00.000Z",
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Checked."
+            }
+          ]
+        }
+      ]
+    },
+    "descriptionMarkdown": "Checked.",
+    "subtasks": [],
+    "url": "https://example.atlassian.net/browse/PSAPAC-12"
   }
 }
 ```
@@ -598,6 +663,7 @@ The new issue.
 |---|---|---|
 | 2 | `validation_failed` | A name is unknown or ambiguous, two description inputs are given, a Subtask has no `--parent`, or `--parent` is outside the project in settings. |
 | 4 | `permission_denied` | No project is set in settings. |
+| 5 | `jira_error` | The create succeeded but the read-back failed. The issue exists: `error.details` holds its `key` and `id`, so read it with `jm issue get` and do not create it again. |
 
 #### Effects
 
@@ -606,6 +672,7 @@ Writes: jira.
 Calls:
 
 - `@jira-mgr/core/write#createIssue`
+- `@jira-mgr/core/search#getIssue`
 - `@jira-mgr/core/lookups#getFieldOptions`
 - `@jira-mgr/core/lookups#searchAssignableUsers`
 - `@jira-mgr/core/adf#markdownToAdf`

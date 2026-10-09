@@ -95,15 +95,16 @@ const base: CreateIssueInput = {
   engagementId: '22264',
 }
 
-const createdResponse = () =>
-  HttpResponse.json({
-    id: '1450001',
-    key: 'PSAPAC-3200',
-    self: `${JIRA_SITE}/rest/api/3/issue/1450001`,
-  })
+const CREATED = { id: '1450001', key: 'PSAPAC-3200' }
+
+/** Answers the create with the new key and the read-back with a recorded issue under that key. */
+const createdResponse = ({ method }: Recorded) =>
+  method === 'GET'
+    ? HttpResponse.json({ ...(loadFixture('issue-psapac-3066') as object), ...CREATED })
+    : HttpResponse.json({ ...CREATED, self: `${JIRA_SITE}/rest/api/3/issue/1450001` })
 
 describe('createIssue', () => {
-  it('posts every field in the shape Jira expects and returns the key and id', async () => {
+  it('posts every field in the shape Jira expects and returns the issue read back', async () => {
     const requests = serve(createdResponse)
     const description = markdownToAdf('Hello **there**')
 
@@ -120,8 +121,12 @@ describe('createIssue', () => {
       timeRemainingHours: 2.5,
     })
 
-    expect(created).toEqual({ key: 'PSAPAC-3200', id: '1450001' })
-    expect(requests).toEqual([
+    expect(created).toMatchObject({ ...CREATED, summary: expect.any(String) as string })
+    expect(requests.map((r) => `${r.method} ${r.path.split('?')[0] ?? ''}`)).toEqual([
+      'POST /rest/api/3/issue',
+      'GET /rest/api/3/issue/PSAPAC-3200',
+    ])
+    expect(requests.slice(0, 1)).toEqual([
       {
         method: 'POST',
         path: '/rest/api/3/issue',
@@ -145,6 +150,46 @@ describe('createIssue', () => {
         },
       },
     ])
+  })
+
+  it('still reports the new key and id when the read-back fails', async () => {
+    const requests = serve((request) =>
+      request.method === 'GET'
+        ? HttpResponse.json({ errorMessages: ['No.'] }, { status: 404 })
+        : createdResponse(request),
+    )
+
+    const error = await failure(createIssue(client, base))
+
+    expect(error.code).toBe('jira_error')
+    expect(error.details).toEqual(CREATED)
+    expect(error.message).toContain('Created PSAPAC-3200')
+    expect(error.message).toContain('Do not create it again')
+    expect(error.cause).toBeInstanceOf(JiraMgrError)
+    expect(requests.map((r) => r.method)).toEqual(['POST', 'GET'])
+  })
+
+  it('stops on an aborted signal: nothing is sent before the create, and the key survives after it', async () => {
+    const before = new AbortController()
+    before.abort()
+    const none = serve(createdResponse)
+    const early = await createIssue(client, base, { signal: before.signal }).catch(
+      (e: unknown) => e,
+    )
+    expect(early).toBeInstanceOf(Error)
+    expect(early).not.toBeInstanceOf(JiraMgrError)
+    expect(none).toEqual([])
+    server.resetHandlers()
+
+    const during = new AbortController()
+    const requests = serve((request) => {
+      if (request.method === 'GET') during.abort()
+      return createdResponse(request)
+    })
+    const error = await failure(createIssue(client, base, { signal: during.signal }))
+    expect(error.code).toBe('jira_error')
+    expect(error.details).toEqual(CREATED)
+    expect(requests.map((r) => r.method)).toEqual(['POST', 'GET'])
   })
 
   it.each(['Epic', 'Story', 'Task', 'Bug', 'Subtask'] as const)(
@@ -181,7 +226,7 @@ describe('createIssue', () => {
 
     expect(error.code).toBe('validation_failed')
     expect(error.message).toContain('parentKey')
-    expect(requests).toHaveLength(1)
+    expect(requests.map((r) => r.method)).toEqual(['POST', 'GET'])
   })
 
   it('refuses a field it does not know, a bad date and a label with a space before any request', async () => {

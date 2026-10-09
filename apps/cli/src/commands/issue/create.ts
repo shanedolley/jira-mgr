@@ -8,15 +8,13 @@ import { resolveAssignee, resolveOption } from '../../resolve.js'
 import { stripControl } from '../../output.js'
 import type { SpecOf } from '../../schema.js'
 import { siteUrl } from '../../site.js'
+import { toIssueData, type IssueData } from './get.js'
 
-interface Created {
-  key: string
-  id: string
-  url: string
-}
+/** `jm issue create`: resolves the names, makes one create request, then returns the issue as `issue get` does. */
+export const create: Handler<SpecOf<'issue create'>, IssueData> = {
+  // Ctrl-C after the create must still print the new key, which the read-back error carries.
+  settlesOnInterrupt: true,
 
-/** `jm issue create`: resolves the names, then makes one create request. */
-export const create: Handler<SpecOf<'issue create'>, Created> = {
   async run(input, ctx) {
     // Everything that can refuse runs before the write, so a refusal leaves nothing half done.
     if (input.type === 'Subtask' && input.parent === undefined) {
@@ -38,22 +36,26 @@ export const create: Handler<SpecOf<'issue create'>, Created> = {
     const assignee =
       input.assignee === undefined ? undefined : await resolveAssignee(ctx, input.assignee)
 
-    const { key, id } = await createIssue(ctx.http(), {
-      type: input.type as 'Epic' | 'Story' | 'Task' | 'Bug' | 'Subtask',
-      summary: input.summary,
-      customerId,
-      engagementId,
-      parentKey: input.parent,
-      description,
-      assignee,
-      priorityId,
-      labels: input.label.length > 0 ? input.label : undefined,
-      startDate: input.start,
-      dueDate: input.due,
-      originalEstimate: input.estimate,
-      timeRemainingHours: input.timeRemaining,
-    })
-    return { key, id, url: `${site}/browse/${key}` }
+    const issue = await createIssue(
+      ctx.http(),
+      {
+        type: input.type as 'Epic' | 'Story' | 'Task' | 'Bug' | 'Subtask',
+        summary: input.summary,
+        customerId,
+        engagementId,
+        parentKey: input.parent,
+        description,
+        assignee,
+        priorityId,
+        labels: input.label.length > 0 ? input.label : undefined,
+        startDate: input.start,
+        dueDate: input.due,
+        originalEstimate: input.estimate,
+        timeRemainingHours: input.timeRemaining,
+      },
+      { signal: ctx.signal },
+    )
+    return toIssueData(issue, site)
   },
 
   render: ({ key, url }) => `Created ${stripControl(key)}  ${stripControl(url)}`,

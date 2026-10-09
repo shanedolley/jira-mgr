@@ -4,10 +4,10 @@
 
 Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
 
-1. **Desktop D1 shell (#28)**, in progress on `d1-shell`. If its pull request is still open, finish it before claiming anything else.
-2. **Desktop D2 issue tree (#29)**, blocked only by D1. Write its design doc from `docs/templates/design-doc.md` first; D4 needs one too.
-3. **L8 read-back (#67)**, unblocked. Its last criterion needs one live create with Shane present.
-4. **Desktop D10 packaging (#37)**, blocked only by D1. It must exclude `out/main/e2e.js` from the package.
+1. **L8 read-back (#67)**, in progress in `../jira-mgr-l8`. Its last criterion needs one live create with Shane present (steps on #67); after it, move #67 to HIL Review.
+2. **Desktop D2 issue tree (#29)**, in progress on `d2-issue-tree` from [the design doc](docs/design/0002-issue-tree.md). If its pull request is still open, finish it before claiming anything else.
+3. **Desktop D10 packaging (#37)**, blocked only by D1, which is in HIL Review. It must exclude `out/main/e2e.js` from the package.
+4. **Desktop D3 issue page (#30)** once D2 merges. D4 needs its design doc before code.
 
 ## Reading Order
 
