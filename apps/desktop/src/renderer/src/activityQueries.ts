@@ -197,15 +197,19 @@ export function useRemoveLink(key: string) {
   )
 }
 
-/** Attaches one file. The list reads again when it lands, so the new row shows. */
-export function useAttachFile(key: string) {
+/**
+ * Attaches one file to the issue in its variables. The key travels with the file, not with the
+ * hook, because a queued drop can run after the page has moved to another issue.
+ */
+export function useAttachFile() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (file: Omit<AddAttachmentArgs, 'key'>) => call('attachments:add', { key, ...file }),
-    onSuccess: (added) => {
+    mutationFn: ({ key, ...file }: AddAttachmentArgs) => call('attachments:add', { key, ...file }),
+    onSuccess: (added, { key }) => {
       upsert(client, attachmentListKey(key), added)
     },
-    onSettled: () => client.invalidateQueries({ queryKey: attachmentListKey(key) }),
+    onSettled: (_data, _error, { key }) =>
+      client.invalidateQueries({ queryKey: attachmentListKey(key) }),
   })
 }
 

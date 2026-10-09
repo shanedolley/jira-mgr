@@ -51,20 +51,23 @@ export async function attachFiles(files: readonly File[], deps: AttachDeps): Pro
  * show. Drops that arrive while an upload runs queue behind it.
  */
 export function useAttach(issueKey: string, onNotice: (notice: Notice) => void) {
-  const send = useAttachFile(issueKey)
+  const send = useAttachFile()
   const [sending, setSending] = useState<{ key: string; name: string }[]>([])
   const queue = useRef<Promise<void>>(Promise.resolve())
 
   function attach(files: readonly File[]): void {
+    // The issue is fixed here, when the files are dropped: a queued drop runs after the page may
+    // have moved on, and must still go to the issue it was dropped on.
+    const key = issueKey
     queue.current = queue.current.then(() =>
       attachFiles(files, {
-        send: (file) => send.mutateAsync(file),
+        send: (file) => send.mutateAsync({ key, ...file }),
         start: (name) => {
-          setSending((held) => [...held, { key: issueKey, name }])
+          setSending((held) => [...held, { key, name }])
         },
         finish: (name) => {
           setSending((held) => {
-            const at = held.findIndex((item) => item.key === issueKey && item.name === name)
+            const at = held.findIndex((item) => item.key === key && item.name === name)
             return held.filter((_, index) => index !== at)
           })
         },

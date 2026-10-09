@@ -1,7 +1,7 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
-import { imageType, uploadFilename } from './images'
+import { imageType, savedFilename, uploadFilename } from './images'
 
 const bytes = (...values: number[]) => new Uint8Array(values)
 const ascii = (text: string) => Array.from(text, (char) => char.charCodeAt(0))
@@ -56,5 +56,34 @@ describe('uploadFilename', () => {
     expect(uploadFilename('shot', 'image/webp')).toBe('shot.webp')
     expect(uploadFilename('my.shot v2', 'image/png')).toBe('my.shot v2.png')
     expect(uploadFilename('.png', 'image/png')).toBe('.png.png')
+  })
+})
+
+describe('savedFilename', () => {
+  const size = (text: string) => new TextEncoder().encode(text).length
+
+  it('offers the last path segment, with unsafe characters made underscores', () => {
+    expect(savedFilename('report.xlsx')).toBe('report.xlsx')
+    expect(savedFilename('../../etc/x\u202Eexe')).toBe('x_exe')
+    expect(savedFilename('a\\b.txt')).toBe('b.txt')
+    expect(savedFilename('..')).toBe('attachment')
+    expect(savedFilename('   ')).toBe('attachment')
+  })
+
+  it('cuts a name over 255 UTF-8 bytes at a character, keeping the extension', () => {
+    const long = `${'é'.repeat(200)}.xlsx`
+    const name = savedFilename(long)
+    expect(size(name)).toBeLessThanOrEqual(255)
+    expect(name.endsWith('.xlsx')).toBe(true)
+    expect(name.startsWith('é')).toBe(true)
+    // A name with no usable extension is cut at its end.
+    const bare = savedFilename('日'.repeat(100))
+    expect(size(bare)).toBeLessThanOrEqual(255)
+    expect(bare).toBe('日'.repeat(85))
+  })
+
+  it('leaves a name of exactly 255 bytes alone', () => {
+    const name = `${'a'.repeat(250)}.xlsx`
+    expect(savedFilename(name)).toBe(name)
   })
 })

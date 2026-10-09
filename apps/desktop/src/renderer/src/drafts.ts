@@ -1,6 +1,6 @@
 import type { AdfDoc, EditorDoc } from '@jira-mgr/core/adf'
 
-/** Unsaved text of one issue's description, and the description it was written against. */
+/** Unsaved text of one issue's description or comment, and the document it was written against. */
 export interface Draft {
   doc: EditorDoc
   base: AdfDoc | null
@@ -42,7 +42,30 @@ export function clearDrafts(): void {
   changed()
 }
 
-/** How many issues hold an unsaved description. */
+/** The key under which a comment's unsaved edit is kept, beside the issue's description draft. */
+export const commentDraftKey = (issueKey: string, commentId: string): string =>
+  `${issueKey}#${commentId}`
+
+/** The key of the text in the comment box that no one has posted yet. */
+export const newCommentDraftKey = (issueKey: string): string => `${issueKey}#new`
+
+const belongsTo = (key: string, issueKey: string) =>
+  key === issueKey || key.startsWith(`${issueKey}#`)
+
+/** True when the issue's description, or any comment of it, holds unsaved text. */
+export const hasDraftsOf = (issueKey: string): boolean =>
+  [...drafts.keys()].some((key) => belongsTo(key, issueKey))
+
+/** Forgets every draft of the issue, such as when the issue no longer exists. */
+export function dropDraftsOf(issueKey: string): void {
+  let dropped = false
+  for (const key of [...drafts.keys()]) {
+    if (belongsTo(key, issueKey)) dropped = drafts.delete(key) || dropped
+  }
+  if (dropped) changed()
+}
+
+/** How many drafts hold unsaved text: descriptions and comments. */
 export const draftCount = (): number => drafts.size
 
 export function subscribeDrafts(listener: () => void): () => void {

@@ -9,7 +9,7 @@ import { CommentsSection } from './CommentsSection'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
 import type { Notice } from './create'
 import { DescriptionEditor } from './DescriptionEditor'
-import { dropDraft, getDraft } from './drafts'
+import { dropDraftsOf, hasDraftsOf } from './drafts'
 import { isClaimed } from './DropZone'
 import { FileDragContext, useFileDrag } from './fileDrag'
 import { IssueProperties } from './IssueProperties'
@@ -178,8 +178,8 @@ export function IssuePage({
   useEffect(() => {
     if (!gone) return
     // Its draft and uploads go with it, or they would hold up a quit and a logout for nothing.
-    const hadDraft = getDraft(issueKey) !== undefined
-    dropDraft(issueKey)
+    const hadDraft = hasDraftsOf(issueKey)
+    dropDraftsOf(issueKey)
     removeUploadsOf(issueKey)
     onBack()
     onNotice({

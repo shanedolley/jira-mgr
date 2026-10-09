@@ -181,7 +181,7 @@ function WorklogRow({
           name="Edit worklog"
           submitLabel="Save"
           initial={worklogForm(worklog)}
-          hadComment={worklog.comment !== null}
+          hadComment={note !== ''}
           onSubmit={async (input) => {
             // Only what changed is sent, so an untouched start keeps its seconds.
             const changes = {

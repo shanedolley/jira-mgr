@@ -253,9 +253,11 @@ export function AdfEditor(props: AdfEditorProps) {
         }
         focus()
         // A page restored with a draft mounts the editor in this same pass, and the shell then
-        // moves focus to the page, so look again on the next frame.
+        // moves focus to the page, so look again on the next frame. A discard dialog opened in
+        // that frame (Esc right after editing starts) keeps the focus it took.
         requestAnimationFrame(() => {
-          if (!editor.view.hasFocus()) focus()
+          const inDialog = document.activeElement?.closest('[role="alertdialog"]') != null
+          if (!editor.view.hasFocus() && !inDialog) focus()
         })
       }
     }

@@ -64,7 +64,6 @@ export function AttachmentsSection({
       onFiles={(files) => {
         attach(files)
       }}
-      className="p-1"
     >
       <Section
         title="Attachments"

@@ -75,7 +75,7 @@ export function Sidebar({
       </div>
       {confirming && (
         <DiscardDialog
-          title={`Log out and discard ${String(unsaved)} unsaved ${unsaved === 1 ? 'description' : 'descriptions'}?`}
+          title={`Log out and discard ${String(unsaved)} unsaved ${unsaved === 1 ? 'draft' : 'drafts'}?`}
           keepLabel="Keep editing"
           discardLabel="Discard and log out"
           onKeep={() => {

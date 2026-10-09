@@ -444,6 +444,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       return attachmentItem(attachment)
     },
     async downloadAttachment({ key, attachmentId }) {
+      await assertInProject(key)
       const found = (await listAttachments(http, key)).find((a) => a.id === attachmentId)
       if (found === undefined) {
         throw new JiraMgrError('not_found', `${key} has no attachment ${attachmentId}.`)

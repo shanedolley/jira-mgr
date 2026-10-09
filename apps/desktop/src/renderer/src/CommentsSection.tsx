@@ -7,6 +7,7 @@ import { useAddComment, useComments, useDeleteComment, useEditComment } from './
 import { AdfEditor, type AdfEditorHandle } from './AdfEditor'
 import type { Notice } from './create'
 import { DiscardDialog } from './DiscardDialog'
+import { commentDraftKey, dropDraft, getDraft, newCommentDraftKey, putDraft } from './drafts'
 import { BUTTON, DANGER_BUTTON, QueryBody, Section } from './Section'
 
 interface CommentsSectionProps {
@@ -29,18 +30,22 @@ interface CommentRowProps extends Omit<CommentsSectionProps, 'me'> {
 }
 
 function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowProps) {
-  const [phase, setPhase] = useState<Phase>('read')
+  // An edit left unsaved when the page was left comes back open, as the description's does.
+  const draftKey = commentDraftKey(issueKey, comment.id)
+  const [restored] = useState(() => getDraft(draftKey))
+  const [phase, setPhase] = useState<Phase>(restored === undefined ? 'read' : 'edit')
   const [problem, setProblem] = useState<string | null>(null)
   const [unsupported, setUnsupported] = useState(false)
   const [discarding, setDiscarding] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const dirty = useRef(false)
+  const dirty = useRef(restored !== undefined)
   const editor = useRef<AdfEditorHandle>(null)
   const edit = useEditComment(issueKey)
   const remove = useDeleteComment(issueKey)
   const who = comment.author?.displayName ?? 'Unknown user'
 
   function leave() {
+    dropDraft(draftKey)
     setPhase('read')
     setProblem(null)
     onLeave()
@@ -79,6 +84,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
 
   function deleteComment() {
     setConfirming(false)
+    dropDraft(draftKey)
     remove.mutateAsync(comment.id).catch((error: unknown) => {
       onNotice(failureNotice('Could not delete the comment', reasonOf(error)))
     })
@@ -106,6 +112,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
         <AdfEditor
           ref={editor}
           value={comment.body}
+          initial={restored?.doc}
           issueKey={issueKey}
           label={`Comment by ${who}`}
           editing={phase === 'edit'}
@@ -114,8 +121,10 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
             void save(doc)
           }}
           onCancel={cancel}
-          onChange={(_doc, isDirty) => {
+          onChange={(doc, isDirty) => {
             dirty.current = isDirty
+            if (isDirty) putDraft(draftKey, { doc, base: comment.body })
+            else dropDraft(draftKey)
           }}
           onEditRequest={() => undefined}
           onUnsupported={() => {
@@ -199,8 +208,10 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
 
 /** The box that adds a comment: the description's editor, always open, empty and not focused. */
 function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey' | 'onLeave'>) {
+  const draftKey = newCommentDraftKey(issueKey)
+  const [restored] = useState(() => getDraft(draftKey))
   const [posting, setPosting] = useState(false)
-  const [typed, setTyped] = useState(false)
+  const [typed, setTyped] = useState(restored !== undefined)
   const [problem, setProblem] = useState<string | null>(null)
   const [discarding, setDiscarding] = useState(false)
   const editor = useRef<AdfEditorHandle>(null)
@@ -220,6 +231,7 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
     try {
       await add.mutateAsync(doc)
       editor.current?.reset(null)
+      dropDraft(draftKey)
       setTyped(false)
     } catch (error) {
       setProblem(`Could not post the comment. ${reasonOf(error)}`)
@@ -232,6 +244,7 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
   function clear() {
     setDiscarding(false)
     editor.current?.reset(null)
+    dropDraft(draftKey)
     setTyped(false)
     setProblem(null)
     onLeave()
@@ -242,6 +255,7 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
       <AdfEditor
         ref={editor}
         value={null}
+        initial={restored?.doc}
         issueKey={issueKey}
         label="New comment"
         saveLabel="Comment"
@@ -256,8 +270,10 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
           if (typed) setDiscarding(true)
           else onLeave()
         }}
-        onChange={(_doc, isDirty) => {
+        onChange={(doc, isDirty) => {
           setTyped(isDirty)
+          if (isDirty) putDraft(draftKey, { doc, base: null })
+          else dropDraft(draftKey)
         }}
         onEditRequest={() => undefined}
         onUnsupported={() => undefined}

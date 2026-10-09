@@ -67,7 +67,21 @@ export function savedFilename(raw: string): string {
   const name = Array.from(base, (char) => (isUnsafeName(char) ? '_' : char))
     .join('')
     .trim()
-  return name === '' || name === '.' || name === '..' ? 'attachment' : name
+  return name === '' || name === '.' || name === '..' ? 'attachment' : capBytes(name)
+}
+
+/** The longest file name macOS takes, in UTF-8 bytes. */
+const MAX_NAME_BYTES = 255
+
+/** `name` cut to 255 UTF-8 bytes at a character boundary, keeping a short extension whole. */
+function capBytes(name: string): string {
+  const size = (text: string) => new TextEncoder().encode(text).length
+  if (size(name) <= MAX_NAME_BYTES) return name
+  const dot = name.lastIndexOf('.')
+  const extension = dot > 0 && size(name.slice(dot)) <= 16 ? name.slice(dot) : ''
+  const kept = Array.from(extension === '' ? name : name.slice(0, dot))
+  while (size(kept.join('')) + size(extension) > MAX_NAME_BYTES) kept.pop()
+  return kept.join('') + extension
 }
 
 /** The name to upload an image under: a safe name whose extension is rewritten to match `type`. */
