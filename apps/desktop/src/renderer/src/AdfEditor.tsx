@@ -156,7 +156,8 @@ export function AdfEditor(props: AdfEditorProps) {
         return true
       },
     }),
-    // The editor is made once, so the issue key it embeds images for is fixed: key it by issue.
+    // The editor is made once and its node views read the issue key from context, so the host
+    // must key the editor by issue.
     // The callbacks only read refs, so the one list of extensions never goes stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -271,7 +272,7 @@ export function AdfEditor(props: AdfEditorProps) {
         tooBig.push(file.name)
         continue
       }
-      const uploadId = startUpload(issueKey, file)
+      const uploadId = startUpload(live.current.issueKey, file)
       nodes.push(image.create({ node: null, uploadId }))
     }
     setProblem(
