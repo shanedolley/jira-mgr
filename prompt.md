@@ -4,10 +4,10 @@
 
 Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
 
-1. **Desktop D6 create and delete (#33)**, in progress in `../jira-mgr-d6`: finish its pull request.
-2. **Desktop D4 editor (#31)**, in progress on `d4-editor`: commit the reviewed design doc, then wait for Shane's answers on #31 before installing TipTap. If they are still open when the design doc lands, park #31 in HIL Review per Parking.
-3. **Live checks with Shane present:** #67's read-back create and, once D4 is built, D4's image embed. Run them together.
-4. **Desktop D7 keyboard (#34)**, blocked only by D3, after D6 merges (both touch the Shell's key handling).
+1. **Desktop D6 create and delete (#33)**: if its pull request from `d6-create-delete` is still open, finish it before claiming anything else.
+2. **Desktop D7 keyboard (#34)**, blocked only by D3: `Cmd+K` palette, the `S`, `A`, `L`, `P`, `E`, `Esc` shortcuts and `Cmd+Z` undo; fold D6's `C` listener and D2's Tree keys into one keymap.
+3. **Desktop D4 editor (#31)**, parked: when Shane answers on #31, remove `question`, move it back to In Progress and build from `d4-editor`.
+4. **Live checks with Shane present:** #67's read-back create, D6's create and delete, and D4's image embed once built. Run them together.
 
 ## Reading Order
 
