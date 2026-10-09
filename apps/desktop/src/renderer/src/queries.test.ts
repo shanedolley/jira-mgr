@@ -348,6 +348,19 @@ describe('descriptionMutation', () => {
 })
 
 describe('image queries', () => {
+  it('revokes the URL a refetch replaces', async () => {
+    const client = new QueryClient()
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    const stop = watchImageUrls(client)
+    const key = [...attachmentsKey, 'PSAPAC-1', 'f06ee6e2-999b-491f-acb0-f299310206ec']
+    client.setQueryData(key, 'blob:first')
+    client.setQueryData(key, 'blob:second')
+    client.setQueryData(key, 'blob:second')
+    expect(revoke.mock.calls.map(([url]) => url)).toEqual(['blob:first'])
+    stop()
+    revoke.mockRestore()
+  })
+
   it('logout removes the attachment images and revokes their URLs', () => {
     const client = new QueryClient()
     const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)

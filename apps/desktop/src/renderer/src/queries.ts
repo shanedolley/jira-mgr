@@ -514,11 +514,20 @@ export function useAttachmentImage(issueKey: string, mediaId: string) {
 
 /** Revokes an image's object URL when its query leaves the cache, so no image outlives its query. */
 export function watchImageUrls(client: QueryClient): () => void {
+  // The URL each image query showed last, so a refetch can revoke the one it replaces.
+  const shown = new WeakMap<object, string>()
   return client.getQueryCache().subscribe((event) => {
-    if (event.type !== 'removed') return
     const queryKey = event.query.queryKey as readonly unknown[]
     if (queryKey[0] !== attachmentsKey[0]) return
     const url: unknown = event.query.state.data
-    if (typeof url === 'string') URL.revokeObjectURL(url)
+    if (event.type === 'removed') {
+      if (typeof url === 'string') URL.revokeObjectURL(url)
+      return
+    }
+    if (event.type === 'updated' && event.action.type === 'success' && typeof url === 'string') {
+      const previous = shown.get(event.query)
+      if (previous !== undefined && previous !== url) URL.revokeObjectURL(previous)
+      shown.set(event.query, url)
+    }
   })
 }

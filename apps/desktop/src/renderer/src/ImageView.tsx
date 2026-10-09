@@ -4,7 +4,7 @@ import { useContext, useEffect } from 'react'
 
 import { IssueKeyContext } from './editor/context'
 import { useAttachmentImage } from './queries'
-import { removeUpload, retryUpload, useUpload } from './uploads'
+import { releasePreview, removeUpload, retryUpload, useUpload } from './uploads'
 
 /** The sizes an image's ADF gives: a width the author chose in pixels, else the file's own. */
 function sizeOf(single: AdfNode | undefined, media: AdfNode | undefined) {
@@ -115,7 +115,9 @@ function UploadingImage({
   }
   return (
     <figure className="space-y-1">
-      <img src={upload.preview} alt="" className="max-w-full opacity-50" />
+      {upload.preview !== '' && (
+        <img src={upload.preview} alt="" className="max-w-full opacity-50" />
+      )}
       <figcaption role="status" className="text-xs text-muted">
         Uploading {upload.filename}
       </figcaption>
@@ -140,6 +142,7 @@ export function ImageView({ node, editor, getPos, deleteNode, selected }: ReactN
         .setNodeMarkup(pos, undefined, { ...node.attrs, node: finished, uploadId: null })
         .setMeta('addToHistory', false),
     )
+    if (uploadId !== null) releasePreview(uploadId)
   }
 
   return (

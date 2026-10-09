@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AddImageArgs } from '../../shared/ipc'
 import {
   getUpload,
+  releasePreview,
   removeUpload,
   resetUploads,
   retryUpload,
@@ -68,6 +69,18 @@ describe('uploads', () => {
     await vi.waitFor(() => {
       expect(getUpload(id)?.state.status).toBe('done')
     })
+  })
+
+  it('releases a preview once, and keeps the result', async () => {
+    const store = deps(() => Promise.resolve({ node }))
+    const id = startUpload('PSAPAC-1', png(), store)
+    await vi.waitFor(() => {
+      expect(getUpload(id)?.state.status).toBe('done')
+    })
+    releasePreview(id)
+    releasePreview(id)
+    expect(store.revoked).toEqual(['blob:preview-1'])
+    expect(getUpload(id)).toMatchObject({ preview: '', state: { status: 'done' } })
   })
 
   it('removing an upload revokes its preview and forgets it', () => {

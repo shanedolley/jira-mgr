@@ -124,6 +124,18 @@ export function removeUpload(id: string): void {
   emit()
 }
 
+/**
+ * Revokes an upload's preview once the saved image has taken its place, and keeps the upload's
+ * result. A redo that brings the placeholder back shows no preview, only the finished image.
+ */
+export function releasePreview(id: string): void {
+  const entry = entries.get(id)
+  if (entry === undefined || entry.preview === '') return
+  deps.revokeUrl(entry.preview)
+  entries.set(id, { ...entry, preview: '' })
+  emit()
+}
+
 /** Forgets every upload and revokes every preview, on logout. */
 export function clearUploads(): void {
   for (const entry of entries.values()) deps.revokeUrl(entry.preview)
