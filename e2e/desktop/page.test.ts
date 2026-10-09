@@ -440,6 +440,23 @@ test('sends a date once when Enter is followed at once by leaving the field', as
   expect(await lastBody()).toEqual({ fields: { duedate: '2027-02-02' } })
 })
 
+test('sends a second edit of the same field after the first is answered', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  const due = props().getByLabel('Due date')
+
+  await due.fill('2027-02-02')
+  await window.keyboard.press('Enter')
+  await settle(1)
+  // Jira's answer is read back once. Until it lands it would replace what is typed next.
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(2)
+
+  await due.fill('2027-03-03')
+  await due.blur()
+  await settle(2)
+  expect(await writes()).toBe(2)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2027-03-03' } })
+})
+
 test('edits the estimate, shows the remaining estimate Jira cascades, and refuses a bad duration', async () => {
   await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
   const estimate = props().getByLabel('Original estimate')

@@ -104,6 +104,7 @@ function TextField({
     } else if (event.key === 'Escape') {
       // The page's own Esc is for leaving, and this one only abandons the edit.
       event.stopPropagation()
+      sent.current = null
       setDraft(value)
     }
   }
