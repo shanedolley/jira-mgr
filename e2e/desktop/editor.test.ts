@@ -732,3 +732,36 @@ test('Cmd+Z after a description save restores the previous description', async (
   await expect(issuePage().getByText('No description')).toBeVisible()
   await expect(window.getByText('Undid PSAPAC-4: description back to empty')).toBeVisible()
 })
+
+test("removing a pasted copy of another issue's upload leaves that upload running", async () => {
+  await addDescription()
+  await window.keyboard.type('Text')
+  await dropImage(editor())
+  await expect.poll(async () => (await counts(app)).uploads.length).toBe(1)
+  await expect(editor().getByRole('status')).toBeVisible()
+  await editor().locator('figure').click({ delay: 60 })
+  await window.keyboard.press(`${MOD}+c`)
+  await issuePage().getByRole('button', { name: 'Back to issues' }).click()
+  await expect(issuePage()).toHaveCount(0)
+
+  // The copy lands in another issue's editor, where the upload is not its own.
+  await openFromTree(/PSAPAC-1,/, 'Kick off the engagement')
+  await editButton('Edit description').click()
+  await expect(editor()).toBeFocused()
+  await window.keyboard.press(`${MOD}+v`)
+  const lost = editor().getByRole('alert')
+  await expect(lost).toContainText('Could not upload')
+  await lost.getByRole('button', { name: 'Remove' }).click()
+  await expect(lost).toHaveCount(0)
+  await issuePage().getByRole('button', { name: 'Back to issues' }).click()
+
+  // PSAPAC-4's upload was not cancelled: it finishes, and its draft saves the image.
+  await releaseUpload(app)
+  await openFromTree(/PSAPAC-4,/, 'Migrate the dashboards')
+  await expect(editor().locator('img')).toBeVisible()
+  await expect(save()).toBeEnabled()
+  await save().click()
+  await expect.poll(edits).toBe(1)
+  const types = ((await lastBody())?.content ?? []).map((node) => node.type)
+  expect(types).toContain('mediaSingle')
+})

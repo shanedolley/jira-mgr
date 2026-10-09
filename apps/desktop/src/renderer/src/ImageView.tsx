@@ -4,7 +4,7 @@ import { useContext, useEffect } from 'react'
 
 import { IssueKeyContext } from './editor/context'
 import { useAttachmentImage } from './queries'
-import { releasePreview, removeUpload, retryUpload, useUpload } from './uploads'
+import { getUpload, releasePreview, removeUpload, retryUpload, useUpload } from './uploads'
 
 /** The sizes an image's ADF gives: a width the author chose in pixels, else the file's own. */
 function sizeOf(single: AdfNode | undefined, media: AdfNode | undefined) {
@@ -133,6 +133,7 @@ function UploadingImage({
 export function ImageView({ node, editor, getPos, deleteNode, selected }: ReactNodeViewProps) {
   const single = node.attrs.node as AdfNode | null
   const uploadId = node.attrs.uploadId as string | null
+  const issueKey = useContext(IssueKeyContext)
 
   function apply(finished: AdfNode) {
     const pos = getPos()
@@ -157,7 +158,8 @@ export function ImageView({ node, editor, getPos, deleteNode, selected }: ReactN
           uploadId={uploadId ?? ''}
           onDone={apply}
           onRemove={() => {
-            if (uploadId !== null) removeUpload(uploadId)
+            // A copy pasted from another issue's editor must not cancel that issue's upload.
+            if (uploadId !== null && getUpload(uploadId)?.key === issueKey) removeUpload(uploadId)
             deleteNode()
           }}
         />

@@ -455,12 +455,14 @@ export function descriptionMutation(
     mutationKey: ['issues', issueKey, 'description'],
     ...issueMutation(
       client,
-      async ({ key, description, base }: DescriptionArgs) => {
+      async ({ key, description, base, undoing }: DescriptionArgs) => {
         const result = await send({ key, description, base })
         if (!result.saved) {
           throw new JiraMgrError(
             'validation_failed',
-            `${key}'s description changed in Jira while you edited.`,
+            undoing === true
+              ? `Could not undo: ${key}'s description changed in Jira since your save.`
+              : `${key}'s description changed in Jira while you edited.`,
             { details: { conflict: true, current: result.current } satisfies DescriptionConflict },
           )
         }

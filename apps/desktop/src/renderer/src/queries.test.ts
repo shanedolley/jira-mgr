@@ -318,6 +318,16 @@ describe('descriptionMutation', () => {
     expect(conflictOf(new JiraMgrError('validation_failed', 'Other.'))).toBeNull()
   })
 
+  it('words a conflict on an undo as an undo, and an edit as an edit', async () => {
+    const { observer } = setup(() => Promise.resolve({ saved: false, current: doc('theirs') }))
+    const undo = await observer.mutate({ ...args, undoing: true }).catch((e: unknown) => e)
+    expect((undo as Error).message).toBe(
+      "Could not undo: PSAPAC-1's description changed in Jira since your save.",
+    )
+    const edit = await observer.mutate(args).catch((e: unknown) => e)
+    expect((edit as Error).message).toBe("PSAPAC-1's description changed in Jira while you edited.")
+  })
+
   it('the description mutation stays pending until its re-read lands', async () => {
     let finishReread!: () => void
     const send = vi.fn(() => Promise.resolve({ saved: true } as const))
