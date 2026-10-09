@@ -44,7 +44,7 @@ const SHAPES: Record<Kind, React.ReactNode> = {
       <rect x="5.5" y="2" width="8.5" height="8.5" rx="1.5" fill="none" />
     </>
   ),
-  other: <circle cx="8" cy="8" r="4.5" fill="none" />,
+  other: <rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="none" />,
 }
 
 /** The issue type as a coloured icon; the type name is the accessible label. */
