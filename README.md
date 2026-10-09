@@ -6,7 +6,7 @@ The Electron app and the CLI share one TypeScript core that holds the Jira clien
 
 ## Status
 
-The Core and CLI milestones are built, so every `jm` command works. The Desktop milestone is partly built: shell, issue tree, issue page, create and delete, keyboard, saved views, packaging, the description editor, issue type icons and the late-automation toast are on `main`, and activity, the timer, click-to-edit summary and profile images are open (see the [roadmap](docs/product/roadmap.md)). The decisions are in the [product grilling](docs/discovery/2026-10-07-product-grilling.md) and the [ADRs](docs/adr/README.md). Work is tracked in GitHub issues on [shanedolley/jira-mgr](https://github.com/shanedolley/jira-mgr).
+The Core and CLI milestones are built, so every `jm` command works. The Desktop milestone is partly built: shell, issue tree, issue page, create and delete, keyboard, saved views, packaging, the description editor, issue type icons, profile images and the late-automation toast are on `main`, and activity, the timer and click-to-edit summary are open (see the [roadmap](docs/product/roadmap.md)). The decisions are in the [product grilling](docs/discovery/2026-10-07-product-grilling.md) and the [ADRs](docs/adr/README.md). Work is tracked in GitHub issues on [shanedolley/jira-mgr](https://github.com/shanedolley/jira-mgr).
 
 ## Stack
 
