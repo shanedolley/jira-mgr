@@ -2,13 +2,12 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (7 open issues, one page), `gh pr list --state open` and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. D4 is done (#31 closed). Work in order:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (6 open issues, one page), `gh pr list --state open` and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. D4 is done (#31 closed). Work in order:
 
-1. **Desktop D12 (#85), draft PR #88**: it carries the date double-commit fix (Refs #30) that reddens e2e runs. Land it once reviewer 30-date-review passes it and CI is green, then mark the PR ready and merge it by hand (ship-it does not reliably merge).
-2. **PR #93 (#84) and PR #94 (D13, #86)**: both are open with CI green. Get each reviewed by someone other than its builder, then merge by hand. #86 then goes to `status:hil-review` through `kothar:project-manager`.
-3. **Desktop D5 activity (#32)**, In Progress in worktree `jira-mgr-d5` on `d5-activity`, built to Shane's attachments spec on the issue (an Attachments section with an "Attach file to issue" drop zone beside the description's). Then **D9 timer (#36)**, blocked by #32.
-4. **Desktop D11 click-to-edit summary (#83)**, unblocked. It touches `IssuePage` and `SummaryEditor.tsx`, so build it in a worktree of its own and merge D5 first or rebase over it.
-5. **#33** (D6): Shane approved it and removed its labels, so have `kothar:project-manager` close it. Stop and report once the rest is done or blocked.
+1. **Desktop D12 (#85), draft PR #88**: it carries the date double-commit fix (Refs #30), which passed review. Once it is rebased onto `main` and CI is green, mark it ready and merge it by hand.
+2. **Desktop D13 (#86), draft PR #94**: the SSRF fix passed re-review; after the small Lows and the rebase, mark it ready, get CI green, merge by hand, then move #86 to `status:hil-review` through `kothar:project-manager`.
+3. **Desktop D5 activity (#32)**, In Progress in worktree `jira-mgr-d5` on `d5-activity` (builder 32-d5-build, design doc 0004 first), built to Shane's attachments spec on the issue. Then **D9 timer (#36)**, blocked by #32, and **D11 click-to-edit summary (#83)**, unblocked; D11 touches `IssuePage` and `SummaryEditor.tsx`, so build it in a worktree of its own after D5 merges.
+4. **#84** (the late-automation toast, PR #93 merged) waits on Shane in HIL Review; he closes it. Stop and report once the rest is done or blocked.
 
 Run e2e on one worker and never in several worktrees at once (see Traps in the handover).
 
