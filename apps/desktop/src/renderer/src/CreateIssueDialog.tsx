@@ -9,6 +9,7 @@ import {
   type CurrentUser,
   type FieldChoice,
 } from '../../shared/ipc'
+import { Avatar, withAvatars } from './Avatar'
 import { Modal } from './Modal'
 import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
@@ -208,7 +209,7 @@ export function CreateIssueDialog({
   const meUser: Person | undefined =
     me === undefined
       ? undefined
-      : { accountId: me.accountId, displayName: me.displayName, avatarUrl: null }
+      : { accountId: me.accountId, displayName: me.displayName, avatarUrl: me.avatarUrl }
   const choices = assigneeChoices(
     meUser,
     recentAssignees(issues, me?.accountId ?? ''),
@@ -362,7 +363,11 @@ export function CreateIssueDialog({
               <Picker
                 label="Assignee"
                 valueText={draft.assignee?.displayName ?? 'Unassigned'}
-                options={assigneeOptions(choices, assigneeQuery, me?.accountId)}
+                leading={<Avatar person={draft.assignee} />}
+                options={withAvatars(
+                  assigneeOptions(choices, assigneeQuery, me?.accountId),
+                  people,
+                )}
                 selected={[draft.assignee?.accountId ?? NONE]}
                 searchable
                 onQuery={setAssigneeQuery}

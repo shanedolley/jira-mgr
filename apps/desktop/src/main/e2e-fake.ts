@@ -122,6 +122,8 @@ export interface FakeJiraCounts {
   openExternal: string[]
   /** Times the quit prompt was raised. */
   quitPrompts: number
+  /** Every avatar request, in order, with whether it carried an Authorization header. */
+  avatarFetches: { url: string; authorized: boolean }[]
 }
 
 export interface FakeJiraOptions {
@@ -174,10 +176,28 @@ const PRIORITIES = [
   { id: '4', name: 'Low' },
 ]
 
+/** Where the fake serves profile images, off the Jira site as the real ones are. */
+const AVATAR_HOST = 'https://avatars.fake.test'
+/** A 1x1 PNG. */
+const AVATAR_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+)
+
 const USERS = {
-  u1: { accountId: 'u1', displayName: 'Test User', avatarUrls: {} },
-  u2: { accountId: 'u2', displayName: 'Other User', avatarUrls: {} },
-  // Assigned to nothing, so only the assignee search finds this user.
+  // Has an image.
+  u1: {
+    accountId: 'u1',
+    displayName: 'Test User',
+    avatarUrls: { '48x48': `${AVATAR_HOST}/u1/48` },
+  },
+  // Names an image the host does not have, so it falls back to initials.
+  u2: {
+    accountId: 'u2',
+    displayName: 'Other User',
+    avatarUrls: { '48x48': `${AVATAR_HOST}/gone/48` },
+  },
+  // Has none. Assigned to nothing, so only the assignee search finds this user.
   u3: { accountId: 'u3', displayName: 'Cy Young', avatarUrls: {} },
 }
 
@@ -526,6 +546,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     uploads: [],
     openExternal: [],
     quitPrompts: 0,
+    avatarFetches: [],
   }
   // Attachments by issue key. PSAPAC-1 starts with the image its description embeds.
   const attachments = new Map<string, Attachment[]>([
@@ -664,6 +685,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
 
   const fakeFetch = async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : input)
+    if (url.origin === AVATAR_HOST) {
+      const authorized = new Headers(init?.headers).has('authorization')
+      counts.avatarFetches.push({ url: url.href, authorized })
+      return url.pathname === '/u1/48'
+        ? new Response(AVATAR_PNG, { headers: { 'content-type': 'image/png' } })
+        : new Response(null, { status: 404 })
+    }
     if (url.origin !== FAKE_SITE) throw new Error(`The e2e fake refuses ${url.origin}.`)
     const method = (init?.method ?? 'GET').toUpperCase()
     const auth = new Headers(init?.headers).get('authorization')
@@ -680,7 +708,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     }
 
     if (method === 'GET' && path === '/rest/api/3/myself') {
-      return json({ accountId: 'u1', displayName: 'Test User' })
+      return json(USERS.u1)
     }
     if (method === 'GET' && path === '/rest/api/3/issue/createmeta/PSAPAC/issuetypes') {
       const issueTypes = Object.values(TYPES).map(({ id, name }) => ({ id, name }))

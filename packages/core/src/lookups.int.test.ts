@@ -11,7 +11,13 @@ import {
   type Recorded,
 } from '../test/msw.js'
 import { createHttpClient } from './http.js'
-import { getCurrentUser, getFieldOptions, searchAssignableUsers, suggestLabels } from './lookups.js'
+import {
+  getCurrentUser,
+  getFieldOptions,
+  getProfile,
+  searchAssignableUsers,
+  suggestLabels,
+} from './lookups.js'
 
 const client = createHttpClient({
   credentials: () => Promise.resolve({ siteUrl: JIRA_SITE, email: 'a@b.co', token: 'x' }),
@@ -45,6 +51,24 @@ describe('getCurrentUser', () => {
     const controller = new AbortController()
     controller.abort()
     await expect(getCurrentUser(client, { signal: controller.signal })).rejects.toThrow()
+  })
+})
+
+describe('getProfile', () => {
+  it('adds the 48x48 image to the recorded /myself', async () => {
+    serveRecorded(() => HttpResponse.json(loadFixture('myself')))
+    const me = await getProfile(client)
+    expect(me.displayName).toBe('Shane Dolley')
+    expect(me.avatarUrl).toMatch(/^https:\/\/avatar-management--avatars\..*\/48$/)
+  })
+
+  it.each([
+    ['http', { '48x48': 'http://x.test/a.png' }],
+    ['not a URL', { '48x48': 'nope' }],
+    ['absent', {}],
+  ])('reads %s as no image, without failing', async (_name, avatarUrls) => {
+    serveRecorded(() => HttpResponse.json({ accountId: 'a', displayName: 'A', avatarUrls }))
+    expect((await getProfile(client)).avatarUrl).toBeNull()
   })
 })
 

@@ -4,6 +4,20 @@ import type { AdfDoc } from './adf-schema.js'
 import { JiraMgrError } from './errors.js'
 import type { FieldIds } from './state.js'
 
+/**
+ * A user's 48x48 image from the `avatarUrls` a user carries. Only an https URL counts; anything
+ * else reads as no image, so a bad avatar never fails the issue or user that carries it.
+ */
+export const avatarUrls = z
+  .object({
+    '48x48': z
+      .string()
+      .refine((url) => URL.canParse(url) && new URL(url).protocol === 'https:')
+      .optional()
+      .catch(undefined),
+  })
+  .optional()
+
 /** Jira sends `+1100` offsets, which `Date` reads; the domain keeps UTC ISO text. */
 export const jiraTime = z.string().transform((text, ctx) => {
   const time = new Date(text)
@@ -36,7 +50,7 @@ const jiraFields = z.object({
     .object({
       accountId: z.string(),
       displayName: z.string(),
-      avatarUrls: z.object({ '48x48': z.string().optional() }).optional(),
+      avatarUrls,
     })
     .nullish(),
   labels: z.array(z.string()),

@@ -1,19 +1,12 @@
 import { memo } from 'react'
 
+import { Avatar } from './Avatar'
 import { StatusDot } from './StatusDot'
 import { ROW_HEIGHT, type TreeRow as Row } from './tree'
 import { TypeIcon } from './TypeIcon'
 
 /** The DOM id of a row, which the Tree's `aria-activedescendant` points at. */
 export const rowDomId = (id: string) => `tree-row-${id}`
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('')
-}
 
 const plural = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`
 
@@ -119,12 +112,7 @@ function Content({ row }: { row: Row }) {
           <span className="hidden w-14 shrink-0 truncate text-right text-xs text-muted @md:block">
             {issue.issueType.name}
           </span>
-          <span
-            aria-hidden
-            className="grid size-5 shrink-0 place-items-center rounded-full border border-line text-[10px] text-muted"
-          >
-            {issue.assignee === null ? '' : initials(issue.assignee.displayName)}
-          </span>
+          <Avatar person={issue.assignee} />
         </>
       )
     }

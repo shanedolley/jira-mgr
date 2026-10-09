@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { JiraMgrError } from './errors.js'
 import { fetchAll, getFieldIds } from './fields.js'
 import type { HttpClient } from './http.js'
+import { avatarUrls } from './issue.js'
 import {
   currentUser,
   parseInput,
@@ -12,6 +13,10 @@ import {
 } from './validate.js'
 
 export type { CurrentUser }
+
+export interface Profile extends CurrentUser {
+  avatarUrl: string | null
+}
 
 const MAX_USERS = 50
 const searchText = z.string().max(200)
@@ -40,12 +45,24 @@ export async function getCurrentUser(
   return parseResponse(currentUser, raw, 'current user')
 }
 
+const profileSchema = currentUser.extend({ avatarUrls })
+
+/** `getCurrentUser` plus the account's image, for clients that show it. The CLI keeps to `CurrentUser`. */
+export async function getProfile(
+  http: HttpClient,
+  options: { signal?: AbortSignal } = {},
+): Promise<Profile> {
+  const raw = await http.request('GET', '/rest/api/3/myself', options)
+  const { avatarUrls: urls, ...user } = parseResponse(profileSchema, raw, 'current user')
+  return { ...user, avatarUrl: urls?.['48x48'] ?? null }
+}
+
 const assignableUsers = z.array(
   z.object({
     accountId: z.string(),
     displayName: z.string(),
     active: z.boolean(),
-    avatarUrls: z.object({ '48x48': z.string().optional() }).optional(),
+    avatarUrls,
   }),
 )
 

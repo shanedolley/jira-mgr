@@ -52,7 +52,8 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     listSprints: record('listSprints', []),
     searchUsers: record('searchUsers', []),
     listFieldOptions: record('listFieldOptions', []),
-    getMe: record('getMe', { accountId: 'u1', displayName: 'Me' }),
+    getMe: record('getMe', { accountId: 'u1', displayName: 'Me', avatarUrl: null }),
+    getAvatar: record('getAvatar', { type: 'image/png', bytes: new Uint8Array() }),
     listCustomers: record('listCustomers', []),
     getToggles: record('getToggles', TOGGLES),
     setToggles: record('setToggles', TOGGLES),
@@ -115,6 +116,29 @@ describe('argument validation', () => {
     const result = await createHandlers(backend)['issues:setSummary'](raw, noProgress)
     expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
     expect(calls).toEqual([])
+  })
+
+  it.each([
+    ['an http URL', { url: 'http://cdn.example.test/a' }],
+    ['a file URL', { url: 'file:///etc/passwd' }],
+    ['not a URL', { url: 'nope' }],
+    ['an extra key', { url: 'https://cdn.example.test/a', credentials: true }],
+    ['no argument', undefined],
+  ])('refuses avatars:get with %s', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['avatars:get'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes an https avatar URL through', async () => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['avatars:get'](
+      { url: 'https://cdn.example.test/a' },
+      noProgress,
+    )
+    expect(result.ok).toBe(true)
+    expect(calls).toEqual([{ method: 'getAvatar', args: [{ url: 'https://cdn.example.test/a' }] }])
   })
 
   it('refuses an argument on a channel that takes none', async () => {

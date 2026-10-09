@@ -244,11 +244,18 @@ describe('sprints', () => {
 describe('users and options', () => {
   it('searches assignable users of the project and drops inactive ones', async () => {
     const { http, requests } = routedHttp(() => [
-      { accountId: 'u1', displayName: 'Ann Lee', active: true, avatarUrls: { '48x48': 'a.png' } },
+      {
+        accountId: 'u1',
+        displayName: 'Ann Lee',
+        active: true,
+        avatarUrls: { '48x48': 'https://cdn.example.test/a.png' },
+      },
       { accountId: 'u2', displayName: 'Gone', active: false },
     ])
     const users = await createBackend({ http }).searchUsers({ query: 'an' })
-    expect(users).toEqual([{ accountId: 'u1', displayName: 'Ann Lee', avatarUrl: 'a.png' }])
+    expect(users).toEqual([
+      { accountId: 'u1', displayName: 'Ann Lee', avatarUrl: 'https://cdn.example.test/a.png' },
+    ])
     expect(requests[0]?.path).toContain('project=PSAPAC&query=an')
   })
 
