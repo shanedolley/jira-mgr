@@ -1,5 +1,7 @@
 import type { ErrorCode, Issue } from '@jira-mgr/core'
 import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
+import type { SavedView } from '@jira-mgr/core/state'
+import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
 /** The site, project and account a login stored. The token never appears here. */
 export interface Session {
@@ -40,6 +42,25 @@ export interface IssuesProgress {
 /** The three toggles `settings.json` remembers (Q28). */
 export type Toggles = Pick<HierarchyOptions, 'hideDone' | 'assigneeMe' | 'hideEmptyCustomers'>
 
+/** A saved view as `views.json` holds it, the file `jm view list` reads. */
+export type { SavedView }
+
+/** The view to add: a name, the filter bar's filters and the three toggles. Core makes the id. */
+export interface CreateViewArgs {
+  name: string
+  filters: ViewFilters
+  toggles: Toggles
+}
+
+export interface RenameViewArgs {
+  id: string
+  name: string
+}
+
+export interface DeleteViewArgs {
+  id: string
+}
+
 export interface CurrentUser {
   accountId: string
   displayName: string
@@ -60,6 +81,10 @@ export interface IpcContract {
   'fields:customers': { args: undefined; result: CustomerOption[] }
   'settings:getToggles': { args: undefined; result: Toggles }
   'settings:setToggles': { args: Toggles; result: Toggles }
+  'views:list': { args: undefined; result: SavedView[] }
+  'views:create': { args: CreateViewArgs; result: SavedView }
+  'views:rename': { args: RenameViewArgs; result: SavedView }
+  'views:delete': { args: DeleteViewArgs; result: null }
 }
 
 export type Channel = keyof IpcContract
@@ -76,6 +101,10 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'fields:customers': true,
   'settings:getToggles': true,
   'settings:setToggles': true,
+  'views:list': true,
+  'views:create': true,
+  'views:rename': true,
+  'views:delete': true,
 }
 
 /** Every channel, for code that builds one function per channel. The table fails to compile when one is missing. */

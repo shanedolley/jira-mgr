@@ -1,8 +1,19 @@
+import type { ReactNode } from 'react'
+
 import type { Session } from '../../shared/ipc'
 import { ThemeToggle } from './ThemeToggle'
 import { useLogout } from './queries'
 
-export function Sidebar({ session, count }: { session: Session; count: number | undefined }) {
+export function Sidebar({
+  session,
+  count,
+  views,
+}: {
+  session: Session
+  count: number | undefined
+  /** The saved views section, which sits under the main links. */
+  views?: ReactNode
+}) {
   const logout = useLogout()
   const site = new URL(session.siteUrl).hostname
   return (
@@ -12,7 +23,7 @@ export function Sidebar({ session, count }: { session: Session; count: number | 
         <p className="font-semibold">{session.projectKey}</p>
         <p className="truncate text-xs text-muted">{site}</p>
       </div>
-      <ul className="flex-1 px-2">
+      <ul className="px-2">
         <li>
           <a
             href="#issues"
@@ -27,6 +38,7 @@ export function Sidebar({ session, count }: { session: Session; count: number | 
           </a>
         </li>
       </ul>
+      <div className="min-h-0 flex-1 overflow-y-auto">{views}</div>
       <div className="space-y-2 border-t border-line p-3">
         <ThemeToggle />
         <p className="truncate text-xs text-muted" title={session.email}>
