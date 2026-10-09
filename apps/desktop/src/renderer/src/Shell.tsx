@@ -23,7 +23,7 @@ import { Sidebar } from './Sidebar'
 import { Toast } from './Toast'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
-import { createContext, isCreateKey, keepsLetters, type Notice } from './create'
+import { createContext, deleteFailureNotes, isCreateKey, keepsLetters, type Notice } from './create'
 import { filterChoices, hasFilters } from './filters'
 import {
   useCustomers,
@@ -318,11 +318,11 @@ export function Shell({ session }: { session: Session }) {
           openKey: null,
         })
       },
-      onError: (failure) => {
+      onError: (failure, _args, rollback) => {
         setNotice({
           notice: {
             title: `Could not delete ${args.key}`,
-            notes: [failure.message, 'It is back in the list.'],
+            notes: deleteFailureNotes(args.key, failure, (rollback?.removed.length ?? 0) > 0),
             warned: true,
           },
           openKey: null,

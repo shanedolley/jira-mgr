@@ -145,6 +145,7 @@ src/renderer/   React renderer
 - The label list is the labels on the issues loaded so far, so a label used only by a Done issue appears once Done has loaded.
 - The optimistic estimate assumes 8 hours to a day and 5 days to a week. A site with other working time shows the difference until Jira answers.
 - The create modal has no description (D4's editor), start or due date, and no estimate of its own beyond the original estimate. A create that PSAPAC's automation rewrites shows the difference in the notice and does not undo it.
+- Done children that are not subtasks, of a deleted unresolved Epic, can still show its parent key if the Done phase was still loading when the delete ran, since the delete edits only the lists it holds and the Epic was in a loaded one, so the Done load does not restart. They keep it until Done goes stale (five minutes).
 - A subtask added between main's re-read of the subtasks and the delete request still goes with the cascade, since Jira has no conditional delete. The window is one request.
 - What Jira does with the children of a deleted Epic (they stay, without a parent) is Jira's documented behaviour and is simulated by the e2e fake. No live PSAPAC delete has checked it.
 - The description is read-only text until D4's editor, and the page lists no comments, worklogs, attachments or links yet.

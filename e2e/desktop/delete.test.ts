@@ -208,7 +208,7 @@ test('deletes a Done parent the lists do not hold yet, opened from a child page'
   await expect(toast()).toContainText('Deleted PSAPAC-20')
 })
 
-test('keeps the delete dialog open when a refetch drops the issue, and leaves C working after', async () => {
+test('keeps the delete dialog open when a refetch drops the issue, says it is gone, and leaves C working', async () => {
   await open()
   await item(/PSAPAC-4,/).click()
   await peek().getByRole('button', { name: 'Delete' }).click()
@@ -229,9 +229,15 @@ test('keeps the delete dialog open when a refetch drops the issue, and leaves C 
   // The dialog holds the issue it was opened for, so it neither vanishes nor lingers unseen.
   await expect(dialog('PSAPAC-4')).toBeVisible()
 
-  await dialog('PSAPAC-4').getByRole('button', { name: 'Cancel' }).click()
+  // Confirming a delete Jira cannot find says so, and does not claim to have put anything back.
+  await dialog('PSAPAC-4').getByRole('button', { name: 'Delete issue', exact: true }).click()
   await expect(dialog('PSAPAC-4')).toHaveCount(0)
+  // The Peek's Delete button went with the issue, so focus falls back to the Tree.
   await expect(tree()).toBeFocused()
+  const failure = window.getByRole('alert').filter({ hasText: 'Could not delete PSAPAC-4' })
+  await expect(failure).toContainText('PSAPAC-4 no longer exists in Jira.')
+  await expect(failure).not.toContainText('back in the list')
+  await failure.getByRole('button', { name: 'Dismiss' }).click()
   await expect(window.getByRole('button', { name: 'New issue' })).toBeEnabled()
   await window.keyboard.press('c')
   await expect(window.getByRole('dialog', { name: 'New issue' })).toBeVisible()

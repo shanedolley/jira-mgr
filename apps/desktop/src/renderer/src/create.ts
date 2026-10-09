@@ -288,3 +288,16 @@ export function keepsLetters(target: { closest(selector: string): unknown } | nu
 /** "a", "a and b", "a, b and c". */
 export const listWords = (words: readonly string[]): string =>
   words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`
+
+/**
+ * What to tell the user when Jira refused a delete. A missing issue is gone from Jira, not refused.
+ * "Back in the list" is true only when the lists held the issue and the rollback restored it.
+ */
+export function deleteFailureNotes(
+  key: string,
+  failure: { code: string; message: string },
+  restored: boolean,
+): string[] {
+  if (failure.code === 'not_found') return [`${key} no longer exists in Jira.`]
+  return [failure.message, ...(restored ? ['It is back in the list.'] : [])]
+}

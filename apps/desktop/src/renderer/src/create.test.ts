@@ -5,6 +5,7 @@ import type { CreatedIssue } from '../../shared/ipc'
 import {
   createContext,
   defaultParent,
+  deleteFailureNotes,
   describeCreated,
   initialDraft,
   isCreateKey,
@@ -404,5 +405,27 @@ describe('listWords', () => {
     expect(listWords(['a summary', 'a Customer', 'an Engagement'])).toBe(
       'a summary, a Customer and an Engagement',
     )
+  })
+})
+
+describe('deleteFailureNotes', () => {
+  const refused = { code: 'permission_denied', message: 'You cannot delete this issue.' }
+
+  it('says the issue is back when the lists held it and it was restored', () => {
+    expect(deleteFailureNotes('P-1', refused, true)).toEqual([
+      'You cannot delete this issue.',
+      'It is back in the list.',
+    ])
+  })
+
+  it('does not claim a restore when the lists never held the issue', () => {
+    expect(deleteFailureNotes('P-1', refused, false)).toEqual(['You cannot delete this issue.'])
+  })
+
+  it('says a missing issue no longer exists, whatever was restored', () => {
+    const missing = { code: 'not_found', message: 'Issue does not exist.' }
+
+    expect(deleteFailureNotes('P-1', missing, false)).toEqual(['P-1 no longer exists in Jira.'])
+    expect(deleteFailureNotes('P-1', missing, true)).toEqual(['P-1 no longer exists in Jira.'])
   })
 })
