@@ -91,7 +91,7 @@ test('the palette shows each result with its type icon', async () => {
   await open()
   await window.keyboard.press('Meta+k')
   await search().fill('dashboards')
-  await expect(option(/PSAPAC-4/).getByRole('img', { name: 'Story' })).toBeVisible()
+  await expect(option(/PSAPAC-4\b/).getByRole('img', { name: 'Story' })).toBeVisible()
 })
 
 test('the palette finds by key, moves with the arrows, opens on a click, and says when nothing matches', async () => {

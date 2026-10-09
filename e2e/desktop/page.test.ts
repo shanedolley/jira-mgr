@@ -440,21 +440,34 @@ test('sends a date once when Enter is followed at once by leaving the field', as
   expect(await lastBody()).toEqual({ fields: { duedate: '2027-02-02' } })
 })
 
-test('sends a second edit of the same field after the first is answered', async () => {
+test('sends a second edit of the same field made before Jira answers the first', async () => {
   await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
-  const due = props().getByLabel('Due date')
 
-  await due.fill('2027-02-02')
-  await window.keyboard.press('Enter')
-  await settle(1)
-  // Jira's answer is read back once. Until it lands it would replace what is typed next.
-  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(2)
-
-  await due.fill('2027-03-03')
-  await due.blur()
-  await settle(2)
-  expect(await writes()).toBe(2)
-  expect(await lastBody()).toEqual({ fields: { duedate: '2027-03-03' } })
+  // One task, so neither edit is replaced by Jira's answer to the other.
+  await window.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="Due date"]')
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    const type = (value) => {
+      set.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    input.focus()
+    type('2027-02-02')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    type('2027-03-03')
+    input.blur()
+  })()`)
+  await expect.poll(writes).toBe(2)
+  // Both edits go out; which reaches Jira first is not fixed.
+  expect((await counts(app)).editBodies).toEqual(
+    expect.arrayContaining([
+      { fields: { duedate: '2027-02-02' } },
+      { fields: { duedate: '2027-03-03' } },
+    ]),
+  )
+  await releaseEdit(app)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(2)
 })
 
 test('edits the estimate, shows the remaining estimate Jira cascades, and refuses a bad duration', async () => {
