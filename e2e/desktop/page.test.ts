@@ -67,7 +67,9 @@ test('shows the type icon in the Peek and in the page header', async () => {
   await window.keyboard.press('Enter')
   await expect(heading('Migrate the dashboards').first()).toBeVisible()
   await expect(
-    issuePage().getByRole('heading', { name: /PSAPAC-4/ }).getByRole('img', { name: 'Story' }),
+    issuePage()
+      .getByRole('heading', { name: /PSAPAC-4/ })
+      .getByRole('img', { name: 'Story' }),
   ).toBeVisible()
 })
 
