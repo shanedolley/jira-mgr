@@ -2,13 +2,13 @@
 
 What jira-mgr does and in what order.
 
-Milestones take the name of what they build: Core, CLI and Desktop. The "Written in" column in every docs index uses these names.
+Milestones take the name of what they build: Core, CLI and Desktop. The "Planned for" column in every docs index uses these names.
 
 Written: [`roadmap.md`](roadmap.md), the milestones and the features each one delivers, the timer included.
 
-Planned:
+These pages are not written yet; [#101](https://github.com/shanedolley/jira-mgr/issues/101) tracks them.
 
-| Page | Holds | Written in |
+| Page | Holds | Planned for |
 |---|---|---|
 | `requirements/` | One file per feature area, with acceptance criteria, written as its milestone starts | Each milestone |
 

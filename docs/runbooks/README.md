@@ -8,9 +8,9 @@ Written:
 |---|---|
 | [`l7-smoke-check.md`](l7-smoke-check.md) | Checking every `jm` command against live PSAPAC, with throwaway issues for the writes |
 
-Planned, each written with the code it covers:
+These pages are not written yet; [#101](https://github.com/shanedolley/jira-mgr/issues/101) tracks them.
 
-| Runbook | For | Written in |
+| Runbook | For | Planned for |
 |---|---|---|
 | `rotate-jira-token.md` | Replacing the API token: revoke it in Atlassian, then update the Keychain item | Core |
 | `token-rejected.md` | Jira answers 401 or 403: an expired, revoked or under-scoped token | Core |
