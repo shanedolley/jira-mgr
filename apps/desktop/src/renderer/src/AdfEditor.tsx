@@ -115,6 +115,18 @@ function endOfText(doc: PMNode): number | null {
   return Selection.findFrom(doc.resolve(doc.content.size), -1, true)?.from ?? null
 }
 
+/** The caret where the browser has it, or `null` when the selection is outside the editor. */
+function domCaret(editor: Editor): number | null {
+  const selection = document.getSelection()
+  const node = selection?.focusNode
+  if (selection === null || node == null || !editor.view.dom.contains(node)) return null
+  try {
+    return editor.view.posAtDOM(node, selection.focusOffset)
+  } catch {
+    return null
+  }
+}
+
 const sameSnapshot = (a: Snapshot, b: Snapshot | null) =>
   b !== null && a.dirty === b.dirty && a.blocked === b.blocked
 
@@ -254,6 +266,9 @@ export function AdfEditor(props: AdfEditorProps) {
   function submit() {
     const { dirty, blocked } = snapshotOf(editor, baseRef.current)
     if (!dirty || blocked) return
+    // A key that just moved the caret reaches the editor's state only on the browser's next
+    // selectionchange, and going read-only would overwrite it, so a failed save reopens at the DOM's caret.
+    caretRef.current = domCaret(editor) ?? caretRef.current
     try {
       const doc = editorToAdf(editor.getJSON() as EditorDoc)
       setProblem(null)
