@@ -30,6 +30,15 @@ interface StoredView {
 /** `views.json` as the CLI's `jm view list` reads it. */
 const stored = async () =>
   JSON.parse(await readFile(join(stateDir, 'views.json'), 'utf8')) as StoredView[]
+/**
+ * `views.json`, or `null` before the app first writes it. A rename or delete shows at once and
+ * writes after, and `expect.poll` fails on a throw rather than polling again.
+ */
+const storedOrAbsent = () =>
+  stored().catch((error: unknown) => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  })
 const settings = async () =>
   JSON.parse(await readFile(join(stateDir, 'settings.json'), 'utf8')) as {
     toggles: Record<string, boolean>
@@ -147,7 +156,9 @@ test('renames a view inline with Enter, cancels with Escape, and restores a refu
   await expect(apply('This sprint')).toBeVisible()
   await expect(apply('This sprint')).toBeFocused()
   await expect(apply('Current sprint')).toHaveCount(0)
-  await expect.poll(async () => (await stored()).map((v) => v.name)).toContain('This sprint')
+  await expect
+    .poll(async () => (await storedOrAbsent())?.map((v) => v.name))
+    .toContain('This sprint')
   // The id stays, so `jm issue list --view current-sprint` keeps working.
   expect((await stored()).map((v) => v.id)).toEqual(['my-issues', 'current-sprint'])
 
@@ -202,7 +213,9 @@ test('deletes a view only after an inline confirmation', async () => {
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect(apply('My issues')).toHaveCount(0)
   await expect(apply('Current sprint')).toBeFocused()
-  await expect.poll(async () => (await stored()).map((v) => v.id)).toEqual(['current-sprint'])
+  await expect
+    .poll(async () => (await storedOrAbsent())?.map((v) => v.id))
+    .toEqual(['current-sprint'])
 
   await window.getByRole('button', { name: 'Delete view Current sprint' }).click()
   await window
@@ -210,7 +223,7 @@ test('deletes a view only after an inline confirmation', async () => {
     .getByRole('button', { name: 'Delete', exact: true })
     .click()
   await expect(window.getByText('No saved views')).toBeVisible()
-  await expect.poll(stored).toEqual([])
+  await expect.poll(storedOrAbsent).toEqual([])
 })
 
 test('moves between views with the arrow keys and renames with F2', async () => {
