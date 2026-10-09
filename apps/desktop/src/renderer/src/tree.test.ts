@@ -3,6 +3,7 @@ import { buildHierarchy, type CustomerGroup, type HierarchyOptions } from '@jira
 import { describe, expect, it } from 'vitest'
 
 import {
+  ancestorIds,
   clickRow,
   expandableIds,
   fallbackRow,
@@ -322,6 +323,29 @@ describe('indexNodes', () => {
     const nodes = indexNodes(groupsOf(SAMPLE, { match: (i) => i.key === 'P-6' }))
 
     expect([...nodes.keys()]).toEqual(['P-6'])
+  })
+})
+
+describe('ancestorIds', () => {
+  it('lists the rows above an issue, nearest first', () => {
+    const groups = groupsOf(SAMPLE)
+
+    expect(ancestorIds(groups, new Set(), 'P-2')).toEqual(['i:P-1', 'c:1'])
+    expect(ancestorIds(groups, new Set(), 'P-3')).toEqual(['i:P-2', 'i:P-1', 'c:1'])
+    expect(ancestorIds(groups, new Set(), 'P-6')).toEqual(['n:1', 'c:1'])
+  })
+
+  it('finds a Done child only once its chip is revealed', () => {
+    const groups = groupsOf(SAMPLE)
+
+    expect(ancestorIds(groups, new Set(), 'P-5')).toEqual([])
+    expect(ancestorIds(groups, new Set(['d:P-1']), 'P-5')).toEqual(['d:P-1', 'i:P-1', 'c:1'])
+  })
+
+  it('is empty for an issue no row shows', () => {
+    const groups = groupsOf(SAMPLE, { match: (i) => i.key === 'P-6' })
+
+    expect(ancestorIds(groups, new Set(), 'P-2')).toEqual([])
   })
 })
 

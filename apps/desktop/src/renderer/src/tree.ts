@@ -227,6 +227,25 @@ export function indexNodes(groups: readonly CustomerGroup[]): Map<string, Hierar
   return nodes
 }
 
+/**
+ * The row ids above an issue, nearest first, found with every group expanded: the ancestors a
+ * newly created issue needs open before its row can show. Empty when no row shows the issue.
+ */
+export function ancestorIds(
+  groups: readonly CustomerGroup[],
+  revealed: ReadonlySet<string>,
+  key: string,
+): string[] {
+  const rows = flattenTree(groups, { collapsed: new Set(), revealed })
+  const ids: string[] = []
+  for (let row = rows.find((r) => r.id === `i:${key}`); row?.parentId != null;) {
+    const parentId: string = row.parentId
+    ids.push(parentId)
+    row = rows.find((r) => r.id === parentId)
+  }
+  return ids
+}
+
 /** The issues shown in the Tree, for the "N issues shown" announcement. */
 export function issuesShown(rows: readonly TreeRow[]): number {
   return rows.reduce((sum, row) => sum + (row.kind === 'customer' ? row.count : 0), 0)

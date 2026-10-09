@@ -12,12 +12,12 @@ export const TOKEN = 'good-token'
 export interface Counts {
   searches: { unresolved: number; done: number }
   doneEarly: number
-  /** Writes received: edits, transitions and sprint moves. */
+  /** Writes received: edits, transitions, sprint moves, creates and deletes. */
   edits: number
   applied: number
   /** Reads of one issue, in order of arrival. */
   issueReads: string[]
-  /** The body of every write received, in order. */
+  /** The body of every write received, in order. A delete is `{ delete, deleteSubtasks }`. */
   editBodies: unknown[]
 }
 
@@ -27,6 +27,7 @@ interface FakeJira {
   releaseDone: () => void
   failDone: () => void
   failRead: () => void
+  dropIssue: (key: string) => void
 }
 
 interface WithFake {
@@ -72,6 +73,12 @@ export const failRead = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failRead()
   })
+
+/** Removes an issue from the fake Jira, as if someone else deleted it. The next refetch loses it. */
+export const dropIssue = (app: ElectronApplication, key: string) =>
+  app.evaluate((_electron, name) => {
+    ;(globalThis as unknown as WithFake).__fakeJira.dropIssue(name)
+  }, key)
 
 export async function logIn(window: Page, token = TOKEN) {
   await window.getByLabel('Site URL').fill(SITE)

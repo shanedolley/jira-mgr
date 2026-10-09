@@ -9,12 +9,16 @@ import {
 import { STATUS_ORDER } from '@jira-mgr/core/hierarchy'
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 
-import type { CurrentUser, FieldChoice, IssueChanges, SprintOption } from '../../shared/ipc'
+import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
 import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
+import { Row } from './PropertyRow'
 import { StatusDot } from './StatusDot'
 import {
+  NONE,
+  STATE_LABELS,
   assigneeChoices,
+  assigneeOptions,
   assigneePatch,
   currentSprint,
   customerPatch,
@@ -42,39 +46,7 @@ import {
   useTransitions,
   useUsers,
 } from './queries'
-
-const NONE = '__none__'
-
-const STATE_LABELS: Record<SprintOption['state'], string> = {
-  active: 'Active',
-  future: 'Future',
-  closed: 'Closed',
-}
-
-/** The value after `delay` ms of holding still, so a search runs once the user pauses typing. */
-function useDebounced<T>(value: T, delay = 200): T {
-  const [settled, setSettled] = useState(value)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSettled(value)
-    }, delay)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [value, delay])
-  return settled
-}
-
-function Row({ name, children }: { name: string; children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-1">
-      <span aria-hidden className="truncate px-2 text-muted">
-        {name}
-      </span>
-      <div className="min-w-0">{children}</div>
-    </div>
-  )
-}
+import { useDebounced } from './useDebounced'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -281,18 +253,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
   const people = new Map<string, Person>(
     [...choices.suggested, ...choices.others].map((p) => [p.accountId, p]),
   )
-  const assigneeOptions: PickerOption[] = [
-    ...('unassigned'.includes(assigneeQuery.trim().toLowerCase())
-      ? [{ id: NONE, label: 'Unassigned', group: 'Suggested' }]
-      : []),
-    ...choices.suggested.map((p) => ({
-      id: p.accountId,
-      label: p.accountId === me?.accountId ? 'Me' : p.displayName,
-      ...(p.accountId === me?.accountId ? { detail: p.displayName } : {}),
-      group: 'Suggested',
-    })),
-    ...choices.others.map((p) => ({ id: p.accountId, label: p.displayName, group: 'People' })),
-  ]
+  const assigneeList: PickerOption[] = assigneeOptions(choices, assigneeQuery, me?.accountId)
 
   function chooseAssignee(id: string) {
     const person = id === NONE ? null : (people.get(id) ?? null)
@@ -445,7 +406,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
           <Picker
             label="Assignee"
             valueText={issue.assignee?.displayName ?? 'Unassigned'}
-            options={assigneeOptions}
+            options={assigneeList}
             selected={[issue.assignee?.accountId ?? NONE]}
             searchable
             onQuery={setAssigneeQuery}
@@ -698,7 +659,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
 
       {prompt !== null && (
         <ParentPrompt
-          issue={issue}
+          subject={issue.key}
           parent={prompt.parent}
           match={prompt.match}
           onChoose={moveUnder}

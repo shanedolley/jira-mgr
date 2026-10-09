@@ -16,11 +16,21 @@ import {
   writeSettings,
   type SavedView,
 } from '@jira-mgr/core/state'
-import { editIssue, listTransitions, transitionIssue } from '@jira-mgr/core/write'
+import {
+  createIssue,
+  deleteIssue,
+  editIssue,
+  listTransitions,
+  transitionIssue,
+} from '@jira-mgr/core/write'
 
 import type {
+  CreateIssueArgs,
+  CreatedIssue,
   CreateViewArgs,
   CurrentUser,
+  DeleteIssueArgs,
+  DeletedIssue,
   DeleteViewArgs,
   EditIssueArgs,
   FieldChoice,
@@ -40,6 +50,7 @@ import type {
   Toggles,
   UserOption,
 } from '../shared/ipc'
+import { desktopMessage } from './messages'
 
 /** What a handler gives the backend to report on the window that asked. */
 export interface ProgressSender {
@@ -60,6 +71,14 @@ export interface Backend {
   listTransitions(args: KeyArgs): Promise<StatusOption[]>
   setStatus(args: SetStatusArgs): Promise<void>
   setSprint(args: SetSprintArgs): Promise<void>
+  /**
+   * Creates an issue, moves it into the sprint when one is given, and reads it back, so the
+   * result shows what Jira holds after any automation rule ran. Once the issue exists a failed
+   * later step is a `warning` on the result, never a throw, so the key is not lost.
+   */
+  createIssue(args: CreateIssueArgs): Promise<CreatedIssue>
+  /** Deletes an issue, and its subtasks only when asked and only the ones the caller was shown. */
+  deleteIssue(args: DeleteIssueArgs): Promise<DeletedIssue>
   listSprints(args: { all: boolean }): Promise<SprintOption[]>
   searchUsers(args: { query: string }): Promise<UserOption[]>
   listFieldOptions(args: FieldOptionsArgs): Promise<FieldChoice[]>
@@ -78,6 +97,13 @@ export interface BackendDeps {
   /** Tests inject a fake Keychain. Production uses core's `/usr/bin/security` one. */
   keychain?: Keychain
   http?: HttpClient
+}
+
+/** The key a `createIssue` that could not read the new issue back carries in its details. */
+function createdKey(error: unknown): string | undefined {
+  if (!(error instanceof JiraMgrError) || error.code !== 'jira_error') return undefined
+  const key = (error.details as { key?: unknown } | undefined)?.key
+  return typeof key === 'string' ? key : undefined
 }
 
 export function createBackend(deps: BackendDeps = {}): Backend {
@@ -187,6 +213,71 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       await assertInProject(key)
       if (sprintId === null) await moveToBacklog(http, [key])
       else await moveToSprint(http, sprintId, [key])
+    },
+    async createIssue({ sprintId, ...input }) {
+      // The same guard the CLI applies: this app manages the settings project only.
+      if (input.parentKey !== undefined) await assertInProject(input.parentKey)
+      let key: string
+      let issue: IssueDetail | null
+      let warning: string | null = null
+      try {
+        issue = await createIssue(http, input)
+        key = issue.key
+      } catch (error) {
+        // A failed read-back after a good create carries the new key. Anything else is a refusal.
+        const kept = createdKey(error)
+        if (kept === undefined) throw error
+        key = kept
+        issue = null
+        warning = desktopMessage(error instanceof Error ? error.message : String(error))
+      }
+      const readBackFailed = issue === null
+      if (sprintId !== undefined) {
+        const reason = (error: unknown) =>
+          error instanceof Error ? desktopMessage(error.message) : String(error)
+        let moved = false
+        try {
+          await moveToSprint(http, sprintId, [key])
+          moved = true
+        } catch (error) {
+          // The issue exists and the read-back, if it worked, is accurate: only the sprint is missing.
+          warning ??= `Created ${key}, but it is not in the sprint. ${reason(error)}`
+        }
+        if (moved) {
+          try {
+            issue = await getIssue(http, key)
+            // This read is the read-back the create could not make, so its warning no longer holds.
+            if (readBackFailed) warning = null
+          } catch (error) {
+            issue = null
+            warning ??= `Created ${key}, but could not read it back. ${reason(error)}`
+          }
+        }
+      }
+      return { key, issue, warning }
+    },
+    async deleteIssue({ key, deleteSubtasks, subtasks: shown }) {
+      await assertInProject(key)
+      // Read now, not from what the user saw: a subtask added since must not go unseen.
+      const keys = (await getIssue(http, key)).subtasks.map((s) => s.key)
+      if (keys.length > 0 && !deleteSubtasks) {
+        throw new JiraMgrError(
+          'validation_failed',
+          `${key} has subtasks ${keys.join(', ')}. Delete them too, or move them first.`,
+          { details: { subtasks: keys } },
+        )
+      }
+      const unseen = keys.filter((k) => !shown.includes(k))
+      if (deleteSubtasks && unseen.length > 0) {
+        throw new JiraMgrError(
+          'validation_failed',
+          `${key} has new subtasks ${unseen.join(', ')}. Review the list and delete again.`,
+          { details: { subtasks: keys } },
+        )
+      }
+      await deleteIssue(http, key, { deleteSubtasks })
+      // Any subtask was refused above unless the caller asked to cascade, so `keys` is what goes.
+      return { key, deletedSubtasks: keys }
     },
     async listSprints({ all }) {
       const board = await findBoard(http)

@@ -21,6 +21,8 @@ interface IssuePageProps {
   onBack: () => void
   /** Opens the page of another issue, such as the parent or a subtask. */
   onOpen: (key: string) => void
+  /** Opens the delete confirmation for the issue. */
+  onDelete: (issue: Issue) => void
   pageRef: RefObject<HTMLElement | null>
 }
 
@@ -141,6 +143,7 @@ export function IssuePage({
   mismatch,
   onBack,
   onOpen,
+  onDelete,
   pageRef,
 }: IssuePageProps) {
   const detail = useIssueDetail(issueKey)
@@ -186,6 +189,17 @@ export function IssuePage({
               {parentKey}
             </button>
           </span>
+        )}
+        {issue !== undefined && (
+          <button
+            type="button"
+            onClick={() => {
+              onDelete(issue)
+            }}
+            className="app-no-drag ml-auto rounded-md border border-line px-2 py-0.5 text-xs text-danger hover:bg-hover"
+          >
+            Delete
+          </button>
         )}
       </header>
       {issue === undefined ? (

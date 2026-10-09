@@ -11,6 +11,10 @@ export const FAKE_TOKEN = 'good-token'
 export const REJECTED_SUMMARY = 'reject me'
 /** The priority the fake Jira refuses, so a test can watch a picker edit roll back. */
 export const REJECTED_PRIORITY = 'Highest'
+/** The issue the fake refuses to delete, so a test can watch a delete roll back. */
+export const REJECTED_DELETE = 'PSAPAC-3'
+/** The first number a created issue gets, clear of the seeds and of `JM_E2E_BULK`'s 1000 to 1999. */
+const FIRST_CREATED = 2000
 
 export interface FakeJiraCounts {
   /** Search pages served, per phase. */
@@ -23,7 +27,10 @@ export interface FakeJiraCounts {
   applied: number
   /** Reads of one issue, in order of arrival. */
   issueReads: string[]
-  /** The body of every edit received, in order. */
+  /**
+   * The body of every write received, in order: an edit's request body, a create's request body,
+   * and for a delete `{ delete: key, deleteSubtasks }`.
+   */
   editBodies: unknown[]
 }
 
@@ -268,6 +275,11 @@ interface RawFields {
   [field: string]: unknown
 }
 
+/** The body of an issue create, as far as the fake reads it. */
+interface CreateBody {
+  fields?: Record<string, unknown>
+}
+
 /** The body of an issue edit, as far as the fake reads it. */
 interface EditBody {
   fields?: Record<string, unknown>
@@ -336,6 +348,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failDone: () => void
   /** Makes the next read of one issue answer 500. */
   failRead: () => void
+  /** Removes an issue as if someone else deleted it: no hold and no count, so the next refetch loses it. */
+  dropIssue: (key: string) => void
 } {
   const bulk = Array.from({ length: options.bulk ?? 0 }, (_, i) =>
     issue({
@@ -383,6 +397,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   let failNextRead = false
   // Each applied write moves `updated` on, so a read always shows the later copy.
   let clock = 0
+  let created = 0
 
   const find = (key: string) => issues.find((i) => i.key === key)
   const touch = (target: RawIssue) => {
@@ -602,6 +617,106 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       }
     }
 
+    if (method === 'POST' && path === '/rest/api/3/issue') {
+      const create = body() as CreateBody
+      const fields = create.fields ?? {}
+      const typeName = (fields.issuetype as { name: string } | undefined)?.name
+      const typeKey = (Object.keys(TYPES) as (keyof typeof TYPES)[]).find(
+        (k) => TYPES[k].name === typeName,
+      )
+      const customer = Object.values(CUSTOMERS).find(
+        (c) => c.id === (fields[FIELDS.customer] as { id: string } | undefined)?.id,
+      )
+      const engagement = Object.values(ENGAGEMENTS).find(
+        (e) => e.id === (fields[FIELDS.engagement] as { id: string } | undefined)?.id,
+      )
+      const summary = fields.summary
+      if (typeKey === undefined || typeof summary !== 'string' || summary === '') {
+        return refusal('summary', 'The fake needs a type and a summary.')
+      }
+      if (customer === undefined) return refusal(FIELDS.customer, 'Customer is required.')
+      if (engagement === undefined) return refusal(FIELDS.engagement, 'Engagement is required.')
+      if (TYPES[typeKey].subtask && fields.parent === undefined) {
+        return refusal('parent', 'A Subtask needs a parent.')
+      }
+      if (summary === REJECTED_SUMMARY) {
+        return refusal('summary', 'The fake refuses this summary.')
+      }
+      await hold(create)
+      const raw = issue({
+        n: FIRST_CREATED + created,
+        summary,
+        type: typeKey,
+        status: 'todo',
+        customer: 'acme',
+      })
+      created++
+      const assignee = Object.values(USERS).find(
+        (u) => u.accountId === (fields.assignee as { accountId: string } | undefined)?.accountId,
+      )
+      const priority = PRIORITIES.find(
+        (p) => p.id === (fields.priority as { id: string } | undefined)?.id,
+      )
+      const estimate = (fields.timetracking as { originalEstimate?: string } | undefined)
+        ?.originalEstimate
+      Object.assign(raw.fields, {
+        [FIELDS.customer]: customer,
+        [FIELDS.engagement]: engagement,
+        parent: (fields.parent as { key: string } | undefined) ?? null,
+        assignee: assignee ?? null,
+        priority: priority ?? MEDIUM,
+        labels: [...((fields.labels as string[] | undefined) ?? [])],
+        ...(estimate === undefined
+          ? {}
+          : {
+              timetracking: {
+                originalEstimateSeconds: seconds(estimate),
+                remainingEstimateSeconds: seconds(estimate),
+              },
+            }),
+      })
+      // The live PSAPAC automation rewrites every new issue: it labels it, sets a 4h original
+      // estimate with nothing remaining, and on a Task also replaces the Customer, the parent and
+      // the sprint the request sent (handover Traps, T2 on 2026-10-08).
+      raw.fields.labels.push('PSAPAC')
+      raw.fields.timetracking = { originalEstimateSeconds: 14400, remainingEstimateSeconds: 0 }
+      raw.fields[FIELDS.timeRemaining] = 0
+      if (typeKey === 'task') {
+        raw.fields[FIELDS.customer] = CUSTOMERS.internal
+        raw.fields.parent = { key: 'PSAPAC-50' }
+        raw.fields[FIELDS.sprint] = SPRINTS.filter((s) => s.id === 5)
+      }
+      issues.push(raw)
+      counts.applied++
+      return json({ id: raw.id, key: raw.key }, 201)
+    }
+
+    const deletion = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)$/.exec(path)
+    if (method === 'DELETE' && deletion !== null) {
+      const target = find(deletion[1] ?? '')
+      if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
+      const cascade = url.searchParams.get('deleteSubtasks') === 'true'
+      const subtasks = issues.filter(
+        (i) => i.fields.parent?.key === target.key && i.fields.issuetype.subtask,
+      )
+      if (subtasks.length > 0 && !cascade) {
+        return json({ errorMessages: ['The issue has subtasks.'] }, 400)
+      }
+      await hold({ delete: target.key, deleteSubtasks: cascade })
+      if (target.key === REJECTED_DELETE) {
+        return json({ errorMessages: ['You cannot delete this issue.'] }, 403)
+      }
+      for (const gone of [target, ...(cascade ? subtasks : [])]) {
+        issues.splice(issues.indexOf(gone), 1)
+      }
+      // As Jira does for an Epic: the child issues stay, without a parent.
+      for (const child of issues) {
+        if (child.fields.parent?.key === target.key) child.fields.parent = null
+      }
+      counts.applied++
+      return new Response(null, { status: 204 })
+    }
+
     const one = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)$/.exec(path)
     if (method === 'GET' && one !== null) {
       const target = find(one[1] ?? '')
@@ -639,6 +754,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failRead: () => {
       failNextRead = true
+    },
+    dropIssue: (key) => {
+      const target = find(key)
+      if (target !== undefined) issues.splice(issues.indexOf(target), 1)
     },
   }
 }

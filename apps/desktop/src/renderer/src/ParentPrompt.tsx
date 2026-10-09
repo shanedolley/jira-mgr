@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react'
 import { matchWords, type ParentMatch } from './properties'
 
 interface ParentPromptProps {
-  issue: Issue
+  /** What moves: an issue key, or "this issue" for one not created yet. */
+  subject: string
   /** The parent the user picked. */
   parent: Issue
   /** What the parent holds that differs from the issue. */
@@ -19,7 +20,7 @@ interface ParentPromptProps {
  * them across before anything is sent. A modal dialog, so the question blocks the page until it
  * is answered, and Esc cancels the move.
  */
-export function ParentPrompt({ issue, parent, match, onChoose, onCancel }: ParentPromptProps) {
+export function ParentPrompt({ subject, parent, match, onChoose, onCancel }: ParentPromptProps) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const element = dialog.current
@@ -45,7 +46,7 @@ export function ParentPrompt({ issue, parent, match, onChoose, onCancel }: Paren
       className="m-auto w-[26rem] rounded-lg border border-line bg-panel p-5 text-ink backdrop:bg-black/40"
     >
       <h2 id="parent-prompt-title" className="text-base font-semibold">
-        Move {issue.key} under {parent.key}?
+        Move {subject} under {parent.key}?
       </h2>
       <p className="mt-2">
         {parent.key} has {held}. Also set {words} to match?
