@@ -29,7 +29,10 @@ function fromOurWindow(event: IpcMainInvokeEvent): boolean {
 function createWindow(inactive: boolean): void {
   const window = new BrowserWindow({
     // A test run shows its window without taking focus, so it never steals the user's keystrokes.
+    // macOS keeps 40px of any window on a display, so it cannot sit off-screen. The window is
+    // invisible and ignores the mouse instead. Playwright drives it over CDP, not the OS.
     show: !inactive,
+    opacity: inactive ? 0 : 1,
     width: 1200,
     height: 800,
     minWidth: 900,
@@ -63,6 +66,7 @@ function createWindow(inactive: boolean): void {
   })
 
   if (inactive) {
+    window.setIgnoreMouseEvents(true)
     window.once('ready-to-show', () => {
       window.showInactive()
     })
@@ -72,7 +76,7 @@ function createWindow(inactive: boolean): void {
 }
 
 export interface StartOptions {
-  /** Open windows without focus. Only the e2e entry sets it. */
+  /** Open windows invisible, click-through and without focus. Only the e2e entry sets it. */
   inactive?: boolean
 }
 

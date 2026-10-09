@@ -149,3 +149,11 @@ test('opens its window without taking focus from the user', async () => {
   )
   expect(focused).toBe(false)
 })
+
+test('opens its window invisible, so it never shows on the user screen', async () => {
+  test.skip(process.platform !== 'darwin', 'macOS keeps a window on a display, so opacity hides it')
+  const opacity = await app.evaluate(
+    ({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getOpacity() ?? null,
+  )
+  expect(opacity).toBe(0)
+})
