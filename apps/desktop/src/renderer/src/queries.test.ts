@@ -348,7 +348,7 @@ describe('descriptionMutation', () => {
 })
 
 describe('image queries', () => {
-  it('revokes the URL a refetch replaces', async () => {
+  it('revokes the URL a refetch replaces', () => {
     const client = new QueryClient()
     const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
     const stop = watchImageUrls(client)
