@@ -1,5 +1,5 @@
 import { JiraMgrError, type Issue } from '@jira-mgr/core'
-import { QueryClient, MutationObserver, QueryObserver } from '@tanstack/react-query'
+import { CancelledError, QueryClient, MutationObserver, QueryObserver } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Toggles } from '../../shared/ipc'
@@ -10,6 +10,7 @@ import {
   customersKey,
   doneQuery,
   loginMutation,
+  logoutMutation,
   meKey,
   sessionKey,
   togglesKey,
@@ -208,5 +209,48 @@ describe('clearAccountData', () => {
     expect(client.getQueryData(customersKey)).toBeUndefined()
     // The toggles live in the settings file, not with the account.
     expect(client.getQueryData(togglesKey)).toBeDefined()
+  })
+})
+
+describe('logoutMutation', () => {
+  it('a failed logout leaves the issue queries idle, not fetching', async () => {
+    const client = new QueryClient()
+    let load!: { reject: (reason: unknown) => void }
+    const watcher = new QueryObserver(client, {
+      queryKey: unresolvedKey,
+      queryFn: () =>
+        new Promise<Issue[]>((_resolve, reject) => {
+          load = { reject }
+        }),
+    }).subscribe(() => undefined)
+    await expect.poll(() => client.getQueryState(unresolvedKey)?.fetchStatus).toBe('fetching')
+
+    // Main aborts the load and answers it with null, which the renderer ends silently. Then the
+    // logout itself fails.
+    const failing = new MutationObserver(
+      client,
+      logoutMutation(client, () => {
+        load.reject(new CancelledError({ silent: true }))
+        return Promise.reject(new JiraMgrError('internal', 'Keychain locked.'))
+      }),
+    )
+    await expect(failing.mutate()).rejects.toBeInstanceOf(JiraMgrError)
+
+    await expect.poll(() => client.getQueryState(unresolvedKey)?.fetchStatus).toBe('idle')
+    watcher()
+  })
+
+  it('removes the account data once the logout succeeds', async () => {
+    const client = new QueryClient()
+    client.setQueryData(unresolvedKey, [issue('PSAPAC-1')])
+    const state = { loggedIn: false, prefill: {} } as const
+
+    await new MutationObserver(
+      client,
+      logoutMutation(client, () => Promise.resolve(state)),
+    ).mutate()
+
+    expect(client.getQueryData(unresolvedKey)).toBeUndefined()
+    expect(client.getQueryData(sessionKey)).toEqual(state)
   })
 })

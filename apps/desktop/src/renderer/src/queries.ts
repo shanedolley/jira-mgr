@@ -217,15 +217,30 @@ export function useLogin() {
   return useMutation(loginMutation(client, (args) => call('session:login', args)))
 }
 
-export function useLogout() {
-  const client = useQueryClient()
-  return useMutation({
-    mutationFn: () => call('session:logout'),
-    onSuccess: (state: SessionState) => {
+/**
+ * Logs out. The issue queries are cancelled first: main aborts their loads and answers each with
+ * `null`, which ends a query silently, and TanStack reads a silent end as "a new fetch is coming".
+ * If the logout then failed, those queries would stay `fetching`. Cancelled already, they do not.
+ */
+export function logoutMutation(
+  client: QueryClient,
+  send: () => Promise<SessionState>,
+): MutationOptions<SessionState> {
+  return {
+    mutationFn: send,
+    async onMutate() {
+      await client.cancelQueries({ queryKey: issuesKey })
+    },
+    onSuccess: (state) => {
       clearAccountData(client)
       client.setQueryData(sessionKey, state)
     },
-  })
+  }
+}
+
+export function useLogout() {
+  const client = useQueryClient()
+  return useMutation(logoutMutation(client, () => call('session:logout')))
 }
 
 export function useSetSummary() {
