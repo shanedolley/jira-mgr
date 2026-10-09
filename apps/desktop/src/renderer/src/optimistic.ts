@@ -4,7 +4,12 @@ import type { MutationOptions, QueryClient } from '@tanstack/react-query'
 import type { SetSummaryArgs } from '../../shared/ipc'
 
 export const issuesKey = ['issues'] as const
-const summaryKey = ['setSummary'] as const
+
+/**
+ * Edits in flight per client. It lives outside `summaryMutation` because the hook builds new
+ * options on every render, and two editors must count against the same total.
+ */
+const inFlight = new WeakMap<QueryClient, number>()
 
 interface Rollback {
   key: string
@@ -27,9 +32,10 @@ export function summaryMutation(
   send: (args: SetSummaryArgs) => Promise<unknown>,
 ): MutationOptions<unknown, JiraMgrError, SetSummaryArgs, Rollback | undefined> {
   return {
-    mutationKey: summaryKey,
     mutationFn: send,
     async onMutate({ key, summary }) {
+      // Counted before the first await, so every edit is counted before any of them settles.
+      inFlight.set(client, (inFlight.get(client) ?? 0) + 1)
       // A refetch landing now would overwrite the optimistic text with Jira's old one.
       await client.cancelQueries({ queryKey: issuesKey })
       const previous = client.getQueryData<Issue[]>(issuesKey)?.find((i) => i.key === key)?.summary
@@ -46,9 +52,11 @@ export function summaryMutation(
       })
     },
     async onSettled() {
-      // This mutation still counts as pending here. A refetch while another edit is in flight
-      // would bring back Jira's old summary over that edit's optimistic one; the last to settle refetches.
-      if (client.isMutating({ mutationKey: summaryKey }) > 1) return
+      // A refetch while another edit is in flight would bring back Jira's old summary over that
+      // edit's optimistic one. The last to settle refetches, even when edits settle in one tick.
+      const left = (inFlight.get(client) ?? 1) - 1
+      inFlight.set(client, left)
+      if (left > 0) return
       await client.invalidateQueries({ queryKey: issuesKey })
     },
   }

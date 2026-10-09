@@ -11,10 +11,10 @@ import { isTrustedFrame } from './trust'
 
 /** The one page a window loads: the dev server in development, the built file otherwise. */
 function rendererUrl(): string {
-  return (
-    process.env.ELECTRON_RENDERER_URL ??
-    pathToFileURL(join(__dirname, '../renderer/index.html')).href
-  )
+  const dev = process.env.ELECTRON_RENDERER_URL
+  return dev !== undefined && dev !== ''
+    ? dev
+    : pathToFileURL(join(__dirname, '../renderer/index.html')).href
 }
 
 /** Only the main frame of one of our own windows, showing our own page, may call the backend. */
@@ -68,12 +68,7 @@ function createWindow(inactive: boolean): void {
     })
   }
 
-  const devUrl = process.env.ELECTRON_RENDERER_URL
-  if (devUrl) {
-    void window.loadURL(devUrl)
-  } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
-  }
+  void window.loadURL(rendererUrl())
 }
 
 export interface StartOptions {

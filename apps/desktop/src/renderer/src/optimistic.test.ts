@@ -75,12 +75,10 @@ describe('summaryMutation', () => {
     const client = new QueryClient()
     client.setQueryData<Issue[]>(issuesKey, [issue('PSAPAC-1', 'One'), issue('PSAPAC-2', 'Two')])
     const requests = { 'PSAPAC-1': deferred<null>(), 'PSAPAC-2': deferred<null>() }
-    const options = summaryMutation(
-      client,
-      ({ key }) => requests[key as keyof typeof requests].promise,
-    )
-    const first = new MutationObserver(client, options)
-    const second = new MutationObserver(client, options)
+    const send = ({ key }: { key: string }) => requests[key as keyof typeof requests].promise
+    // Each hook render builds its own options, so the edits must be counted per client.
+    const first = new MutationObserver(client, summaryMutation(client, send))
+    const second = new MutationObserver(client, summaryMutation(client, send))
     const stale = () => client.getQueryState(issuesKey)?.isInvalidated
 
     const firstDone = first.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
@@ -97,5 +95,28 @@ describe('summaryMutation', () => {
     requests['PSAPAC-2'].resolve(null)
     await secondDone
     expect(stale()).toBe(true)
+  })
+
+  it('refetches when two edits settle in the same tick', async () => {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(issuesKey, [issue('PSAPAC-1', 'One'), issue('PSAPAC-2', 'Two')])
+    const gate = deferred<null>()
+    const options = summaryMutation(client, () => gate.promise)
+    // Each hook render builds its own options, so the two edits must still be counted together.
+    const first = new MutationObserver(
+      client,
+      summaryMutation(client, () => gate.promise),
+    )
+    const second = new MutationObserver(client, options)
+
+    const firstDone = first.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    const secondDone = second.mutate({ key: 'PSAPAC-2', summary: 'Two, edited' })
+    await expect
+      .poll(() => client.getQueryData<Issue[]>(issuesKey)?.map((i) => i.summary))
+      .toEqual(['One, edited', 'Two, edited'])
+
+    gate.resolve(null)
+    await Promise.all([firstDone, secondDone])
+    expect(client.getQueryState(issuesKey)?.isInvalidated).toBe(true)
   })
 })

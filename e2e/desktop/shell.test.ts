@@ -177,9 +177,15 @@ test('refuses every permission request from the page', async () => {
 })
 
 test('opens its window without taking focus from the user', async () => {
-  const focused = await app.evaluate(({ BrowserWindow }) => {
-    const [first] = BrowserWindow.getAllWindows()
-    return first?.isFocused() ?? null
-  })
+  test.skip(process.platform !== 'darwin', 'focus semantics differ under xvfb')
+  // The window shows on ready-to-show, so wait for that before reading its focus.
+  await expect
+    .poll(() =>
+      app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible() ?? false),
+    )
+    .toBe(true)
+  const focused = await app.evaluate(
+    ({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isFocused() ?? null,
+  )
   expect(focused).toBe(false)
 })
