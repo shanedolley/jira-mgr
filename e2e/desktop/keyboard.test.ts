@@ -87,6 +87,13 @@ test('Cmd+K searches the loaded issues by key and summary, and Enter opens the p
   await expect(item(/PSAPAC-11,/)).toHaveAttribute('data-active', 'true')
 })
 
+test('the palette shows each result with its type icon', async () => {
+  await open()
+  await window.keyboard.press('Meta+k')
+  await search().fill('dashboards')
+  await expect(option(/PSAPAC-4\b/).getByRole('img', { name: 'Story' })).toBeVisible()
+})
+
 test('the palette finds by key, moves with the arrows, opens on a click, and says when nothing matches', async () => {
   await open()
   await window.keyboard.press('Meta+k')

@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useId, useState, type KeyboardEvent } from
 import { Modal } from './Modal'
 import { StatusDot } from './StatusDot'
 import { searchIssues } from './search'
+import { TypeIcon } from './TypeIcon'
 
 interface CommandPaletteProps {
   /** Every loaded issue, Done ones included once they have loaded. */
@@ -119,6 +120,7 @@ export function CommandPalette({ issues, onOpen, onClose, returnFocus }: Command
             }}
             className="flex h-8 cursor-default items-center gap-3 rounded px-3 hover:bg-hover aria-selected:bg-selected"
           >
+            <TypeIcon type={issue.issueType} />
             <StatusDot status={issue.status} />
             <span className="w-24 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
             <span className="min-w-0 flex-1 truncate">{issue.summary}</span>

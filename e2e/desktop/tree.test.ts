@@ -67,6 +67,13 @@ test('groups issues by Customer with the internal Customer last', async () => {
   await expect(item(/PSAPAC-3, Bug/)).toHaveAttribute('aria-level', '3')
 })
 
+test("shows each row's type icon by its accessible name", async () => {
+  await open()
+  await expect(item(/PSAPAC-10, Epic/).getByRole('img', { name: 'Epic' })).toBeVisible()
+  await expect(item(/PSAPAC-3, Bug/).getByRole('img', { name: 'Bug' })).toBeVisible()
+  await expect(item(/PSAPAC-12, Subtask/).getByRole('img', { name: 'Subtask' })).toBeVisible()
+})
+
 test('shows the Tree before Done issues load, then their N done chips', async () => {
   await open()
 

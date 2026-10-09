@@ -5,6 +5,7 @@ import type { CurrentUser } from '../../shared/ipc'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
 import { AssigneePicker, LabelsPicker, PriorityPicker, StatusPicker } from './PropertyPickers'
 import { SummaryEditor } from './SummaryEditor'
+import { TypeIcon } from './TypeIcon'
 
 /** `control` pulls a picker's button left by its own padding, so its text lines up with the plain values. */
 function Property({
@@ -63,7 +64,8 @@ function PeekIssue({
   return (
     <div className="space-y-5 px-5 pb-6">
       <div className="space-y-1">
-        <p className="font-mono text-xs text-muted">
+        <p className="flex items-center gap-2 font-mono text-xs text-muted">
+          <TypeIcon type={issue.issueType} />
           {issue.key}
           {issue.parentKey !== null && ` in ${issue.parentKey}`}
         </p>

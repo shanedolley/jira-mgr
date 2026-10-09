@@ -59,6 +59,20 @@ async function settle(expected: number) {
   await expect.poll(async () => (await counts(app)).applied).toBe(expected)
 }
 
+test('shows the type icon in the Peek and in the page header', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await expect(peek().getByRole('img', { name: 'Story' })).toBeVisible()
+
+  await window.keyboard.press('Enter')
+  await expect(heading('Migrate the dashboards').first()).toBeVisible()
+  await expect(
+    issuePage()
+      .getByRole('heading', { name: /PSAPAC-4/ })
+      .getByRole('img', { name: 'Story' }),
+  ).toBeVisible()
+})
+
 test('Enter opens the full page and Esc returns to the Tree, while Space keeps the Peek', async () => {
   await open()
   await item(/PSAPAC-4,/).click()
@@ -408,6 +422,52 @@ test('saves a date when focus leaves the field, clears it, and abandons an edit 
   await window.keyboard.press('Enter')
   await settle(3)
   expect(await lastBody()).toEqual({ fields: { customfield_4: '2026-10-12' } })
+})
+
+test('sends a date once when Enter is followed at once by leaving the field', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  const due = props().getByLabel('Due date')
+
+  await due.fill('2027-02-02')
+  // One task, so the blur lands before Jira's answer re-renders the field.
+  await window.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="Due date"]')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    input.blur()
+  })()`)
+  await settle(1)
+  expect(await writes()).toBe(1)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2027-02-02' } })
+})
+
+test('sends a second edit of the same field made before Jira answers the first', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+
+  // One task, so neither edit is replaced by Jira's answer to the other.
+  await window.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="Due date"]')
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+    const type = (value) => {
+      set.call(input, value)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    input.focus()
+    type('2027-02-02')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    type('2027-03-03')
+    input.blur()
+  })()`)
+  await expect.poll(writes).toBe(2)
+  // Both edits go out; which reaches Jira first is not fixed.
+  expect((await counts(app)).editBodies).toEqual(
+    expect.arrayContaining([
+      { fields: { duedate: '2027-02-02' } },
+      { fields: { duedate: '2027-03-03' } },
+    ]),
+  )
+  await releaseEdit(app)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(2)
 })
 
 test('edits the estimate, shows the remaining estimate Jira cascades, and refuses a bad duration', async () => {
