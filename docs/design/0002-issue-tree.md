@@ -377,7 +377,7 @@ Skeleton rows, an approximate total, assignee type-ahead and an inline Done coun
 
 ## Rollout
 
-D2 ships in one pull request from `d2-issue-tree` with `Refs #29`, after this doc, built in this order:
+D2 shipped in one pull request (#71) with `Refs #29`, after this doc, built in this order:
 
 1. Core: the context rule and `STATUS_ORDER`, with their tests and README.
 2. Data: the channels, backend loads with progress and abort, the event in preload, the phase queries, the phase-aware optimistic edit, and their unit tests.

@@ -2,14 +2,16 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (6 open issues, one page), `gh pr list --state open` and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. D4 is done (#31 closed). Work in order:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (7 open issues, one page), `gh pr list --state open` and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep it current, and remove every stale reference (branch names that are gone, features listed as planned that exist, wrong counts, dead links) in the pull request that changes the code. Work in order:
 
-1. **Desktop D12 (#85), draft PR #88**: it carries the date double-commit fix (Refs #30), which passed review. Once it is rebased onto `main` and CI is green, mark it ready and merge it by hand.
-2. **Desktop D13 (#86), draft PR #94**: the SSRF fix passed re-review; after the small Lows and the rebase, mark it ready, get CI green, merge by hand, then move #86 to `status:hil-review` through `kothar:project-manager`.
-3. **Desktop D5 activity (#32)**, In Progress in worktree `jira-mgr-d5` on `d5-activity` (builder 32-d5-build, design doc 0004 first), built to Shane's attachments spec on the issue. Then **D9 timer (#36)**, blocked by #32, and **D11 click-to-edit summary (#83)**, unblocked; D11 touches `IssuePage` and `SummaryEditor.tsx`, so build it in a worktree of its own after D5 merges.
-4. **#84** (the late-automation toast, PR #93 merged) waits on Shane in HIL Review; he closes it. Stop and report once the rest is done or blocked.
+1. **Review and open the pull request for D5 activity (#32)** from `d5-activity` (worktree `jira-mgr-d5`, pushed, no pull request; review by 32-d5-review). Rebase it onto `main` first. It carries design doc 0004 and the README text for D5, so its docs land with it. Two criteria stay unproven until Shane is present: an image embedded in a comment rendering in live Jira (one reversible live write) and the real native save dialog (one manual `pnpm dev` check).
+2. **Land the e2e flake fixes** from `fix-e2e-flakes-1010` (local only, worktree `jira-mgr-flakes`): the `views.test.ts` ENOENT race, the `AdfEditor` caret bug at `editor.test.ts:562` and the `shell.test.ts:101` launch race (ff7ea14, not yet reviewed). Review, push, open the pull request, merge on green.
+3. **Bug #96, two quick edits to one field reach Jira out of order** (`optimistic.ts`): In Progress in worktree `jira-mgr-96` on `96-ordered-edits`, debugger 96-ordered-edits. Review and land it.
+4. **D9 timer (#36)**, blocked by #32: start it once D5 merges.
+5. **D11 click-to-edit summary (#83)**, unblocked: build it in a worktree of its own after D5 merges, since it touches `IssuePage` and `SummaryEditor.tsx`.
+6. **Waiting on Shane** (he closes issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #84 (late-automation toast), #85 (D12 icons) and #86 (D13 profile images). The two D5 live checks need him present.
 
-Run e2e on one worker and never in several worktrees at once (see Traps in the handover).
+Merge one pull request at a time and rebase the next onto `main` before its CI result counts (see Traps in the handover). Run e2e on one worker and never in several worktrees at once.
 
 ## Reading Order
 
@@ -26,7 +28,7 @@ Run e2e on one worker and never in several worktrees at once (see Traps in the h
 5. Run `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm e2e` for desktop work. Read the pass and fail counts. Commit locally and have a reviewer other than the builder pass it before pushing, since a green PR may merge at once.
 6. Run `/autonomous:update`, so the handover lands in the story's commit.
 7. Commit with `Refs #n`, push, open the pull request, watch CI with `gh pr checks <n> --watch`.
-8. On green CI the ship-it automation sometimes merges; do not race it with `gh pr merge`. It did not merge #89, #90 or #91 (2026-10-10), so if a green PR is still open after about 10 minutes, merge it with `gh pr merge <n> --squash`. Confirm MERGED, then clean up the branch.
+8. On green CI the ship-it automation sometimes merges; do not race it with `gh pr merge`. It did not merge any pull request on 2026-10-10 (#88 to #95), so if a green PR is still open after about 10 minutes, merge it with `gh pr merge <n> --squash`. Confirm MERGED, then clean up the branch.
 9. Comment on the issue how each criterion is met, ending with `Review verdict: PASS (reviewer <agent>, builder <agent>)`. Then have `kothar:project-manager` close it as Done, unless it needs Shane's judgement: anything he sees or uses (CLI output, Desktop UI), anything touching security or credentials, and live PSAPAC checks. Those go to `status:hil-review` for Shane to close (rule adopted by Shane 2026-10-07).
 
 ## Decision Format
