@@ -279,7 +279,12 @@ describe('links', () => {
     await expect(
       backendFor(foreign.http).removeLink({ key: KEY, linkId: '3' }),
     ).rejects.toMatchObject({ code: 'validation_failed' })
-    for (const { requests } of [stray, foreign]) {
+    // The mirror: the foreign issue is the inward end, this one the outward end.
+    const mirror = fakeJira({ link: { inward: 'OTHER-5', outward: KEY } })
+    await expect(
+      backendFor(mirror.http).removeLink({ key: KEY, linkId: '3' }),
+    ).rejects.toMatchObject({ code: 'validation_failed' })
+    for (const { requests } of [stray, foreign, mirror]) {
       expect(requests.some((r) => r.method === 'DELETE')).toBe(false)
     }
   })
@@ -404,6 +409,15 @@ describe('download', () => {
     ).rejects.toMatchObject({ code: 'not_found' })
     await backend.downloadAttachment({ key: KEY, attachmentId: '5' })
     expect(offered).toEqual(['x_exe'])
+  })
+
+  it('refuses another project before any request', async () => {
+    const { http, requests } = fakeJira()
+    const backend = backendFor(http, { chooseSavePath: () => Promise.resolve(null) })
+    await expect(
+      backend.downloadAttachment({ key: 'OTHER-1', attachmentId: '5' }),
+    ).rejects.toMatchObject({ code: 'validation_failed' })
+    expect(requests).toEqual([])
   })
 
   it('refuses a file over the limit before it opens the dialog', async () => {

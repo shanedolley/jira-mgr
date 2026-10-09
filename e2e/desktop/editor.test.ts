@@ -627,7 +627,7 @@ test('logging out with an unsaved draft asks first, then removes it', async () =
     .getByRole('button', { name: 'Log out' })
 
   await logout.click()
-  await expect(discardDialog()).toContainText('Log out and discard 1 unsaved description?')
+  await expect(discardDialog()).toContainText('Log out and discard 1 unsaved draft?')
   await discardDialog().getByRole('button', { name: 'Keep editing' }).click()
   await expect(discardDialog()).toHaveCount(0)
   await expect(editor()).toContainText('Unsaved words')

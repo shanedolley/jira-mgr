@@ -78,6 +78,9 @@ async function settleRefused(expected: number) {
   await releaseEdit(app)
 }
 
+const PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+
 const TEXT_FILE = { name: 'notes.txt', type: 'text/plain', data: btoa('hello') }
 
 /** Fires a drag event carrying one file at the element, as a file dragged in from the desktop would. */
@@ -240,17 +243,69 @@ test.describe('comments', () => {
 
   test('asks before discarding an edit, and Esc keeps editing', async () => {
     await openStory()
+    const editor = section('Activity').getByRole('textbox', { name: 'Comment by Test User' })
     await section('Activity').getByRole('button', { name: 'Edit comment' }).click()
+    await expect(editor).toBeFocused()
     await window.keyboard.type('!')
+    await expect(editor).toContainText('My first comment!')
     await window.keyboard.press('Escape')
+    const keep = window.getByRole('button', { name: 'Keep editing' })
     await expect(window.getByRole('alertdialog')).toBeVisible()
+    await expect(keep).toBeFocused()
     await window.keyboard.press('Escape')
     await expect(window.getByRole('alertdialog')).toHaveCount(0)
+    await expect(editor).toBeFocused()
     await window.keyboard.press('Escape')
+    await expect(keep).toBeFocused()
     await window.getByRole('button', { name: 'Discard', exact: true }).click()
     await expect(section('Activity').getByText('My first comment!')).toHaveCount(0)
     await expect(section('Activity').getByText('My first comment')).toBeVisible()
     expect(await writes()).toBe(0)
+  })
+
+  const blocksUnload = () => window.evaluate(() => typeof globalThis.onbeforeunload === 'function')
+
+  test('keeps an unsaved comment edit when the page is left, and holds a quit', async () => {
+    await openStory()
+    await section('Activity').getByRole('button', { name: 'Edit comment' }).click()
+    const editor = section('Activity').getByRole('textbox', { name: 'Comment by Test User' })
+    await expect(editor).toBeFocused()
+    await window.keyboard.press('End')
+    await window.keyboard.type(' and more')
+    await expect(editor).toContainText('My first comment and more')
+    await heading('Kick off the engagement').click()
+    await window.keyboard.press('Escape')
+    await expect(issuePage()).toHaveCount(0)
+    await expect.poll(blocksUnload).toBe(true)
+
+    await item(/PSAPAC-1,/).click()
+    await window.keyboard.press('Enter')
+    await expect(heading('Kick off the engagement')).toBeVisible()
+    await expect(editor).toContainText('My first comment and more')
+    await expect(section('Activity').getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect(await writes()).toBe(0)
+
+    await window.keyboard.press('Escape')
+    await expect(window.getByRole('alertdialog')).toBeVisible()
+    await window.getByRole('button', { name: 'Discard', exact: true }).click()
+    await expect.poll(blocksUnload).toBe(false)
+  })
+
+  test('keeps the text of the comment box when the page is left', async () => {
+    await openStory()
+    await section('Activity').getByRole('textbox', { name: 'New comment' }).click()
+    await window.keyboard.type('Half written')
+    await issuePage().getByRole('button', { name: 'Back to issues' }).click()
+    await expect(issuePage()).toHaveCount(0)
+    await item(/PSAPAC-1,/).click()
+    await window.keyboard.press('Enter')
+    await expect(heading('Kick off the engagement')).toBeVisible()
+    await expect(section('Activity').getByRole('textbox', { name: 'New comment' })).toContainText(
+      'Half written',
+    )
+    await expect(
+      section('Activity').getByRole('button', { name: 'Comment', exact: true }),
+    ).toBeEnabled()
   })
 
   test('deletes a comment at once and sends the delete after the confirmation', async () => {
@@ -556,7 +611,7 @@ test.describe('attachments', () => {
     await dragFile(attachZone(), 'drop', {
       name: 'shot.png',
       type: 'image/png',
-      data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      data: PNG,
     })
     await expect.poll(async () => (await uploads()).length).toBe(1)
     await releaseUpload(app)
@@ -598,7 +653,66 @@ test.describe('attachments', () => {
     await expect.poll(async () => (await uploads()).length).toBe(1)
     await releaseUpload(app)
     await expect(section('Attachments').getByText('notes.txt', { exact: true })).toBeVisible()
+    // A second attach of the same drop would queue behind the first and wait on the fake, so the
+    // queue has drained only when no "Uploading" row is left.
+    await expect(section('Attachments').getByText('Uploading notes.txt')).toHaveCount(0)
     expect(await uploads()).toHaveLength(1)
+  })
+
+  test('attaches queued files to the issue they were dropped on after another page opens', async () => {
+    await openStory()
+    await attachZone().evaluate((element) => {
+      const transfer = new DataTransfer()
+      transfer.items.add(new File(['one'], 'first.txt', { type: 'text/plain' }))
+      transfer.items.add(new File(['two'], 'second.txt', { type: 'text/plain' }))
+      element.dispatchEvent(
+        new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }),
+      )
+    })
+    // The first upload is held, so the second waits in the queue.
+    await expect.poll(async () => (await uploads()).length).toBe(1)
+    await section('Links').getByRole('button', { name: 'PSAPAC-2', exact: true }).click()
+    await expect(heading('Review the data model')).toBeVisible()
+    await releaseUpload(app)
+    await expect.poll(async () => (await uploads()).length).toBe(2)
+    await releaseUpload(app)
+    expect((await uploads()).map((u) => `${u.key} ${u.filename}`)).toEqual([
+      'PSAPAC-1 first.txt',
+      'PSAPAC-1 second.txt',
+    ])
+    // Neither file shows on the page that is open now.
+    await expect(section('Attachments').getByText('No attachments')).toBeVisible()
+  })
+
+  test('a mixed drop on a comment editor embeds the image there and attaches only the other file', async () => {
+    await openEstimated()
+    await section('Activity')
+      .getByRole('textbox', { name: 'New comment' })
+      .evaluate((element, data) => {
+        const transfer = new DataTransfer()
+        const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
+        transfer.items.add(new File([bytes], 'shot.png', { type: 'image/png' }))
+        transfer.items.add(new File(['hello'], 'notes.txt', { type: 'text/plain' }))
+        const box = element.getBoundingClientRect()
+        element.dispatchEvent(
+          new DragEvent('drop', {
+            dataTransfer: transfer,
+            bubbles: true,
+            cancelable: true,
+            clientX: box.left + 10,
+            clientY: box.top + 10,
+          }),
+        )
+      }, PNG)
+    await expect.poll(async () => (await uploads()).length).toBe(2)
+    await releaseUpload(app)
+    await releaseUpload(app)
+    // The page attached the text file and left the embedded image to the comment: no third upload.
+    await expect(section('Attachments').getByText('Uploading notes.txt')).toHaveCount(0)
+    await expect(section('Attachments').getByText('notes.txt', { exact: true })).toBeVisible()
+    await expect(section('Attachments').getByText('shot.png', { exact: true })).toBeVisible()
+    const names = (await uploads()).map((upload) => upload.filename).sort()
+    expect(names).toEqual(['notes.txt', 'shot.png'])
   })
 
   test('drops a file that is not an image on the description and it attaches', async () => {
@@ -641,7 +755,7 @@ test.describe('attachments', () => {
     await dragFile(describeZone(), 'drop', {
       name: 'embed.png',
       type: 'image/png',
-      data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      data: PNG,
     })
     await expect.poll(async () => (await uploads()).length).toBe(1)
     await releaseUpload(app)
