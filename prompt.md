@@ -4,9 +4,10 @@
 
 Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
 
-1. **Desktop D3 issue page (#30)**, in progress on `d3-issue-page`, and **D8 saved views (#35)** from `d8-saved-views`: if either pull request is still open, finish it before claiming anything else. D3 must rebase onto D8 (both append IPC channels and edit Shell and Sidebar). D3 keeps Sprint hidden on Epics and Subtasks, as Q20 says.
+1. **Desktop D3 issue page (#30)**: if its pull request from `d3-issue-page` is still open, finish it before claiming anything else.
 2. **L8 read-back (#67)**: code merged in #69. Its last criterion needs one live create with Shane present (steps on #67, which carries `question`). After it, remove `question` and move #67 to HIL Review.
-3. **Desktop D4 editor (#31)** once D3 merges: write its design doc first. D6 create and delete (#33) and D7 keyboard (#34) also wait on D3.
+3. **Desktop D4 editor (#31)**, blocked only by D3: write its design doc from `docs/templates/design-doc.md` first ([ADR-0005](docs/adr/0005-tiptap-editor-with-adf-round-trip.md)). The ADR chose TipTap but names no packages: the design doc lists the exact `@tiptap/*` packages, and adding them is Ask First, so put that list to Shane with the `question` label before installing.
+4. **Desktop D6 create and delete (#33)** and **D7 keyboard (#34)**, blocked only by D3; they can run in parallel worktrees with D4.
 
 ## Reading Order
 

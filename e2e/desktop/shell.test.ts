@@ -55,6 +55,7 @@ test('updates a summary before Jira answers, and restores it when Jira refuses',
   await logIn(window)
   await window.getByRole('treeitem', { name: /Migrate the dashboards/ }).click()
   const detail = window.getByRole('complementary', { name: 'Peek' })
+  const searched = (await counts(app)).searches.unresolved
 
   await detail.getByRole('button', { name: 'Edit summary' }).click()
   await detail.getByLabel('Summary').fill('Migrate the reports')
@@ -66,6 +67,9 @@ test('updates a summary before Jira answers, and restores it when Jira refuses',
   expect((await counts(app)).applied).toBe(0)
   await releaseEdit(app)
   await expect.poll(async () => (await counts(app)).applied).toBe(1)
+  // Only the edited issue is read again; no list reloads.
+  await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-4'])
+  expect((await counts(app)).searches.unresolved).toBe(searched)
 
   await detail.getByRole('button', { name: 'Edit summary' }).click()
   await detail.getByLabel('Summary').fill('reject me')

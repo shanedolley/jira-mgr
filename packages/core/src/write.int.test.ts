@@ -14,6 +14,7 @@ import {
   createIssue,
   deleteIssue,
   editIssue,
+  listTransitions,
   transitionIssue,
   type CreateIssueInput,
   type EditIssueInput,
@@ -659,6 +660,53 @@ describe('transitionIssue', () => {
     serve(() => HttpResponse.json({ errorMessages: ['Issue does not exist.'] }, { status: 404 }))
     const missing = await failure(transitionIssue(client, 'PSAPAC-9', 'Done'))
 
+    expect(odd.code).toBe('jira_error')
+    expect(missing.code).toBe('not_found')
+  })
+})
+
+describe('listTransitions', () => {
+  it('lists each transition with the status it reaches and that status category', async () => {
+    const requests = serve(() => HttpResponse.json(loadFixture('transitions-story')))
+
+    const transitions = await listTransitions(client, 'PSAPAC-3119')
+
+    expect(requests).toEqual([
+      { method: 'GET', path: '/rest/api/3/issue/PSAPAC-3119/transitions', body: undefined },
+    ])
+    expect(transitions.map(({ to }) => [to.name, to.category])).toEqual([
+      ['Hold', 'new'],
+      ['Review', 'indeterminate'],
+      ['To Do', 'new'],
+      ['In Progress', 'indeterminate'],
+      ['Done', 'done'],
+    ])
+    expect(transitions[0]).toEqual({
+      id: '2',
+      name: 'Hold',
+      to: { id: '11855', name: 'Hold', category: 'new' },
+    })
+  })
+
+  it('reports a missing status category as null', async () => {
+    serve(() =>
+      HttpResponse.json({ transitions: [{ id: '1', name: 'Go', to: { id: '9', name: 'Odd' } }] }),
+    )
+    expect(await listTransitions(client, 'PSAPAC-3119')).toEqual([
+      { id: '1', name: 'Go', to: { id: '9', name: 'Odd', category: null } },
+    ])
+  })
+
+  it('refuses a bad key with no request, rejects an odd body and maps a 404', async () => {
+    const requests = serve(() => HttpResponse.json({ transitions: [{ id: 3 }] }))
+    const bad = await failure(listTransitions(client, 'psapac-1'))
+    expect(requests).toEqual([])
+    const odd = await failure(listTransitions(client, 'PSAPAC-3119'))
+    server.resetHandlers()
+    serve(() => HttpResponse.json({ errorMessages: ['Issue does not exist.'] }, { status: 404 }))
+    const missing = await failure(listTransitions(client, 'PSAPAC-9'))
+
+    expect(bad.code).toBe('validation_failed')
     expect(odd.code).toBe('jira_error')
     expect(missing.code).toBe('not_found')
   })

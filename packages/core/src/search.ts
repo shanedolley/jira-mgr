@@ -1,10 +1,10 @@
 import { z } from 'zod'
 
-import { adfDocSchema, type AdfDoc } from './adf-schema.js'
+import { adfDocSchema } from './adf-schema.js'
 import { JiraMgrError } from './errors.js'
 import { getFieldIds } from './fields.js'
 import type { HttpClient } from './http.js'
-import { issueSchema, type Issue } from './issue.js'
+import { issueSchema, type Issue, type IssueDetail } from './issue.js'
 import { readSettings, type FieldIds } from './state.js'
 import { issueKey, parseInput, parseResponse } from './validate.js'
 
@@ -120,11 +120,7 @@ export async function searchIssues(
   return issues
 }
 
-export interface IssueDetail extends Issue {
-  /** The description as Atlassian Document Format, or `null` when the issue has none. */
-  description: AdfDoc | null
-  subtasks: { key: string; summary: string; status: string }[]
-}
+export type { IssueDetail }
 
 const detailSchema = z.object({
   fields: z.object({

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import type { AdfDoc } from './adf-schema.js'
+import { JiraMgrError } from './errors.js'
 import type { FieldIds } from './state.js'
 
 /** Jira sends `+1100` offsets, which `Date` reads; the domain keeps UTC ISO text. */
@@ -110,3 +112,100 @@ export function issueSchema(ids: FieldIds) {
 }
 
 export type Issue = z.infer<ReturnType<typeof issueSchema>>
+
+/** An issue read on its own: the searches leave out the description and the subtasks. */
+export interface IssueDetail extends Issue {
+  /** The description as Atlassian Document Format, or `null` when the issue has none. */
+  description: AdfDoc | null
+  subtasks: { key: string; summary: string; status: string }[]
+}
+
+/** Q23: a type change is allowed only among these three, which share a hierarchy level. */
+export const SWAPPABLE_TYPES = ['Story', 'Task', 'Bug'] as const
+
+export type SwappableType = (typeof SWAPPABLE_TYPES)[number]
+
+/** A Jira duration such as "2h 30m" or "1w 2d". */
+export const DURATION_PATTERN = /^\d+[wdhm](?: \d+[wdhm])*$/
+
+/** What an issue's type lets a client show and edit. Pure, so every client applies the same rules. */
+export interface PropertyRules {
+  /** Q20: an Epic or a Subtask has no Sprint. */
+  sprint: boolean
+  /** The estimates and Time remaining (h): an Epic has no time tracking. */
+  estimates: boolean
+  /** An Epic has no parent; every other type does. */
+  parent: boolean
+  /** Q23: only a Story, Task or Bug can change type. */
+  typeChange: boolean
+}
+
+export function propertyRules(type: Pick<Issue['issueType'], 'name' | 'subtask'>): PropertyRules {
+  const epic = type.name === 'Epic'
+  return {
+    sprint: !epic && !type.subtask,
+    estimates: !epic,
+    parent: !epic,
+    typeChange: (SWAPPABLE_TYPES as readonly string[]).includes(type.name),
+  }
+}
+
+type Typed = Pick<Issue, 'key'> & {
+  issueType: Pick<Issue['issueType'], 'subtask' | 'hierarchyLevel'>
+}
+
+/**
+ * The issues `issue` may take as its parent: Epics for a Story, Task or Bug, and any of those
+ * three for a Subtask. An Epic has none. Never the issue itself.
+ */
+export function parentCandidates<T extends Typed>(issue: Typed, issues: readonly T[]): T[] {
+  if (issue.issueType.hierarchyLevel >= 1) return []
+  return issues.filter(({ key, issueType }) =>
+    key === issue.key
+      ? false
+      : issue.issueType.subtask
+        ? !issueType.subtask && issueType.hierarchyLevel === 0
+        : issueType.hierarchyLevel >= 1,
+  )
+}
+
+const UNIT_SECONDS = { w: 5 * 8 * 3600, d: 8 * 3600, h: 3600, m: 60 } as const
+
+/**
+ * A Jira duration in seconds, or `null` when `text` is not one. Assumes Jira's default of 8 hours
+ * to a day and 5 days to a week, so a site that configures otherwise differs until Jira answers.
+ */
+// ponytail: default working time, read the site's time tracking configuration if one differs.
+export function parseEstimate(text: string): number | null {
+  const trimmed = text.trim()
+  if (!DURATION_PATTERN.test(trimmed)) return null
+  return trimmed
+    .split(' ')
+    .reduce(
+      (sum, part) =>
+        sum + Number.parseInt(part, 10) * UNIT_SECONDS[part.slice(-1) as keyof typeof UNIT_SECONDS],
+      0,
+    )
+}
+
+/** Seconds as hours and minutes, such as `1h 30m`. Hours and minutes alone need no working-day length. */
+export function formatEstimate(seconds: number): string {
+  const minutes = Math.round(seconds / 60)
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return h === 0 && m === 0
+    ? '0m'
+    : [h > 0 && `${String(h)}h`, m > 0 && `${String(m)}m`].filter(Boolean).join(' ')
+}
+
+/**
+ * Q23: throws `validation_failed` unless a type of `currentType` may change, which only a Story,
+ * Task or Bug can. The CLI and the desktop app call it before they edit a type.
+ */
+export function assertTypeChangeAllowed(key: string, currentType: string): void {
+  if ((SWAPPABLE_TYPES as readonly string[]).includes(currentType)) return
+  throw new JiraMgrError(
+    'validation_failed',
+    `${key} is ${/^[AEIOU]/i.test(currentType) ? 'an' : 'a'} ${currentType}. The type can change only among Story, Task and Bug.`,
+  )
+}

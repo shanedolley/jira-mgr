@@ -1,6 +1,6 @@
 # Desktop App
 
-The Electron app, package `@jira-mgr/desktop`, built with electron-vite. The renderer lives here too: React, Tailwind and TanStack Query. Today it logs in, then shows a sidebar with the saved views and the Tree: the project's issues grouped by Customer, Epic and child, with a toolbar of toggles and filters, `J` and `K` navigation, and a space-bar Peek that edits the summary in place. Light or dark theme.
+The Electron app, package `@jira-mgr/desktop`, built with electron-vite. The renderer lives here too: React, Tailwind and TanStack Query. Today it logs in, then shows a sidebar with the saved views and the Tree: the project's issues grouped by Customer, Epic and child, with a toolbar of toggles and filters, `J` and `K` navigation, and a space-bar Peek that edits the summary in place. Enter opens an issue's full page, with a properties sidebar of pickers. Light or dark theme.
 
 ## Run
 
@@ -23,37 +23,57 @@ src/preload/    preload script: the only bridge to the renderer
 src/renderer/   React renderer
 ```
 
-| File                               | Holds                                                                                                                                                    |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/shared/ipc.ts`                | `IpcContract`, one entry per channel, the progress event and `JmApi`, the type of `window.jm`                                                            |
-| `src/main/handlers.ts`             | One handler per channel: validates the argument with zod, calls the backend, returns an `IpcResult`                                                      |
-| `src/main/backend.ts`              | The only code that calls `@jira-mgr/core`: login, logout, per-phase issue loads, Customers, current user, toggles, saved views, summary edit             |
-| `src/main/app.ts`                  | Window creation, handler registration, window focus events, progress events to the window that asked                                                     |
-| `src/main/trust.ts`                | Decides whether an IPC request came from our own page                                                                                                    |
-| `src/main/e2e.ts`                  | Test entry: the same app on a fake Jira and a fake Keychain, with windows that open invisible, click-through and without focus. Not the package's `main` |
-| `src/renderer/src/ipc.ts`          | `call(channel, args)`: sends a request and throws a `JiraMgrError` on failure                                                                            |
-| `src/renderer/src/queries.ts`      | TanStack Query hooks over `call`: the two phase queries, me, Customers, toggles; the load tracker                                                        |
-| `src/renderer/src/viewQueries.ts`  | The saved views query and the create, rename and delete mutations: optimistic rename and delete with rollback                                            |
-| `src/renderer/src/views.ts`        | `activeView`: which saved view the filter bar and toggles currently equal                                                                                |
-| `src/renderer/src/ViewsList.tsx`   | The sidebar's Views section: apply, New view, inline rename, inline delete confirmation, arrow-key navigation                                            |
-| `src/renderer/src/optimistic.ts`   | The summary mutation: optimistic update in every phase cache that holds the issue, rollback, refetch of the touched phases                               |
-| `src/renderer/src/tree.ts`         | Pure Tree model: `mergeIssues`, `flattenTree`, `moveActive`, `clickRow`, `windowRange`, `fallbackRow`                                                    |
-| `src/renderer/src/filters.ts`      | Pure filter-bar model: the choices per field, toggling a choice, the chips                                                                               |
-| `src/renderer/src/Shell.tsx`       | Owns the tree state (filters, collapsed and revealed sets, active row, Peek) and derives the rows from the query caches                                  |
-| `src/renderer/src/IssueTree.tsx`   | The virtual window over the rows: keys, scroll anchoring, `aria-activedescendant`                                                                        |
-| `src/renderer/src/TreeRow.tsx`     | One row of any kind                                                                                                                                      |
-| `src/renderer/src/TreeToolbar.tsx` | The three toggles, the Filter and Groups menus, filter chips and the text filter                                                                         |
-| `src/renderer/src/IssueDetail.tsx` | The Peek: summary editor, properties, mismatch detail                                                                                                    |
-| `src/renderer/src/focus.ts`        | Feeds the Electron window's focus to TanStack Query                                                                                                      |
-| `src/renderer/src/theme.ts`        | System, light or dark; the choice sits in `localStorage`                                                                                                 |
+| File                                    | Holds                                                                                                                                                       |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/ipc.ts`                     | `IpcContract`, one entry per channel, the progress event and `JmApi`, the type of `window.jm`                                                               |
+| `src/main/handlers.ts`                  | One handler per channel: validates the argument with zod, calls the backend, returns an `IpcResult`                                                         |
+| `src/main/backend.ts`                   | The only code that calls `@jira-mgr/core`: login, logout, per-phase issue loads, one-issue reads, every edit, Customers, current user, toggles, saved views |
+| `src/main/messages.ts`                  | Rewrites core's CLI wording in an error message ("Run `jm auth login`") into app wording before it crosses IPC                                              |
+| `src/main/app.ts`                       | Window creation, handler registration, window focus events, progress events to the window that asked                                                        |
+| `src/main/trust.ts`                     | Decides whether an IPC request came from our own page                                                                                                       |
+| `src/main/e2e.ts`                       | Test entry: the same app on a fake Jira and a fake Keychain, with windows that open invisible, click-through and without focus. Not the package's `main`    |
+| `src/renderer/src/ipc.ts`               | `call(channel, args)`: sends a request and throws a `JiraMgrError` on failure                                                                               |
+| `src/renderer/src/queries.ts`           | TanStack Query hooks over `call`: the two phase queries, me, Customers, toggles; the load tracker                                                           |
+| `src/renderer/src/viewQueries.ts`       | The saved views query and the create, rename and delete mutations: optimistic rename and delete with rollback                                               |
+| `src/renderer/src/views.ts`             | `activeView`: which saved view the filter bar and toggles currently equal                                                                                   |
+| `src/renderer/src/ViewsList.tsx`        | The sidebar's Views section: apply, New view, inline rename, inline delete confirmation, arrow-key navigation                                               |
+| `src/renderer/src/optimistic.ts`        | `issueMutation`: an edit that patches every cache holding the issue, rolls back field by field, then reads that one issue again                             |
+| `src/renderer/src/properties.ts`        | Pure page model: recent assignees, sprint and label choices, parent choices, the Customer prompt's match, one patch per property                            |
+| `src/renderer/src/tree.ts`              | Pure Tree model: `mergeIssues`, `flattenTree`, `moveActive`, `clickRow`, `windowRange`, `fallbackRow`                                                       |
+| `src/renderer/src/filters.ts`           | Pure filter-bar model: the choices per field, toggling a choice, the chips                                                                                  |
+| `src/renderer/src/Shell.tsx`            | Owns the tree state (filters, collapsed and revealed sets, active row, Peek) and derives the rows from the query caches                                     |
+| `src/renderer/src/IssueTree.tsx`        | The virtual window over the rows: keys, scroll anchoring, `aria-activedescendant`                                                                           |
+| `src/renderer/src/TreeRow.tsx`          | One row of any kind                                                                                                                                         |
+| `src/renderer/src/TreeToolbar.tsx`      | The three toggles, the Filter and Groups menus, filter chips and the text filter                                                                            |
+| `src/renderer/src/IssueDetail.tsx`      | The Peek: summary editor, properties, mismatch detail with its fix, an Open button                                                                          |
+| `src/renderer/src/IssuePage.tsx`        | The full page: summary, description, subtasks, mismatch fix; Esc and Back return to the Tree                                                                |
+| `src/renderer/src/IssueProperties.tsx`  | The properties sidebar: one picker or field per property, the shared error line, the Customer prompt                                                        |
+| `src/renderer/src/Picker.tsx`           | The one picker: a button that opens a native popover with a listbox, optional search, multi-select and create                                               |
+| `src/renderer/src/ParentPrompt.tsx`     | The modal dialog that asks about the Customer and Engagement when a new parent differs (Q16)                                                                |
+| `src/renderer/src/SummaryEditor.tsx`    | The summary heading and its in-place editor, shared by the Peek and the page                                                                                |
+| `src/renderer/src/CustomerMismatch.tsx` | The mismatch notice and the one-click "Match Epic's Customer" fix (Q15)                                                                                     |
+| `src/renderer/src/focus.ts`             | Feeds the Electron window's focus to TanStack Query                                                                                                         |
+| `src/renderer/src/theme.ts`             | System, light or dark; the choice sits in `localStorage`                                                                                                    |
 
 ## Tree
 
-- Loading: `['issues', 'unresolved']`, `['toggles']` and `['me']` start together. The Tree renders once the unresolved phase and the toggles have data, and `me` when "Assignee: me" or the assignee filter needs it. `['issues', 'done']` then loads in the background, always, since Done chips need the Done issues under open parents, and the toolbar shows the running count. A saved summary refetches only the phases that hold the issue.
+- Loading: `['issues', 'unresolved']`, `['toggles']` and `['me']` start together. The Tree renders once the unresolved phase and the toggles have data, and `me` when "Assignee: me" or the assignee filter needs it. `['issues', 'done']` then loads in the background, always, since Done chips need the Done issues under open parents, and the toolbar shows the running count. An edit reads only the edited issue again and leaves both phase loads alone.
 - The Tree has no grouping, sorting or Done rules of its own: `buildHierarchy` and `issueMatcher` from core decide, as `jm issue tree` does. One difference remains. `jm issue tree` never loads Done issues under "Hide done", so it prints an open Story whose Epic is Done under No Epic. The app moves that Story under its dimmed Epic once Done issues load.
 - Rows are 32 pixels tall and only the rows in view, plus 10 of overscan and the active row, are in the DOM. Scroll anchoring keeps the first visible row where it is when a rebuild changes the rows above it.
 - Collapsed groups, revealed chips and filters last for the session. "Hide done", "Assignee: me" and "Hide empty Customers" persist in `settings.json` under `toggles`; the CLI ignores them.
-- Keys: `J`/`K` and the arrows move, `ArrowRight` and `ArrowLeft` expand, collapse and change level, `Shift` with them expands or collapses all, `Home`, `End`, `PageUp` and `PageDown` jump, `Enter` toggles a group or opens an issue, `Space` toggles the Peek, `Esc` closes it. Every other single-letter key is left to D7.
+- Keys: `J`/`K` and the arrows move, `ArrowRight` and `ArrowLeft` expand, collapse and change level, `Shift` with them expands or collapses all, `Home`, `End`, `PageUp` and `PageDown` jump, `Enter` toggles a group or opens an issue's full page, `Space` toggles the Peek, `Esc` closes it. Every other single-letter key is left to D7.
+
+## Issue Page
+
+- Enter on an issue row, or Open in the Peek, shows the page over the Tree. The Tree stays mounted and inert under it, so its scroll position, active row and Peek survive. Esc or Back to issues returns to the Tree, with focus on it. The parent key and the subtasks open their own pages.
+- The page shows the issue from the loaded lists at once, then reads it on its own (`issues:get`), which adds the description and subtasks. The description is read-only Markdown text until the editor in D4.
+- The sidebar lists Status, Assignee, Priority and Labels; Type, Parent, Customer, Engagement and Sprint; Start date, Due date, the original estimate, the remaining estimate (read-only) and Time remaining (h). `propertyRules` in core hides Sprint, Parent and the estimates on an Epic, hides Sprint on a Subtask (Q20), and fixes the type of anything but a Story, Task or Bug. Time remaining (h) shows on a Task, Bug and Subtask as well as a Story, which is wider than Q22's "Story only", because live edits accepted it on a Subtask.
+- Every picker is a `Picker`: a button that opens a native popover holding a listbox. With a search field the field is a combobox that points at the active option with `aria-activedescendant`; without one the listbox takes focus. Arrow keys move, Enter chooses, Esc closes and returns focus to the button, and ArrowDown on the button opens it.
+- Status lists the statuses the issue can reach now (`issues:transitions`), in Q21 order, and moves by target status. Assignee lists Unassigned, Me and the people on the most recently updated loaded issues (up to five), then searches assignable users (`users:search`). Labels are the labels on the loaded issues, which are the project's own, since Jira's suggestions are site-wide (Q35); typing a new one with no spaces creates it. Sprint lists the active sprint and future sprints that have dates, with Show all for the closed and undated ones; a closed sprint is listed disabled, since Jira refuses a move into it (Q20). Customer, Engagement, Priority and Type come from the create metadata (`fields:options`), and Type offers only Story, Task and Bug (Q23).
+- Parent searches the loaded issues that can be a parent (`parentCandidates`). When the chosen parent's Customer or Engagement differs, a modal asks whether to also set them to the parent's (Q16) before anything is sent: Move and set, Move only, or Cancel with Esc. One edit carries the parent and, if asked, the Customer and Engagement.
+- Dates, the original estimate and Time remaining are fields that save on Enter or when focus leaves them, and revert on Esc. A date input steps through its day, month and year segments on Tab, so Enter or leaving the field saves. The original estimate takes a Jira duration such as `2h 30m`; anything else shows an error and sends nothing.
+- Every edit is optimistic. A refused edit puts back only the fields it changed, and only while they still show the optimistic value, and the sidebar says why. Once the last edit to an issue settles, the app reads that one issue again and the lists and the page take what Jira holds, including what Jira changed itself: an estimate edit also moves the remaining estimate and Time remaining. No list is reloaded for an edit. A status change that crosses into or out of Done moves the issue between the two cached lists.
+- The "Match Epic's Customer" button in the Peek and on the page copies the Epic's Customer onto a child whose own differs (Q15). An Epic with no Customer offers no fix, since core cannot clear the field.
 
 ## Saved Views
 
@@ -75,6 +95,8 @@ src/renderer/   React renderer
 - The token goes renderer to main once, at login, and stays in main. No channel returns it, and no error message or log line carries it, with `JM_DEBUG=1` too, which logs stack frames and never the message. The login mutation has `gcTime: 0`, so the cache drops the token with the login screen. Until then it sits in the renderer's memory, as the typed value does.
 - Each handler gets a second argument, `{ sendProgress }`, built from the requesting window's sender. `issues:list` reports each page through it as the `issues:progress` event, which preload exposes as `onIssuesProgress`. The renderer numbers every load and ignores progress for any other load id.
 - `issues:list` loads one phase. A new load of a phase aborts the one running for it, and `session:logout` aborts both before the token is removed. An aborted load answers `null`, never an error.
+- Page channels: `issues:get` reads one issue with its description and subtasks; `issues:edit` sends a strict `changes` object (assignee, priority, dates, labels to add or remove, parent, Customer, Engagement, original estimate, Time remaining, type); `issues:setStatus` and `issues:setSprint` move by target status and by sprint; `issues:transitions`, `sprints:list`, `users:search` and `fields:options` feed the pickers. Every write refuses an issue outside the settings project through `assertInProject`, a new parent included, and a type change reads the issue first and refuses an Epic or Subtask, as `jm issue edit` does.
+- Main rewrites the CLI wording in a core error message before it crosses IPC (`src/main/messages.ts`), so "Run `jm auth login`" reads "Log in again." in the app. The error code and every other word stay as core wrote them, and the CLI never passes through it.
 - `settings:setToggles` writes through a promise chain, so two quick presses write in order. It replaces only `toggles` and keeps the rest of the settings.
 - `views:list`, `views:create`, `views:rename` and `views:delete` take strict objects: a name of at most 80 characters, filters in core's shape (lists of strings, a text string) and the three toggles. Core owns the name rules (trimmed, not empty, unique in any case) and answers `validation_failed` or `not_found`.
 - Window focus travels the other way: main sends `window:focus`, and the renderer hands it to TanStack Query's focus manager. Chromium raises `visibilitychange` only when a window hides, so the default would miss a switch back from another app.
@@ -94,8 +116,13 @@ src/renderer/   React renderer
 - The Tree shows nothing until a whole phase has loaded, since a partial phase can hold a Story whose Epic is on a later page.
 - The renderer cannot cancel a load by itself. A newer load of a phase and logout abort the one running; an unmounted query otherwise runs to the end.
 - Filter choices other than statuses come from the loaded issues, so an issue that is not loaded cannot be filtered for.
-- The one-click fix for a Customer mismatch ships with D3. The badge shows the mismatch; the Peek names both Customers.
 - Saved views have no order controls and no "update this view with the current filters": delete it and save it again.
 - Row heights are fixed. A row with a second line would need a rewrite of the window.
 - The theme choice lives in `localStorage`, not in the settings file, which the CLI also reads. Move it there if the CLI should honour it.
-- A saved summary refetches the whole phase that holds the issue. Re-reading only that issue belongs with D3.
+- Opening the Peek narrows the Tree, which can wrap the toolbar onto another line and move the rows by one, so a double click on a row lands on its neighbour. Enter and the Peek's Open button open the page.
+- The page cannot clear a parent, since core's `editIssue` takes a key only, and cannot clear the original estimate, since it takes a duration only.
+- "Recent assignees" are the people on the most recently updated loaded issues, since Jira keeps no record of who the user assigned to.
+- The label list is the labels on the issues loaded so far, so a label used only by a Done issue appears once Done has loaded.
+- The optimistic estimate assumes 8 hours to a day and 5 days to a week. A site with other working time shows the difference until Jira answers.
+- The description is read-only text until D4's editor, and the page lists no comments, worklogs, attachments or links yet.
+- Subtasks list only on the page, where `getIssue` returns them; the Tree builds Subtasks from the parent keys of the loaded issues.

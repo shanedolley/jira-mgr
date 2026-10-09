@@ -37,6 +37,14 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     logout: record('logout', loggedOut),
     listIssues: record('listIssues', []),
     setSummary: record('setSummary', undefined),
+    getIssue: record('getIssue', {} as never),
+    editIssue: record('editIssue', undefined),
+    listTransitions: record('listTransitions', []),
+    setStatus: record('setStatus', undefined),
+    setSprint: record('setSprint', undefined),
+    listSprints: record('listSprints', []),
+    searchUsers: record('searchUsers', []),
+    listFieldOptions: record('listFieldOptions', []),
     getMe: record('getMe', { accountId: 'u1', displayName: 'Me' }),
     listCustomers: record('listCustomers', []),
     getToggles: record('getToggles', TOGGLES),
@@ -121,6 +129,65 @@ describe('argument validation', () => {
   })
 })
 
+describe('issue edits', () => {
+  const EDIT = { key: 'PSAPAC-12', changes: { assignee: 'u1' } }
+
+  it.each([
+    ['an unknown change', { ...EDIT, changes: { summary: 'x' } }],
+    ['an unknown top-level field', { ...EDIT, force: true }],
+    ['a key with a path in it', { ...EDIT, key: 'PSAPAC-12/../x' }],
+    ['a start date that is not YYYY-MM-DD', { ...EDIT, changes: { startDate: '1 May' } }],
+    ['a negative Time remaining', { ...EDIT, changes: { timeRemainingHours: -1 } }],
+    ['a type outside Story, Task and Bug', { ...EDIT, changes: { type: 'Epic' } }],
+    ['a label with a space', { ...EDIT, changes: { addLabels: ['two words'] } }],
+    ['a parent that is not a key', { ...EDIT, changes: { parentKey: 'epic' } }],
+    ['no changes object', { key: 'PSAPAC-12' }],
+  ])('refuses issues:edit with %s before the backend runs', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['issues:edit'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes a valid edit through, null clearing a date and an assignee', async () => {
+    const { backend, calls } = fakeBackend()
+    const args = {
+      key: 'PSAPAC-12',
+      changes: { assignee: null, dueDate: null, startDate: '2026-10-09', addLabels: ['docs'] },
+    }
+    const result = await createHandlers(backend)['issues:edit'](args, noProgress)
+    expect(result).toEqual({ ok: true, data: null })
+    expect(calls).toEqual([{ method: 'editIssue', args: [args] }])
+  })
+
+  it.each([
+    ['issues:get', { key: 'bad' }],
+    ['issues:transitions', { key: 'PSAPAC-1', extra: 1 }],
+    ['issues:setStatus', { key: 'PSAPAC-1' }],
+    ['issues:setSprint', { key: 'PSAPAC-1', sprintId: 0 }],
+    ['issues:setSprint', { key: 'PSAPAC-1', sprintId: 1.5 }],
+    ['sprints:list', {}],
+    ['users:search', { query: 'x'.repeat(201) }],
+    ['fields:options', { field: 'status' }],
+  ] as const)('refuses %s with bad arguments %j', async (channel, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)[channel](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes a backlog move and a user search through', async () => {
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    await handlers['issues:setSprint']({ key: 'PSAPAC-1', sprintId: null }, noProgress)
+    await handlers['users:search']({ query: '' }, noProgress)
+    expect(calls).toEqual([
+      { method: 'setSprint', args: [{ key: 'PSAPAC-1', sprintId: null }] },
+      { method: 'searchUsers', args: [{ query: '' }] },
+    ])
+  })
+})
+
 describe('issue loads', () => {
   it.each([
     ['an unknown phase', { phase: 'all', loadId: 1 }],
@@ -200,6 +267,20 @@ describe('errors', () => {
     })
     // The result must survive the structured clone IPC applies.
     expect(structuredClone(result)).toEqual(result)
+  })
+
+  it('words a core error for the app, keeping its code', async () => {
+    const { backend } = fakeBackend({
+      listIssues: () =>
+        Promise.reject(
+          new JiraMgrError('permission_denied', 'Not logged in. Run `jm auth login`.'),
+        ),
+    })
+    const result = await createHandlers(backend, () => undefined)['issues:list'](LIST, noProgress)
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'permission_denied', message: 'Not logged in. Log in again.' },
+    })
   })
 
   it('hides the message of an unexpected error and logs only the channel and code', async () => {

@@ -4,13 +4,12 @@ import { adfDocSchema } from './adf-schema.js'
 import { JiraMgrError } from './errors.js'
 import { getFieldIds } from './fields.js'
 import type { HttpClient } from './http.js'
+import { SWAPPABLE_TYPES, type Issue } from './issue.js'
 import { getIssue, type IssueDetail } from './search.js'
 import { readSettings, type FieldIds } from './state.js'
 import { duration, issueKey, parseInput } from './validate.js'
 
 const ISSUE_TYPES = ['Epic', 'Story', 'Task', 'Bug', 'Subtask'] as const
-/** Q23: a type change is allowed only among these three, which share a hierarchy level. */
-const SWAPPABLE_TYPES = ['Story', 'Task', 'Bug'] as const
 
 const text = z.string().min(1)
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.')
@@ -215,10 +214,49 @@ const transitionsResponse = z.object({
     z.object({
       id: z.string(),
       name: z.string(),
-      to: z.object({ id: z.string(), name: z.string() }),
+      to: z.object({
+        id: z.string(),
+        name: z.string(),
+        statusCategory: z
+          .object({ key: z.enum(['new', 'indeterminate', 'done', 'undefined']) })
+          .optional(),
+      }),
     }),
   ),
 })
+
+/** A move open to an issue, named by the status it reaches. */
+export interface Transition {
+  id: string
+  /** The transition's own name, which can differ from the status it reaches. */
+  name: string
+  /** `category` is `null` when Jira sends none. */
+  to: { id: string; name: string; category: Issue['status']['category'] | null }
+}
+
+/**
+ * The transitions open to an issue in its current status, each with the status it reaches.
+ * Throws `not_found` when the issue does not exist.
+ */
+export async function listTransitions(http: HttpClient, key: string): Promise<Transition[]> {
+  const issueKeyValue = parseInput(issueKey, key, 'move the issue')
+  const raw = await http.request('GET', `/rest/api/3/issue/${issueKeyValue}/transitions`)
+  const parsed = transitionsResponse.safeParse(raw)
+  if (!parsed.success) {
+    throw new JiraMgrError(
+      'jira_error',
+      `Jira sent an unexpected transitions response for ${issueKeyValue}.`,
+      {
+        details: { issues: parsed.error.issues },
+      },
+    )
+  }
+  return parsed.data.transitions.map(({ id, name, to }) => ({
+    id,
+    name,
+    to: { id: to.id, name: to.name, category: to.statusCategory?.key ?? null },
+  }))
+}
 
 /**
  * Moves an issue to the status named `status` (case-insensitive) or with that id, by the
@@ -231,30 +269,21 @@ export async function transitionIssue(
   status: string,
 ): Promise<string> {
   const issueKeyValue = parseInput(issueKey, key, 'move the issue')
-  const path = `/rest/api/3/issue/${issueKeyValue}/transitions`
-  const raw = await http.request('GET', path)
-  const parsed = transitionsResponse.safeParse(raw)
-  if (!parsed.success) {
-    throw new JiraMgrError(
-      'jira_error',
-      `Jira sent an unexpected transitions response for ${issueKeyValue}.`,
-      {
-        details: { issues: parsed.error.issues },
-      },
-    )
-  }
+  const transitions = await listTransitions(http, issueKeyValue)
   const wanted = status.toLowerCase()
-  const transition = parsed.data.transitions.find(
+  const transition = transitions.find(
     ({ to }) => to.id === status || to.name.toLowerCase() === wanted,
   )
   if (transition === undefined) {
-    const available = parsed.data.transitions.map(({ to }) => to.name)
+    const available = transitions.map(({ to }) => to.name)
     throw new JiraMgrError(
       'validation_failed',
       `${issueKeyValue} cannot move to "${status}". Available: ${available.join(', ')}.`,
       { details: { available } },
     )
   }
-  await http.request('POST', path, { body: { transition: { id: transition.id } } })
+  await http.request('POST', `/rest/api/3/issue/${issueKeyValue}/transitions`, {
+    body: { transition: { id: transition.id } },
+  })
   return transition.to.name
 }

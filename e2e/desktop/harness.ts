@@ -12,8 +12,13 @@ export const TOKEN = 'good-token'
 export interface Counts {
   searches: { unresolved: number; done: number }
   doneEarly: number
+  /** Writes received: edits, transitions and sprint moves. */
   edits: number
   applied: number
+  /** Reads of one issue, in order of arrival. */
+  issueReads: string[]
+  /** The body of every write received, in order. */
+  editBodies: unknown[]
 }
 
 interface FakeJira {
@@ -21,6 +26,7 @@ interface FakeJira {
   releaseEdit: () => void
   releaseDone: () => void
   failDone: () => void
+  failRead: () => void
 }
 
 interface WithFake {
@@ -59,6 +65,12 @@ export const releaseDone = (app: ElectronApplication) =>
 export const failDone = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failDone()
+  })
+
+/** Makes the fake Jira answer 500 to the next read of one issue. */
+export const failRead = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.failRead()
   })
 
 export async function logIn(window: Page, token = TOKEN) {

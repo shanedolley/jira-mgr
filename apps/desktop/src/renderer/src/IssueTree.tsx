@@ -147,7 +147,7 @@ export function IssueTree({
   const onRowClick = useCallback(
     (id: string, onChevron: boolean) => {
       // The click also focuses the Tree, the nearest focusable ancestor of the row.
-      onChange({ ...clickRow(rows, state, id, onChevron), focusPeek: false })
+      onChange({ ...clickRow(rows, state, id, onChevron), openPage: false })
     },
     [rows, state, onChange],
   )
