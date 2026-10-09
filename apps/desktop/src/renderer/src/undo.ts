@@ -1,4 +1,6 @@
 import type { Issue } from '@jira-mgr/core'
+import type { AdfDoc } from '@jira-mgr/core/adf'
+import type { IssueDetail } from '@jira-mgr/core/issue'
 import { SWAPPABLE_TYPES, formatEstimate, type SwappableType } from '@jira-mgr/core/issue'
 import type { QueryClient } from '@tanstack/react-query'
 
@@ -18,6 +20,7 @@ export type Reversal =
   | { kind: 'status'; statusId: string }
   | { kind: 'sprint'; sprintId: number | null }
   | { kind: 'summary'; summary: string }
+  | { kind: 'description'; description: AdfDoc | null }
 
 export interface UndoEntry {
   key: string
@@ -34,10 +37,11 @@ export interface UndoEntry {
 /** How many edits the stack remembers. The oldest falls off the bottom. */
 export const UNDO_DEPTH = 50
 
-type Fields = Partial<Issue>
+type Fields = Partial<IssueDetail>
 
-const NAMES: Partial<Record<keyof Issue, string>> = {
+const NAMES: Partial<Record<keyof IssueDetail, string>> = {
   summary: 'summary',
+  description: 'description',
   status: 'status',
   assignee: 'assignee',
   priority: 'priority',
@@ -53,20 +57,22 @@ const NAMES: Partial<Record<keyof Issue, string>> = {
   timeRemainingHours: 'time remaining',
 }
 
-const fieldsOf = (fields: Fields) => Object.keys(fields) as (keyof Issue)[]
+const fieldsOf = (fields: Fields) => Object.keys(fields) as (keyof IssueDetail)[]
 
 const words = (names: readonly string[]) =>
   names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names.at(-1) ?? ''}`
 
-const nameFields = (fields: readonly (keyof Issue)[]) =>
+const nameFields = (fields: readonly (keyof IssueDetail)[]) =>
   words(fields.map((field) => NAMES[field] ?? field))
 
 /** "status", or "parent, Customer and Engagement". */
 export const whatChanged = (fields: Fields): string => nameFields(fieldsOf(fields))
 
 /** The value of one field as a person reads it. */
-function show(field: keyof Issue, issue: Fields): string {
+function show(field: keyof IssueDetail, issue: Fields): string {
   switch (field) {
+    case 'description':
+      return issue.description == null ? 'empty' : 'the saved text'
     case 'status':
       return issue.status?.name ?? 'none'
     case 'assignee':
@@ -94,7 +100,7 @@ function show(field: keyof Issue, issue: Fields): string {
     case 'summary':
       return `"${issue.summary ?? ''}"`
     default:
-      return String(issue[field] ?? 'none')
+      return String((issue[field] as string | number | boolean | null | undefined) ?? 'none')
   }
 }
 
@@ -227,12 +233,42 @@ export function summaryEntry(args: { key: string }, done: Done): UndoEntry {
   }
 }
 
+/** The entry for a description save; the description it replaced is the one to write back. */
+export function descriptionEntry(args: { key: string }, done: Done): UndoEntry {
+  const previous = done.before.description
+  return {
+    key: args.key,
+    what: 'description',
+    after: done.patch,
+    before: done.before,
+    reversal: previous === undefined ? null : { kind: 'description', description: previous },
+  }
+}
+
+/** A description as a string that ignores key order and the `localId`s Jira may add or renumber. */
+function descriptionIdentity(doc: AdfDoc | null | undefined): string {
+  const plain = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(plain)
+    if (value === null || typeof value !== 'object') return value
+    const entries = Object.entries(value)
+      .filter(([key]) => key !== 'localId')
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([key, item]): [string, unknown] => [key, plain(item)])
+      // Jira adding a localId to a node with no other attrs leaves `attrs: {}`, which is no attrs.
+      .filter(([key, item]) => key !== 'attrs' || Object.keys(item as object).length > 0)
+    return Object.fromEntries(entries)
+  }
+  return JSON.stringify(plain(doc ?? null))
+}
+
 /**
  * What identifies a field's value, so a re-read that fills in an avatar or a sprint's dates does
  * not look like someone else's change. Labels compare as a set.
  */
-function identity(field: keyof Issue, issue: Fields): unknown {
+function identity(field: keyof IssueDetail, issue: Fields): unknown {
   switch (field) {
+    case 'description':
+      return descriptionIdentity(issue.description)
     case 'status':
     case 'priority':
     case 'issueType':

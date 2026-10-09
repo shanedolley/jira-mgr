@@ -8,6 +8,7 @@ import {
   changedSince,
   describeEdit,
   describeUndo,
+  descriptionEntry,
   editEntry,
   recorder,
   invertChanges,
@@ -274,5 +275,49 @@ describe('recorder', () => {
       done,
     )
     expect(undoStack(client).size).toBe(0)
+  })
+})
+
+describe('description undo', () => {
+  const doc = (text: string, localId?: string) => ({
+    version: 1 as const,
+    type: 'doc' as const,
+    content: [
+      {
+        type: 'paragraph',
+        ...(localId === undefined ? {} : { attrs: { localId } }),
+        content: [{ type: 'text', text }],
+      },
+    ],
+  })
+
+  it('writes the replaced description back, or nothing when it is unknown', () => {
+    const entry = descriptionEntry(
+      { key: 'PSAPAC-1' },
+      { patch: { description: doc('new') }, before: { description: doc('old') } },
+    )
+    expect(entry.reversal).toEqual({ kind: 'description', description: doc('old') })
+    expect(entry.what).toBe('description')
+    expect(describeEdit(entry)).toBe('PSAPAC-1: description changed to the saved text')
+    const cleared = descriptionEntry(
+      { key: 'PSAPAC-1' },
+      { patch: { description: doc('new') }, before: { description: null } },
+    )
+    expect(cleared.reversal).toEqual({ kind: 'description', description: null })
+    expect(describeUndo(cleared)).toBe('Undid PSAPAC-1: description back to empty')
+    expect(
+      descriptionEntry({ key: 'PSAPAC-1' }, { patch: { description: doc('new') }, before: {} })
+        .reversal,
+    ).toBeNull()
+  })
+
+  it('refuses an undo when the description changed, but not for localIds Jira added', () => {
+    const entry = descriptionEntry(
+      { key: 'PSAPAC-1' },
+      { patch: { description: doc('new') }, before: { description: doc('old') } },
+    )
+    expect(changedSince(entry, { description: doc('new', 'abc') })).toBe('')
+    expect(changedSince(entry, { description: doc('theirs') })).toBe('description')
+    expect(changedSince(entry, { description: null })).toBe('description')
   })
 })

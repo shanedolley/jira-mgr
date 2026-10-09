@@ -3,6 +3,7 @@ import type { AdfDoc } from '@jira-mgr/core/adf'
 import type { IssueDetail } from '@jira-mgr/core/issue'
 import {
   CancelledError,
+  MutationObserver,
   queryOptions,
   useMutation,
   useQuery,
@@ -39,7 +40,15 @@ import {
   summaryMutation,
   unresolvedKey,
 } from './optimistic'
-import { editEntry, recorder, sprintEntry, statusEntry, summaryEntry, undoStack } from './undo'
+import {
+  descriptionEntry,
+  editEntry,
+  recorder,
+  sprintEntry,
+  statusEntry,
+  summaryEntry,
+  undoStack,
+} from './undo'
 import { clearUploads } from './uploads'
 
 export const sessionKey = ['session'] as const
@@ -426,48 +435,62 @@ export function conflictOf(error: unknown): DescriptionConflict | null {
   return details?.conflict === true ? { conflict: true, current: details.current ?? null } : null
 }
 
+/** A description save. `undoing` marks an undo, which the stack must not record again. */
+export type DescriptionArgs = SetDescriptionArgs & { undoing?: boolean }
+
 /**
  * A description save that shows at once, rolls back on any refusal and reads the issue again. A
  * conflict result becomes a refusal that carries Jira's description, so it rolls back the same
- * way. It records no undo entry: a saved description joins D7's stack when D7 builds that.
+ * way. An accepted save goes to `record`, which is what lets Cmd+Z restore the old description.
  */
 export function descriptionMutation(
   client: QueryClient,
   issueKey: string,
   send: (args: SetDescriptionArgs) => Promise<SetDescriptionResult>,
   reread: (key: string) => Promise<IssueDetail>,
+  record?: Parameters<typeof issueMutation<DescriptionArgs>>[4],
 ) {
   return {
     // Counted by `useIsMutating`, which stays above zero until the re-read has landed.
     mutationKey: ['issues', issueKey, 'description'],
     ...issueMutation(
       client,
-      async (args: SetDescriptionArgs) => {
-        const result = await send(args)
+      async ({ key, description, base }: DescriptionArgs) => {
+        const result = await send({ key, description, base })
         if (!result.saved) {
           throw new JiraMgrError(
             'validation_failed',
-            `${args.key}'s description changed in Jira while you edited.`,
+            `${key}'s description changed in Jira while you edited.`,
             { details: { conflict: true, current: result.current } satisfies DescriptionConflict },
           )
         }
       },
       ({ description }) => ({ description }),
       reread,
+      record,
     ),
   }
 }
 
+/** The options of a description save on the real IPC, recording an undo entry. */
+function descriptionOptions(client: QueryClient, issueKey: string) {
+  return descriptionMutation(
+    client,
+    issueKey,
+    (args) => call('issues:setDescription', args),
+    rereadIssue,
+    recorder(client, descriptionEntry),
+  )
+}
+
 export function useSetDescription(issueKey: string) {
   const client = useQueryClient()
-  return useMutation(
-    descriptionMutation(
-      client,
-      issueKey,
-      (args) => call('issues:setDescription', args),
-      rereadIssue,
-    ),
-  )
+  return useMutation(descriptionOptions(client, issueKey))
+}
+
+/** Writes a description outside a component, as an undo does. Resolves when the re-read has landed. */
+export function saveDescription(client: QueryClient, args: DescriptionArgs): Promise<unknown> {
+  return new MutationObserver(client, descriptionOptions(client, args.key)).mutate(args)
 }
 
 const IMAGE_RETRY_LIMIT = 2

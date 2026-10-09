@@ -1,8 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 
 import type { Notice } from './create'
-import { current } from './optimistic'
-import { useEditIssue, useSetSprint, useSetStatus, useSetSummary } from './queries'
+import type { IssueDetail } from '@jira-mgr/core/issue'
+
+import { current, issueDetailKey } from './optimistic'
+import { saveDescription, useEditIssue, useSetSprint, useSetStatus, useSetSummary } from './queries'
 import { changedSince, describeUndo, undoStack, type UndoEntry } from './undo'
 
 const plain = (title: string, notes: string[] = []): Notice => ({ title, notes, warned: false })
@@ -40,6 +42,15 @@ export function useUndo(report: (notice: Notice) => void) {
       case 'summary':
         await summary.mutateAsync({ key, summary: reversal.summary, undoing: true })
         return
+      case 'description':
+        // Written against the description Jira holds now, which the stale check just compared.
+        await saveDescription(client, {
+          key,
+          description: reversal.description,
+          base: client.getQueryData<IssueDetail>(issueDetailKey(key))?.description ?? null,
+          undoing: true,
+        })
+        return
       case undefined:
         return
     }
@@ -59,7 +70,11 @@ export function useUndo(report: (notice: Notice) => void) {
       )
       return
     }
-    const now = current(client, entry.key)
+    // The description lives only on the page's own read; every other field on the lists.
+    const now =
+      entry.reversal.kind === 'description'
+        ? client.getQueryData<IssueDetail>(issueDetailKey(entry.key))
+        : current(client, entry.key)
     if (now === undefined) {
       report(
         warning(`Could not undo the ${entry.what} of ${entry.key}`, [
