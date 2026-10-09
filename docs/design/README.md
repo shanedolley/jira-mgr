@@ -8,3 +8,5 @@ Name each `NNNN-short-title.md`, numbered in order, and start from [the template
 |---|---|---|
 | [0001](0001-cli-command-schema.md) | CLI command schema | Accepted |
 | [0002](0002-issue-tree.md) | Issue tree | Accepted |
+
+See also the [Linear UI reference](linear/README.md): screenshots and measured tokens for the target look.
