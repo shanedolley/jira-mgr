@@ -27,6 +27,7 @@ interface FakeJira {
   releaseDone: () => void
   failDone: () => void
   failRead: () => void
+  dropIssue: (key: string) => void
 }
 
 interface WithFake {
@@ -72,6 +73,12 @@ export const failRead = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failRead()
   })
+
+/** Removes an issue from the fake Jira, as if someone else deleted it. The next refetch loses it. */
+export const dropIssue = (app: ElectronApplication, key: string) =>
+  app.evaluate((_electron, name) => {
+    ;(globalThis as unknown as WithFake).__fakeJira.dropIssue(name)
+  }, key)
 
 export async function logIn(window: Page, token = TOKEN) {
   await window.getByLabel('Site URL').fill(SITE)

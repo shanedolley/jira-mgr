@@ -22,7 +22,7 @@ interface IssuePageProps {
   /** Opens the page of another issue, such as the parent or a subtask. */
   onOpen: (key: string) => void
   /** Opens the delete confirmation for the issue. */
-  onDelete: (key: string) => void
+  onDelete: (issue: Issue) => void
   pageRef: RefObject<HTMLElement | null>
 }
 
@@ -194,7 +194,7 @@ export function IssuePage({
           <button
             type="button"
             onClick={() => {
-              onDelete(issue.key)
+              onDelete(issue)
             }}
             className="app-no-drag ml-auto rounded-md border border-line px-2 py-0.5 text-xs text-danger hover:bg-hover"
           >

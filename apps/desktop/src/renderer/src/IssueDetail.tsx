@@ -25,7 +25,7 @@ interface PeekProps {
   /** Opens the issue's full page. */
   onOpenPage: (key: string) => void
   /** Opens the delete confirmation for the issue. */
-  onDelete: (key: string) => void
+  onDelete: (issue: Issue) => void
   onEditingChange: (editing: boolean) => void
   onLeave: () => void
   /** True while the full page covers the Peek, so nothing in it can be reached. */
@@ -121,7 +121,7 @@ export function IssueDetail({
             <button
               type="button"
               onClick={() => {
-                onDelete(issue.key)
+                onDelete(issue)
               }}
               className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs text-danger hover:bg-hover"
             >

@@ -348,6 +348,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failDone: () => void
   /** Makes the next read of one issue answer 500. */
   failRead: () => void
+  /** Removes an issue as if someone else deleted it: no hold and no count, so the next refetch loses it. */
+  dropIssue: (key: string) => void
 } {
   const bulk = Array.from({ length: options.bulk ?? 0 }, (_, i) =>
     issue({
@@ -752,6 +754,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failRead: () => {
       failNextRead = true
+    },
+    dropIssue: (key) => {
+      const target = find(key)
+      if (target !== undefined) issues.splice(issues.indexOf(target), 1)
     },
   }
 }

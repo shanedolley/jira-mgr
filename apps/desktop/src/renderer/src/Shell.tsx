@@ -1,3 +1,4 @@
+import type { Issue } from '@jira-mgr/core'
 import { buildHierarchy } from '@jira-mgr/core/hierarchy'
 import { applyViewToggles, issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
 import {
@@ -126,8 +127,9 @@ export function Shell({ session }: { session: Session }) {
   const [pageKey, setPageKey] = useState<string | null>(null)
   // The create modal, opened by `C` or the New issue button, with the selection it started from.
   const [creating, setCreating] = useState<ReturnType<typeof createContext> | null>(null)
-  // The issue whose delete modal is open.
-  const [deleting, setDeleting] = useState<string | null>(null)
+  // The issue whose delete modal is open, held whole: the lists may not hold it (a Done parent
+  // opened from a page before Done loads) or may drop it while the modal is open.
+  const [deleting, setDeleting] = useState<Issue | null>(null)
   const [notice, setNotice] = useState<{ notice: Notice; openKey: string | null } | null>(null)
   // A created issue to make active once its row exists.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
@@ -329,8 +331,6 @@ export function Shell({ session }: { session: Session }) {
     })
   }
 
-  const deletingIssue = deleting === null ? undefined : issues.find((i) => i.key === deleting)
-
   const unresolvedCount = useLoadedCount('unresolved')
   const doneCount = useLoadedCount('done')
   const doneLoading = done.data === undefined && done.fetchStatus === 'fetching'
@@ -531,9 +531,9 @@ export function Shell({ session }: { session: Session }) {
           returnFocus={focusTree}
         />
       )}
-      {deletingIssue !== undefined && (
+      {deleting !== null && (
         <DeleteIssueDialog
-          issue={deletingIssue}
+          issue={deleting}
           issues={issues}
           onCancel={() => {
             setDeleting(null)

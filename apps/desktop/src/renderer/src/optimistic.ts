@@ -216,7 +216,9 @@ interface DeleteRollback {
  * A delete that shows at once. The issue, and the subtasks the user chose to delete with it, leave
  * every list; the children that stay lose their parent, as Jira does for an Epic. A refusal puts
  * every one back. Only the caches that hold a deleted issue are cancelled, so a delete never
- * restarts a load of the other phase. Nothing is read afterwards: the next focus refetch reconciles.
+ * restarts a load of the other phase. Nothing is read afterwards: the next focus refetch reconciles
+ * the unresolved list, and a phase still on its first load starts again once a delete of an issue
+ * no loaded list held succeeds.
  */
 export function deleteMutation(
   client: QueryClient,
@@ -247,6 +249,18 @@ export function deleteMutation(
         )
       }
       return { removed, orphaned, parentKey: key }
+    },
+    onSuccess(_data, { key, deleteSubtasks, subtasks }, rollback) {
+      // A phase still on its first load may have paged past an issue no loaded list held, so it
+      // starts again. An issue that was in a loaded list cannot be in the phase still loading.
+      const found = new Set(rollback.removed.map((r) => r.issue.key))
+      const unseen = [key, ...(deleteSubtasks ? subtasks : [])].some((k) => !found.has(k))
+      if (!unseen) return
+      for (const queryKey of PHASES.map(phaseKey)) {
+        if (client.getQueryData(queryKey) === undefined && client.isFetching({ queryKey }) > 0) {
+          void client.cancelQueries({ queryKey }).then(() => client.invalidateQueries({ queryKey }))
+        }
+      }
     },
     onError(_error, _args, rollback) {
       if (rollback === undefined) return

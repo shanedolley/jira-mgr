@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, releaseDone, releaseEdit } from './harness.js'
+import { counts, dropIssue, launch, logIn, releaseDone, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -179,4 +179,60 @@ test('Tab stays inside the delete dialog', async () => {
       await window.evaluate<boolean>("document.activeElement?.closest('dialog') !== null"),
     ).toBe(true)
   }
+})
+
+test('deletes a Done parent the lists do not hold yet, opened from a child page', async () => {
+  // The fake holds the Done phase, so PSAPAC-20 is in no list: only its own read has it.
+  await openPage(/PSAPAC-21,/)
+  await issuePage().getByRole('button', { name: 'PSAPAC-20', exact: true }).click()
+  await expect(issuePage().getByRole('heading', { name: 'Platform migration' })).toBeVisible()
+
+  await issuePage().getByRole('button', { name: 'Delete' }).click()
+  await expect(dialog('PSAPAC-20')).toBeVisible()
+  await expect(dialog('PSAPAC-20')).toContainText('Platform migration')
+
+  // Cancel leaves nothing disabled: the New issue button works and no dialog comes back later.
+  await dialog('PSAPAC-20').getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog('PSAPAC-20')).toHaveCount(0)
+  await expect(window.getByRole('button', { name: 'New issue' })).toBeEnabled()
+  await releaseDone(app)
+  await expect(item(/PSAPAC-20,/)).toBeVisible()
+  await expect(dialog('PSAPAC-20')).toHaveCount(0)
+  await expect(window.getByRole('dialog')).toHaveCount(0)
+
+  await issuePage().getByRole('button', { name: 'Delete' }).click()
+  await dialog('PSAPAC-20').getByRole('button', { name: 'Delete issue', exact: true }).click()
+  await expect.poll(writes).toBe(1)
+  expect(await lastBody()).toEqual({ delete: 'PSAPAC-20', deleteSubtasks: false })
+  await releaseEdit(app)
+  await expect(toast()).toContainText('Deleted PSAPAC-20')
+})
+
+test('keeps the delete dialog open when a refetch drops the issue, and leaves C working after', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await peek().getByRole('button', { name: 'Delete' }).click()
+  await expect(dialog('PSAPAC-4')).toBeVisible()
+  await expect(dialog('PSAPAC-4').getByRole('button', { name: 'Delete issue' })).toBeEnabled()
+
+  await dropIssue(app, 'PSAPAC-4')
+  const before = await counts(app)
+  await app.evaluate(({ BrowserWindow }) => {
+    const [first] = BrowserWindow.getAllWindows()
+    first?.emit('blur')
+    first?.emit('focus')
+  })
+  await expect
+    .poll(async () => (await counts(app)).searches.unresolved)
+    .toBeGreaterThan(before.searches.unresolved)
+  await expect(item(/PSAPAC-4,/)).toHaveCount(0)
+  // The dialog holds the issue it was opened for, so it neither vanishes nor lingers unseen.
+  await expect(dialog('PSAPAC-4')).toBeVisible()
+
+  await dialog('PSAPAC-4').getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog('PSAPAC-4')).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await expect(window.getByRole('button', { name: 'New issue' })).toBeEnabled()
+  await window.keyboard.press('c')
+  await expect(window.getByRole('dialog', { name: 'New issue' })).toBeVisible()
 })

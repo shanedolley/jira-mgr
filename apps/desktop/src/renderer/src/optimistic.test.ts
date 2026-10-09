@@ -493,6 +493,17 @@ describe('applyCreated', () => {
   })
 })
 
+/** The query keys `cancelQueries` is called with from now on. */
+function spyCancelled(client: QueryClient): unknown[] {
+  const cancelled: unknown[] = []
+  const original = client.cancelQueries.bind(client)
+  client.cancelQueries = (filters, options) => {
+    cancelled.push(filters?.queryKey)
+    return original(filters, options)
+  }
+  return cancelled
+}
+
 describe('deleteMutation', () => {
   const sub = (key: string, parent: string) =>
     issue(key, key, { parentKey: parent, issueType: { subtask: true } as Issue['issueType'] })
@@ -583,6 +594,77 @@ describe('deleteMutation', () => {
     request.reject(new JiraMgrError('jira_error', 'Jira is down.'))
     await expect(done).rejects.toBeInstanceOf(JiraMgrError)
     expect(keys(unresolvedKey)?.sort()).toEqual(['PSAPAC-1', 'PSAPAC-2', 'PSAPAC-3', 'PSAPAC-4'])
+  })
+
+  it('starts a phase still on its first load again once the delete succeeds', async () => {
+    const { client, observer, request } = deleteSetup()
+    client.removeQueries({ queryKey: doneKey })
+    const load = vi.fn(() => new Promise<Issue[]>(() => undefined))
+    const watcher = new QueryObserver(client, { queryKey: doneKey, queryFn: load }).subscribe(
+      () => undefined,
+    )
+    await expect.poll(() => load.mock.calls.length).toBe(1)
+
+    // PSAPAC-99 is in no loaded list, so the phase still loading may hold it.
+    const cancelled = spyCancelled(client)
+    const done = observer.mutate({ key: 'PSAPAC-99', deleteSubtasks: false, subtasks: [] })
+    request.resolve({ key: 'PSAPAC-99', deletedSubtasks: [] })
+    await done
+    expect(cancelled).toContainEqual(doneKey)
+    await expect.poll(() => load.mock.calls.length).toBe(2)
+    watcher()
+  })
+
+  it('leaves a phase still loading alone when the issue was in a loaded list', async () => {
+    const { client, observer, request } = deleteSetup()
+    client.removeQueries({ queryKey: doneKey })
+    const load = vi.fn(() => new Promise<Issue[]>(() => undefined))
+    const watcher = new QueryObserver(client, { queryKey: doneKey, queryFn: load }).subscribe(
+      () => undefined,
+    )
+    await expect.poll(() => load.mock.calls.length).toBe(1)
+
+    const cancelled = spyCancelled(client)
+    const done = observer.mutate({ key: 'PSAPAC-3', deleteSubtasks: false, subtasks: [] })
+    request.resolve({ key: 'PSAPAC-3', deletedSubtasks: [] })
+    await done
+    expect(cancelled).not.toContainEqual(doneKey)
+    expect(load).toHaveBeenCalledOnce()
+    watcher()
+  })
+
+  it('leaves a phase alone that has data and only refetches in the background', async () => {
+    const { client, observer, request } = deleteSetup()
+    const load = vi.fn(() => new Promise<Issue[]>(() => undefined))
+    const watcher = new QueryObserver(client, {
+      queryKey: doneKey,
+      queryFn: load,
+      staleTime: 0,
+    }).subscribe(() => undefined)
+    await expect.poll(() => load.mock.calls.length).toBe(1)
+    const cancelled = spyCancelled(client)
+
+    const done = observer.mutate({ key: 'PSAPAC-99', deleteSubtasks: false, subtasks: [] })
+    request.resolve({ key: 'PSAPAC-99', deletedSubtasks: [] })
+    await done
+    expect(cancelled).not.toContainEqual(doneKey)
+    watcher()
+  })
+
+  it('does not reload a phase still loading when the delete fails', async () => {
+    const { client, observer, request } = deleteSetup()
+    client.removeQueries({ queryKey: doneKey })
+    const load = vi.fn(() => new Promise<Issue[]>(() => undefined))
+    const watcher = new QueryObserver(client, { queryKey: doneKey, queryFn: load }).subscribe(
+      () => undefined,
+    )
+    await expect.poll(() => load.mock.calls.length).toBe(1)
+
+    const done = observer.mutate({ key: 'PSAPAC-99', deleteSubtasks: false, subtasks: [] })
+    request.reject(new JiraMgrError('jira_error', 'Down.'))
+    await expect(done).rejects.toBeInstanceOf(JiraMgrError)
+    expect(load).toHaveBeenCalledOnce()
+    watcher()
   })
 
   it('does not cancel the list of a phase that holds none of the issues', async () => {

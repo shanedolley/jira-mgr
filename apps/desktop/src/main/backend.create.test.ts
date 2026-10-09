@@ -159,6 +159,33 @@ describe('createIssue', () => {
     expect(created.warning).toContain('could not read it back')
   })
 
+  it('drops the read-back warning when the read after the sprint move works', async () => {
+    let reads = 0
+    const { http } = routedHttp((request) => {
+      if (request.method === 'GET' && ++reads === 1) {
+        throw new JiraMgrError('jira_error', 'The site is down.')
+      }
+      return accepts(request)
+    })
+    const created = await createBackend({ http }).createIssue({ ...NEW, sprintId: 5 })
+
+    expect(created).toMatchObject({ key: 'PSAPAC-9', warning: null, issue: { key: 'PSAPAC-9' } })
+  })
+
+  it('keeps the read-back warning when the sprint move fails', async () => {
+    const { http } = routedHttp((request) => {
+      if (request.method === 'GET') throw new JiraMgrError('jira_error', 'The site is down.')
+      if (request.path.startsWith('/rest/agile')) {
+        throw new JiraMgrError('validation_failed', 'The sprint is closed.')
+      }
+      return accepts(request)
+    })
+    const created = await createBackend({ http }).createIssue({ ...NEW, sprintId: 5 })
+
+    expect(created.issue).toBeNull()
+    expect(created.warning).toContain('could not read it back')
+  })
+
   it('returns the key with a warning when the read-back fails after the create', async () => {
     const { http } = routedHttp((request) => {
       if (request.method === 'GET') throw new JiraMgrError('jira_error', 'The site is down.')

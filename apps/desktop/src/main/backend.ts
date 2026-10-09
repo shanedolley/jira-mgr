@@ -231,6 +231,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
         issue = null
         warning = desktopMessage(error instanceof Error ? error.message : String(error))
       }
+      const readBackFailed = issue === null
       if (sprintId !== undefined) {
         const reason = (error: unknown) =>
           error instanceof Error ? desktopMessage(error.message) : String(error)
@@ -245,6 +246,8 @@ export function createBackend(deps: BackendDeps = {}): Backend {
         if (moved) {
           try {
             issue = await getIssue(http, key)
+            // This read is the read-back the create could not make, so its warning no longer holds.
+            if (readBackFailed) warning = null
           } catch (error) {
             issue = null
             warning ??= `Created ${key}, but could not read it back. ${reason(error)}`
