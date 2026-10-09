@@ -232,7 +232,7 @@ export interface AvatarArgs {
 
 /** A profile image as main checked it. The renderer makes a blob URL from `bytes`. */
 export interface AvatarImage {
-  type: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
+  type: ImageType
   bytes: Uint8Array
 }
 

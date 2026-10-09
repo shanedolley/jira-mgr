@@ -2,26 +2,11 @@ import { JiraMgrError } from '@jira-mgr/core'
 import type { Credentials } from '@jira-mgr/core/http'
 
 import type { AvatarImage } from '../shared/ipc'
+import { imageType } from './images'
 
 /** Avatars are 48x48 images; a megabyte is far above any real one. */
 export const AVATAR_LIMIT_BYTES = 1_000_000
 const TIMEOUT_MS = 10_000
-
-/**
- * The image type named by the first bytes, or `null`. SVG is not on the list: it can carry
- * script, and nothing here sanitises it.
- */
-export function imageType(bytes: Uint8Array): AvatarImage['type'] | null {
-  const at = (offset: number, text: string) =>
-    Array.from(text).every((c, i) => bytes[offset + i] === c.charCodeAt(0))
-  if (bytes[0] === 0x89 && at(1, 'PNG\r\n') && bytes[6] === 0x1a && bytes[7] === 0x0a) {
-    return 'image/png'
-  }
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg'
-  if (at(0, 'GIF87a') || at(0, 'GIF89a')) return 'image/gif'
-  if (at(0, 'RIFF') && at(8, 'WEBP')) return 'image/webp'
-  return null
-}
 
 /** Hosts besides the site that serve Jira avatars: Atlassian's avatar CDN and Gravatar. */
 const AVATAR_HOSTS = [
@@ -124,7 +109,10 @@ export function createAvatarFetcher(deps: {
         loading.catch((error: unknown) => {
           if (error instanceof Refused && cache.get(url) === loading) cache.delete(url)
         })
-        if (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value as string)
+        for (const oldest of cache.keys()) {
+          if (cache.size <= CACHE_LIMIT) break
+          cache.delete(oldest)
+        }
       }
       return hit
     },
