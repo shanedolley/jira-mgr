@@ -4,10 +4,9 @@
 
 Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
 
-1. **Desktop D7 keyboard (#34)**: if its pull request from `d7-keyboard` is still open, finish it before claiming anything else.
-2. **Desktop D4 editor (#31)**, parked: when Shane answers on #31, remove `question`, move it back to In Progress and build from `d4-editor`. D5 activity (#32) and D9 timer (#36) wait on it.
-3. **Live checks with Shane present:** #67's read-back create, D6's create and delete, and D4's image embed once built. Run them together.
-4. With D4 parked and D7 merged, no other desktop story is unblocked: stop and report.
+1. **Desktop D4 editor (#31)**, parked in HIL Review with `question`: no answer from Shane as of 2026-10-09. When he answers on #31, remove `question`, move it back to In Progress and build from `d4-editor`. D5 activity (#32) and then D9 timer (#36) wait on it.
+2. **Live checks with Shane present:** #67's read-back create (steps on #67), D6's create and delete, and D4's image embed once built. Run them together, then move #67 to HIL Review.
+3. Nothing else is unblocked: the other open issues (#28, #29, #30, #33, #34, #35, #37) are built and wait on Shane's HIL review. Stop and report.
 
 ## Reading Order
 
