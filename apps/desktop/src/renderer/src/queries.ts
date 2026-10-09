@@ -56,6 +56,13 @@ export const sessionKey = ['session'] as const
 /** Prefix of the image queries: `[key, issueKey, mediaId]` holds an object URL. */
 export const attachmentsKey = ['attachments'] as const
 
+/** Prefix of every issue's comments, worklogs, links and attachment list. */
+export const activityKey = ['activity'] as const
+export const commentsKey = (key: string) => [...activityKey, key, 'comments'] as const
+export const worklogsKey = (key: string) => [...activityKey, key, 'worklogs'] as const
+export const linksKey = (key: string) => [...activityKey, key, 'links'] as const
+export const attachmentListKey = (key: string) => [...activityKey, key, 'attachments'] as const
+
 /** Who is logged in. It changes only when this app logs in or out, so it never refetches by itself. */
 export function useSession() {
   return useQuery({
@@ -239,6 +246,8 @@ export function clearAccountData(client: QueryClient): void {
   client.removeQueries({ queryKey: pickerKey })
   // Removing the image queries revokes their object URLs (see `watchImageUrls`).
   client.removeQueries({ queryKey: attachmentsKey })
+  // The comments, worklogs, links and attachment lists of every issue.
+  client.removeQueries({ queryKey: activityKey })
   clearDrafts()
   clearUploads()
   // An undo must not write one account's old values into the next account's issues.

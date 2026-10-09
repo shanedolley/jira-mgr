@@ -1,20 +1,26 @@
 import type { Issue, JiraMgrError } from '@jira-mgr/core'
-import type { IssueDetail } from '@jira-mgr/core/issue'
-import { useEffect, type KeyboardEvent, type RefObject } from 'react'
+import { propertyRules, type IssueDetail } from '@jira-mgr/core/issue'
+import { useEffect, type DragEvent, type KeyboardEvent, type RefObject } from 'react'
 
-import type { CurrentUser } from '../../shared/ipc'
+import { IMAGE_TYPES, type CurrentUser } from '../../shared/ipc'
+import { AttachmentsSection } from './AttachmentsSection'
+import { useAttach } from './attach'
+import { CommentsSection } from './CommentsSection'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
 import type { Notice } from './create'
 import { DescriptionEditor } from './DescriptionEditor'
 import { dropDraft, getDraft } from './drafts'
+import { isClaimed } from './DropZone'
 import { FileDragContext, useFileDrag } from './fileDrag'
 import { IssueProperties } from './IssueProperties'
+import { LinksSection } from './LinksSection'
 import { LoadError } from './LoadError'
 import { StatusDot } from './StatusDot'
 import { SummaryEditor } from './SummaryEditor'
 import { useIssueDetail } from './queries'
 import { TypeIcon } from './TypeIcon'
 import { removeUploadsOf } from './uploads'
+import { WorklogsSection } from './WorklogsSection'
 
 interface IssuePageProps {
   issueKey: string
@@ -44,6 +50,8 @@ function PageBody({
   onNotice,
   detailError,
   onRetry,
+  attach,
+  uploading,
 }: Pick<IssuePageProps, 'issues' | 'me' | 'mismatch' | 'onOpen' | 'onNotice'> & {
   issue: Issue
   detail: IssueDetail | undefined
@@ -52,8 +60,14 @@ function PageBody({
   /** Why the page's own read failed, while it holds no read. */
   detailError: JiraMgrError | null
   onRetry: () => void
+  /** Attaches files to the issue: every drop that is not an embedded image ends here. */
+  attach: (files: File[]) => void
+  /** Names of the files still going up. */
+  uploading: string[]
 }) {
   const fix = useMatchCustomer(issue)
+  // An Epic takes no worklogs (CONTEXT), the same switch D3 uses for its estimates.
+  const worklogs = propertyRules(issue.issueType).estimates
   return (
     <>
       <article className="min-h-0 space-y-6 overflow-y-auto px-8 py-6">
@@ -93,6 +107,7 @@ function PageBody({
                 value={detail.description}
                 onLeave={onLeave}
                 onNotice={onNotice}
+                onAttach={attach}
               />
             )}
           </section>
@@ -122,6 +137,15 @@ function PageBody({
               </ul>
             </section>
           )}
+          <LinksSection issueKey={issue.key} issues={issues} onOpen={onOpen} onNotice={onNotice} />
+          {worklogs && <WorklogsSection issueKey={issue.key} me={me} onNotice={onNotice} />}
+          <CommentsSection issueKey={issue.key} me={me} onLeave={onLeave} onNotice={onNotice} />
+          <AttachmentsSection
+            issueKey={issue.key}
+            attach={attach}
+            uploading={uploading}
+            onNotice={onNotice}
+          />
         </div>
       </article>
       <IssueProperties issue={issue} issues={issues} me={me} />
@@ -147,6 +171,7 @@ export function IssuePage({
 }: IssuePageProps) {
   const dragging = useFileDrag()
   const detail = useIssueDetail(issueKey)
+  const { attach, uploading } = useAttach(issueKey, onNotice)
 
   // An issue deleted since (here or in Jira) has no page: go back to the Tree and say so.
   const gone = detail.error?.code === 'not_found'
@@ -184,6 +209,20 @@ export function IssuePage({
     onBack()
   }
 
+  /**
+   * A file dropped anywhere no zone took attaches (Q34). An editor that embedded images took
+   * those, so only the other files of that drop attach.
+   */
+  function onDrop(event: DragEvent<HTMLElement>) {
+    if (isClaimed(event.nativeEvent) || !event.dataTransfer.types.includes('Files')) return
+    const taken = event.defaultPrevented
+    const files = Array.from(event.dataTransfer.files)
+    const rest = taken
+      ? files.filter((file) => !(IMAGE_TYPES as readonly string[]).includes(file.type))
+      : files
+    if (rest.length > 0) attach(rest)
+  }
+
   return (
     <FileDragContext value={dragging}>
       <section
@@ -191,6 +230,7 @@ export function IssuePage({
         tabIndex={-1}
         aria-label="Issue page"
         onKeyDown={onKeyDown}
+        onDrop={onDrop}
         className="relative z-10 grid h-full min-h-0 grid-cols-[minmax(0,1fr)_21rem] grid-rows-[auto_minmax(0,1fr)] bg-canvas focus-visible:outline-none"
       >
         <header className="app-drag col-span-2 flex h-10 items-center gap-3 border-b border-line px-4">
@@ -246,6 +286,8 @@ export function IssuePage({
             detailError={detail.isError && detail.data === undefined ? detail.error : null}
             onRetry={() => void detail.refetch()}
             onLeave={() => pageRef.current?.focus()}
+            attach={attach}
+            uploading={uploading}
             issues={issues}
             me={me}
             mismatch={mismatch}
