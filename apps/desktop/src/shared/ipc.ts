@@ -1,5 +1,6 @@
 import type { ErrorCode, Issue } from '@jira-mgr/core'
 import type { AdfDoc, AdfNode } from '@jira-mgr/core/adf'
+import type { Attachment, IssueComment, IssueLink, LinkType, Worklog } from '@jira-mgr/core/extras'
 import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
 import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
 import type { SavedView } from '@jira-mgr/core/state'
@@ -121,6 +122,93 @@ export interface ImageResult {
   mimeType: ImageType
   bytes: Uint8Array
 }
+
+/** The largest attachment: Jira's upload limit on PSAPAC (Q34), the same as an embedded image's. */
+export const ATTACHMENT_LIMIT_BYTES = 100_000_000
+
+export type CommentItem = IssueComment
+
+export type WorklogItem = Worklog
+
+export type LinkItem = IssueLink
+
+export type LinkTypeItem = LinkType
+
+/** An attachment as the page lists it. Jira's content URL stays in main. */
+export type AttachmentItem = Omit<Attachment, 'contentUrl'>
+
+export interface AddCommentArgs {
+  key: string
+  body: AdfDoc
+}
+
+export interface EditCommentArgs extends AddCommentArgs {
+  commentId: string
+}
+
+export interface CommentIdArgs {
+  key: string
+  commentId: string
+}
+
+export interface AddWorklogArgs {
+  key: string
+  /** A Jira duration such as `1h 30m`. */
+  timeSpent: string
+  /** An ISO date-time. Jira starts the worklog now when it is left out. */
+  started?: string
+  comment?: AdfDoc
+}
+
+export interface EditWorklogArgs {
+  key: string
+  worklogId: string
+  timeSpent?: string
+  started?: string
+  comment?: AdfDoc
+}
+
+export interface WorklogIdArgs {
+  key: string
+  worklogId: string
+}
+
+/** The links of an issue and every link type the site offers, which the add form needs. */
+export interface LinksResult {
+  links: LinkItem[]
+  types: LinkTypeItem[]
+}
+
+export interface AddLinkArgs {
+  /** The issue the link is added from. */
+  key: string
+  typeId: string
+  /** `outward` reads "key <type.outward> otherKey", `inward` "key <type.inward> otherKey". */
+  direction: 'outward' | 'inward'
+  otherKey: string
+}
+
+export interface RemoveLinkArgs {
+  /** The issue whose page shows the link. One end of the link must be this issue. */
+  key: string
+  linkId: string
+}
+
+export interface AddAttachmentArgs {
+  key: string
+  filename: string
+  /** The type the browser reports, which may be empty. Main passes it on only when it is a valid type. */
+  mimeType: string
+  bytes: Uint8Array
+}
+
+export interface DownloadAttachmentArgs {
+  key: string
+  attachmentId: string
+}
+
+/** The user chose a place and the file was written there, or cancelled the dialog. */
+export type DownloadResult = { saved: true; filename: string } | { saved: false }
 
 export interface EditIssueArgs {
   key: string
@@ -256,6 +344,24 @@ export interface IpcContract {
   'attachments:addImage': { args: AddImageArgs; result: { node: AdfNode } }
   /** The bytes of an image attachment, found by the media id a description embeds. */
   'attachments:image': { args: ImageArgs; result: ImageResult }
+  'comments:list': { args: KeyArgs; result: CommentItem[] }
+  'comments:add': { args: AddCommentArgs; result: CommentItem }
+  'comments:edit': { args: EditCommentArgs; result: CommentItem }
+  'comments:delete': { args: CommentIdArgs; result: null }
+  'worklogs:list': { args: KeyArgs; result: WorklogItem[] }
+  /** Logs work and lowers the remaining estimate by it (`adjustEstimate=auto`). */
+  'worklogs:add': { args: AddWorklogArgs; result: WorklogItem }
+  'worklogs:edit': { args: EditWorklogArgs; result: WorklogItem }
+  'worklogs:delete': { args: WorklogIdArgs; result: null }
+  'links:list': { args: KeyArgs; result: LinksResult }
+  /** Refuses an issue outside the project at either end. */
+  'links:add': { args: AddLinkArgs; result: null }
+  'links:remove': { args: RemoveLinkArgs; result: null }
+  'attachments:list': { args: KeyArgs; result: AttachmentItem[] }
+  /** Attaches a file of any type. */
+  'attachments:add': { args: AddAttachmentArgs; result: AttachmentItem }
+  /** Saves an attachment where the user chooses in a native dialog. The renderer names no path. */
+  'attachments:download': { args: DownloadAttachmentArgs; result: DownloadResult }
   'issues:transitions': { args: KeyArgs; result: StatusOption[] }
   'issues:setStatus': { args: SetStatusArgs; result: null }
   'issues:setSprint': { args: SetSprintArgs; result: null }
@@ -294,6 +400,20 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'issues:setDescription': true,
   'attachments:addImage': true,
   'attachments:image': true,
+  'comments:list': true,
+  'comments:add': true,
+  'comments:edit': true,
+  'comments:delete': true,
+  'worklogs:list': true,
+  'worklogs:add': true,
+  'worklogs:edit': true,
+  'worklogs:delete': true,
+  'links:list': true,
+  'links:add': true,
+  'links:remove': true,
+  'attachments:list': true,
+  'attachments:add': true,
+  'attachments:download': true,
   'issues:transitions': true,
   'issues:setStatus': true,
   'issues:setSprint': true,

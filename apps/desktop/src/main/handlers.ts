@@ -1,19 +1,27 @@
 import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
 import { adfDocSchema, type AdfDoc } from '@jira-mgr/core/adf'
-import { SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
+import { DURATION_PATTERN, SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { z } from 'zod'
 
-import { CREATE_TYPES, IMAGE_LIMIT_BYTES, IMAGE_TYPES } from '../shared/ipc'
+import { ATTACHMENT_LIMIT_BYTES, CREATE_TYPES, IMAGE_LIMIT_BYTES, IMAGE_TYPES } from '../shared/ipc'
 import type {
+  AddAttachmentArgs,
+  AddCommentArgs,
   AddImageArgs,
+  AddLinkArgs,
+  AddWorklogArgs,
   ArgsOf,
   AvatarArgs,
   Channel,
+  CommentIdArgs,
   CreateIssueArgs,
   CreateViewArgs,
   DeleteIssueArgs,
   DeleteViewArgs,
+  DownloadAttachmentArgs,
+  EditCommentArgs,
   EditIssueArgs,
+  EditWorklogArgs,
   FieldOptionsArgs,
   IpcError,
   ImageArgs,
@@ -22,6 +30,7 @@ import type {
   KeyArgs,
   ListIssuesArgs,
   LoginArgs,
+  RemoveLinkArgs,
   RenameViewArgs,
   ResultOf,
   SetDescriptionArgs,
@@ -29,6 +38,7 @@ import type {
   SetStatusArgs,
   SetSummaryArgs,
   Toggles,
+  WorklogIdArgs,
 } from '../shared/ipc'
 import type { Backend, ProgressSender } from './backend'
 import { desktopMessage } from './messages'
@@ -104,6 +114,80 @@ const addImageArgs: z.ZodType<AddImageArgs> = z.strictObject({
 const imageArgs: z.ZodType<ImageArgs> = z.strictObject({
   key: issueKey,
   mediaId: z.uuid(),
+})
+
+/** A comment or worklog comment is an ADF document, never empty text. */
+const adfBody = adfArg.transform((doc, ctx): AdfDoc => {
+  if (doc !== null) return doc
+  ctx.addIssue({ code: 'custom', message: 'must be an ADF document' })
+  return z.NEVER
+})
+
+/** The id of a comment, worklog, link or attachment: digits, so it cannot alter a path. */
+const jiraId = z.string().regex(/^[1-9]\d{0,18}$/, 'must be a Jira id such as 10042')
+
+const addCommentArgs: z.ZodType<AddCommentArgs> = z.strictObject({ key: issueKey, body: adfBody })
+
+const editCommentArgs: z.ZodType<EditCommentArgs> = z.strictObject({
+  key: issueKey,
+  commentId: jiraId,
+  body: adfBody,
+})
+
+const commentIdArgs: z.ZodType<CommentIdArgs> = z.strictObject({
+  key: issueKey,
+  commentId: jiraId,
+})
+
+const timeSpent = z.string().max(64).regex(DURATION_PATTERN, 'must be a duration such as 1h 30m')
+const started = z.iso.datetime({ offset: true })
+
+const addWorklogArgs: z.ZodType<AddWorklogArgs> = z.strictObject({
+  key: issueKey,
+  timeSpent,
+  started: started.optional(),
+  comment: adfBody.optional(),
+})
+
+const editWorklogArgs: z.ZodType<EditWorklogArgs> = z.strictObject({
+  key: issueKey,
+  worklogId: jiraId,
+  timeSpent: timeSpent.optional(),
+  started: started.optional(),
+  comment: adfBody.optional(),
+})
+
+const worklogIdArgs: z.ZodType<WorklogIdArgs> = z.strictObject({
+  key: issueKey,
+  worklogId: jiraId,
+})
+
+const addLinkArgs: z.ZodType<AddLinkArgs> = z.strictObject({
+  key: issueKey,
+  typeId: jiraId,
+  direction: z.enum(['outward', 'inward']),
+  otherKey: issueKey,
+})
+
+const removeLinkArgs: z.ZodType<RemoveLinkArgs> = z.strictObject({
+  key: issueKey,
+  linkId: jiraId,
+})
+
+const addAttachmentArgs: z.ZodType<AddAttachmentArgs> = z.strictObject({
+  key: issueKey,
+  filename: text(255),
+  mimeType: z.string().max(255),
+  bytes: z
+    .instanceof(Uint8Array)
+    .refine((bytes) => bytes.length > 0 && bytes.length <= ATTACHMENT_LIMIT_BYTES, {
+      message: 'must hold 1 byte to 100 MB',
+    }),
+})
+
+const downloadAttachmentArgs: z.ZodType<DownloadAttachmentArgs> = z.strictObject({
+  key: issueKey,
+  attachmentId: jiraId,
 })
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD')
@@ -230,6 +314,20 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'issues:setDescription': setDescriptionArgs,
   'attachments:addImage': addImageArgs,
   'attachments:image': imageArgs,
+  'comments:list': keyArgs,
+  'comments:add': addCommentArgs,
+  'comments:edit': editCommentArgs,
+  'comments:delete': commentIdArgs,
+  'worklogs:list': keyArgs,
+  'worklogs:add': addWorklogArgs,
+  'worklogs:edit': editWorklogArgs,
+  'worklogs:delete': worklogIdArgs,
+  'links:list': keyArgs,
+  'links:add': addLinkArgs,
+  'links:remove': removeLinkArgs,
+  'attachments:list': keyArgs,
+  'attachments:add': addAttachmentArgs,
+  'attachments:download': downloadAttachmentArgs,
   'issues:transitions': keyArgs,
   'issues:setStatus': setStatusArgs,
   'issues:setSprint': setSprintArgs,
@@ -342,6 +440,34 @@ export function createHandlers(
     ),
     'attachments:addImage': handle('attachments:addImage', (args) => backend.addImage(args)),
     'attachments:image': handle('attachments:image', (args) => backend.image(args)),
+    'comments:list': handle('comments:list', (args) => backend.listComments(args)),
+    'comments:add': handle('comments:add', (args) => backend.addComment(args)),
+    'comments:edit': handle('comments:edit', (args) => backend.editComment(args)),
+    'comments:delete': handle('comments:delete', async (args) => {
+      await backend.deleteComment(args)
+      return null
+    }),
+    'worklogs:list': handle('worklogs:list', (args) => backend.listWorklogs(args)),
+    'worklogs:add': handle('worklogs:add', (args) => backend.addWorklog(args)),
+    'worklogs:edit': handle('worklogs:edit', (args) => backend.editWorklog(args)),
+    'worklogs:delete': handle('worklogs:delete', async (args) => {
+      await backend.deleteWorklog(args)
+      return null
+    }),
+    'links:list': handle('links:list', (args) => backend.listLinks(args)),
+    'links:add': handle('links:add', async (args) => {
+      await backend.addLink(args)
+      return null
+    }),
+    'links:remove': handle('links:remove', async (args) => {
+      await backend.removeLink(args)
+      return null
+    }),
+    'attachments:list': handle('attachments:list', (args) => backend.listAttachments(args)),
+    'attachments:add': handle('attachments:add', (args) => backend.addAttachmentFile(args)),
+    'attachments:download': handle('attachments:download', (args) =>
+      backend.downloadAttachment(args),
+    ),
     'issues:transitions': handle('issues:transitions', (args) => backend.listTransitions(args)),
     'issues:setStatus': handle('issues:setStatus', async (args) => {
       await backend.setStatus(args)

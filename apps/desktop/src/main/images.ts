@@ -44,17 +44,35 @@ function isUnsafeName(name: string): boolean {
 }
 
 /**
- * The name to upload an image under. A name holding a slash, a control character or a bidi
- * override is refused with `validation_failed`, and the extension is rewritten to match `type`.
+ * A name safe to upload or save under, trimmed. A name holding a slash, a control character or a
+ * bidi override is refused with `validation_failed`. `what` words the message: "image", "file".
  */
-export function uploadFilename(raw: string, type: ImageType): string {
+export function safeFilename(raw: string, what = 'file'): string {
   const name = raw.trim()
   if (name === '' || name === '.' || name === '..' || isUnsafeName(name)) {
     throw new JiraMgrError(
       'validation_failed',
-      'The image name is empty or holds a slash, a control character or a text-direction override. Rename the file.',
+      `The ${what} name is empty or holds a slash, a control character or a text-direction override. Rename the file.`,
     )
   }
+  return name
+}
+
+/**
+ * The name to offer when saving an attachment: its last path segment, with each unsafe character
+ * made an underscore. A name that comes out empty becomes `attachment`.
+ */
+export function savedFilename(raw: string): string {
+  const base = raw.split(/[\\/]/).at(-1) ?? ''
+  const name = Array.from(base, (char) => (isUnsafeName(char) ? '_' : char))
+    .join('')
+    .trim()
+  return name === '' || name === '.' || name === '..' ? 'attachment' : name
+}
+
+/** The name to upload an image under: a safe name whose extension is rewritten to match `type`. */
+export function uploadFilename(raw: string, type: ImageType): string {
+  const name = safeFilename(raw, 'image')
   const dot = name.lastIndexOf('.')
   const extension = dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
   const allowed = EXTENSIONS[type]

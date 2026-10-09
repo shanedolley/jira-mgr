@@ -1,8 +1,30 @@
+import { writeFile } from 'node:fs/promises'
+import { basename } from 'node:path'
+
 import { JiraMgrError, type Issue } from '@jira-mgr/core'
 import { imageNode, sameAdf, type AdfNode } from '@jira-mgr/core/adf'
 import { createKeychain, getCredentials, login, logout, type Keychain } from '@jira-mgr/core/auth'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
-import { addAttachment, attachmentMediaId } from '@jira-mgr/core/extras'
+import {
+  addAttachment,
+  addComment,
+  addLink,
+  addWorklog,
+  attachmentContent,
+  attachmentMediaId,
+  deleteComment,
+  deleteWorklog,
+  editComment,
+  editWorklog,
+  getLink,
+  listAttachments,
+  listComments,
+  listLinks,
+  listLinkTypes,
+  listWorklogs,
+  removeLink,
+  type Attachment,
+} from '@jira-mgr/core/extras'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
 import { assertTypeChangeAllowed, type IssueDetail } from '@jira-mgr/core/issue'
 import { getFieldOptions, getProfile, searchAssignableUsers } from '@jira-mgr/core/lookups'
@@ -27,7 +49,14 @@ import {
 } from '@jira-mgr/core/write'
 
 import type {
+  AddAttachmentArgs,
+  AddCommentArgs,
   AddImageArgs,
+  AddLinkArgs,
+  AddWorklogArgs,
+  AttachmentItem,
+  CommentIdArgs,
+  CommentItem,
   CreateIssueArgs,
   CreatedIssue,
   CreateViewArgs,
@@ -35,9 +64,13 @@ import type {
   DeleteIssueArgs,
   DeletedIssue,
   DeleteViewArgs,
+  DownloadAttachmentArgs,
+  DownloadResult,
+  EditCommentArgs,
   EditIssueArgs,
   AvatarArgs,
   AvatarImage,
+  EditWorklogArgs,
   FieldChoice,
   FieldOptionsArgs,
   ImageArgs,
@@ -47,7 +80,9 @@ import type {
   LateRead,
   ListIssuesArgs,
   KeyArgs,
+  LinksResult,
   LoginArgs,
+  RemoveLinkArgs,
   RenameViewArgs,
   SessionState,
   SetDescriptionArgs,
@@ -59,9 +94,12 @@ import type {
   StatusOption,
   Toggles,
   UserOption,
+  WorklogIdArgs,
+  WorklogItem,
 } from '../shared/ipc'
+import { ATTACHMENT_LIMIT_BYTES } from '../shared/ipc'
 import { createAvatarFetcher } from './avatars'
-import { imageType, uploadFilename } from './images'
+import { imageType, safeFilename, savedFilename, uploadFilename } from './images'
 import { createMediaIndex } from './media'
 import { desktopMessage } from './messages'
 
@@ -100,6 +138,26 @@ export interface Backend {
   addImage(args: AddImageArgs): Promise<{ node: AdfNode }>
   /** The bytes of an image attachment, found by the media id a description embeds. */
   image(args: ImageArgs): Promise<ImageResult>
+  listComments(args: KeyArgs): Promise<CommentItem[]>
+  addComment(args: AddCommentArgs): Promise<CommentItem>
+  editComment(args: EditCommentArgs): Promise<CommentItem>
+  deleteComment(args: CommentIdArgs): Promise<void>
+  listWorklogs(args: KeyArgs): Promise<WorklogItem[]>
+  /** Logs work with `adjustEstimate=auto`, so the remaining estimate falls by the time logged. */
+  addWorklog(args: AddWorklogArgs): Promise<WorklogItem>
+  editWorklog(args: EditWorklogArgs): Promise<WorklogItem>
+  deleteWorklog(args: WorklogIdArgs): Promise<void>
+  /** The issue's links and every link type the site has. */
+  listLinks(args: KeyArgs): Promise<LinksResult>
+  /** Both issues must be in the project. `direction` is core's: `outward` makes `key` the blocker of a Blocks link. */
+  addLink(args: AddLinkArgs): Promise<void>
+  /** The link must touch `key`, and both its issues must be in the project. */
+  removeLink(args: RemoveLinkArgs): Promise<void>
+  listAttachments(args: KeyArgs): Promise<AttachmentItem[]>
+  /** Attaches a file of any type. */
+  addAttachmentFile(args: AddAttachmentArgs): Promise<AttachmentItem>
+  /** Saves an attachment to the path a native save dialog returns; nothing is written when the user cancels. */
+  downloadAttachment(args: DownloadAttachmentArgs): Promise<DownloadResult>
   listTransitions(args: KeyArgs): Promise<StatusOption[]>
   setStatus(args: SetStatusArgs): Promise<void>
   setSprint(args: SetSprintArgs): Promise<void>
@@ -137,7 +195,24 @@ export interface BackendDeps {
   now?: () => number
   /** Tests and the e2e entry shorten the wait before a created issue is read again. */
   lateReadMs?: number
+  /** Asks the user where to save a file, offering `defaultName`. `null` means they cancelled. */
+  chooseSavePath?: (defaultName: string) => Promise<string | null>
+  /** Tests inject a recorder. Production writes the file. */
+  writeFile?: (path: string, bytes: Uint8Array) => Promise<void>
 }
+
+/** A content type the multipart part may declare, as core accepts it. */
+const CONTENT_TYPE = /^[a-z]+\/[a-z0-9][a-z0-9.+-]*$/
+
+/** The attachment as the page lists it: Jira's content URL stays in main. */
+const attachmentItem = (a: Attachment): AttachmentItem => ({
+  id: a.id,
+  filename: a.filename,
+  size: a.size,
+  mimeType: a.mimeType,
+  created: a.created,
+  author: a.author,
+})
 
 /** The key a `createIssue` that could not read the new issue back carries in its details. */
 function createdKey(error: unknown): string | undefined {
@@ -295,6 +370,110 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     async image({ key, mediaId }) {
       await assertInProject(key)
       return media.image(key, mediaId)
+    },
+    listComments: ({ key }) => listComments(http, key),
+    async addComment({ key, body }) {
+      await assertInProject(key)
+      return addComment(http, key, body)
+    },
+    async editComment({ key, commentId, body }) {
+      await assertInProject(key)
+      return editComment(http, key, commentId, body)
+    },
+    async deleteComment({ key, commentId }) {
+      await assertInProject(key)
+      await deleteComment(http, key, commentId)
+    },
+    listWorklogs: ({ key }) => listWorklogs(http, key),
+    async addWorklog({ key, timeSpent, started, comment }) {
+      await assertInProject(key)
+      return addWorklog(http, key, {
+        timeSpent,
+        ...(started !== undefined && { started: new Date(started) }),
+        ...(comment !== undefined && { comment }),
+      })
+    },
+    async editWorklog({ key, worklogId, timeSpent, started, comment }) {
+      await assertInProject(key)
+      return editWorklog(http, key, worklogId, {
+        ...(timeSpent !== undefined && { timeSpent }),
+        ...(started !== undefined && { started: new Date(started) }),
+        ...(comment !== undefined && { comment }),
+      })
+    },
+    async deleteWorklog({ key, worklogId }) {
+      await assertInProject(key)
+      await deleteWorklog(http, key, worklogId)
+    },
+    async listLinks({ key }) {
+      const [links, types] = await Promise.all([listLinks(http, key), listLinkTypes(http)])
+      return { links, types }
+    },
+    async addLink({ key, typeId, direction, otherKey }) {
+      // The same guard as `jm link add`: a link never reaches an issue outside the project.
+      await assertInProject(key)
+      await assertInProject(otherKey)
+      if (key === otherKey) {
+        throw new JiraMgrError('validation_failed', `${key} cannot link to itself.`)
+      }
+      await addLink(http, { type: { id: typeId }, key, direction, otherKey })
+    },
+    async removeLink({ key, linkId }) {
+      const link = await getLink(http, linkId)
+      // A link id names no issue, so one that is not this page's is refused as if it did not exist.
+      if (link.inwardKey !== key && link.outwardKey !== key) {
+        throw new JiraMgrError('not_found', `Link ${linkId} is not a link of ${key}.`)
+      }
+      await assertInProject(link.inwardKey)
+      await assertInProject(link.outwardKey)
+      await removeLink(http, linkId)
+    },
+    async listAttachments({ key }) {
+      return (await listAttachments(http, key)).map(attachmentItem)
+    },
+    async addAttachmentFile({ key, filename, mimeType, bytes }) {
+      await assertInProject(key)
+      const [attachment] = await addAttachment(http, key, {
+        filename: safeFilename(filename),
+        content: bytes,
+        ...(CONTENT_TYPE.test(mimeType) && { contentType: mimeType }),
+      })
+      if (attachment === undefined) {
+        throw new JiraMgrError('jira_error', 'Jira did not say which attachment it stored.')
+      }
+      return attachmentItem(attachment)
+    },
+    async downloadAttachment({ key, attachmentId }) {
+      const found = (await listAttachments(http, key)).find((a) => a.id === attachmentId)
+      if (found === undefined) {
+        throw new JiraMgrError('not_found', `${key} has no attachment ${attachmentId}.`)
+      }
+      if (found.size > ATTACHMENT_LIMIT_BYTES) {
+        throw new JiraMgrError(
+          'validation_failed',
+          `${found.filename} is over the ${String(ATTACHMENT_LIMIT_BYTES / 1_000_000)} MB this app downloads. Open ${key} in Jira to get it.`,
+        )
+      }
+      if (deps.chooseSavePath === undefined) {
+        throw new JiraMgrError('internal', 'This app cannot save files.')
+      }
+      // Only a path the user chose in the native dialog is ever written.
+      const path = await deps.chooseSavePath(savedFilename(found.filename))
+      if (path === null) return { saved: false }
+      // ponytail: the file sits in memory while it downloads; stream it to disk if the limit rises.
+      const { bytes } = await attachmentContent(http, attachmentId, {
+        maxBytes: ATTACHMENT_LIMIT_BYTES,
+      })
+      try {
+        await (deps.writeFile ?? writeFile)(path, bytes)
+      } catch (error) {
+        throw new JiraMgrError(
+          'internal',
+          'Could not write the file. Choose another folder and try again.',
+          { cause: error },
+        )
+      }
+      return { saved: true, filename: basename(path) }
     },
     async listTransitions({ key }) {
       // Two transitions can reach one status, and a picker lists each status once.

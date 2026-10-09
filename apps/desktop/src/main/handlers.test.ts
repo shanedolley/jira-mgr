@@ -44,6 +44,20 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     setDescription: record('setDescription', { saved: true }),
     addImage: record('addImage', { node: { type: 'mediaSingle' } }),
     image: record('image', { mimeType: 'image/png', bytes: new Uint8Array() }),
+    listComments: record('listComments', []),
+    addComment: record('addComment', {} as never),
+    editComment: record('editComment', {} as never),
+    deleteComment: record('deleteComment', undefined),
+    listWorklogs: record('listWorklogs', []),
+    addWorklog: record('addWorklog', {} as never),
+    editWorklog: record('editWorklog', {} as never),
+    deleteWorklog: record('deleteWorklog', undefined),
+    listLinks: record('listLinks', { links: [], types: [] }),
+    addLink: record('addLink', undefined),
+    removeLink: record('removeLink', undefined),
+    listAttachments: record('listAttachments', []),
+    addAttachmentFile: record('addAttachmentFile', {} as never),
+    downloadAttachment: record('downloadAttachment', { saved: false }),
     listTransitions: record('listTransitions', []),
     setStatus: record('setStatus', undefined),
     setSprint: record('setSprint', undefined),
@@ -610,5 +624,132 @@ describe('editor channels', () => {
     const good = { key: 'PSAPAC-12', mediaId: 'f06ee6e2-999b-491f-acb0-f299310206ec' }
     expect((await createHandlers(backend)['attachments:image'](good, noProgress)).ok).toBe(true)
     expect(calls).toEqual([{ method: 'image', args: [good] }])
+  })
+})
+
+describe('activity', () => {
+  const BODY = {
+    version: 1,
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }],
+  }
+  const FILE = {
+    key: 'PSAPAC-12',
+    filename: 'report.xlsx',
+    mimeType: 'application/vnd.ms-excel',
+    bytes: new Uint8Array([1, 2, 3]),
+  }
+
+  /** Each case refuses before the backend runs. */
+  it.each([
+    ['comments:list', 'a key of another shape', { key: 'psapac-1' }],
+    ['comments:add', 'no body', { key: 'PSAPAC-12' }],
+    ['comments:add', 'a null body', { key: 'PSAPAC-12', body: null }],
+    ['comments:add', 'a body that is not ADF', { key: 'PSAPAC-12', body: { text: 'x' } }],
+    [
+      'comments:edit',
+      'a comment id with a path in it',
+      { key: 'PSAPAC-12', commentId: '1/../2', body: BODY },
+    ],
+    ['comments:edit', 'a comment id of zero', { key: 'PSAPAC-12', commentId: '0', body: BODY }],
+    ['comments:delete', 'an unknown field', { key: 'PSAPAC-12', commentId: '5', extra: 1 }],
+    ['worklogs:add', 'a duration that is not one', { key: 'PSAPAC-12', timeSpent: 'a while' }],
+    ['worklogs:add', 'no duration', { key: 'PSAPAC-12' }],
+    [
+      'worklogs:add',
+      'a start that is not a date-time',
+      { key: 'PSAPAC-12', timeSpent: '1h', started: 'soon' },
+    ],
+    ['worklogs:add', 'a null comment', { key: 'PSAPAC-12', timeSpent: '1h', comment: null }],
+    [
+      'worklogs:edit',
+      'a worklog id of letters',
+      { key: 'PSAPAC-12', worklogId: 'abc', timeSpent: '1h' },
+    ],
+    ['worklogs:delete', 'a missing worklog id', { key: 'PSAPAC-12' }],
+    [
+      'links:add',
+      'a direction that is neither',
+      { key: 'PSAPAC-12', typeId: '1', direction: 'sideways', otherKey: 'PSAPAC-13' },
+    ],
+    [
+      'links:add',
+      'a type id with a path in it',
+      { key: 'PSAPAC-12', typeId: '1/x', direction: 'outward', otherKey: 'PSAPAC-13' },
+    ],
+    [
+      'links:add',
+      'an other key of another shape',
+      { key: 'PSAPAC-12', typeId: '1', direction: 'outward', otherKey: 'x' },
+    ],
+    ['links:remove', 'a link id of letters', { key: 'PSAPAC-12', linkId: 'x' }],
+    ['attachments:add', 'an empty file', { ...FILE, bytes: new Uint8Array() }],
+    ['attachments:add', 'an oversized file', { ...FILE, bytes: new Uint8Array(100_000_001) }],
+    ['attachments:add', 'bytes that are not a Uint8Array', { ...FILE, bytes: [1, 2, 3] }],
+    ['attachments:add', 'a long filename', { ...FILE, filename: 'a'.repeat(256) }],
+    ['attachments:add', 'an empty filename', { ...FILE, filename: '' }],
+    [
+      'attachments:download',
+      'an attachment id with a path in it',
+      { key: 'PSAPAC-12', attachmentId: '../1' },
+    ],
+    [
+      'attachments:download',
+      'a path from the renderer',
+      { key: 'PSAPAC-12', attachmentId: '5', path: '/etc/x' },
+    ],
+  ] as const)('%s refuses %s', async (channel, _name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)[channel](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes each valid request to its backend method', async () => {
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    const requests = [
+      ['comments:list', 'listComments', { key: 'PSAPAC-12' }],
+      ['comments:add', 'addComment', { key: 'PSAPAC-12', body: BODY }],
+      ['comments:edit', 'editComment', { key: 'PSAPAC-12', commentId: '7', body: BODY }],
+      ['comments:delete', 'deleteComment', { key: 'PSAPAC-12', commentId: '7' }],
+      ['worklogs:list', 'listWorklogs', { key: 'PSAPAC-12' }],
+      [
+        'worklogs:add',
+        'addWorklog',
+        {
+          key: 'PSAPAC-12',
+          timeSpent: '1h 30m',
+          started: '2026-10-10T01:00:00.000Z',
+          comment: BODY,
+        },
+      ],
+      ['worklogs:edit', 'editWorklog', { key: 'PSAPAC-12', worklogId: '9', timeSpent: '2h' }],
+      ['worklogs:delete', 'deleteWorklog', { key: 'PSAPAC-12', worklogId: '9' }],
+      ['links:list', 'listLinks', { key: 'PSAPAC-12' }],
+      [
+        'links:add',
+        'addLink',
+        { key: 'PSAPAC-12', typeId: '1', direction: 'outward', otherKey: 'PSAPAC-13' },
+      ],
+      ['links:remove', 'removeLink', { key: 'PSAPAC-12', linkId: '3' }],
+      ['attachments:list', 'listAttachments', { key: 'PSAPAC-12' }],
+      ['attachments:add', 'addAttachmentFile', FILE],
+      ['attachments:download', 'downloadAttachment', { key: 'PSAPAC-12', attachmentId: '5' }],
+    ] as const
+    for (const [channel, method, args] of requests) {
+      const result = await handlers[channel](args, noProgress)
+      expect(result.ok, channel).toBe(true)
+      expect(calls.at(-1), channel).toEqual({ method, args: [args] })
+    }
+  })
+
+  it('accepts a start with an offset', async () => {
+    const { backend } = fakeBackend()
+    const result = await createHandlers(backend)['worklogs:add'](
+      { key: 'PSAPAC-12', timeSpent: '1h', started: '2026-10-10T11:00:00.000+11:00' },
+      noProgress,
+    )
+    expect(result.ok).toBe(true)
   })
 })
