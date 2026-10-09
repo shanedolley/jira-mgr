@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, releaseDone, releaseEdit } from './harness.js'
+import { counts, failRead, launch, logIn, releaseDone, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -142,8 +142,18 @@ test('lists the description, the subtasks and the parent, which open their own p
 
   await expect(heading('Outline the sections')).toBeVisible()
   await expect(picker('Type', 'Subtask')).toHaveCount(0)
+  // Q20: a Subtask has no Sprint, though it has a parent and the estimates.
+  await expect(props().getByRole('button', { name: /^Sprint:/ })).toHaveCount(0)
+  await expect(props().getByRole('button', { name: /^Parent:/ })).toBeVisible()
+  await expect(props().getByLabel('Original estimate')).toBeVisible()
+  // The button that opened this page is gone, so focus must be on the page, where Esc leaves.
+  await expect(issuePage()).toBeFocused()
   await issuePage().getByRole('button', { name: 'PSAPAC-11', exact: true }).click()
   await expect(heading('Draft the runbook')).toBeVisible()
+  await expect(issuePage()).toBeFocused()
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
 })
 
 test('shows the description in the page', async () => {
@@ -223,6 +233,9 @@ test('lists Me and recent assignees first, then searches for anyone else', async
   // Other User is on two loaded issues; Cy Young is on none, so only the search finds them.
   await expect(options.nth(2)).toContainText('Other User')
   await expect(options.nth(3)).toContainText('Cy Young')
+  // Each run of options sits in a named group.
+  await expect(window.getByRole('group', { name: 'Suggested' }).getByRole('option')).toHaveCount(3)
+  await expect(window.getByRole('group', { name: 'People' }).getByRole('option')).toHaveCount(1)
 
   await window.getByRole('combobox', { name: 'Search Assignee' }).fill('cy')
   await expect(options).toHaveCount(1)
@@ -378,6 +391,13 @@ test('saves a date when focus leaves the field, clears it, and abandons an edit 
   // Esc in a field abandons the edit; it does not leave the page.
   await expect(heading('Migrate the dashboards')).toBeVisible()
 
+  // Clearing one segment of the date reads as "" too, but it is half an edit, not a cleared date.
+  await due.focus()
+  await window.keyboard.press('Backspace')
+  await due.blur()
+  await expect(due).toHaveValue('2026-12-24')
+  expect(await writes()).toBe(1)
+
   await due.fill('')
   await window.keyboard.press('Enter')
   await settle(2)
@@ -420,6 +440,15 @@ test('edits the estimate, shows the remaining estimate Jira cascades, and refuse
   await window.keyboard.press('Enter')
   await settle(2)
   expect(await lastBody()).toEqual({ fields: { customfield_5: 3 } })
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(3)
+
+  // "3e" is half a number: the field reports "" but is not emptied, so nothing is cleared.
+  await remaining.focus()
+  await window.keyboard.press('End')
+  await window.keyboard.type('e')
+  await remaining.blur()
+  await expect(remaining).toHaveValue('3')
+  expect(await writes()).toBe(2)
 })
 
 test('asks about the Customer and Engagement when a new parent differs, and moves with them', async () => {
@@ -434,7 +463,7 @@ test('asks about the Customer and Engagement when a new parent differs, and move
   expect(await writes()).toBe(0)
   await dialog.getByRole('button', { name: 'Move and set Customer and Engagement' }).click()
 
-  await expect(picker('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
+  await expect(picker('Parent', 'PSAPAC-30 Reporting')).toBeFocused()
   await expect(picker('Customer', 'Beta Ltd')).toBeVisible()
   await expect(picker('Engagement', 'South')).toBeVisible()
   await settle(1)
@@ -457,14 +486,14 @@ test('moves under the new parent alone when told to keep the Customer, and sends
   await window.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   expect(await writes()).toBe(0)
-  await expect(picker('Parent', /^Parent: PSAPAC-10/)).toBeVisible()
-  // Esc cancelled the question; it did not leave the page.
+  // Esc cancelled the question; it did not leave the page, and focus is back on the Parent button.
+  await expect(picker('Parent', /^Parent: PSAPAC-10/)).toBeFocused()
   await expect(heading('Review the data model')).toBeVisible()
 
   await picker('Parent', /^Parent: PSAPAC-10/).click()
   await option(/PSAPAC-30/).click()
   await dialog.getByRole('button', { name: 'Move only' }).click()
-  await expect(picker('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
+  await expect(picker('Parent', 'PSAPAC-30 Reporting')).toBeFocused()
   await expect(picker('Customer', 'Acme')).toBeVisible()
   await settle(1)
   expect(await lastBody()).toEqual({ fields: { parent: { key: 'PSAPAC-30' } } })
@@ -552,4 +581,69 @@ test('every picker opens from the keyboard and returns focus to its button on Es
   // Esc inside a picker closed the picker; the page is still there.
   await expect(heading('Fix the export timeout')).toBeVisible()
   expect(await writes()).toBe(0)
+})
+
+test('a click on Cancel in the Customer prompt returns focus to the Parent button', async () => {
+  await openPage(/PSAPAC-2,/, 'Review the data model')
+  await picker('Parent', /^Parent: PSAPAC-10/).click()
+  await option(/PSAPAC-30/).click()
+
+  await window
+    .getByRole('dialog', { name: 'Move PSAPAC-2 under PSAPAC-30?' })
+    .getByRole('button', { name: 'Cancel' })
+    .click()
+
+  await expect(picker('Parent', /^Parent: PSAPAC-10/)).toBeFocused()
+  expect(await writes()).toBe(0)
+})
+
+test('ending a summary edit returns focus to the page, so Esc still leaves it', async () => {
+  await openPage(/PSAPAC-3,/, 'Fix the export timeout')
+
+  await issuePage().getByRole('button', { name: 'Edit summary' }).click()
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toBeFocused()
+
+  await issuePage().getByRole('button', { name: 'Edit summary' }).click()
+  await issuePage().getByLabel('Summary').fill('Fix the export time limit')
+  await issuePage().getByRole('button', { name: 'Save' }).click()
+  await expect(issuePage()).toBeFocused()
+  await expect(heading('Fix the export time limit')).toBeVisible()
+  await settle(1)
+
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+})
+
+test('offers Retry when the page cannot read its issue, and shows the description after it', async () => {
+  await open()
+  await failRead(app)
+  await item(/PSAPAC-1,/).click()
+  await window.keyboard.press('Enter')
+
+  // The summary and properties come from the loaded lists, so the page still shows.
+  await expect(heading('Kick off the engagement')).toBeVisible()
+  await expect(issuePage().getByRole('alert')).toContainText('The fake failed this read')
+  await expect(issuePage().getByText('Loading description')).toHaveCount(0)
+
+  await issuePage().getByRole('button', { name: 'Retry' }).click()
+  await expect(issuePage().getByText('Agree the scope with the sponsor.')).toBeVisible()
+  await expect(issuePage().getByRole('alert')).toHaveCount(0)
+})
+
+test('applying a saved view from the sidebar closes the page and returns to the Tree', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+
+  // The sidebar stays clickable under the page, whose Tree is inert.
+  await window
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('button', { name: 'Current sprint', exact: true })
+    .click()
+
+  await expect(issuePage()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await expect(window.getByRole('list', { name: 'Active filters' })).toContainText(
+    'Sprint: Current sprint',
+  )
 })

@@ -1,7 +1,13 @@
 import type { Issue } from '@jira-mgr/core'
-import { formatEstimate, parseEstimate, propertyRules } from '@jira-mgr/core/issue'
+import {
+  SWAPPABLE_TYPES,
+  formatEstimate,
+  parseEstimate,
+  propertyRules,
+  type SwappableType,
+} from '@jira-mgr/core/issue'
 import { STATUS_ORDER } from '@jira-mgr/core/hierarchy'
-import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 
 import type { CurrentUser, FieldChoice, IssueChanges, SprintOption } from '../../shared/ipc'
 import { ParentPrompt } from './ParentPrompt'
@@ -38,7 +44,6 @@ import {
 } from './queries'
 
 const NONE = '__none__'
-const SWAPPABLE = ['Story', 'Task', 'Bug']
 
 const STATE_LABELS: Record<SprintOption['state'], string> = {
   active: 'Active',
@@ -117,7 +122,13 @@ function TextField({
   }
   const invalid = draft !== value && !valid(draft)
 
-  function commit() {
+  function commit(input: HTMLInputElement) {
+    // A date or number field the user has half edited reports "" as its value, which is also what
+    // an emptied field reports. Only an emptied one clears the property, so a half edit reverts.
+    if (input.validity.badInput) {
+      setDraft(value)
+      return
+    }
     if (draft === value) return
     if (!valid(draft)) return
     onCommit(draft)
@@ -126,7 +137,7 @@ function TextField({
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter') {
       event.preventDefault()
-      commit()
+      commit(event.currentTarget)
     } else if (event.key === 'Escape') {
       // The page's own Esc is for leaving, and this one only abandons the edit.
       event.stopPropagation()
@@ -145,7 +156,9 @@ function TextField({
         onChange={(event) => {
           setDraft(event.target.value)
         }}
-        onBlur={commit}
+        onBlur={(event) => {
+          commit(event.currentTarget)
+        }}
         onKeyDown={onKeyDown}
         {...(type === 'number' ? { min: 0, step: 0.25 } : {})}
         className={`${FIELD} ${invalid ? 'border-danger' : ''}`}
@@ -168,12 +181,19 @@ interface IssuePropertiesProps {
  * type (`propertyRules`); Jira has the last word on what it accepts.
  */
 export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
-  const rules = propertyRules(issue.issueType.name)
+  const rules = propertyRules(issue.issueType)
   const edit = useEditIssue()
   const setStatus = useSetStatus()
   const setSprint = useSetSprint()
   const [error, setError] = useState<string | null>(null)
   const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)
+  const parentTrigger = useRef<HTMLButtonElement>(null)
+  // The dialog unmounts with its answer, so focus goes back to the button that asked.
+  const wasPrompting = useRef(false)
+  useEffect(() => {
+    if (prompt === null && wasPrompting.current) parentTrigger.current?.focus()
+    wasPrompting.current = prompt !== null
+  }, [prompt])
 
   const [statusOpen, setStatusOpen] = useState(false)
   const transitions = useTransitions(issue.key, statusOpen)
@@ -306,7 +326,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
   function chooseType(id: string) {
     const choice = types.data?.find((c) => c.id === id)
     if (choice === undefined || issue.issueType.id === id) return
-    change('the type', { type: choice.name as 'Story' | 'Task' | 'Bug' }, typePatch(issue, choice))
+    change('the type', { type: choice.name as SwappableType }, typePatch(issue, choice))
   }
 
   // Labels
@@ -480,7 +500,9 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             <Picker
               label="Type"
               valueText={issue.issueType.name}
-              options={fromChoices(types.data?.filter((t) => SWAPPABLE.includes(t.name)))}
+              options={fromChoices(
+                types.data?.filter((t) => (SWAPPABLE_TYPES as readonly string[]).includes(t.name)),
+              )}
               selected={[issue.issueType.id]}
               onSelect={chooseType}
               onOpenChange={setTypeOpen}
@@ -494,6 +516,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
           <Row name="Parent">
             <Picker
               label="Parent"
+              triggerRef={parentTrigger}
               valueText={
                 issue.parentKey === null
                   ? 'None'

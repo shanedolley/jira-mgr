@@ -6,7 +6,7 @@ import { useSetSummary } from './queries'
 export interface SummaryEditorProps {
   issue: Issue
   onEditingChange: (editing: boolean) => void
-  /** The edit ended with Esc: the Shell puts focus back on the Tree. */
+  /** The edit ended, so the editor's controls are gone: the caller puts focus somewhere that still works. */
   onLeave: () => void
 }
 
@@ -25,6 +25,7 @@ export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditor
     event.preventDefault()
     const summary = draft.trim()
     finish()
+    onLeave()
     if (summary !== '' && summary !== issue.summary) save.mutate({ key: issue.key, summary })
   }
 
@@ -57,7 +58,10 @@ export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditor
           </button>
           <button
             type="button"
-            onClick={finish}
+            onClick={() => {
+              finish()
+              onLeave()
+            }}
             className="rounded-md border border-line px-3 py-1 hover:bg-hover"
           >
             Cancel

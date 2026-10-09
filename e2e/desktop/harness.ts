@@ -26,6 +26,7 @@ interface FakeJira {
   releaseEdit: () => void
   releaseDone: () => void
   failDone: () => void
+  failRead: () => void
 }
 
 interface WithFake {
@@ -64,6 +65,12 @@ export const releaseDone = (app: ElectronApplication) =>
 export const failDone = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failDone()
+  })
+
+/** Makes the fake Jira answer 500 to the next read of one issue. */
+export const failRead = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.failRead()
   })
 
 export async function logIn(window: Page, token = TOKEN) {

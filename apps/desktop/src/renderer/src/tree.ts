@@ -248,7 +248,7 @@ export interface KeyInput {
 }
 
 export interface MoveResult extends TreeState {
-  /** Enter on an issue row, or a double click: the Shell opens the active issue's full page. */
+  /** Enter on an issue row: the Shell opens the active issue's full page. */
   openPage: boolean
 }
 

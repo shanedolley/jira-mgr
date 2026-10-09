@@ -24,7 +24,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Customer** | The required field naming the customer an issue serves. Every issue type carries one. | client, account |
 | **Engagement** | The required field naming the workstream. | project |
 | **Status** | A state an issue sits in. The order is Opportunity, To Do, In Progress, Review, Hold, Done. | state, column |
-| **Sprint** | A Jira sprint an issue moves into or out of. Hidden on Epics, which have no Sprint field. Closed and undated sprints sit behind "Show all". | iteration |
+| **Sprint** | A Jira sprint an issue moves into or out of. Hidden on Epics and Subtasks. Closed and undated sprints sit behind "Show all". | iteration |
 | **Link** | A relation between two issues, of one of Jira's 21 link types. | dependency (unless the type is Blocks) |
 | **Worklog** | A time entry on an issue. Created by hand or by stopping a Timer. Task, Bug, Story and Subtask take worklogs, Epics do not. | time log, timesheet |
 | **Timer** | The one running clock, on one issue, kept in a state file the app and `jm timer` share. It can pause and resume, and stopping it logs one Worklog with paused time excluded. | stopwatch, tracker |

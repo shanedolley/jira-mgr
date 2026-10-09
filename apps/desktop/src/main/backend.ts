@@ -171,11 +171,13 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       await editIssue(http, key, changes)
     },
     async listTransitions({ key }) {
-      return (await listTransitions(http, key)).map(({ to }) => ({
-        id: to.id,
-        name: to.name,
-        category: to.category,
-      }))
+      // Two transitions can reach one status, and a picker lists each status once.
+      const reached = new Map<string, StatusOption>()
+      for (const { to } of await listTransitions(http, key)) {
+        if (!reached.has(to.id))
+          reached.set(to.id, { id: to.id, name: to.name, category: to.category })
+      }
+      return [...reached.values()]
     },
     async setStatus({ key, statusId }) {
       await assertInProject(key)

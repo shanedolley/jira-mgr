@@ -188,14 +188,15 @@ export function Shell({ session }: { session: Session }) {
     if (next !== null) apply(next)
   }
 
-  // Focus follows the page: into it when it opens, back to the Tree when it closes.
+  // Focus follows the page: into it whenever it opens or shows another issue, whose controls
+  // replace the last page's, and back to the Tree when it closes.
   const pageOpen = pageKey !== null
   const wasPageOpen = useRef(false)
   useEffect(() => {
-    if (pageOpen) pageRef.current?.focus()
+    if (pageKey !== null) pageRef.current?.focus()
     else if (wasPageOpen.current) treeRef.current?.focus()
-    wasPageOpen.current = pageOpen
-  }, [pageOpen])
+    wasPageOpen.current = pageKey !== null
+  }, [pageKey])
 
   /**
    * A view replaces the bar's filters and sets the toggles. The toggles go through the same write

@@ -123,12 +123,14 @@ export interface IssueDetail extends Issue {
 /** Q23: a type change is allowed only among these three, which share a hierarchy level. */
 export const SWAPPABLE_TYPES = ['Story', 'Task', 'Bug'] as const
 
+export type SwappableType = (typeof SWAPPABLE_TYPES)[number]
+
 /** A Jira duration such as "2h 30m" or "1w 2d". */
 export const DURATION_PATTERN = /^\d+[wdhm](?: \d+[wdhm])*$/
 
 /** What an issue's type lets a client show and edit. Pure, so every client applies the same rules. */
 export interface PropertyRules {
-  /** Q20 and the create metadata: every type but an Epic has the Sprint field. */
+  /** Q20: an Epic or a Subtask has no Sprint. */
   sprint: boolean
   /** The estimates and Time remaining (h): an Epic has no time tracking. */
   estimates: boolean
@@ -138,13 +140,13 @@ export interface PropertyRules {
   typeChange: boolean
 }
 
-export function propertyRules(typeName: string): PropertyRules {
-  const epic = typeName === 'Epic'
+export function propertyRules(type: Pick<Issue['issueType'], 'name' | 'subtask'>): PropertyRules {
+  const epic = type.name === 'Epic'
   return {
-    sprint: !epic,
+    sprint: !epic && !type.subtask,
     estimates: !epic,
     parent: !epic,
-    typeChange: (SWAPPABLE_TYPES as readonly string[]).includes(typeName),
+    typeChange: (SWAPPABLE_TYPES as readonly string[]).includes(type.name),
   }
 }
 
@@ -201,7 +203,7 @@ export function formatEstimate(seconds: number): string {
  * Task or Bug can. The CLI and the desktop app call it before they edit a type.
  */
 export function assertTypeChangeAllowed(key: string, currentType: string): void {
-  if (propertyRules(currentType).typeChange) return
+  if ((SWAPPABLE_TYPES as readonly string[]).includes(currentType)) return
   throw new JiraMgrError(
     'validation_failed',
     `${key} is ${/^[AEIOU]/i.test(currentType) ? 'an' : 'a'} ${currentType}. The type can change only among Story, Task and Bug.`,

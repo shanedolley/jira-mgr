@@ -1,4 +1,4 @@
-import type { Issue } from '@jira-mgr/core'
+import type { Issue, JiraMgrError } from '@jira-mgr/core'
 import { adfToMarkdown } from '@jira-mgr/core/adf'
 import type { IssueDetail } from '@jira-mgr/core/issue'
 import { useMemo, type KeyboardEvent, type RefObject } from 'react'
@@ -41,9 +41,17 @@ function PageBody({
   me,
   mismatch,
   onOpen,
+  onLeave,
+  detailError,
+  onRetry,
 }: Pick<IssuePageProps, 'issues' | 'me' | 'mismatch' | 'onOpen'> & {
   issue: Issue
   detail: IssueDetail | undefined
+  /** Puts focus back on the page once an editor's controls are gone. */
+  onLeave: () => void
+  /** Why the page's own read failed, while it holds no read. */
+  detailError: JiraMgrError | null
+  onRetry: () => void
 }) {
   const fix = useMatchCustomer(issue)
   const description = useMemo(
@@ -59,11 +67,7 @@ function PageBody({
               <StatusDot status={issue.status} />
               {issue.key}
             </h1>
-            <SummaryEditor
-              issue={issue}
-              onEditingChange={() => undefined}
-              onLeave={() => undefined}
-            />
+            <SummaryEditor issue={issue} onEditingChange={() => undefined} onLeave={onLeave} />
           </div>
           {mismatch !== null && (
             <CustomerMismatch
@@ -82,7 +86,9 @@ function PageBody({
             <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">
               Description
             </h2>
-            {description === undefined ? (
+            {detailError !== null ? (
+              <LoadError error={detailError} onRetry={onRetry} />
+            ) : description === undefined ? (
               <p className="text-muted">Loading description</p>
             ) : description === null ? (
               <p className="text-muted">No description</p>
@@ -198,6 +204,9 @@ export function IssuePage({
           key={issue.key}
           issue={issue}
           detail={detail.data}
+          detailError={detail.isError && detail.data === undefined ? detail.error : null}
+          onRetry={() => void detail.refetch()}
+          onLeave={() => pageRef.current?.focus()}
           issues={issues}
           me={me}
           mismatch={mismatch}

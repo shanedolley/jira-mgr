@@ -18,8 +18,10 @@ const type = (name: string): Issue['issueType'] => ({
 const issue = (key: string, typeName: string) => ({ key, issueType: type(typeName) })
 
 describe('propertyRules', () => {
+  const rules = (name: string) => propertyRules(type(name))
+
   it('hides Sprint, the estimates and the parent on an Epic', () => {
-    expect(propertyRules('Epic')).toEqual({
+    expect(rules('Epic')).toEqual({
       sprint: false,
       estimates: false,
       parent: false,
@@ -29,7 +31,7 @@ describe('propertyRules', () => {
 
   it('lets a Story, Task or Bug change type and shows them everything else', () => {
     for (const name of ['Story', 'Task', 'Bug']) {
-      expect(propertyRules(name)).toEqual({
+      expect(rules(name)).toEqual({
         sprint: true,
         estimates: true,
         parent: true,
@@ -38,13 +40,17 @@ describe('propertyRules', () => {
     }
   })
 
-  it('shows a Subtask its Sprint, estimates and parent but fixes its type', () => {
-    expect(propertyRules('Subtask')).toEqual({
-      sprint: true,
+  it('hides Sprint on a Subtask and fixes its type, but shows its estimates and parent', () => {
+    expect(rules('Subtask')).toEqual({
+      sprint: false,
       estimates: true,
       parent: true,
       typeChange: false,
     })
+  })
+
+  it('reads a Subtask from the issue type flag, not its name', () => {
+    expect(propertyRules({ name: 'Sub-task', subtask: true }).sprint).toBe(false)
   })
 })
 

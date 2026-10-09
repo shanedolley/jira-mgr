@@ -1,4 +1,5 @@
 import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
+import { SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { z } from 'zod'
 
 import type {
@@ -74,7 +75,7 @@ const issueChanges: z.ZodType<IssueChanges> = z
     engagementId: text(64),
     originalEstimate: text(64),
     timeRemainingHours: z.number().nonnegative().max(100_000).nullable(),
-    type: z.enum(['Story', 'Task', 'Bug']),
+    type: z.enum(SWAPPABLE_TYPES),
   })
   .partial()
 

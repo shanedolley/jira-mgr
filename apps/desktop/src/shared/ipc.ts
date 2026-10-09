@@ -1,6 +1,6 @@
 import type { ErrorCode, Issue } from '@jira-mgr/core'
 import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
-import type { IssueDetail } from '@jira-mgr/core/issue'
+import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
 import type { SavedView } from '@jira-mgr/core/state'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
@@ -77,7 +77,7 @@ export interface IssueChanges {
   /** A Jira duration such as `2h 30m`. */
   originalEstimate?: string
   timeRemainingHours?: number | null
-  type?: 'Story' | 'Task' | 'Bug'
+  type?: SwappableType
 }
 
 export interface EditIssueArgs {

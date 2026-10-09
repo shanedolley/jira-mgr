@@ -154,6 +154,18 @@ describe('transitions and status', () => {
     ])
   })
 
+  it('lists a status once when two transitions reach it', async () => {
+    const { http } = routedHttp(() => ({
+      transitions: [
+        { id: '21', name: 'Start', to: { id: '2', name: 'In Progress' } },
+        { id: '22', name: 'Resume', to: { id: '2', name: 'In Progress' } },
+        { id: '31', name: 'Finish', to: { id: '3', name: 'Done' } },
+      ],
+    }))
+    const statuses = await createBackend({ http }).listTransitions({ key: 'PSAPAC-12' })
+    expect(statuses.map((s) => s.id)).toEqual(['2', '3'])
+  })
+
   it('moves by the transition that reaches the status id', async () => {
     const { http, requests } = routedHttp(({ method }) =>
       method === 'GET' ? transitions : undefined,

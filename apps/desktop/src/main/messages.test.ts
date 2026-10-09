@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { assertInProject, writeSettings } from '@jira-mgr/core/state'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { desktopMessage } from './messages'
 
@@ -47,5 +52,39 @@ describe('desktopMessage', () => {
       'Jira rejected the request. Run `jm auth login` to sign in again.',
     ]
     for (const message of sent) expect(desktopMessage(message)).not.toMatch(/`?\bjm\b/)
+  })
+})
+
+describe('desktopMessage on what core sends', () => {
+  let dir: string
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'jm-desktop-messages-'))
+    process.env.JM_STATE_DIR = dir
+  })
+  afterEach(async () => {
+    delete process.env.JM_STATE_DIR
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  const refusal = (key: string) =>
+    assertInProject(key).then(
+      () => '',
+      (error: unknown) => (error instanceof Error ? error.message : ''),
+    )
+
+  it('rewords the real refusal of a key outside the project, so a core rewording is caught', async () => {
+    await writeSettings({ projectKey: 'PSAPAC' })
+    const message = await refusal('OTHER-5')
+    expect(message).toContain('OTHER-5')
+    expect(desktopMessage(message)).toBe(
+      'OTHER-5 is not in PSAPAC. This app manages the PSAPAC project only.',
+    )
+  })
+
+  it('rewords the real refusal when no project is set', async () => {
+    const message = await refusal('PSAPAC-1')
+    expect(message).toContain('No project is set')
+    expect(desktopMessage(message)).toBe('No project is set. Log in again.')
+    expect(desktopMessage(message)).not.toMatch(/\bjm\b/)
   })
 })

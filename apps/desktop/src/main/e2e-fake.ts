@@ -334,6 +334,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   releaseDone: () => void
   /** Makes the next Done page answer 500. */
   failDone: () => void
+  /** Makes the next read of one issue answer 500. */
+  failRead: () => void
 } {
   const bulk = Array.from({ length: options.bulk ?? 0 }, (_, i) =>
     issue({
@@ -378,6 +380,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   })
   let doneHeld = false
   let failNextDone = false
+  let failNextRead = false
   // Each applied write moves `updated` on, so a read always shows the later copy.
   let clock = 0
 
@@ -604,6 +607,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const target = find(one[1] ?? '')
       if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
       counts.issueReads.push(target.key)
+      if (failNextRead) {
+        failNextRead = false
+        return json({ errorMessages: ['The fake failed this read.'] }, 500)
+      }
       return json(detail(target))
     }
     if (method === 'PUT' && one !== null) {
@@ -629,6 +636,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failDone: () => {
       failNextDone = true
+    },
+    failRead: () => {
+      failNextRead = true
     },
   }
 }

@@ -5,6 +5,7 @@ import {
   useState,
   type KeyboardEvent,
   type ReactNode,
+  type RefObject,
   type ToggleEvent,
 } from 'react'
 
@@ -47,6 +48,8 @@ export interface PickerProps {
   /** Extra controls under the list, such as "Show all sprints". */
   footer?: ReactNode
   disabled?: boolean
+  /** Lets the caller focus the button, such as after a dialog the choice opened has closed. */
+  triggerRef?: RefObject<HTMLButtonElement | null>
 }
 
 const CREATE_ID = '__create__'
@@ -94,6 +97,7 @@ export function Picker({
   note,
   footer,
   disabled = false,
+  triggerRef: givenTriggerRef,
 }: PickerProps) {
   const uid = useId()
   const popoverId = `${uid}-popover`
@@ -103,9 +107,10 @@ export function Picker({
   const [query, setQuery] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
-  const triggerRef = useRef<HTMLButtonElement>(null)
+  const ownTriggerRef = useRef<HTMLButtonElement>(null)
+  const triggerRef = givenTriggerRef ?? ownTriggerRef
   const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLUListElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   const text = query.trim()
   const listed =
@@ -122,6 +127,16 @@ export function Picker({
     : listed
   const active = visible.some((o) => o.id === activeId) ? activeId : (visible[0]?.id ?? null)
   const activeIndex = visible.findIndex((o) => o.id === active)
+  // Options with the same group sit together, each run under its own heading.
+  const sections: {
+    group: string | undefined
+    items: { option: PickerOption; index: number }[]
+  }[] = []
+  visible.forEach((option, index) => {
+    const last = sections.at(-1)
+    if (last !== undefined && last.group === option.group) last.items.push({ option, index })
+    else sections.push({ group: option.group, items: [{ option, index }] })
+  })
 
   useEffect(() => {
     if (open && activeIndex >= 0) {
@@ -251,7 +266,7 @@ export function Picker({
             className="mb-1 h-8 w-full rounded-md border border-line bg-canvas px-2 placeholder:text-muted"
           />
         )}
-        <ul
+        <div
           ref={listRef}
           id={listId}
           role="listbox"
@@ -268,16 +283,23 @@ export function Picker({
           }}
           className="max-h-64 overflow-y-auto focus-visible:outline-none"
         >
-          {visible.map((option, index) => {
-            const heading = option.group !== undefined && option.group !== visible[index - 1]?.group
-            return (
-              <li key={option.id} role="presentation">
-                {heading && (
-                  <p className="px-2 pb-0.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted">
-                    {option.group}
-                  </p>
-                )}
+          {sections.map(({ group, items }) => (
+            <div
+              key={group ?? ''}
+              role={group === undefined ? 'presentation' : 'group'}
+              aria-label={group}
+            >
+              {group !== undefined && (
+                <p
+                  aria-hidden
+                  className="px-2 pb-0.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted"
+                >
+                  {group}
+                </p>
+              )}
+              {items.map(({ option, index }) => (
                 <div
+                  key={option.id}
                   id={optionId(index)}
                   role="option"
                   aria-selected={selected.includes(option.id)}
@@ -295,10 +317,10 @@ export function Picker({
                   )}
                   {selected.includes(option.id) && <Check />}
                 </div>
-              </li>
-            )
-          })}
-        </ul>
+              ))}
+            </div>
+          ))}
+        </div>
         {visible.length === 0 && <p className="px-2 py-1.5 text-muted">No matches</p>}
         {note !== undefined && (
           <div role="status" className="px-2 py-1.5 text-xs text-muted">
