@@ -1,14 +1,15 @@
 import { buildHierarchy } from '@jira-mgr/core/hierarchy'
-import { issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
+import { applyViewToggles, issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { Session, Toggles } from '../../shared/ipc'
+import type { SavedView, Session, Toggles } from '../../shared/ipc'
 import { Banner } from './Banner'
 import { IssueDetail } from './IssueDetail'
 import { IssueTree } from './IssueTree'
 import { LoadError } from './LoadError'
 import { Sidebar } from './Sidebar'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
+import { ViewsList } from './ViewsList'
 import { filterChoices, hasFilters } from './filters'
 import {
   useCustomers,
@@ -181,6 +182,17 @@ export function Shell({ session }: { session: Session }) {
     if (next !== null) apply(next)
   }
 
+  /**
+   * A view replaces the bar's filters and sets the toggles. The toggles go through the same write
+   * as a press on a toggle button, so they stay as the view left them after a restart (Q28: each
+   * toggle remembers its last state).
+   */
+  function applyView(view: SavedView) {
+    setFilters(view.filters)
+    if (toggles !== undefined) setToggles.mutate(applyViewToggles(toggles, view))
+    focusTree()
+  }
+
   function closePeek() {
     setPeekOpen(false)
     setEditingKey(null)
@@ -273,7 +285,11 @@ export function Shell({ session }: { session: Session }) {
     <div
       className={`grid h-full ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
     >
-      <Sidebar session={session} count={unresolved.data?.length} />
+      <Sidebar
+        session={session}
+        count={unresolved.data?.length}
+        views={<ViewsList filters={filters} toggles={toggles} onApply={applyView} />}
+      />
       <section aria-label="Issue list" className="flex min-h-0 min-w-0 flex-col bg-canvas">
         <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4">
           <h1 className="font-semibold">Issues</h1>

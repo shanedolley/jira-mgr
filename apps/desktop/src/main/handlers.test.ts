@@ -7,6 +7,8 @@ import { createHandlers, stackFrames } from './handlers'
 const TOKEN = 'ATATT3xFfGF0-secret_token=ABC123'
 const LIST = { phase: 'unresolved', loadId: 1 } as const
 const TOGGLES = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
+const VIEW = { id: 'bugs', name: 'Bugs', filters: { type: ['Bug'] }, toggles: TOGGLES }
+const NEW_VIEW = { name: 'Bugs', filters: { type: ['Bug'], text: 'etl' }, toggles: TOGGLES }
 
 /** A progress sender that records what a handler reports. */
 function progressRecorder() {
@@ -39,6 +41,10 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     listCustomers: record('listCustomers', []),
     getToggles: record('getToggles', TOGGLES),
     setToggles: record('setToggles', TOGGLES),
+    listViews: record('listViews', []),
+    createView: record('createView', VIEW),
+    renameView: record('renameView', VIEW),
+    deleteView: record('deleteView', undefined),
     ...overrides,
   }
   return { backend, calls }
@@ -239,5 +245,90 @@ describe('JM_DEBUG', () => {
 describe('stackFrames', () => {
   it('is empty for a value that is not an error', () => {
     expect(stackFrames('boom')).toBe('')
+  })
+})
+
+describe('saved views', () => {
+  it('views:create passes the name, filters and toggles to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['views:create'](NEW_VIEW, noProgress)
+    expect(result).toEqual({ ok: true, data: VIEW })
+    expect(calls).toEqual([{ method: 'createView', args: [NEW_VIEW] }])
+  })
+
+  it('views:create accepts a view with no filters', async () => {
+    const { backend, calls } = fakeBackend()
+    const raw = { name: 'All', filters: {}, toggles: TOGGLES }
+    expect(await createHandlers(backend)['views:create'](raw, noProgress)).toMatchObject({
+      ok: true,
+    })
+    expect(calls).toHaveLength(1)
+  })
+
+  it.each([
+    ['an unknown filter field', { ...NEW_VIEW, filters: { owner: ['me'] } }],
+    ['a filter value that is not a list', { ...NEW_VIEW, filters: { type: 'Bug' } }],
+    ['a non-string filter value', { ...NEW_VIEW, filters: { type: [1] } }],
+    ['an extra key', { ...NEW_VIEW, id: 'bugs' }],
+    ['a missing toggle', { ...NEW_VIEW, toggles: { hideDone: true } }],
+    ['a name over 80 characters', { ...NEW_VIEW, name: 'x'.repeat(81) }],
+    ['no filters', { name: 'Bugs', toggles: TOGGLES }],
+  ])('views:create refuses %s', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['views:create'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('views:rename and views:delete take an id, and views:delete answers null', async () => {
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    expect(await handlers['views:rename']({ id: 'bugs', name: 'Defects' }, noProgress)).toEqual({
+      ok: true,
+      data: VIEW,
+    })
+    expect(await handlers['views:delete']({ id: 'bugs' }, noProgress)).toEqual({
+      ok: true,
+      data: null,
+    })
+    expect(calls).toEqual([
+      { method: 'renameView', args: [{ id: 'bugs', name: 'Defects' }] },
+      { method: 'deleteView', args: [{ id: 'bugs' }] },
+    ])
+  })
+
+  it.each([
+    ['views:rename', { id: '', name: 'X' }],
+    ['views:rename', { id: 'bugs' }],
+    ['views:rename', { id: 'bugs', name: 'X', extra: 1 }],
+    ['views:delete', {}],
+    ['views:delete', { id: 'bugs', name: 'X' }],
+  ] as const)('%s refuses %j', async (channel, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)[channel](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('views:list takes no argument', async () => {
+    const { backend } = fakeBackend()
+    const handlers = createHandlers(backend)
+    expect(await handlers['views:list'](undefined, noProgress)).toEqual({ ok: true, data: [] })
+    expect(await handlers['views:list']({ x: 1 }, noProgress)).toMatchObject({ ok: false })
+  })
+
+  it('maps a core refusal to the IPC error shape', async () => {
+    const { backend } = fakeBackend({
+      createView: () =>
+        Promise.reject(
+          new JiraMgrError('validation_failed', 'A view named "Bugs" already exists.'),
+        ),
+    })
+    const log = vi.fn()
+    const result = await createHandlers(backend, log)['views:create'](NEW_VIEW, noProgress)
+    expect(result).toEqual({
+      ok: false,
+      error: { code: 'validation_failed', message: 'A view named "Bugs" already exists.' },
+    })
   })
 })

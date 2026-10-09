@@ -338,6 +338,76 @@ describe('toggles', () => {
   })
 })
 
+const BUGS = {
+  filters: { type: ['Bug'] },
+  toggles: { hideDone: false, assigneeMe: true, hideEmptyCustomers: true },
+}
+
+// `jm view list` calls `readViews`, and `--view` calls `findView`, so these read as the CLI does.
+describe('views shared with the CLI', () => {
+  it('lists the starter views before any file exists', async () => {
+    const views = await createBackend().listViews()
+    expect(views.map((v) => v.name)).toEqual(['My issues', 'Current sprint'])
+  })
+
+  it('a view made in the app is read by the CLI, by id and by name', async () => {
+    const created = await createBackend().createView({ name: ' Open bugs ', ...BUGS })
+    expect(created).toMatchObject({ id: 'open-bugs', name: 'Open bugs', ...BUGS })
+
+    expect(await state.readViews()).toContainEqual(created)
+    expect(await state.findView('open-bugs')).toEqual(created)
+    expect(await state.findView('OPEN BUGS')).toEqual(created)
+  })
+
+  it('a view made by the CLI shows in the app, and a rename and delete reach the CLI', async () => {
+    const backend = createBackend()
+    const made = await state.createView('From the CLI', BUGS)
+    expect(await backend.listViews()).toContainEqual(made)
+
+    const renamed = await backend.renameView({ id: made.id, name: 'Renamed' })
+    expect(renamed).toEqual({ ...made, name: 'Renamed' })
+    expect((await state.findView(made.id)).name).toBe('Renamed')
+
+    await backend.deleteView({ id: made.id })
+    await expect(state.findView(made.id)).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('passes core refusals on: a taken name, an empty name and an unknown id', async () => {
+    const backend = createBackend()
+    await expect(backend.createView({ name: 'my issues', ...BUGS })).rejects.toMatchObject({
+      code: 'validation_failed',
+    })
+    await expect(backend.createView({ name: '  ', ...BUGS })).rejects.toMatchObject({
+      code: 'validation_failed',
+    })
+    await expect(backend.renameView({ id: 'nope', name: 'X' })).rejects.toMatchObject({
+      code: 'not_found',
+    })
+    await expect(backend.deleteView({ id: 'nope' })).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('keeps every edit when calls overlap', async () => {
+    const backend = createBackend()
+    await Promise.all([
+      backend.createView({ name: 'One', ...BUGS }),
+      backend.createView({ name: 'Two', ...BUGS }),
+      backend.createView({ name: 'Three', ...BUGS }),
+      backend.deleteView({ id: 'my-issues' }),
+      backend.renameView({ id: 'current-sprint', name: 'Sprint now' }),
+    ])
+    const names = (await state.readViews()).map((v) => v.name).sort()
+    expect(names).toEqual(['One', 'Sprint now', 'Three', 'Two'])
+  })
+
+  it('keeps working after one call fails', async () => {
+    const backend = createBackend()
+    await expect(backend.deleteView({ id: 'nope' })).rejects.toBeInstanceOf(JiraMgrError)
+    await expect(backend.createView({ name: 'After', ...BUGS })).resolves.toMatchObject({
+      id: 'after',
+    })
+  })
+})
+
 describe('customers', () => {
   it('maps field options to the hierarchy shape', async () => {
     await logIn()

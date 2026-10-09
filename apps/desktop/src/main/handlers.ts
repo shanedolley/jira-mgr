@@ -4,10 +4,13 @@ import { z } from 'zod'
 import type {
   ArgsOf,
   Channel,
+  CreateViewArgs,
+  DeleteViewArgs,
   IpcError,
   IpcResult,
   ListIssuesArgs,
   LoginArgs,
+  RenameViewArgs,
   ResultOf,
   SetSummaryArgs,
   Toggles,
@@ -18,6 +21,10 @@ const MAX_TOKEN_BYTES = 1024
 const MAX_EMAIL_BYTES = 254
 /** Jira's limit on a summary. */
 const MAX_SUMMARY = 255
+/** Caps on a saved view, far above any real one. Core owns the name rules (trimmed, unique). */
+const MAX_VIEW_NAME = 80
+const MAX_FILTER_VALUES = 200
+const MAX_FILTER_VALUE = 500
 
 const text = (max: number) => z.string().min(1).max(max)
 
@@ -49,6 +56,33 @@ const togglesArgs: z.ZodType<Toggles> = z.strictObject({
   hideEmptyCustomers: z.boolean(),
 })
 
+const filterValues = z.array(z.string().max(MAX_FILTER_VALUE)).max(MAX_FILTER_VALUES).optional()
+
+const viewFilters = z.strictObject({
+  assignee: filterValues,
+  status: filterValues,
+  label: filterValues,
+  type: filterValues,
+  sprint: filterValues,
+  text: z.string().max(MAX_FILTER_VALUE).optional(),
+})
+
+const viewName = z.string().max(MAX_VIEW_NAME)
+const viewId = z
+  .string()
+  .min(1)
+  .max(MAX_VIEW_NAME * 2)
+
+const createViewArgs: z.ZodType<CreateViewArgs> = z.strictObject({
+  name: viewName,
+  filters: viewFilters,
+  toggles: togglesArgs,
+})
+
+const renameViewArgs: z.ZodType<RenameViewArgs> = z.strictObject({ id: viewId, name: viewName })
+
+const deleteViewArgs: z.ZodType<DeleteViewArgs> = z.strictObject({ id: viewId })
+
 export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'session:get': z.undefined(),
   'session:login': loginArgs,
@@ -59,6 +93,10 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'fields:customers': z.undefined(),
   'settings:getToggles': z.undefined(),
   'settings:setToggles': togglesArgs,
+  'views:list': z.undefined(),
+  'views:create': createViewArgs,
+  'views:rename': renameViewArgs,
+  'views:delete': deleteViewArgs,
 }
 
 export type Handlers = {
@@ -146,5 +184,12 @@ export function createHandlers(
     'fields:customers': handle('fields:customers', () => backend.listCustomers()),
     'settings:getToggles': handle('settings:getToggles', () => backend.getToggles()),
     'settings:setToggles': handle('settings:setToggles', (args) => backend.setToggles(args)),
+    'views:list': handle('views:list', () => backend.listViews()),
+    'views:create': handle('views:create', (args) => backend.createView(args)),
+    'views:rename': handle('views:rename', (args) => backend.renameView(args)),
+    'views:delete': handle('views:delete', async (args) => {
+      await backend.deleteView(args)
+      return null
+    }),
   }
 }

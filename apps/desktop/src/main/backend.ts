@@ -4,15 +4,27 @@ import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
 import { getCurrentUser, getFieldOptions } from '@jira-mgr/core/lookups'
 import { searchIssuePages } from '@jira-mgr/core/search'
-import { assertInProject, readSettings, writeSettings } from '@jira-mgr/core/state'
+import {
+  assertInProject,
+  createView,
+  deleteView,
+  readSettings,
+  readViews,
+  renameView,
+  writeSettings,
+  type SavedView,
+} from '@jira-mgr/core/state'
 import { editIssue } from '@jira-mgr/core/write'
 
 import type {
+  CreateViewArgs,
   CurrentUser,
+  DeleteViewArgs,
   IssuePhase,
   IssuesProgress,
   ListIssuesArgs,
   LoginArgs,
+  RenameViewArgs,
   SessionState,
   SetSummaryArgs,
   Toggles,
@@ -35,6 +47,11 @@ export interface Backend {
   listCustomers(): Promise<CustomerOption[]>
   getToggles(): Promise<Toggles>
   setToggles(toggles: Toggles): Promise<Toggles>
+  /** The saved views, the starters when `views.json` does not exist yet. */
+  listViews(): Promise<SavedView[]>
+  createView(args: CreateViewArgs): Promise<SavedView>
+  renameView(args: RenameViewArgs): Promise<SavedView>
+  deleteView(args: DeleteViewArgs): Promise<void>
 }
 
 export interface BackendDeps {
@@ -62,6 +79,17 @@ export function createBackend(deps: BackendDeps = {}): Backend {
   const loads = new Map<IssuePhase, AbortController>()
   /** Settings writes in call order, so a second toggle press never reads settings from before the first. */
   let toggleWrites: Promise<unknown> = Promise.resolve()
+  /**
+   * Views reads and writes in call order. Core reads, changes and rewrites `views.json`, so two
+   * overlapping calls would drop an edit. The CLI only reads the file, so this in-process queue is
+   * the only writer that needs ordering; a CLI command that writes views must take a lock first.
+   */
+  let viewCalls: Promise<unknown> = Promise.resolve()
+  function inViewOrder<T>(run: () => Promise<T>): Promise<T> {
+    const call = viewCalls.then(run)
+    viewCalls = call.catch(() => undefined)
+    return call
+  }
 
   async function listIssues(
     { phase, loadId }: ListIssuesArgs,
@@ -128,5 +156,10 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       toggleWrites = write.catch(() => undefined)
       return write
     },
+    listViews: () => inViewOrder(readViews),
+    createView: ({ name, filters, toggles }) =>
+      inViewOrder(() => createView(name, { filters, toggles })),
+    renameView: ({ id, name }) => inViewOrder(() => renameView(id, name)),
+    deleteView: ({ id }) => inViewOrder(() => deleteView(id)),
   }
 }

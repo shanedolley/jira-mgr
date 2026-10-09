@@ -4,10 +4,9 @@
 
 Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
 
-1. **Desktop D3 issue page (#30)**, in progress on `d3-issue-page`, and **D10 packaging (#37)** from `d10-packaging`: if either pull request is still open, finish it before claiming anything else.
+1. **Desktop D3 issue page (#30)**, in progress on `d3-issue-page`, and **D8 saved views (#35)** from `d8-saved-views`: if either pull request is still open, finish it before claiming anything else. D3 must rebase onto D8 (both append IPC channels and edit Shell and Sidebar). D3 keeps Sprint hidden on Epics and Subtasks, as Q20 says.
 2. **L8 read-back (#67)**: code merged in #69. Its last criterion needs one live create with Shane present (steps on #67, which carries `question`). After it, remove `question` and move #67 to HIL Review.
-3. **Desktop D8 saved views (#35)**, blocked only by D2, which is in HIL Review with nothing left to build.
-4. **Desktop D4 editor (#31)** once D3 merges: write its design doc first. D6 create and delete (#33) and D7 keyboard (#34) also wait on D3.
+3. **Desktop D4 editor (#31)** once D3 merges: write its design doc first. D6 create and delete (#33) and D7 keyboard (#34) also wait on D3.
 
 ## Reading Order
 
