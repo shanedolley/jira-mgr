@@ -12,21 +12,25 @@ import {
 import type { SpecOf } from '../../schema.js'
 import { siteUrl } from '../../site.js'
 
-type IssueData = IssueDetail & { descriptionMarkdown: string | null; url: string }
+export type IssueData = IssueDetail & { descriptionMarkdown: string | null; url: string }
+
+/** The issue as `issue get` and `issue create` return it. */
+export function toIssueData(issue: IssueDetail, site: string): IssueData {
+  const { description, subtasks, ...rest } = issue
+  return {
+    ...rest,
+    description,
+    descriptionMarkdown: description === null ? null : adfToMarkdown(description),
+    subtasks,
+    url: `${site}/browse/${issue.key}`,
+  }
+}
 
 /** `jm issue get <key>`: one issue with its description as ADF and as Markdown, its subtasks and its URL. */
 export const get: Handler<SpecOf<'issue get'>, IssueData> = {
   async run({ key }, ctx) {
     const issue = await getIssue(ctx.http(), key, { signal: ctx.signal })
-    const site = await siteUrl()
-    const { description, subtasks, ...rest } = issue
-    return {
-      ...rest,
-      description,
-      descriptionMarkdown: description === null ? null : adfToMarkdown(description),
-      subtasks,
-      url: `${site}/browse/${issue.key}`,
-    }
+    return toIssueData(issue, await siteUrl())
   },
 
   render(issue, tty) {

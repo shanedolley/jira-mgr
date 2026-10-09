@@ -104,7 +104,8 @@ describe('jm issue create stdin, files and terminal output', () => {
     expect((await runJson(create(...base, '--description-file', file))).code).toBe(0)
   })
 
-  it('strips control characters from the key and link on a terminal', async () => {
+  it('strips control characters from a created key that cannot be read back, on a terminal', async () => {
+    // The read-back refuses a key that is not an issue key, so the error names it.
     serveWrites({
       respond: ({ method, path }) =>
         method === 'POST' && path === '/rest/api/3/issue'
@@ -112,8 +113,9 @@ describe('jm issue create stdin, files and terminal output', () => {
           : undefined,
     })
     const { code, f } = await runTty(create(...base))
-    expect(code).toBe(0)
-    expect(f.stdout).not.toMatch(/\p{Cc}(?<!\n)/u)
-    expect(f.stdout).toContain('Created PSAPAC-14]0;pwned')
+    expect(code).toBe(5)
+    expect(f.stdout).toBe('')
+    expect(f.stderr).not.toMatch(/\p{Cc}(?<!\n)/u)
+    expect(f.stderr).toContain('Created PSAPAC-14]0;pwned')
   })
 })

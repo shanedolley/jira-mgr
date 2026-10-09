@@ -523,11 +523,14 @@ export const COMMANDS = [
       },
     ],
     output: {
-      summary: 'The new issue.',
+      summary:
+        'The new issue, read back after the create: the same object as `jm issue get`. PSAPAC automation can change fields after a create, so it may differ from what you sent.',
       example: {
-        key: 'PSAPAC-14',
-        id: '10050',
-        url: 'https://example.atlassian.net/browse/PSAPAC-14',
+        ...ISSUE,
+        description: ADF,
+        descriptionMarkdown: 'Checked.',
+        subtasks: [],
+        url: 'https://example.atlassian.net/browse/PSAPAC-12',
       },
     },
     exits: [
@@ -536,10 +539,15 @@ export const COMMANDS = [
         when: 'A name is unknown or ambiguous, two description inputs are given, a Subtask has no `--parent`, or `--parent` is outside the project in settings.',
       },
       { code: 'permission_denied', when: 'No project is set in settings.' },
+      {
+        code: 'jira_error',
+        when: 'The create succeeded but the read-back failed. The issue exists: `error.details` holds its `key` and `id`, so read it with `jm issue get` and do not create it again.',
+      },
     ],
     writes: ['jira'],
     calls: [
       '@jira-mgr/core/write#createIssue',
+      '@jira-mgr/core/search#getIssue',
       '@jira-mgr/core/lookups#getFieldOptions',
       '@jira-mgr/core/lookups#searchAssignableUsers',
       '@jira-mgr/core/adf#markdownToAdf',
