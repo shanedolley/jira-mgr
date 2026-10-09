@@ -2,9 +2,9 @@
 
 Playwright tests that cross package boundaries. Unit and integration tests sit beside the code they test.
 
-| Suite      | Drives                                                                                                                                                                                                   |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `desktop/` | The built desktop app, through Playwright's Electron driver, on a fake Jira and a fake Keychain: `shell.test.ts`, `tree.test.ts`, `page.test.ts`, `create.test.ts`, `delete.test.ts`, `keyboard.test.ts` |
+| Suite      | Drives                                                                                                                                                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `desktop/` | The built desktop app, through Playwright's Electron driver, on a fake Jira and a fake Keychain: `shell.test.ts`, `tree.test.ts`, `page.test.ts`, `create.test.ts`, `delete.test.ts`, `keyboard.test.ts`, `editor.test.ts` |
 
 ## Run
 
@@ -21,5 +21,7 @@ The CLI will get a `cli/` suite that runs the built `jm` binary as a subprocess 
 `desktop/views.test.ts` covers the sidebar's saved views. It reads `views.json` and `settings.json` in the temporary `JM_STATE_DIR`, the files `jm view list` and the app share, to check what the app wrote, and writes `views.json` itself to check what the app reads.
 
 `desktop/keyboard.test.ts` covers D7: the `Cmd+K` palette, the letter shortcuts on the Tree and the page, the `Esc` order, and `Cmd+Z` with its toast, its stale check and its native-undo carve-out. It presses real keys, so the guards (text fields, dialogs, modifiers) are tested where they run. `Meta+z` and `Meta+k` work on Linux too, since the keymap accepts Ctrl or Cmd.
+
+`desktop/editor.test.ts` covers D4: the TipTap description editor on PSAPAC-1, whose fake description holds a panel, a table, a mention, a linked code span and an image, and on PSAPAC-4, which has none. It drives real keys and a dropped `File`, and checks the ADF each write carried. The fake also answers attachments: `GET /rest/api/3/issue/{key}?fields=attachment` (not counted as an issue read), `GET /rest/api/3/attachment/meta`, `POST /rest/api/3/issue/{key}/attachments` (held until `releaseUpload`, recorded in `counts.uploads`), and `GET /rest/api/3/attachment/content/{id}`, which redirects to the media service with the file id in the path or, with `redirect=false`, returns a small PNG. `failUpload` makes the next upload answer 500 at once, `setDescription(key, adf)` changes a description as another user would (for the conflict tests), and `normaliseDescriptions` makes every saved description come back with a `localId` on each paragraph, as Jira may. `counts.openExternal` lists the links the app opened and `counts.quitPrompts` counts quit prompts; the e2e entry passes stand-ins for `shell.openExternal` and the native quit dialog. Playwright answers a real `beforeunload` dialog itself, so the quit test raises `will-prevent-unload` from main and checks that the renderer blocks unloads only while a draft exists. A click with no pause between press and release can go unseen by ProseMirror, so the tests that move the caret with the mouse click with `delay: 60`.
 
 `desktop/package.test.ts` launches the packaged `apps/desktop/dist/jira-mgr.app` on a scratch `JM_STATE_DIR` and expects the login screen. It skips unless `pnpm package` has built the app, so CI (Linux) skips it and the Mac check is `pnpm package && pnpm e2e`.

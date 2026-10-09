@@ -47,6 +47,8 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Issue page** | The full page of one issue, opened with Enter: summary, description and subtasks beside the properties sidebar. | detail view |
 | **Properties sidebar** | The right column of the Issue page. Each property is a picker or a field that edits at once and rolls back if Jira refuses. | inspector |
 | **Customer prompt** | The question the parent picker asks when a new parent's Customer or Engagement differs: also set them to the parent's? | |
+| **Read-only block** | Content the description editor shows but cannot edit, such as a panel, a table or a macro, kept as the original ADF and saved unchanged. | unsupported node, macro |
+| **Draft** | Unsaved description text, kept for the session until it is saved or discarded. | autosave |
 | **Undo stack** | The session's list of field edits, reverted newest first by writing the previous value back. | history |
 
 ## Code

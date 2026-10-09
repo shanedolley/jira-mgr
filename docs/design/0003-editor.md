@@ -29,7 +29,7 @@ Two facts from the recorded fixtures shape the design. Jira embeds an image as `
 packages/core/src/
   adf-editor.ts           pure: adfToEditor, editorToAdf, equivalentAdf, imageNode
   adf.ts                  re-exports adf-editor.ts and `same` as sameAdf
-  http.ts                 RequestOptions.as: 'bytes' | 'mediaId', with maxBytes
+  http.ts                 RequestOptions.as: 'bytes' | 'mediaId', with maxBytes; requestBytes, requestMediaId
   extras.ts               attachmentMediaId, attachmentContent; addAttachments takes a content type
 packages/core/fixtures/
   attachment-content-redirect.json   a recorded content redirect, token stripped
@@ -39,7 +39,8 @@ apps/desktop/src/
   shared/ipc.ts           three channels; IMAGE_TYPES, IMAGE_LIMIT_BYTES, PREVIEW_LIMIT_BYTES
   shared/links.ts         pure: which URLs open in the browser, and the URL to open
   main/images.ts          pure: image type by magic bytes; safe upload filenames
-  main/backend.ts         setDescription, addImage, image, and the per-issue media index
+  main/backend.ts         setDescription, addImage, image
+  main/media.ts           the per-issue media index and the image read
   main/handlers.ts        schemas for the three channels
   main/app.ts             external links; the quit prompt for unsaved drafts
   main/e2e-fake.ts        attachments, content redirects, held and failing uploads
@@ -47,6 +48,7 @@ apps/desktop/src/
   renderer/src/
     editor/extensions.ts  the schema-only TipTap extension list, configured to ADF's rules
     editor/readOnly.ts    pure: labels and plain text for read-only nodes
+    editor/context.ts     the issue key the node views read
     AdfEditor.tsx         the editor in read and edit modes, node views attached; D5 reuses it
     ReadOnlyBlock.tsx     node view of a read-only block
     ReadOnlyInline.tsx    node view of a read-only inline node
@@ -164,7 +166,7 @@ At most 4 `attachments:image` calls run at once in main; the rest queue.
 
 **Core additions.** `attachmentMediaId(http, attachmentId)` sends `GET /rest/api/3/attachment/content/{id}` with `as: 'mediaId'` and returns the UUID. `attachmentContent(http, attachmentId, { maxBytes })` sends the same path with `?redirect=false`, which Jira answers with the bytes itself, so the request stays on the site under Basic auth. Both validate the id as digits.
 
-`http.ts` changes, all additive, typed by overloads on `request`, so a test fake implementing `request` keeps compiling:
+`http.ts` changes, all additive. `request` keeps its one signature, so a test fake implementing it keeps compiling; the typed answers come from two helpers, `requestBytes` and `requestMediaId`, that call it with `as`:
 
 - `as: 'bytes'`, with a required `maxBytes`. It sends `Accept: */*` and keeps `redirect: 'error'`. A `Content-Length` over `maxBytes` throws `validation_failed` before the body is read. Otherwise it reads the body stream, raced against the timeout and the caller's signal as `readText` is, and aborts and throws `validation_failed` once the bytes read pass `maxBytes`. It resolves `{ contentType, bytes: Uint8Array }`. A non-2xx answer maps as today.
 - `as: 'mediaId'`, accepted only for the path `/rest/api/3/attachment/content/<digits>` and refused for any other, so it is no general way to read a redirect. It fetches with `redirect: 'manual'` and cancels the body unread on every status. It handles a 3xx before the `!response.ok` check: the `Location` must parse with `new URL`, use `https:`, name the host `api.media.atlassian.com`, and have a pathname matching `^/file/<uuid>/`. It resolves the UUID alone, so the URL, which carries a short-lived media token, never leaves `http.ts`. A 3xx without such a `Location`, or a 2xx, throws `jira_error` with no `cause` and no `details`, so nothing of the URL reaches a log or a message. Other statuses map as today. `JM_DEBUG` prints the status line as for any request, never the header.
