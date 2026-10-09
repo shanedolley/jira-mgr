@@ -270,6 +270,44 @@ describe('issueMutation', () => {
     expect(read).toHaveBeenCalledOnce()
   })
 
+  it('keeps the line when a queued edit throws before its turn', async () => {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
+    const gate = deferred<null>()
+    let answered = false
+    const sent: { labels: string[] | undefined; answered: boolean }[] = []
+    const send = ({ patch }: Args) => {
+      sent.push({ labels: patch.labels, answered })
+      return sent.length === 1 ? gate.promise : Promise.resolve(null)
+    }
+    const { read } = reader({ 'PSAPAC-1': detail(issue('PSAPAC-1', 'One', { labels: ['c'] })) })
+    const patchOf = ({ patch }: Args) => {
+      if (patch.labels?.includes('bad') === true) throw new Error('No patch for this edit.')
+      return patch
+    }
+    const observer = () => new MutationObserver(client, issueMutation(client, send, patchOf, read))
+
+    const firstDone = observer().mutate({ key: 'PSAPAC-1', patch: { labels: ['a'] } })
+    await expect.poll(() => sent.length).toBe(1)
+    // The second edit throws in onMutate while the first is in flight, behind it in the line.
+    await expect(
+      observer().mutate({ key: 'PSAPAC-1', patch: { labels: ['bad'] } }),
+    ).rejects.toThrow('No patch for this edit.')
+    const thirdDone = observer().mutate({ key: 'PSAPAC-1', patch: { labels: ['c'] } })
+    await expect.poll(() => client.getQueryData<Issue[]>(unresolvedKey)?.[0]?.labels).toEqual(['c'])
+    expect(sent).toHaveLength(1)
+    expect(read).not.toHaveBeenCalled()
+
+    answered = true
+    gate.resolve(null)
+    await Promise.all([firstDone, thirdDone])
+    expect(sent).toEqual([
+      { labels: ['a'], answered: false },
+      { labels: ['c'], answered: true },
+    ])
+    expect(read).toHaveBeenCalledOnce()
+  })
+
   it('reads once when two edits of one issue settle in the same tick', async () => {
     const client = new QueryClient()
     client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])

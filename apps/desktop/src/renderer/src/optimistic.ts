@@ -28,15 +28,20 @@ export function phaseKey(phase: IssuePhase) {
 const phaseOf = (issue: Issue): IssuePhase =>
   issue.status.category === 'done' ? 'done' : 'unresolved'
 
-/**
- * Edits in flight per issue and client, oldest first, each held as the call that lets it send. It
- * lives outside the mutation options because a hook builds new options on every render, and two
- * editors must queue in the same line.
- */
-const inFlight = new WeakMap<QueryClient, Map<string, (() => void)[]>>()
+/** An edit in line: its arguments, naming it when it settles, and the call that lets it send. */
+interface Flight {
+  args: object
+  go: () => void
+}
 
-function flights(client: QueryClient): Map<string, (() => void)[]> {
-  const held = inFlight.get(client) ?? new Map<string, (() => void)[]>()
+/**
+ * Edits in flight per issue and client, oldest first. It lives outside the mutation options
+ * because a hook builds new options on every render, and two editors must queue in the same line.
+ */
+const inFlight = new WeakMap<QueryClient, Map<string, Flight[]>>()
+
+function flights(client: QueryClient): Map<string, Flight[]> {
+  const held = inFlight.get(client) ?? new Map<string, Flight[]>()
   inFlight.set(client, held)
   return held
 }
@@ -170,13 +175,13 @@ export function issueMutation<A extends { key: string }>(
     mutationFn: send,
     async onMutate(args) {
       const { key } = args
-      const patch = patchOf(args)
-      // Queued before the first await, so the edits send in the order they were made. Two sent at
-      // once can reach Jira in either order, and Jira keeps whichever lands last.
+      // Queued before anything can throw or wait, so the edits send in the order they were made.
+      // Two sent at once can reach Jira in either order, and Jira keeps whichever lands last.
       const queue = flights(client).get(key) ?? []
       flights(client).set(key, queue)
-      const turn = new Promise<void>((go) => queue.push(go))
-      if (queue.length === 1) queue[0]?.()
+      const turn = new Promise<void>((go) => queue.push({ args, go }))
+      if (queue.length === 1) queue[0]?.go()
+      const patch = patchOf(args)
       // A refetch landing now would overwrite the optimistic value with Jira's old one.
       await Promise.all(holding(client, key).map((queryKey) => client.cancelQueries({ queryKey })))
       const before = current(client, key)
@@ -219,13 +224,17 @@ export function issueMutation<A extends { key: string }>(
         return { ...issue, ...back }
       })
     },
-    async onSettled(_data, _error, { key }) {
+    async onSettled(_data, _error, args) {
+      const { key } = args
       // A read while another edit is in flight would bring back Jira's old value over that
-      // edit's optimistic one, so this one lets the next send and the last to settle reads.
+      // edit's optimistic one, so this one lets the next send and the last to settle reads. An
+      // edit whose `onMutate` threw settles before its turn, so it leaves the line without
+      // starting anyone.
       const queue = flights(client).get(key) ?? []
-      queue.shift()
+      const at = queue.findIndex((flight) => flight.args === args)
+      if (at !== -1) queue.splice(at, 1)
       if (queue.length > 0) {
-        queue[0]?.()
+        if (at === 0) queue[0]?.go()
         return
       }
       flights(client).delete(key)
