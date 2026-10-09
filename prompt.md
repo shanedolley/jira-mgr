@@ -2,10 +2,12 @@
 
 ## Start Here
 
-Measured 2026-10-08 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. The CLI milestone's code is all merged; #27, #60 and #61 sit in HIL Review. Work in order:
+Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
 
-1. **Desktop D1 shell (#28).** Its blockers #21 to #26 are closed and #27 is in HIL Review with nothing left to build, so D1 is unblocked for building (handover trap "HIL blockers stay open"). Write D2's and D4's design docs before their code.
-2. **Shane's HIL review of #27, #60 and #61, and his open decision on #27**, whether `jm issue create` reads the new issue back ([comment on #27](https://github.com/shanedolley/jira-mgr/issues/27#issuecomment-6048998036)). On an answer, add a CLI story for the chosen option. Nothing else to build on these.
+1. **Desktop D1 shell (#28)**, in progress on `d1-shell`. If its pull request is still open, finish it before claiming anything else.
+2. **Desktop D2 issue tree (#29)**, blocked only by D1. Write its design doc from `docs/templates/design-doc.md` first; D4 needs one too.
+3. **L8 read-back (#67)**, unblocked. Its last criterion needs one live create with Shane present.
+4. **Desktop D10 packaging (#37)**, blocked only by D1. It must exclude `out/main/e2e.js` from the package.
 
 ## Reading Order
 
@@ -27,7 +29,7 @@ Measured 2026-10-08 by reading open issues' blockers (`gh api repos/shanedolley/
 
 ## Decision Format
 
-Comment on the issue: the question, each option with its cost and what it buys, a recommendation with its reason, and what happens on each answer. Then have `kothar:project-manager` set `status:hil-review`.
+Comment on the issue: the question, each option with its cost and what it buys, a recommendation with its reason, and what happens on each answer. Add the `question` label, then have `kothar:project-manager` set `status:hil-review`. Remove `question` once Shane answers. Shane finds his work by these two labels and closes only issues carrying `status:hil-review` (Shane, 2026-10-09).
 
 ## Not Alone
 
