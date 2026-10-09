@@ -46,18 +46,18 @@ export function useAvatarImage(url: string | null | undefined) {
 /** A person's profile image, or their initials on a stable colour when there is none or it fails. */
 export function Avatar({ person }: { person: AvatarPerson | null }) {
   const image = useAvatarImage(person?.avatarUrl)
-  const [broken, setBroken] = useState(false)
+  const [brokenImage, setBrokenImage] = useState<string>()
   if (person === null) {
     return <span aria-hidden className="size-5 shrink-0 rounded-full border border-line" />
   }
-  if (image.data !== undefined && !broken) {
+  if (image.data !== undefined && image.data !== brokenImage) {
     return (
       <img
         alt=""
         src={image.data}
         data-avatar="image"
         onError={() => {
-          setBroken(true)
+          setBrokenImage(image.data)
         }}
         className="size-5 shrink-0 rounded-full object-cover"
       />

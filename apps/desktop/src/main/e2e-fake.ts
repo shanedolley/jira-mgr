@@ -177,7 +177,7 @@ const PRIORITIES = [
 ]
 
 /** Where the fake serves profile images, off the Jira site as the real ones are. */
-const AVATAR_HOST = 'https://avatars.fake.test'
+const AVATAR_HOST = 'https://avatars.fake.atl-paas.net'
 /** A 1x1 PNG. */
 const AVATAR_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',

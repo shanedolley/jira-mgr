@@ -23,12 +23,19 @@ export function imageType(bytes: Uint8Array): AvatarImage['type'] | null {
   return null
 }
 
+/** Hosts besides the site that serve Jira avatars: Atlassian's avatar CDN and Gravatar. */
+const AVATAR_HOSTS = [
+  (url: URL) => url.port === '' && url.hostname.endsWith('.atl-paas.net'),
+  (url: URL) => url.port === '' && url.hostname === 'secure.gravatar.com',
+]
+
 const refuse = (message: string) => new JiraMgrError('not_found', message)
 
 /** Reads at most `limit` bytes of the body, cancelling the stream past it. */
 async function readCapped(response: Response, limit: number): Promise<Uint8Array> {
   const declared = Number(response.headers.get('content-length') ?? '0')
-  if (declared > limit || response.body === null) throw refuse('The image is too large.')
+  if (response.body === null) throw refuse('The image host sent no body.')
+  if (declared > limit) throw refuse('The image is too large.')
   const reader = response.body.getReader()
   const chunks: Uint8Array[] = []
   let size = 0
@@ -70,22 +77,31 @@ export function createAvatarFetcher(deps: {
       throw refuse('Only plain https image URLs load.')
     }
     const { siteUrl, email, token } = await deps.credentials()
+    const isSite = target.host === new URL(siteUrl).host
+    // The renderer picks the URL, so main fetches only hosts Jira serves avatars from. Anything
+    // else, loopback and private addresses included, is refused before a request leaves.
+    if (!isSite && !AVATAR_HOSTS.some((host) => host(target))) {
+      throw refuse('That host does not serve profile images.')
+    }
     const headers: Record<string, string> = { Accept: 'image/*' }
-    if (target.host === new URL(siteUrl).host) {
+    if (isSite) {
       headers.Authorization = `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`
     }
-    let response: Response
+    let bytes: Uint8Array
     try {
-      response = await send(target, {
+      const response = await send(target, {
         headers,
         redirect: 'manual',
         signal: AbortSignal.timeout(TIMEOUT_MS),
       })
-    } catch {
+      if (response.status !== 200) {
+        throw refuse(`The image host answered ${String(response.status)}.`)
+      }
+      bytes = await readCapped(response, AVATAR_LIMIT_BYTES)
+    } catch (error) {
+      if (error instanceof JiraMgrError) throw error
       throw refuse('The image could not be fetched.')
     }
-    if (response.status !== 200) throw refuse(`The image host answered ${String(response.status)}.`)
-    const bytes = await readCapped(response, AVATAR_LIMIT_BYTES)
     const type = imageType(bytes)
     if (type === null) throw refuse('The file is not a PNG, JPEG, GIF or WebP image.')
     return { type, bytes }

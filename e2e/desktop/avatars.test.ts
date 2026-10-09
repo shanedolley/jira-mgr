@@ -41,8 +41,8 @@ test('shows a profile image, and initials when there is none or it fails to load
   const urls = avatarFetches.map((f) => f.url)
   expect(new Set(urls).size).toBe(urls.length)
   expect(urls.sort()).toEqual([
-    'https://avatars.fake.test/gone/48',
-    'https://avatars.fake.test/u1/48',
+    'https://avatars.fake.atl-paas.net/gone/48',
+    'https://avatars.fake.atl-paas.net/u1/48',
   ])
   expect(avatarFetches.every((f) => !f.authorized)).toBe(true)
 

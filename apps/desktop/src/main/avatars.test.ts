@@ -21,7 +21,7 @@ function setup(respond: (url: URL, init: RequestInit) => Response) {
   return { fetcher, calls }
 }
 
-const CDN = 'https://cdn.example.test/a/48'
+const CDN = 'https://avatars.example.atl-paas.net/a/48'
 
 describe('imageType', () => {
   it.each([
@@ -63,8 +63,8 @@ describe('createAvatarFetcher', () => {
   })
 
   it.each([
-    'http://cdn.example.test/a',
-    'https://u:p@cdn.example.test/a',
+    'http://avatars.example.atl-paas.net/a',
+    'https://u:p@avatars.example.atl-paas.net/a',
     'file:///etc/passwd',
     'nope',
   ])('refuses %s without a request', async (url) => {
@@ -73,12 +73,76 @@ describe('createAvatarFetcher', () => {
     expect(calls).toHaveLength(0)
   })
 
-  it('does not follow a redirect', async () => {
+  it.each([
+    'https://localhost/a.png',
+    'https://127.0.0.1/a.png',
+    'https://0x7f.1/a.png',
+    'https://[::1]/a.png',
+    'https://192.168.1.10/a.png',
+    'https://169.254.169.254/latest/meta-data',
+    'https://evil.com/a.png',
+    'https://evil.com/.atl-paas.net',
+    'https://atl-paas.net.evil.com/a.png',
+    'https://avatars.example.atl-paas.net:8443/a.png',
+  ])('refuses %s with no request', async (url) => {
+    const { fetcher, calls } = setup(() => image())
+    await expect(fetcher.get(url)).rejects.toThrow('does not serve profile images')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('loads from Gravatar', async () => {
+    const { fetcher } = setup(() => image())
+    await expect(fetcher.get('https://secure.gravatar.com/avatar/abc?d=x')).resolves.toBeDefined()
+  })
+
+  it('maps a failure while reading the body to not_found', async () => {
+    const body = new ReadableStream({
+      pull(controller) {
+        controller.error(new Error('reset'))
+      },
+    })
+    const { fetcher } = setup(() => new Response(body))
+    await expect(fetcher.get(CDN)).rejects.toMatchObject({
+      code: 'not_found',
+      message: 'The image could not be fetched.',
+    })
+  })
+
+  it('gives the request a timeout, and a request that hangs ends as not_found', async () => {
+    const hang = new AbortController()
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(hang.signal)
+    const fetcher = createAvatarFetcher({
+      credentials,
+      fetch: ((_url: URL, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          const fail = () => {
+            reject(new Error('timed out'))
+          }
+          if (init.signal?.aborted === true) fail()
+          init.signal?.addEventListener('abort', fail)
+        })) as unknown as typeof fetch,
+    })
+    const result = fetcher.get(CDN)
+    hang.abort()
+    await expect(result).rejects.toMatchObject({ code: 'not_found' })
+    expect(timeout).toHaveBeenCalledWith(10_000)
+    timeout.mockRestore()
+  })
+
+  it('names a missing body, not a large one', async () => {
+    const { fetcher } = setup(() => new Response(null, { status: 200 }))
+    await expect(fetcher.get(CDN)).rejects.toThrow('no body')
+  })
+
+  it('does not follow a redirect, even one that carries an image', async () => {
     const { fetcher, calls } = setup(
       () =>
-        new Response(null, { status: 302, headers: { location: 'https://other.example.test/x' } }),
+        new Response(PNG, {
+          status: 302,
+          headers: { location: 'https://other.example.test/x' },
+        }),
     )
-    await expect(fetcher.get(CDN)).rejects.toMatchObject({ code: 'not_found' })
+    await expect(fetcher.get(CDN)).rejects.toThrow('answered 302')
     expect(calls).toHaveLength(1)
     expect(calls[0]?.init.redirect).toBe('manual')
   })
