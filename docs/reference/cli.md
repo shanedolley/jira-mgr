@@ -580,7 +580,7 @@ jm issue create --type Bug --summary "Loader drops rows" --customer "Acme Corp" 
 
 #### Output
 
-The new issue, read back after the create: the same object as `jm issue get`. PSAPAC automation can change fields after a create, so it may differ from what you sent.
+The new issue, read back after the create: the same object as `jm issue get`. It shows the issue as Jira returned it straight after the create. On PSAPAC an automation rule can change the estimates, labels, Customer, parent and sprint within about 10 seconds, so run `jm issue get <key>` after that to see the final values.
 
 ```json
 {

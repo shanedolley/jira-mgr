@@ -193,6 +193,18 @@ Findings:
 5. `worklog list` returns a worklog `comment` as an empty ADF doc (`{"version":1,"type":"doc","content":[]}`) when the worklog has no comment. `worklog add` returns `null` for the same case.
 6. Step 43 expected two worklogs and found one, because step 29 deleted `W2` (Finding 2).
 
+### Automation Timing
+
+Measured on 2026-10-09 with Shane present, on a throwaway Task PSAPAC-3135 under Epic PSAPAC-3116, deleted afterwards. The read-back inside `issue create` does not see the automation: estimates land within about 1 s, and label, Customer, parent and sprint change within about 10 s.
+
+| Read | Estimates (original / remaining) | Labels | Customer | Parent | Sprint |
+|---|---|---|---|---|---|
+| `issue create` output, 12:04:54Z | null / null | none | Collibra (Internal team) | PSAPAC-3116 | none |
+| `issue get` at +1 s | 14400 / 0 | none | Collibra (Internal team) | PSAPAC-3116 | none |
+| `issue get` at +10 s and +60 s (identical) | 14400 / 0 | PSAPAC | BHP | PSAPAC-1792 | 10170 "PS Sprint 36 (05 Oct-18 Oct)" |
+
+Engagement did not change.
+
 ## Follow Up
 
 - Open a bug for each Result that differs from Expected, and `Refs #27` in the fix.
