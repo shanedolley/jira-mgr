@@ -84,18 +84,13 @@ function holding(client: QueryClient, key: string): (readonly string[])[] {
   return keys
 }
 
-/**
- * The issue as the caches show it now, or `undefined` when none holds it. The page's own read
- * comes first, since it alone has the description, so a rollback restores the one it showed.
- */
-export function current(client: QueryClient, key: string): IssueDetail | Issue | undefined {
-  const detail = client.getQueryData<IssueDetail>(issueDetailKey(key))
-  if (detail !== undefined) return detail
+/** The issue as the caches show it now, or `undefined` when none holds it. */
+export function current(client: QueryClient, key: string): Issue | undefined {
   for (const phase of PHASES) {
     const found = client.getQueryData<Issue[]>(phaseKey(phase))?.find((issue) => issue.key === key)
     if (found !== undefined) return found
   }
-  return undefined
+  return client.getQueryData<IssueDetail>(issueDetailKey(key))
 }
 
 /**
@@ -166,8 +161,15 @@ export function issueMutation<A extends { key: string }>(
       await Promise.all(holding(client, key).map((queryKey) => client.cancelQueries({ queryKey })))
       const before = current(client, key)
       if (before === undefined) return undefined
+      // The description and subtasks exist only on the page's own read, so a rollback takes them from it.
+      const detail = client.getQueryData<IssueDetail>(issueDetailKey(key))
       const previous = Object.fromEntries(
-        Object.keys(patch).map((field) => [field, before[field as keyof Issue]]),
+        Object.keys(patch).map((field) => [
+          field,
+          (DETAIL_ONLY.includes(field) ? detail : (before as Partial<IssueDetail>))?.[
+            field as keyof IssueDetail
+          ],
+        ]),
       ) as Partial<IssueDetail>
       editEverywhere(client, key, (issue, detail) => ({
         ...issue,
