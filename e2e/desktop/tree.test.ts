@@ -1,10 +1,10 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, failDone, launch, logIn, releaseDone } from './harness.js'
+import { counts, failDone, launch, logIn, readState, releaseDone } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -263,12 +263,7 @@ test('remembers the toggles across a relaunch', async () => {
   await expect(toggle('Hide done')).toHaveAttribute('aria-pressed', 'false')
   // The write lands in the settings file under toggles.
   await expect
-    .poll(async () => {
-      const settings = JSON.parse(await readFile(join(stateDir, 'settings.json'), 'utf8')) as {
-        toggles?: unknown
-      }
-      return settings.toggles
-    })
+    .poll(async () => (await readState<{ toggles?: unknown }>(stateDir, 'settings.json'))?.toggles)
     .toEqual({ hideDone: false, assigneeMe: false, hideEmptyCustomers: false })
 
   // The fake Keychain lives in the process, so the relaunch logs in again.

@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
@@ -63,6 +65,19 @@ export async function launch(
   // stylesheet applies sees an unstyled page.
   await window.waitForLoadState()
   return { app, window }
+}
+
+/**
+ * A JSON file in the state folder, or `null` before the app first writes it. Any other failure
+ * throws, so `expect.poll` keeps polling through a missing file and stops on a broken one.
+ */
+export async function readState<T>(stateDir: string, file: string): Promise<T | null> {
+  try {
+    return JSON.parse(await readFile(join(stateDir, file), 'utf8')) as T
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  }
 }
 
 export const counts = (app: ElectronApplication) =>
