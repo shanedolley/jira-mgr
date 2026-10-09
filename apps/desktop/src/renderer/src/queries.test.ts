@@ -2,12 +2,17 @@ import { JiraMgrError, type Issue } from '@jira-mgr/core'
 import { CancelledError, QueryClient, MutationObserver, QueryObserver } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { IssueDetail } from '@jira-mgr/core/issue'
+
 import type { Toggles } from '../../shared/ipc'
 import { doneKey, issueDetailKey, unresolvedKey } from './optimistic'
 import {
+  attachmentsKey,
   clearAccountData,
+  conflictOf,
   createLoadTracker,
   customersKey,
+  descriptionMutation,
   doneQuery,
   loginMutation,
   logoutMutation,
@@ -17,6 +22,7 @@ import {
   togglesKey,
   togglesMutation,
   unresolvedQuery,
+  watchImageUrls,
 } from './queries'
 import { undoStack, type UndoEntry } from './undo'
 
@@ -274,5 +280,92 @@ describe('logoutMutation', () => {
 
     expect(client.getQueryData(unresolvedKey)).toBeUndefined()
     expect(client.getQueryData(sessionKey)).toEqual(state)
+  })
+})
+
+describe('descriptionMutation', () => {
+  const doc = (text: string) => ({
+    version: 1 as const,
+    type: 'doc' as const,
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  })
+  const full = (description: ReturnType<typeof doc> | null): IssueDetail => ({
+    ...issue('PSAPAC-1'),
+    description,
+    subtasks: [],
+  })
+
+  function setup(send: Parameters<typeof descriptionMutation>[2]) {
+    const client = new QueryClient()
+    client.setQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'), full(doc('old')))
+    const reread = vi.fn(() => Promise.resolve(full(doc('theirs'))))
+    const options = descriptionMutation(client, 'PSAPAC-1', send, reread)
+    return { client, observer: new MutationObserver(client, options), options, reread }
+  }
+  const args = { key: 'PSAPAC-1', description: doc('mine'), base: doc('old') }
+
+  it("a conflict result rolls the description back and carries Jira's description", async () => {
+    const { client, observer } = setup(() =>
+      Promise.resolve({ saved: false, current: doc('theirs') }),
+    )
+    const error = await observer.mutate(args).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(JiraMgrError)
+    expect(conflictOf(error)).toEqual({ conflict: true, current: doc('theirs') })
+    // Rolled back, then the re-read took Jira's copy.
+    expect(client.getQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'))?.description).toEqual(
+      doc('theirs'),
+    )
+    expect(conflictOf(new JiraMgrError('validation_failed', 'Other.'))).toBeNull()
+  })
+
+  it('the description mutation stays pending until its re-read lands', async () => {
+    let finishReread!: () => void
+    const send = vi.fn(() => Promise.resolve({ saved: true } as const))
+    const client = new QueryClient()
+    client.setQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'), full(doc('old')))
+    const options = descriptionMutation(
+      client,
+      'PSAPAC-1',
+      send,
+      () =>
+        new Promise<IssueDetail>((resolve) => {
+          finishReread = () => {
+            resolve(full(doc('mine')))
+          }
+        }),
+    )
+    const observer = new MutationObserver(client, options)
+    const done = observer.mutate(args)
+    await expect.poll(() => send.mock.calls.length).toBe(1)
+    // Sent and accepted, but the re-read has not landed: still counted, so Edit stays disabled.
+    await Promise.resolve()
+    expect(client.isMutating({ mutationKey: ['issues', 'PSAPAC-1', 'description'] })).toBe(1)
+    expect(client.isMutating({ mutationKey: ['issues', 'PSAPAC-2', 'description'] })).toBe(0)
+    finishReread()
+    await done
+    expect(client.isMutating({ mutationKey: ['issues', 'PSAPAC-1', 'description'] })).toBe(0)
+  })
+})
+
+describe('image queries', () => {
+  it('logout removes the attachment images and revokes their URLs', () => {
+    const client = new QueryClient()
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    const stop = watchImageUrls(client)
+    client.setQueryData(
+      [...attachmentsKey, 'PSAPAC-1', 'f06ee6e2-999b-491f-acb0-f299310206ec'],
+      'blob:one',
+    )
+    client.setQueryData(
+      [...attachmentsKey, 'PSAPAC-2', 'b779fa03-43a9-473f-bc64-531f0c7fa560'],
+      'blob:two',
+    )
+    client.setQueryData(['other'], 'blob:not-an-image')
+    clearAccountData(client)
+    expect(revoke.mock.calls.map(([url]) => url).sort()).toEqual(['blob:one', 'blob:two'])
+    expect(client.getQueryCache().findAll({ queryKey: attachmentsKey })).toEqual([])
+    expect(client.getQueryData(['other'])).toBe('blob:not-an-image')
+    stop()
+    revoke.mockRestore()
   })
 })

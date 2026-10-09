@@ -923,7 +923,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const found = [...attachments.values()].flat().find((a) => String(a.id) === content[1])
       if (found === undefined) return json({ errorMessages: ['No such attachment.'] }, 404)
       if (url.searchParams.get('redirect') === 'false') {
-        return new Response(new Uint8Array(found.bytes), { headers: { 'content-type': found.mimeType } })
+        return new Response(new Uint8Array(found.bytes), {
+          headers: { 'content-type': found.mimeType },
+        })
       }
       // Jira redirects to the media service, with the file id in the path and a token the real
       // one adds and this does not.

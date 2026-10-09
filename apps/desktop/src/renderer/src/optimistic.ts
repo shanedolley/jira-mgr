@@ -43,21 +43,36 @@ function flights(client: QueryClient): Map<string, number> {
 interface Rollback {
   key: string
   /** The fields the edit changed, as it showed them. */
-  patch: Partial<Issue>
+  patch: Partial<IssueDetail>
   /** The same fields as they were before. */
-  previous: Partial<Issue>
+  previous: Partial<IssueDetail>
 }
+
+/** Fields only the page's own read holds. The listed issues have neither, so an edit never adds them. */
+const DETAIL_ONLY = ['description', 'subtasks']
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
-/** Applies `edit` to the issue in every cache that holds it: each phase and its own read. */
-function editEverywhere(client: QueryClient, key: string, edit: <T extends Issue>(issue: T) => T) {
+/**
+ * Applies `edit` to the issue in every cache that holds it: each phase and its own read. `detail`
+ * tells `edit` which kind of copy it has, since only the page's own read holds the description.
+ */
+function editEverywhere(
+  client: QueryClient,
+  key: string,
+  edit: <T extends Issue>(issue: T, detail: boolean) => T,
+) {
   for (const phase of PHASES) {
     client.setQueryData<Issue[]>(phaseKey(phase), (issues) =>
-      issues?.map((issue) => (issue.key === key ? edit(issue) : issue)),
+      issues?.map((issue) => (issue.key === key ? edit(issue, false) : issue)),
     )
   }
-  client.setQueryData<IssueDetail>(issueDetailKey(key), (detail) => detail && edit(detail))
+  client.setQueryData<IssueDetail>(issueDetailKey(key), (detail) => detail && edit(detail, true))
+}
+
+/** The fields of `patch` that a listed issue has. */
+function listFields(patch: Partial<IssueDetail>): Partial<IssueDetail> {
+  return Object.fromEntries(Object.entries(patch).filter(([field]) => !DETAIL_ONLY.includes(field)))
 }
 
 /** The query keys of the caches that hold the issue now. */
@@ -69,13 +84,18 @@ function holding(client: QueryClient, key: string): (readonly string[])[] {
   return keys
 }
 
-/** The issue as the caches show it now, or `undefined` when none holds it. */
-export function current(client: QueryClient, key: string): Issue | undefined {
+/**
+ * The issue as the caches show it now, or `undefined` when none holds it. The page's own read
+ * comes first, since it alone has the description, so a rollback restores the one it showed.
+ */
+export function current(client: QueryClient, key: string): IssueDetail | Issue | undefined {
+  const detail = client.getQueryData<IssueDetail>(issueDetailKey(key))
+  if (detail !== undefined) return detail
   for (const phase of PHASES) {
     const found = client.getQueryData<Issue[]>(phaseKey(phase))?.find((issue) => issue.key === key)
     if (found !== undefined) return found
   }
-  return client.getQueryData<IssueDetail>(issueDetailKey(key))
+  return undefined
 }
 
 /**
@@ -131,7 +151,7 @@ export function applyFreshIssue(client: QueryClient, fresh: IssueDetail): void {
 export function issueMutation<A extends { key: string }>(
   client: QueryClient,
   send: (args: A) => Promise<unknown>,
-  patchOf: (args: A) => Partial<Issue>,
+  patchOf: (args: A) => Partial<IssueDetail>,
   reread: (key: string) => Promise<IssueDetail>,
   record?: (args: A, done: { patch: Partial<Issue>; before: Partial<Issue> }) => void,
 ): MutationOptions<unknown, JiraMgrError, A, Rollback | undefined> {
@@ -148,8 +168,11 @@ export function issueMutation<A extends { key: string }>(
       if (before === undefined) return undefined
       const previous = Object.fromEntries(
         Object.keys(patch).map((field) => [field, before[field as keyof Issue]]),
-      ) as Partial<Issue>
-      editEverywhere(client, key, (issue) => ({ ...issue, ...patch }))
+      ) as Partial<IssueDetail>
+      editEverywhere(client, key, (issue, detail) => ({
+        ...issue,
+        ...(detail ? patch : listFields(patch)),
+      }))
       return { key, patch, previous }
     },
     onSuccess(_data, args, rollback) {
@@ -158,10 +181,12 @@ export function issueMutation<A extends { key: string }>(
     },
     onError(_error, _args, rollback) {
       if (rollback === undefined) return
-      editEverywhere(client, rollback.key, (issue) => {
-        const back: Partial<Issue> = {}
-        for (const field of Object.keys(rollback.patch) as (keyof Issue)[]) {
-          if (same(issue[field], rollback.patch[field])) {
+      editEverywhere(client, rollback.key, (issue, detail) => {
+        const back: Partial<IssueDetail> = {}
+        const fields = Object.keys(detail ? rollback.patch : listFields(rollback.patch))
+        for (const field of fields as (keyof IssueDetail)[]) {
+          const shown = (issue as Partial<IssueDetail>)[field]
+          if (same(shown, rollback.patch[field])) {
             Object.assign(back, { [field]: rollback.previous[field] })
           }
         }

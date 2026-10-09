@@ -1,10 +1,10 @@
 import type { Issue, JiraMgrError } from '@jira-mgr/core'
-import { adfToMarkdown } from '@jira-mgr/core/adf'
 import type { IssueDetail } from '@jira-mgr/core/issue'
-import { useMemo, type KeyboardEvent, type RefObject } from 'react'
+import type { KeyboardEvent, RefObject } from 'react'
 
 import type { CurrentUser } from '../../shared/ipc'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
+import { DescriptionEditor } from './DescriptionEditor'
 import { IssueProperties } from './IssueProperties'
 import { LoadError } from './LoadError'
 import { StatusDot } from './StatusDot'
@@ -24,16 +24,6 @@ interface IssuePageProps {
   /** Opens the delete confirmation for the issue. */
   onDelete: (issue: Issue) => void
   pageRef: RefObject<HTMLElement | null>
-}
-
-/** The description as Markdown text, or why it cannot show. The editor is D4's. */
-function descriptionText(description: IssueDetail['description']): string | null {
-  if (description === null) return null
-  try {
-    return adfToMarkdown(description)
-  } catch {
-    return 'This description cannot be shown here yet. It is unchanged in Jira.'
-  }
 }
 
 function PageBody({
@@ -56,10 +46,6 @@ function PageBody({
   onRetry: () => void
 }) {
   const fix = useMatchCustomer(issue)
-  const description = useMemo(
-    () => (detail === undefined ? undefined : descriptionText(detail.description)),
-    [detail],
-  )
   return (
     <>
       <article className="min-h-0 space-y-6 overflow-y-auto px-8 py-6">
@@ -90,12 +76,14 @@ function PageBody({
             </h2>
             {detailError !== null ? (
               <LoadError error={detailError} onRetry={onRetry} />
-            ) : description === undefined ? (
+            ) : detail === undefined ? (
               <p className="text-muted">Loading description</p>
-            ) : description === null ? (
-              <p className="text-muted">No description</p>
             ) : (
-              <p className="whitespace-pre-wrap break-words">{description}</p>
+              <DescriptionEditor
+                issueKey={issue.key}
+                value={detail.description}
+                onLeave={onLeave}
+              />
             )}
           </section>
           {detail !== undefined && detail.subtasks.length > 0 && (
@@ -153,9 +141,15 @@ export function IssuePage({
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== 'Escape' || event.defaultPrevented) return
-    // Esc inside a picker, a field or a dialog belongs to that control.
+    // Esc inside a picker, a field, an editor or a dialog belongs to that control.
     const target = event.target as Element
-    if (target.closest('[popover], dialog, input, textarea, select') !== null) return
+    if (
+      target.closest(
+        '[popover], dialog, input, textarea, select, [contenteditable="true"], [role="alertdialog"]',
+      ) !== null
+    ) {
+      return
+    }
     event.preventDefault()
     onBack()
   }

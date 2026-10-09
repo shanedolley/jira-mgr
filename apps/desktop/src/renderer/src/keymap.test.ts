@@ -70,6 +70,7 @@ describe('the letter shortcuts', () => {
       '[role="listbox"]',
       '[role="combobox"]',
       '[role="textbox"]',
+      '[role="alertdialog"]',
       '[role="menu"]',
     ]) {
       expect(resolveKey(key('s'), inside(own))).toBeNull()

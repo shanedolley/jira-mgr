@@ -723,3 +723,68 @@ describe('issueMutation record', () => {
     expect(record).not.toHaveBeenCalled()
   })
 })
+
+describe('a description edit', () => {
+  const doc = (text: string) => ({
+    version: 1 as const,
+    type: 'doc' as const,
+    content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+  })
+
+  function describeSetup() {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
+    client.setQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'), {
+      ...detail(issue('PSAPAC-1', 'One')),
+      description: doc('old'),
+    })
+    const request = deferred<null>()
+    const { read } = reader({
+      'PSAPAC-1': { ...detail(issue('PSAPAC-1', 'One')), description: doc('new') },
+    })
+    const observer = new MutationObserver(
+      client,
+      issueMutation<{ key: string; description: unknown }>(
+        client,
+        () => request.promise,
+        ({ description }) => ({ description: description as IssueDetail['description'] }),
+        read,
+      ),
+    )
+    const descriptionOf = () =>
+      client.getQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'))?.description
+    return { client, observer, request, descriptionOf }
+  }
+
+  it("patches the page's read and leaves the listed issues alone", async () => {
+    const { client, observer, request, descriptionOf } = describeSetup()
+    const done = observer.mutate({ key: 'PSAPAC-1', description: doc('new') })
+    await expect.poll(descriptionOf).toEqual(doc('new'))
+    const listed = client.getQueryData<Issue[]>(unresolvedKey)?.[0]
+    expect(listed).not.toHaveProperty('description')
+    request.resolve(null)
+    await done
+    expect(client.getQueryData<Issue[]>(unresolvedKey)?.[0]).not.toHaveProperty('description')
+  })
+
+  it('a refused description edit restores the previous description', async () => {
+    const { client, request, descriptionOf } = describeSetup()
+    const answer = deferred<IssueDetail>()
+    const mutation = new MutationObserver(
+      client,
+      issueMutation<{ key: string; description: unknown }>(
+        client,
+        () => request.promise,
+        ({ description }) => ({ description: description as IssueDetail['description'] }),
+        () => answer.promise,
+      ),
+    )
+    const done = mutation.mutate({ key: 'PSAPAC-1', description: doc('new') })
+    await expect.poll(descriptionOf).toEqual(doc('new'))
+    request.reject(new JiraMgrError('validation_failed', 'Jira refused the description.'))
+    await expect.poll(descriptionOf).toEqual(doc('old'))
+    answer.resolve({ ...detail(issue('PSAPAC-1', 'One')), description: doc('old') })
+    await expect(done).rejects.toMatchObject({ code: 'validation_failed' })
+    expect(descriptionOf()).toEqual(doc('old'))
+  })
+})
