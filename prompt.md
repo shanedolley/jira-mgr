@@ -5,9 +5,9 @@
 Measured 2026-10-10 from `gh issue list --state open --limit 200` and each open issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`). Work in order:
 
 1. **Desktop D4 editor (#31)**, In Progress in worktree `/Users/shanedolley/Development/personal/jira-mgr-d4` on `d4-editor`. Its live image-embed check passed on 2026-10-09. Finish the final Low fixes, have a reviewer other than the builder pass it, open the pull request and merge it. Then D5 activity (#32), built to Shane's attachments spec on the issue, then D9 timer (#36).
-2. **Desktop D12 issue type icons (#85)**, In Progress on `d12-type-icons`: finish the review, then open the pull request.
-3. **Desktop D13 profile images (#86)**, In Progress on `d13-avatars`: run the security review (it adds a network path), then open the pull request, then move it to `status:hil-review` through `kothar:project-manager`.
-4. **#84**, the D6 create toast missing automation changes that land after its re-read. After D4 merges, **#83**, D11 click the summary to edit it (it touches `IssuePage`).
+2. **Desktop D12 issue type icons (#85)**, pull request #88 on `d12-type-icons`, reviewed and passed at 48eba52. Get its CI green (the date e2e test failed on it, under investigation), then it merges.
+3. **Desktop D13 profile images (#86)**, In Progress on `d13-avatars`, built at fb512f4: run the security review (it adds a network path), then open the pull request, then move it to `status:hil-review` through `kothar:project-manager`.
+4. **#84** (In Progress), the D6 create toast missing automation changes that land after its re-read. After D4 merges, **#83**, D11 click the summary to edit it (it touches `IssuePage`).
 5. **#33** (D6) waits on Shane: its live check passed and he closes it. Stop and report once the rest is done or blocked.
 
 ## Reading Order
@@ -46,5 +46,5 @@ Comment on the issue: the question, each option with its cost and what it buys, 
 - `architecture-decisions` for a decision that is hard to reverse, surprising and a real trade-off.
 - Design docs for L1, D2 and D4 from `docs/templates/design-doc.md`, before their code.
 - `impeccable` and `frontend-design` for Desktop UI work.
-- Compare Desktop UI against the Linear screenshots and tokens in [docs/design/linear/](docs/design/linear/README.md), captured 2026-10-09 at Shane's request; attach a screenshot of the app beside the matching Linear one in the pull request.
+- Compare Desktop UI against the Linear screenshots and tokens in [docs/design/linear/](docs/design/linear/README.md), captured 2026-10-09 at Shane's request; name in the pull request which Linear screenshots you compared and what differs (gh cannot upload images).
 - `writing-clearly-and-concisely` rules for every doc, commit and comment.
