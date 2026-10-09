@@ -23,29 +23,29 @@ src/preload/    preload script: the only bridge to the renderer
 src/renderer/   React renderer
 ```
 
-| File                               | Holds                                                                                                                                        |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/shared/ipc.ts`                | `IpcContract`, one entry per channel, the progress event and `JmApi`, the type of `window.jm`                                                |
-| `src/main/handlers.ts`             | One handler per channel: validates the argument with zod, calls the backend, returns an `IpcResult`                                          |
-| `src/main/backend.ts`              | The only code that calls `@jira-mgr/core`: login, logout, per-phase issue loads, Customers, current user, toggles, saved views, summary edit |
-| `src/main/app.ts`                  | Window creation, handler registration, window focus events, progress events to the window that asked                                         |
-| `src/main/trust.ts`                | Decides whether an IPC request came from our own page                                                                                        |
-| `src/main/e2e.ts`                  | Test entry: the same app on a fake Jira and a fake Keychain, with windows that open without taking focus. Not the package's `main`           |
-| `src/renderer/src/ipc.ts`          | `call(channel, args)`: sends a request and throws a `JiraMgrError` on failure                                                                |
-| `src/renderer/src/queries.ts`      | TanStack Query hooks over `call`: the two phase queries, me, Customers, toggles; the load tracker                                            |
-| `src/renderer/src/viewQueries.ts`  | The saved views query and the create, rename and delete mutations: optimistic rename and delete with rollback                                |
-| `src/renderer/src/views.ts`        | `activeView`: which saved view the filter bar and toggles currently equal                                                                    |
-| `src/renderer/src/ViewsList.tsx`   | The sidebar's Views section: apply, New view, inline rename, inline delete confirmation, arrow-key navigation                                |
-| `src/renderer/src/optimistic.ts`   | The summary mutation: optimistic update in every phase cache that holds the issue, rollback, refetch of the touched phases                   |
-| `src/renderer/src/tree.ts`         | Pure Tree model: `mergeIssues`, `flattenTree`, `moveActive`, `clickRow`, `windowRange`, `fallbackRow`                                        |
-| `src/renderer/src/filters.ts`      | Pure filter-bar model: the choices per field, toggling a choice, the chips                                                                   |
-| `src/renderer/src/Shell.tsx`       | Owns the tree state (filters, collapsed and revealed sets, active row, Peek) and derives the rows from the query caches                      |
-| `src/renderer/src/IssueTree.tsx`   | The virtual window over the rows: keys, scroll anchoring, `aria-activedescendant`                                                            |
-| `src/renderer/src/TreeRow.tsx`     | One row of any kind                                                                                                                          |
-| `src/renderer/src/TreeToolbar.tsx` | The three toggles, the Filter and Groups menus, filter chips and the text filter                                                             |
-| `src/renderer/src/IssueDetail.tsx` | The Peek: summary editor, properties, mismatch detail                                                                                        |
-| `src/renderer/src/focus.ts`        | Feeds the Electron window's focus to TanStack Query                                                                                          |
-| `src/renderer/src/theme.ts`        | System, light or dark; the choice sits in `localStorage`                                                                                     |
+| File                               | Holds                                                                                                                                                    |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/ipc.ts`                | `IpcContract`, one entry per channel, the progress event and `JmApi`, the type of `window.jm`                                                            |
+| `src/main/handlers.ts`             | One handler per channel: validates the argument with zod, calls the backend, returns an `IpcResult`                                                      |
+| `src/main/backend.ts`              | The only code that calls `@jira-mgr/core`: login, logout, per-phase issue loads, Customers, current user, toggles, saved views, summary edit             |
+| `src/main/app.ts`                  | Window creation, handler registration, window focus events, progress events to the window that asked                                                     |
+| `src/main/trust.ts`                | Decides whether an IPC request came from our own page                                                                                                    |
+| `src/main/e2e.ts`                  | Test entry: the same app on a fake Jira and a fake Keychain, with windows that open invisible, click-through and without focus. Not the package's `main` |
+| `src/renderer/src/ipc.ts`          | `call(channel, args)`: sends a request and throws a `JiraMgrError` on failure                                                                            |
+| `src/renderer/src/queries.ts`      | TanStack Query hooks over `call`: the two phase queries, me, Customers, toggles; the load tracker                                                        |
+| `src/renderer/src/viewQueries.ts`  | The saved views query and the create, rename and delete mutations: optimistic rename and delete with rollback                                            |
+| `src/renderer/src/views.ts`        | `activeView`: which saved view the filter bar and toggles currently equal                                                                                |
+| `src/renderer/src/ViewsList.tsx`   | The sidebar's Views section: apply, New view, inline rename, inline delete confirmation, arrow-key navigation                                            |
+| `src/renderer/src/optimistic.ts`   | The summary mutation: optimistic update in every phase cache that holds the issue, rollback, refetch of the touched phases                               |
+| `src/renderer/src/tree.ts`         | Pure Tree model: `mergeIssues`, `flattenTree`, `moveActive`, `clickRow`, `windowRange`, `fallbackRow`                                                    |
+| `src/renderer/src/filters.ts`      | Pure filter-bar model: the choices per field, toggling a choice, the chips                                                                               |
+| `src/renderer/src/Shell.tsx`       | Owns the tree state (filters, collapsed and revealed sets, active row, Peek) and derives the rows from the query caches                                  |
+| `src/renderer/src/IssueTree.tsx`   | The virtual window over the rows: keys, scroll anchoring, `aria-activedescendant`                                                                        |
+| `src/renderer/src/TreeRow.tsx`     | One row of any kind                                                                                                                                      |
+| `src/renderer/src/TreeToolbar.tsx` | The three toggles, the Filter and Groups menus, filter chips and the text filter                                                                         |
+| `src/renderer/src/IssueDetail.tsx` | The Peek: summary editor, properties, mismatch detail                                                                                                    |
+| `src/renderer/src/focus.ts`        | Feeds the Electron window's focus to TanStack Query                                                                                                      |
+| `src/renderer/src/theme.ts`        | System, light or dark; the choice sits in `localStorage`                                                                                                 |
 
 ## Tree
 
