@@ -219,6 +219,26 @@ describe('createViewMutation', () => {
     unsubscribe()
   })
 
+  it('does not show the view twice when a refetch lands before the answer', async () => {
+    const refetch = held<undefined>()
+    const withDelta = [...stored, view('d', 'Delta')]
+    const { client, read, unsubscribe } = setup(() => withDelta, refetch.promise)
+    const write = held<SavedView>()
+    const done = new MutationObserver(
+      client,
+      createViewMutation(client, () => write.promise),
+    ).mutate(args)
+    // The file already holds the view, and a refetch reads it before the write's answer arrives.
+    client.setQueryData(viewsKey, withDelta)
+    const reads = read.mock.calls.length
+    write.resolve(view('d', 'Delta'))
+    await expect.poll(() => read.mock.calls.length).toBeGreaterThan(reads)
+    expect(cached(client)?.map((v) => v.id)).toEqual(['a', 'b', 'c', 'd'])
+    refetch.resolve(undefined)
+    await done
+    unsubscribe()
+  })
+
   it('leaves the list alone when the write is refused', async () => {
     const { client, unsubscribe } = setup()
     const failing = new MutationObserver(

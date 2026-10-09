@@ -246,7 +246,8 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
   function submitRename(view: SavedView, name: string) {
     setRenamingId(null)
     setRefocus(view.id)
-    if (name.trim() === view.name) return
+    // A blank or unchanged name needs no write, and a blank one must never show as an empty row.
+    if (name.trim() === '' || name.trim() === view.name) return
     rename.mutate({ id: view.id, name })
   }
 

@@ -166,6 +166,22 @@ test('renames a view inline with Enter, cancels with Escape, and restores a refu
   expect((await stored()).map((v) => v.name)).toEqual(['My issues', 'This sprint'])
 })
 
+test('ignores a blank rename, leaving the name and the file as they were', async () => {
+  await open()
+  await createView('Keep me')
+  await expect(apply('Keep me')).toBeVisible()
+  const before = await stored()
+
+  await window.getByRole('button', { name: 'Rename view Keep me' }).click()
+  await window.getByLabel('Rename view Keep me').fill('   ')
+  await window.keyboard.press('Enter')
+
+  await expect(apply('Keep me')).toBeFocused()
+  await expect(window.getByRole('alert')).toHaveCount(0)
+  await expect(list().getByRole('listitem')).toHaveCount(3)
+  expect(await stored()).toEqual(before)
+})
+
 test('deletes a view only after an inline confirmation', async () => {
   await open()
   await window.getByRole('button', { name: 'Delete view My issues' }).click()
