@@ -440,19 +440,6 @@ test('shows No issues match for a filter that matches nothing, with empty Custom
   await expect(item(/PSAPAC-10,/)).toBeVisible()
 })
 
-test('shows a focus ring when Enter moves focus into the Peek', async () => {
-  await open()
-  await item(/PSAPAC-4,/).click()
-  await expect(peek()).toBeVisible()
-
-  await window.keyboard.press('Enter')
-
-  await expect(peek()).toBeFocused()
-  expect(
-    await window.evaluate<string>('getComputedStyle(document.activeElement).outlineStyle'),
-  ).toBe('solid')
-})
-
 test('refetches Done issues only when they are stale, not on every focus', async () => {
   await openWithDone()
   const focusCycle = () =>

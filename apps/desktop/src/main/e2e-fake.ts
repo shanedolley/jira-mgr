@@ -9,16 +9,22 @@ export const FAKE_SITE = 'https://fake.atlassian.net'
 export const FAKE_TOKEN = 'good-token'
 /** A summary the fake Jira refuses, so a test can watch an optimistic edit roll back. */
 export const REJECTED_SUMMARY = 'reject me'
+/** The priority the fake Jira refuses, so a test can watch a picker edit roll back. */
+export const REJECTED_PRIORITY = 'Highest'
 
 export interface FakeJiraCounts {
   /** Search pages served, per phase. */
   searches: { unresolved: number; done: number }
   /** Done pages requested before the unresolved phase had served its last page. */
   doneEarly: number
-  /** Edits received. */
+  /** Writes received: edits, transitions and sprint moves. */
   edits: number
-  /** Edits applied, which happens when a test calls `releaseEdit`. */
+  /** Writes applied, which happens when a test calls `releaseEdit`. */
   applied: number
+  /** Reads of one issue, in order of arrival. */
+  issueReads: string[]
+  /** The body of every edit received, in order. */
+  editBodies: unknown[]
 }
 
 export interface FakeJiraOptions {
@@ -56,12 +62,35 @@ const CUSTOMERS = {
   zeta: { id: '4', value: 'Zeta Corp' },
 }
 
+const ENGAGEMENTS = {
+  north: { id: '7', value: 'North' },
+  south: { id: '8', value: 'South' },
+}
+
+const MEDIUM = { id: '3', name: 'Medium' }
+const PRIORITIES = [
+  { id: '1', name: 'Highest' },
+  { id: '2', name: 'High' },
+  MEDIUM,
+  { id: '4', name: 'Low' },
+]
+
 const USERS = {
   u1: { accountId: 'u1', displayName: 'Test User', avatarUrls: {} },
   u2: { accountId: 'u2', displayName: 'Other User', avatarUrls: {} },
+  // Assigned to nothing, so only the assignee search finds this user.
+  u3: { accountId: 'u3', displayName: 'Cy Young', avatarUrls: {} },
 }
 
-const SPRINT = { id: 5, name: 'Sprint 5', state: 'active' }
+/** The board's sprints: one active, a dated and an undated future one, and a closed one. */
+const SPRINTS = [
+  { id: 4, name: 'Sprint 4', state: 'closed', startDate: '2026-09-01T00:00:00.000Z' },
+  { id: 5, name: 'Sprint 5', state: 'active', startDate: '2026-10-01T00:00:00.000Z' },
+  { id: 6, name: 'Sprint 6', state: 'future', startDate: '2026-10-15T00:00:00.000Z' },
+  { id: 7, name: 'PS TEMPLATES', state: 'future' },
+]
+
+const BOARD_ID = 7
 
 interface Seed {
   n: number
@@ -70,9 +99,14 @@ interface Seed {
   status: keyof typeof STATUSES
   parent?: number
   customer: keyof typeof CUSTOMERS
+  engagement?: keyof typeof ENGAGEMENTS
   assignee?: keyof typeof USERS
   labels?: string[]
-  sprint?: boolean
+  sprint?: number
+  /** The original estimate in seconds. The remaining estimate starts equal. */
+  estimate?: number
+  /** One paragraph of description. */
+  description?: string
 }
 
 /**
@@ -90,6 +124,7 @@ const SEEDS: Seed[] = [
     status: 'doing',
     parent: 10,
     customer: 'acme',
+    description: 'Agree the scope with the sponsor.',
   },
   {
     n: 2,
@@ -116,6 +151,7 @@ const SEEDS: Seed[] = [
     parent: 10,
     customer: 'acme',
     assignee: 'u1',
+    estimate: 7200,
   },
   {
     n: 11,
@@ -143,7 +179,7 @@ const SEEDS: Seed[] = [
     status: 'doing',
     parent: 10,
     customer: 'acme',
-    sprint: true,
+    sprint: 5,
   },
   {
     n: 14,
@@ -179,7 +215,14 @@ const SEEDS: Seed[] = [
     parent: 20,
     customer: 'beta',
   },
-  { n: 30, summary: 'Reporting', type: 'epic', status: 'doing', customer: 'beta' },
+  {
+    n: 30,
+    summary: 'Reporting',
+    type: 'epic',
+    status: 'doing',
+    customer: 'beta',
+    engagement: 'south',
+  },
   {
     n: 31,
     summary: 'Build the monthly report',
@@ -209,7 +252,38 @@ const SEEDS: Seed[] = [
   },
 ]
 
-function issue(seed: Seed) {
+interface RawFields {
+  summary: string
+  issuetype: (typeof TYPES)[keyof typeof TYPES]
+  status: (typeof STATUSES)[keyof typeof STATUSES]
+  labels: string[]
+  updated: string
+  assignee: (typeof USERS)[keyof typeof USERS] | null
+  parent: { key: string } | null
+  priority: (typeof PRIORITIES)[number]
+  duedate: string | null
+  timetracking: { originalEstimateSeconds?: number; remainingEstimateSeconds?: number }
+  description: unknown
+  /** The custom fields, by the ids in `FIELDS`. */
+  [field: string]: unknown
+}
+
+/** The body of an issue edit, as far as the fake reads it. */
+interface EditBody {
+  fields?: Record<string, unknown>
+  update?: {
+    labels?: ({ add: string } | { remove: string })[]
+    timetracking?: { edit: { originalEstimate: string } }[]
+  }
+}
+
+interface RawIssue {
+  id: string
+  key: string
+  fields: RawFields
+}
+
+function issue(seed: Seed): RawIssue {
   return {
     id: String(1000 + seed.n),
     key: `PSAPAC-${String(seed.n)}`,
@@ -222,8 +296,25 @@ function issue(seed: Seed) {
       updated: '2026-10-02T00:00:00.000+1000',
       assignee: seed.assignee === undefined ? null : USERS[seed.assignee],
       parent: seed.parent === undefined ? null : { key: `PSAPAC-${String(seed.parent)}` },
+      priority: MEDIUM,
+      duedate: null,
+      timetracking:
+        seed.estimate === undefined
+          ? {}
+          : { originalEstimateSeconds: seed.estimate, remainingEstimateSeconds: seed.estimate },
       [FIELDS.customer]: CUSTOMERS[seed.customer],
-      [FIELDS.sprint]: seed.sprint === true ? [SPRINT] : null,
+      [FIELDS.engagement]: ENGAGEMENTS[seed.engagement ?? 'north'],
+      [FIELDS.sprint]: SPRINTS.filter((s) => s.id === seed.sprint),
+      [FIELDS.startDate]: null,
+      [FIELDS.timeRemaining]: seed.estimate === undefined ? null : seed.estimate / 3600,
+      description:
+        seed.description === undefined
+          ? null
+          : {
+              version: 1,
+              type: 'doc',
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: seed.description }] }],
+            },
     },
   }
 }
@@ -274,9 +365,11 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     doneEarly: 0,
     edits: 0,
     applied: 0,
+    issueReads: [],
+    editBodies: [],
   }
   let unresolvedComplete = false
-  // Every edit waits here, so a test sees the optimistic state with Jira's answer still pending.
+  // Every write waits here, so a test sees the optimistic state with Jira's answer still pending.
   const held: (() => void)[] = []
   // The first Done page waits here, so a test sees the Tree before Done issues arrive.
   let releaseFirstDone!: () => void
@@ -285,6 +378,98 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   })
   let doneHeld = false
   let failNextDone = false
+  // Each applied write moves `updated` on, so a read always shows the later copy.
+  let clock = 0
+
+  const find = (key: string) => issues.find((i) => i.key === key)
+  const touch = (target: RawIssue) => {
+    clock++
+    target.fields.updated = new Date(Date.UTC(2026, 9, 3, 0, 0, clock)).toISOString()
+  }
+  const refusal = (field: string, message: string) =>
+    json({ errorMessages: [], errors: { [field]: message } }, 400)
+
+  /** Parses a Jira duration with 8 hours to a day and 5 days to a week. */
+  const seconds = (text: string) =>
+    text
+      .split(' ')
+      .reduce(
+        (sum, part) =>
+          sum +
+          Number.parseInt(part, 10) *
+            { w: 144000, d: 28800, h: 3600, m: 60 }[part.slice(-1) as 'w'],
+        0,
+      )
+
+  /** An issue as a read of one returns it: with the description and the subtasks. */
+  const detail = (target: RawIssue) => ({
+    ...target,
+    fields: {
+      ...target.fields,
+      subtasks: issues
+        .filter((i) => i.fields.parent?.key === target.key && i.fields.issuetype.subtask)
+        .map((i) => ({
+          key: i.key,
+          fields: { summary: i.fields.summary, status: { name: i.fields.status.name } },
+        })),
+    },
+  })
+
+  function applyEdit(target: RawIssue, body: EditBody): Response | null {
+    const { fields = {}, update = {} } = body
+    if (typeof fields.summary === 'string' && fields.summary === REJECTED_SUMMARY) {
+      return refusal('summary', 'The fake refuses this summary.')
+    }
+    const priority = fields.priority as { id: string } | undefined
+    const chosen = PRIORITIES.find((p) => p.id === priority?.id)
+    if (chosen?.name === REJECTED_PRIORITY) {
+      return refusal('priority', 'The fake refuses this priority.')
+    }
+    if (typeof fields.summary === 'string') target.fields.summary = fields.summary
+    if ('assignee' in fields) {
+      const account = (fields.assignee as { accountId: string } | null)?.accountId
+      target.fields.assignee =
+        account === undefined
+          ? null
+          : (Object.values(USERS).find((u) => u.accountId === account) ?? null)
+    }
+    if (chosen !== undefined) target.fields.priority = chosen
+    if ('duedate' in fields) target.fields.duedate = fields.duedate as string | null
+    if (FIELDS.startDate in fields) target.fields[FIELDS.startDate] = fields[FIELDS.startDate]
+    if (FIELDS.timeRemaining in fields)
+      target.fields[FIELDS.timeRemaining] = fields[FIELDS.timeRemaining]
+    if ('parent' in fields) {
+      target.fields.parent = fields.parent as { key: string }
+    }
+    const customer = Object.values(CUSTOMERS).find(
+      (c) => c.id === (fields[FIELDS.customer] as { id: string } | undefined)?.id,
+    )
+    if (customer !== undefined) target.fields[FIELDS.customer] = customer
+    const engagement = Object.values(ENGAGEMENTS).find(
+      (e) => e.id === (fields[FIELDS.engagement] as { id: string } | undefined)?.id,
+    )
+    if (engagement !== undefined) target.fields[FIELDS.engagement] = engagement
+    const type = Object.values(TYPES).find(
+      (t) => t.name === (fields.issuetype as { name: string } | undefined)?.name,
+    )
+    if (type !== undefined) target.fields.issuetype = type
+    for (const op of update.labels ?? []) {
+      if ('add' in op && !target.fields.labels.includes(op.add)) target.fields.labels.push(op.add)
+      if ('remove' in op) target.fields.labels = target.fields.labels.filter((l) => l !== op.remove)
+    }
+    const estimate = update.timetracking?.[0]?.edit.originalEstimate
+    if (estimate !== undefined) {
+      // As the live PSAPAC rules do: the remaining estimate follows, and Time remaining (h) with it.
+      const total = seconds(estimate)
+      target.fields.timetracking = {
+        originalEstimateSeconds: total,
+        remainingEstimateSeconds: total,
+      }
+      target.fields[FIELDS.timeRemaining] = total / 3600
+    }
+    touch(target)
+    return null
+  }
 
   const fakeFetch = async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : input)
@@ -295,29 +480,44 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     if (auth !== expected) return json({ errorMessages: ['Bad credentials.'] }, 401)
 
     const path = url.pathname
+    const body = (): unknown => JSON.parse(typeof init?.body === 'string' ? init.body : '{}')
+    /** Holds a write until the test releases it, counting it on arrival. */
+    const hold = async (received: unknown) => {
+      counts.edits++
+      counts.editBodies.push(received)
+      await new Promise<void>((resolve) => held.push(resolve))
+    }
+
     if (method === 'GET' && path === '/rest/api/3/myself') {
       return json({ accountId: 'u1', displayName: 'Test User' })
     }
     if (method === 'GET' && path === '/rest/api/3/issue/createmeta/PSAPAC/issuetypes') {
-      return json({ total: 1, issueTypes: [{ id: '10', name: 'Story' }] })
+      const issueTypes = Object.values(TYPES).map(({ id, name }) => ({ id, name }))
+      return json({ total: issueTypes.length, issueTypes })
     }
-    if (method === 'GET' && path === '/rest/api/3/issue/createmeta/PSAPAC/issuetypes/10') {
+    if (
+      method === 'GET' &&
+      /^\/rest\/api\/3\/issue\/createmeta\/PSAPAC\/issuetypes\/\d+$/.test(path)
+    ) {
       const names = ['Customer', 'Engagement', 'Sprint', 'Start date', 'Time remaining (h)']
-      const fields = Object.values(FIELDS).map((key, i) => ({
-        key,
-        name: names[i],
-        ...(key === FIELDS.customer ? { allowedValues: Object.values(CUSTOMERS) } : {}),
-      }))
+      const allowed: Record<string, unknown> = {
+        [FIELDS.customer]: Object.values(CUSTOMERS),
+        [FIELDS.engagement]: Object.values(ENGAGEMENTS),
+      }
+      const fields = [
+        ...Object.values(FIELDS).map((key, i) => ({
+          key,
+          name: names[i],
+          ...(allowed[key] === undefined ? {} : { allowedValues: allowed[key] }),
+        })),
+        { key: 'priority', name: 'Priority', allowedValues: PRIORITIES },
+      ]
       return json({ total: fields.length, fields })
     }
     if (method === 'POST' && path === '/rest/api/3/search/jql') {
-      const body = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as {
-        jql: string
-        maxResults: number
-        nextPageToken?: string
-      }
+      const search = body() as { jql: string; maxResults: number; nextPageToken?: string }
       // "!= Done" holds "= Done" as a substring, so test it first.
-      const phase = body.jql.includes('statusCategory != Done') ? 'unresolved' : 'done'
+      const phase = search.jql.includes('statusCategory != Done') ? 'unresolved' : 'done'
       if (phase === 'done' && !unresolvedComplete) counts.doneEarly++
       if (phase === 'done' && !doneHeld) {
         doneHeld = true
@@ -331,8 +531,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const matching = issues
         .filter((i) => (i.fields.status.statusCategory.key === 'done') === (phase === 'done'))
         .sort((a, b) => keyNumber(b.key) - keyNumber(a.key))
-      const start = Number(body.nextPageToken ?? '0')
-      const end = start + body.maxResults
+      const start = Number(search.nextPageToken ?? '0')
+      const end = start + search.maxResults
       if (phase === 'unresolved' && end >= matching.length) unresolvedComplete = true
       return json({
         issues: matching.slice(start, end),
@@ -340,22 +540,79 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         nextPageToken: String(end),
       })
     }
-    const edit = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)$/.exec(path)
-    if (method === 'PUT' && edit !== null) {
-      counts.edits++
-      const body = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as {
-        fields: { summary: string }
-      }
-      const target = issues.find((i) => i.key === edit[1])
-      if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
-      await new Promise<void>((resolve) => held.push(resolve))
-      if (body.fields.summary === REJECTED_SUMMARY) {
-        return json(
-          { errorMessages: [], errors: { summary: 'The fake refuses this summary.' } },
-          400,
+
+    if (method === 'GET' && path === '/rest/api/3/user/assignable/search') {
+      const query = (url.searchParams.get('query') ?? '').toLowerCase()
+      return json(
+        Object.values(USERS)
+          .filter((u) => u.displayName.toLowerCase().includes(query))
+          .map((u) => ({ ...u, active: true })),
+      )
+    }
+
+    if (method === 'GET' && path === '/rest/agile/1.0/board') {
+      return json({ values: [{ id: BOARD_ID, name: 'PSAPAC board', type: 'scrum' }] })
+    }
+    if (method === 'GET' && path === `/rest/agile/1.0/board/${String(BOARD_ID)}/sprint`) {
+      const states = url.searchParams.get('state')?.split(',')
+      const values = SPRINTS.filter((s) => states === undefined || states.includes(s.state))
+      return json({ total: values.length, values })
+    }
+    const sprintMove = /^\/rest\/agile\/1\.0\/sprint\/(\d+)\/issue$/.exec(path)
+    if (method === 'POST' && (sprintMove !== null || path === '/rest/agile/1.0/backlog/issue')) {
+      const moved = body() as { issues: string[] }
+      await hold(moved)
+      const sprint = SPRINTS.find((s) => String(s.id) === sprintMove?.[1])
+      for (const key of moved.issues) {
+        const target = find(key)
+        if (target === undefined) continue
+        const closed = (target.fields[FIELDS.sprint] as { state: string }[]).filter(
+          (s) => s.state === 'closed',
         )
+        target.fields[FIELDS.sprint] = [...closed, ...(sprint === undefined ? [] : [sprint])]
+        touch(target)
       }
-      target.fields.summary = body.fields.summary
+      counts.applied++
+      return new Response(null, { status: 204 })
+    }
+
+    const transitions = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)\/transitions$/.exec(path)
+    if (transitions !== null) {
+      const target = find(transitions[1] ?? '')
+      if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
+      // Transition ids differ from status ids, as they do in the real project.
+      const open = Object.values(STATUSES).filter((s) => s.id !== target.fields.status.id)
+      if (method === 'GET') {
+        return json({
+          transitions: open.map((to) => ({ id: `t${to.id}`, name: `Go to ${to.name}`, to })),
+        })
+      }
+      if (method === 'POST') {
+        const move = body() as { transition: { id: string } }
+        await hold(move)
+        const to = open.find((s) => `t${s.id}` === move.transition.id)
+        if (to === undefined) return json({ errorMessages: ['No such transition.'] }, 400)
+        target.fields.status = to
+        touch(target)
+        counts.applied++
+        return new Response(null, { status: 204 })
+      }
+    }
+
+    const one = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)$/.exec(path)
+    if (method === 'GET' && one !== null) {
+      const target = find(one[1] ?? '')
+      if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
+      counts.issueReads.push(target.key)
+      return json(detail(target))
+    }
+    if (method === 'PUT' && one !== null) {
+      const edit = body() as EditBody
+      const target = find(one[1] ?? '')
+      if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
+      await hold(edit)
+      const refused = applyEdit(target, edit)
+      if (refused !== null) return refused
       counts.applied++
       return new Response(null, { status: 204 })
     }

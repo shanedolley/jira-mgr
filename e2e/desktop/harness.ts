@@ -12,8 +12,13 @@ export const TOKEN = 'good-token'
 export interface Counts {
   searches: { unresolved: number; done: number }
   doneEarly: number
+  /** Writes received: edits, transitions and sprint moves. */
   edits: number
   applied: number
+  /** Reads of one issue, in order of arrival. */
+  issueReads: string[]
+  /** The body of every write received, in order. */
+  editBodies: unknown[]
 }
 
 interface FakeJira {
