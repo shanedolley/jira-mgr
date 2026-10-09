@@ -80,6 +80,9 @@ function TextField({
     setDraft(value)
   }
   const invalid = draft !== value && !valid(draft)
+  // The draft last sent. Jira's answer lands a render later, and until it does `draft` still
+  // differs from `value`, so Enter followed at once by leaving the field would send it twice.
+  const sent = useRef<string | null>(null)
 
   function commit(input: HTMLInputElement) {
     // A date or number field the user has half edited reports "" as its value, which is also what
@@ -88,8 +91,9 @@ function TextField({
       setDraft(value)
       return
     }
-    if (draft === value) return
+    if (draft === value || draft === sent.current) return
     if (!valid(draft)) return
+    sent.current = draft
     onCommit(draft)
   }
 
@@ -113,6 +117,7 @@ function TextField({
         placeholder={placeholder}
         value={draft}
         onChange={(event) => {
+          sent.current = null
           setDraft(event.target.value)
         }}
         onBlur={(event) => {

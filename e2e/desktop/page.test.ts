@@ -424,6 +424,22 @@ test('saves a date when focus leaves the field, clears it, and abandons an edit 
   expect(await lastBody()).toEqual({ fields: { customfield_4: '2026-10-12' } })
 })
 
+test('sends a date once when Enter is followed at once by leaving the field', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  const due = props().getByLabel('Due date')
+
+  await due.fill('2027-02-02')
+  // One task, so the blur lands before Jira's answer re-renders the field.
+  await window.evaluate(`(() => {
+    const input = document.querySelector('[aria-label="Due date"]')
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    input.blur()
+  })()`)
+  await settle(1)
+  expect(await writes()).toBe(1)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2027-02-02' } })
+})
+
 test('edits the estimate, shows the remaining estimate Jira cascades, and refuses a bad duration', async () => {
   await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
   const estimate = props().getByLabel('Original estimate')
