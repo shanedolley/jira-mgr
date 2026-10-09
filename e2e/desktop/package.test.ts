@@ -16,6 +16,8 @@ test('the packaged app opens on the login screen, with no Jira call', async () =
   const stateDir = await mkdtemp(join(tmpdir(), 'jm-pkg-'))
   const app = await electron.launch({
     executablePath: binary,
+    // The packaged app never calls setPath, so Chromium would write its cache to the real state folder.
+    args: [`--user-data-dir=${join(stateDir, 'electron')}`],
     env: { ...process.env, JM_STATE_DIR: stateDir },
   })
   try {

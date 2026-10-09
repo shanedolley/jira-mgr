@@ -54,10 +54,4 @@ The last two remove your settings and token. Skip them to keep the CLI working.
 
 ## Install the CLI
 
-```
-pnpm build
-cd apps/cli && npm link
-jm --version
-```
-
-`npm link` puts `jm` on your PATH from the built `apps/cli/dist/index.js`. Rebuild after pulling changes.
+See [Install the CLI](install-cli.md).

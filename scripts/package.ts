@@ -23,8 +23,13 @@ const ID = 'au.com.koinon.jira-mgr'
 const E2E_ENTRY = join(out, 'main', 'e2e.js')
 const FAKE_MARKERS = ['__fakeJira', 'good-token', 'fake.atlassian.net']
 
+/** A static `import ... from 'x'`, `import 'x'` or `require('x')` of a package, in either quote style. A dynamic `require(variable)` is not caught. */
+const IMPORT = /\b(require\(|from\s*|import\s*)(["'])([^"'./][^"']*)\2/g
+
 function fail(message: string): never {
   console.error(`package: ${message}`)
+  // Leave no rejected app where someone could install it.
+  rmSync(target, { recursive: true, force: true })
   process.exit(1)
 }
 
@@ -65,7 +70,14 @@ for (const [key, value] of [
 }
 // Editing Info.plist breaks Electron's seal, and Apple silicon refuses a binary whose seal is
 // broken. An ad-hoc signature (no identity) makes it run on this Mac.
-execFileSync('codesign', ['--force', '--deep', '--sign', '-', target], { stdio: 'ignore' })
+try {
+  execFileSync('codesign', ['--force', '--deep', '--sign', '-', target], { stdio: 'pipe' })
+} catch (error) {
+  // codesign explains a failure on stderr; its "replacing existing signature" notice is noise.
+  fail(
+    `codesign failed: ${(error as { stderr?: Buffer }).stderr?.toString().trim() ?? String(error)}`,
+  )
+}
 
 const files = readdirSync(appDir, { recursive: true, withFileTypes: true })
   .filter((entry) => entry.isFile())
@@ -75,10 +87,12 @@ for (const file of files.filter((name) => name.endsWith('.js'))) {
   const text = readFileSync(file, 'utf8')
   const marker = FAKE_MARKERS.find((m) => text.includes(m))
   if (marker !== undefined) fail(`${relative(appDir, file)} holds fake Jira code (${marker}).`)
-  // Electron and Node built-ins are all the app can load: it carries no node_modules.
-  for (const [, id = ''] of text.matchAll(/\brequire\("([^"./][^"]*)"\)/g)) {
-    if (id !== 'electron' && !id.startsWith('node:')) {
-      fail(`${relative(appDir, file)} requires ${id}, which the app does not carry.`)
+  // The renderer is a browser bundle; main and preload run in Node and carry no node_modules.
+  if (!relative(appDir, file).startsWith(join('out', 'renderer'))) {
+    for (const [, , , id = ''] of text.matchAll(IMPORT)) {
+      if (id !== 'electron' && !id.startsWith('node:')) {
+        fail(`${relative(appDir, file)} imports ${id}, which the app does not carry.`)
+      }
     }
   }
 }
