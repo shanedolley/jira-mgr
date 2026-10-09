@@ -28,6 +28,7 @@ interface FakeJira {
   failDone: () => void
   failRead: () => void
   dropIssue: (key: string) => void
+  moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
 }
 
 interface WithFake {
@@ -87,3 +88,16 @@ export async function logIn(window: Page, token = TOKEN) {
   await window.getByLabel('API token').fill(token)
   await window.getByRole('button', { name: 'Log in' }).click()
 }
+
+/** Moves an issue to another status in the fake Jira, as if someone else did. The next refetch sees it. */
+export const moveIssue = (
+  app: ElectronApplication,
+  key: string,
+  status: 'todo' | 'doing' | 'done',
+) =>
+  app.evaluate(
+    (_electron, [name, to]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.moveIssue(name ?? '', to as 'todo')
+    },
+    [key, status],
+  )

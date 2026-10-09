@@ -509,7 +509,7 @@ test('prevents the default of the keys it handles and of no other', async () => 
 
   const seen = await window.evaluate<[string, boolean][]>('window.__keys')
   // Handled keys, Space and the page keys included, never reach the container's own scrolling.
-  // The unhandled `x` and Cmd+K stay available to D7 and the system.
+  // The unhandled `x` stays available to the system. Cmd+K is the palette's (D7), so it is handled.
   expect(
     seen.filter(([key]) => ['j', ' ', 'PageDown', 'ArrowRight', 'Home'].includes(key)),
   ).toEqual([
@@ -521,6 +521,6 @@ test('prevents the default of the keys it handles and of no other', async () => 
   ])
   expect(seen.filter(([key]) => key === 'x' || key === 'k')).toEqual([
     ['x', false],
-    ['k', false],
+    ['k', true],
   ])
 })

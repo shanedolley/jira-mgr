@@ -75,6 +75,8 @@ export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditor
       <h2 className="text-base font-semibold leading-snug">{issue.summary}</h2>
       <button
         type="button"
+        aria-keyshortcuts="E"
+        title="Edit summary (E)"
         onClick={() => {
           setDraft(issue.summary)
           save.reset()

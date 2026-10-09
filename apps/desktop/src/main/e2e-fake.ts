@@ -350,6 +350,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failRead: () => void
   /** Removes an issue as if someone else deleted it: no hold and no count, so the next refetch loses it. */
   dropIssue: (key: string) => void
+  /** Moves an issue to another status as if someone else did: no hold and no count, so the next refetch sees it. */
+  moveIssue: (key: string, status: keyof typeof STATUSES) => void
 } {
   const bulk = Array.from({ length: options.bulk ?? 0 }, (_, i) =>
     issue({
@@ -758,6 +760,12 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     dropIssue: (key) => {
       const target = find(key)
       if (target !== undefined) issues.splice(issues.indexOf(target), 1)
+    },
+    moveIssue: (key, status) => {
+      const target = find(key)
+      if (target === undefined) return
+      target.fields.status = STATUSES[status]
+      touch(target)
     },
   }
 }

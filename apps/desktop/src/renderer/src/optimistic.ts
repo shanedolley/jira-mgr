@@ -69,7 +69,8 @@ function holding(client: QueryClient, key: string): (readonly string[])[] {
   return keys
 }
 
-function current(client: QueryClient, key: string): Issue | undefined {
+/** The issue as the caches show it now, or `undefined` when none holds it. */
+export function current(client: QueryClient, key: string): Issue | undefined {
   for (const phase of PHASES) {
     const found = client.getQueryData<Issue[]>(phaseKey(phase))?.find((issue) => issue.key === key)
     if (found !== undefined) return found
@@ -124,12 +125,15 @@ export function applyFreshIssue(client: QueryClient, fresh: IssueDetail): void {
  * outcome, `reread` fetches the issue and the caches take Jira's answer, including anything Jira
  * changed on its own, such as a remaining estimate. Only the one issue is read: no list is
  * cancelled or reloaded unless the read itself fails, so an edit never restarts the Done load.
+ * An edit Jira accepted goes to `record` with the fields as it set them and as they were, which is
+ * what an undo needs (D7). A refused edit, and one on an issue no cache holds, record nothing.
  */
 export function issueMutation<A extends { key: string }>(
   client: QueryClient,
   send: (args: A) => Promise<unknown>,
   patchOf: (args: A) => Partial<Issue>,
   reread: (key: string) => Promise<IssueDetail>,
+  record?: (args: A, done: { patch: Partial<Issue>; before: Partial<Issue> }) => void,
 ): MutationOptions<unknown, JiraMgrError, A, Rollback | undefined> {
   return {
     mutationFn: send,
@@ -147,6 +151,10 @@ export function issueMutation<A extends { key: string }>(
       ) as Partial<Issue>
       editEverywhere(client, key, (issue) => ({ ...issue, ...patch }))
       return { key, patch, previous }
+    },
+    onSuccess(_data, args, rollback) {
+      if (rollback !== undefined)
+        record?.(args, { patch: rollback.patch, before: rollback.previous })
     },
     onError(_error, _args, rollback) {
       if (rollback === undefined) return
@@ -182,12 +190,13 @@ export function issueMutation<A extends { key: string }>(
 }
 
 /** The summary edit, kept as D1 built it: the other edits share its machinery. */
-export function summaryMutation(
+export function summaryMutation<A extends SetSummaryArgs>(
   client: QueryClient,
-  send: (args: SetSummaryArgs) => Promise<unknown>,
+  send: (args: A) => Promise<unknown>,
   reread: (key: string) => Promise<IssueDetail>,
+  record?: (args: A, done: { patch: Partial<Issue>; before: Partial<Issue> }) => void,
 ) {
-  return issueMutation(client, send, ({ summary }) => ({ summary }), reread)
+  return issueMutation(client, send, ({ summary }) => ({ summary }), reread, record)
 }
 
 /**

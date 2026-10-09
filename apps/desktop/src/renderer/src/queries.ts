@@ -20,6 +20,7 @@ import type {
   OptionField,
   SetSprintArgs,
   SetStatusArgs,
+  SetSummaryArgs,
   SessionState,
   Toggles,
 } from '../../shared/ipc'
@@ -34,6 +35,7 @@ import {
   summaryMutation,
   unresolvedKey,
 } from './optimistic'
+import { editEntry, recorder, sprintEntry, statusEntry, summaryEntry, undoStack } from './undo'
 
 export const sessionKey = ['session'] as const
 
@@ -218,6 +220,8 @@ export function clearAccountData(client: QueryClient): void {
   client.removeQueries({ queryKey: meKey })
   client.removeQueries({ queryKey: customersKey })
   client.removeQueries({ queryKey: pickerKey })
+  // An undo must not write one account's old values into the next account's issues.
+  undoStack(client).clear()
 }
 
 /**
@@ -270,15 +274,24 @@ export function useLogout() {
 
 const rereadIssue = (key: string): Promise<IssueDetail> => call('issues:get', { key })
 
-/** An edit that sends `changes`, shows `patch` at once and reads the issue again once it settles. */
-export type EditArgs = EditIssueArgs & { patch: Partial<Issue> }
-export type StatusArgs = SetStatusArgs & { patch: Partial<Issue> }
-export type SprintArgs = SetSprintArgs & { patch: Partial<Issue> }
+/**
+ * An edit that sends `changes`, shows `patch` at once and reads the issue again once it settles.
+ * `undoing` marks an edit that is itself an undo, which the stack must not record again.
+ */
+export type EditArgs = EditIssueArgs & { patch: Partial<Issue>; undoing?: boolean }
+export type StatusArgs = SetStatusArgs & { patch: Partial<Issue>; undoing?: boolean }
+export type SprintArgs = SetSprintArgs & { patch: Partial<Issue>; undoing?: boolean }
+export type SummaryArgs = SetSummaryArgs & { undoing?: boolean }
 
 export function useSetSummary() {
   const client = useQueryClient()
   return useMutation(
-    summaryMutation(client, (args) => call('issues:setSummary', args), rereadIssue),
+    summaryMutation(
+      client,
+      ({ key, summary }: SummaryArgs) => call('issues:setSummary', { key, summary }),
+      rereadIssue,
+      recorder(client, summaryEntry),
+    ),
   )
 }
 
@@ -290,6 +303,7 @@ export function useEditIssue() {
       ({ key, changes }: EditArgs) => call('issues:edit', { key, changes }),
       ({ patch }) => patch,
       rereadIssue,
+      recorder(client, editEntry),
     ),
   )
 }
@@ -302,6 +316,7 @@ export function useSetStatus() {
       ({ key, statusId }: StatusArgs) => call('issues:setStatus', { key, statusId }),
       ({ patch }) => patch,
       rereadIssue,
+      recorder(client, statusEntry),
     ),
   )
 }
@@ -314,6 +329,7 @@ export function useSetSprint() {
       ({ key, sprintId }: SprintArgs) => call('issues:setSprint', { key, sprintId }),
       ({ patch }) => patch,
       rereadIssue,
+      recorder(client, sprintEntry),
     ),
   )
 }

@@ -9,14 +9,16 @@ interface ToastProps {
   notice: Notice
   /** Opens the issue the notice is about. */
   onOpen?: () => void
+  /** Undoes the edit the notice reports; the same as Cmd+Z. */
+  onUndo?: () => void
   onDismiss: () => void
 }
 
 /**
  * A notice in the corner: what just happened and anything Jira did differently. A failure is an
- * alert and stays; the rest is a status and goes after a while.
+ * alert and stays; the rest is a status and goes after a while. After a field edit it offers Undo.
  */
-export function Toast({ notice, onOpen, onDismiss }: ToastProps) {
+export function Toast({ notice, onOpen, onUndo, onDismiss }: ToastProps) {
   useEffect(() => {
     if (notice.warned) return
     const timer = setTimeout(onDismiss, LINGER_MS)
@@ -39,6 +41,17 @@ export function Toast({ notice, onOpen, onDismiss }: ToastProps) {
         </ul>
       )}
       <div className="flex justify-end gap-2 pt-1">
+        {onUndo !== undefined && (
+          <button
+            type="button"
+            aria-keyshortcuts="Meta+Z"
+            title="Undo (Cmd+Z)"
+            onClick={onUndo}
+            className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+          >
+            Undo
+          </button>
+        )}
         {onOpen !== undefined && (
           <button
             type="button"
