@@ -49,7 +49,7 @@ apps/desktop/src/
 
 The main column reads top to bottom: summary, description, subtasks, Links, Worklogs, Activity (comments and the comment box), Attachments. Attachments is last, as Shane asked. Worklogs is absent on an Epic, which takes none (`propertyRules(...).estimates`, the same switch D3 uses for the estimates). Each section keeps D3's small uppercase heading and `max-w-3xl` column.
 
-Compared with Linear's activity screenshots ([12](linear/12-issue-activity.png), [14](linear/14-issue-comments.png)): Linear's Activity is one-line events with an avatar, the time after a dot, and a bordered comment box below with a paperclip and a round submit button. This page copies the comment box (bordered and rounded, placeholder "Leave a comment", the paperclip as the attach control) and the one-line rows for links and worklogs, with time after a dot in grey 13px. It does not copy the event history (status moves, field edits): Jira's changelog is not in D5's scope, and the roadmap row lists only the four kinds. Linear's 15px section heading is not copied; D3 and D4 already set the page's headings and a second style would look wrong beside them.
+Compared with Linear's activity screenshots ([12](linear/12-issue-activity.png), [14](linear/14-issue-comments.png)): Linear's Activity is one-line events with an avatar, the time after a dot, and a bordered comment box below with a paperclip and a round submit button. This page copies the comment box (bordered and rounded, placeholder "Leave a comment"; its attach control is the Attachments section's Attach file button, which also takes drops) and the one-line rows for links and worklogs, with time after a dot in grey 13px. It does not copy the event history (status moves, field edits): Jira's changelog is not in D5's scope, and the roadmap row lists only the four kinds. Linear's 15px section heading is not copied; D3 and D4 already set the page's headings and a second style would look wrong beside them.
 
 ### Reads
 
@@ -82,7 +82,7 @@ Each comment shows its author, the time after a dot ("edited" when `updated` dif
 
 **Edit.** Edit puts that comment's editor into edit mode, with Save and Cancel from `AdfEditor`. Save, or `Cmd+Enter`, sends `comments:edit`; `Esc` or Cancel discards through `DiscardDialog` when dirty. The edit is not optimistic: the editor stays in edit mode with Save reading "Saving" until Jira answers, then leaves edit mode with Jira's returned comment. A refusal keeps the editor open with the text and shows "Could not save the comment. <message>". That is the same no-loss guarantee as D4's description save without D4's draft map, since a comment edit is short and its editor stays mounted. An empty comment (`editorToAdf` gives `null`) is refused with "A comment cannot be empty."; Jira has no empty comment.
 
-**Add.** The comment box at the end of the Activity section is an `AdfEditor` that is always in edit mode with `value: null`, placeholder text "Leave a comment", and its Save button labelled **Comment** (a new `saveLabel` prop on `AdfEditor`, default "Save"). `Cmd+Enter` posts. It is not optimistic, as create is not: the id is Jira's to give. It disables while posting, and on success the new comment appends from Jira's answer and the box clears. On failure the text stays and the error shows under the box. The paperclip is the Attach control of the Attachments section (below), so a file can be attached from the comment box; it does not embed.
+**Add.** The comment box at the end of the Activity section is an `AdfEditor` that is always in edit mode with `value: null`, placeholder text "Leave a comment", and its Save button labelled **Comment** (a new `saveLabel` prop on `AdfEditor`, default "Save"). `Cmd+Enter` posts. It is not optimistic, as create is not: the id is Jira's to give. It disables while posting, and on success the new comment appends from Jira's answer and the box clears. On failure the text stays and the error shows under the box. The box takes no focus when the page opens, so the page's keys keep working, and its text is not kept when the page is left. Clear (Esc) asks first when text is typed.
 
 **Delete.** An inline "Delete comment?" with Delete and Cancel, focus on Cancel, as the saved views' delete does. Delete removes the comment at once and puts it back if Jira refuses.
 
@@ -116,7 +116,7 @@ Links lists each link as "blocks PSAPAC-5  Summary  Status" with a Remove button
 
 ### Attachments
 
-The Attachments section lists every attachment of any type: file name, size ("96.4 KB"), the date and the author, with a **Download** button. Images show no thumbnail in the list; D4's inline view covers images in the description. A paperclip **Attach file** button opens the native file picker (`<input type="file" multiple>`), so there is a visible alternative to dropping. The section is a `DropZone` labelled "Attach file to issue".
+The Attachments section lists every attachment of any type: file name, size ("96.4 KB"), the date and the author, with a **Download** button. Images show no thumbnail in the list; D4's inline view covers images in the description. An **Attach file** button opens the native file picker (`<input type="file" multiple>`), so there is a visible alternative to dropping. The section is a `DropZone` labelled "Attach file to issue".
 
 **Drop.** `useFileDrag` already lights every `DropZone` while a file is dragged over the window, so the Attachments zone and D4's description zone light up together with no new code in the hook. The drop rules:
 
@@ -186,33 +186,52 @@ Comments, worklogs, links and attachments stay off D7's undo stack, as `undo.ts`
 | | `attachments:download writes to the path the dialog chose, and writes nothing when the user cancels` |
 | | `attachments:download offers the base name of the attachment as the default` |
 | `main/handlers.test.ts` | one case per new channel: a bad key, a non-digit id, a bad duration, ADF over 1 MB, an empty or oversized file, an unknown direction |
-| `renderer/src/queries.test.ts` | `deleting a comment removes it at once and restores it when Jira refuses` |
-| | `logout removes the activity queries` |
+| `renderer/src/activityQueries.test.ts` | `removeMutation removes the row at once, before Jira answers` |
+| | `removeMutation puts the data back when Jira refuses` |
+| | `logout removes every issue's comments, worklogs, links and attachment lists` |
 
-**End to end,** in `e2e/desktop/activity.test.ts`, on PSAPAC-1 (comments, worklogs, links and an attachment seeded) and PSAPAC-4:
+**End to end,** in `e2e/desktop/activity.test.ts`, on PSAPAC-1 (comments, links and attachments seeded), PSAPAC-2 (worklogs) and PSAPAC-4 (a 2h estimate):
 
 | Test |
 |---|
-| `lists the seeded comments, worklogs, links and attachments` |
+| `shows the comments, links and attachments of the issue` |
+| `shows the worklogs of the issue and their total, and none on an Epic` |
 | `adds a comment with Cmd+Enter, and the box clears` |
-| `edits and deletes a comment of the signed-in user; another user's has no buttons` |
-| `a refused comment edit keeps the text and shows the error` |
-| `adds a worklog, and Time remaining in the sidebar falls` |
+| `does not post twice when Cmd+Enter is pressed twice` |
+| `keeps the text and says why when Jira refuses a comment` |
+| `offers Edit and Delete on the signed-in user's own comment only` |
+| `edits a comment, and shows it as edited once Jira answers` |
+| `keeps the text in the editor and says why when Jira refuses an edit` |
+| `asks before discarding an edit, and Esc keeps editing` |
+| `deletes a comment at once and sends the delete after the confirmation` |
+| `puts a comment back, and says why, when Jira refuses the delete` |
+| `logs work with adjustEstimate=auto, and Time remaining falls once Jira answers` |
+| `refuses a time that is not a Jira duration before anything is sent` |
+| `keeps the form and says why when Jira refuses a worklog` |
 | `edits a worklog, and Time remaining moves by the difference` |
-| `deletes a worklog after the inline confirmation, and Time remaining returns` |
-| `adds a link in both directions, and sends the blocker as inwardIssue` |
-| `removes a link, and puts it back when Jira refuses` |
-| `refuses a link to an issue outside the project` |
-| `lists the attachments of the issue with their sizes` |
-| `downloads an attachment through the save dialog, and writes nothing when cancelled` |
+| `offers Edit and Delete on the signed-in user's own worklog only` |
+| `deletes a worklog after the confirmation, and its time returns` |
+| `adds a link where this issue blocks the other, with this issue as the blocker` |
+| `adds a link where this issue is blocked by the other, with the other as the blocker` |
+| `puts the five common types above the rest in the type select` |
+| `refuses a link to an issue outside the project, and sends nothing` |
+| `keeps Add off for the issue itself and for text that is not a key` |
+| `removes a link at once, and the other issue shows the removal too` |
+| `puts a link back, and says why, when Jira refuses the removal` |
+| `opens the page of a linked issue` |
+| `downloads an attachment through the save dialog, under the name it offered` |
+| `writes nothing when the user cancels the save dialog` |
 | `drops a file on the Attachments zone and it attaches` |
+| `drops an image on the Attachments zone and it attaches without embedding` |
 | `both zones light up while a file is dragged over the page, and clear on leave` |
-| `drops a non-image on the description and it attaches` |
-| `drops a file on the sidebar and it attaches` |
+| `drops a file on the properties sidebar, outside both zones, and it attaches` |
+| `attaches a dropped file once, not once for the zone and once for the page` |
+| `drops a file that is not an image on the description and it attaches` |
 | `attaches a file chosen with the Attach file button` |
-| `a failed upload shows its reason and the page keeps working` |
+| `shows why an upload failed and keeps the page working` |
+| `lists an image embedded in the description as an attachment` |
 
-**Fake Jira.** `e2e-fake.ts` grows: `GET` and `POST /issue/{key}/comment`, `PUT` and `DELETE .../comment/{id}`; `GET` and `POST /issue/{key}/worklog` (`adjustEstimate=auto` moves the issue's remaining estimate and Time remaining as the live rule does), `GET`, `PUT` and `DELETE .../worklog/{id}`; `GET /issueLinkType` with the 21 types; `GET /issue/{key}?fields=issuelinks`, `POST /issueLink`, `GET` and `DELETE /issueLink/{id}`. Its seed gives PSAPAC-1 comments by the test user and by another, two worklogs and two links. Writes hold on `releaseEdit` like every other write, and `refuseNextEdit` refuses the next one. `counts.downloads` records the stand-in dialog's calls and `cancelNextDownload()` makes it answer `null`.
+**Fake Jira.** `e2e-fake.ts` grows: `GET` and `POST /issue/{key}/comment`, `PUT` and `DELETE .../comment/{id}`; `GET` and `POST /issue/{key}/worklog` (`adjustEstimate=auto` moves the issue's remaining estimate and Time remaining as the live rule does), `GET`, `PUT` and `DELETE .../worklog/{id}`; `GET /issueLinkType` with eight types (Q19's five and three below the divider); `GET /issue/{key}?fields=issuelinks`, `POST /issueLink`, `GET` and `DELETE /issueLink/{id}`. Its seed gives PSAPAC-1 two comments (one by the test user), two links and a second attachment (`report.xlsx`), and PSAPAC-2 two worklogs. Writes hold on `releaseEdit` like every other write, and `refuseNextEdit` refuses the next one. `counts.downloads` records the stand-in dialog's calls and `cancelNextDownload()` makes it answer `null`.
 
 ## Alternatives
 
@@ -231,7 +250,7 @@ Comments, worklogs, links and attachments stay off D7's undo stack, as `undo.ts`
 
 ## Rollout
 
-One branch, `d5-activity`, in four commits after this doc: core and backend, renderer sections, the e2e fake and tests, README updates. Back out by reverting the pull request: nothing persists locally, and Jira holds whatever the user wrote.
+One branch, `d5-activity`, in commits after this doc: the main-process channels, the renderer sections, and the e2e fake with its tests. Back out by reverting the pull request: nothing persists locally, and Jira holds whatever the user wrote.
 
 ## Open Questions
 

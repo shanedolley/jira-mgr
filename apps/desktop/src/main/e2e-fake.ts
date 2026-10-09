@@ -124,6 +124,8 @@ export interface FakeJiraCounts {
   quitPrompts: number
   /** Every avatar request, in order, with whether it carried an Authorization header. */
   avatarFetches: { url: string; authorized: boolean }[]
+  /** The default file name each stand-in save dialog offered, in order. */
+  downloads: string[]
 }
 
 export interface FakeJiraOptions {
@@ -210,6 +212,58 @@ const SPRINTS = [
 ]
 
 const BOARD_ID = 7
+
+const ME = { accountId: 'u1', displayName: 'Test User' }
+const OTHER = { accountId: 'u2', displayName: 'Other User' }
+
+/** A few of the site's link types: the five Q19 puts first, and three that sit below the divider. */
+const LINK_TYPES = [
+  { id: '1', name: 'Blocks', inward: 'is blocked by', outward: 'blocks' },
+  { id: '2', name: 'Relates', inward: 'relates to', outward: 'relates to' },
+  { id: '3', name: 'Duplicate', inward: 'is duplicated by', outward: 'duplicates' },
+  { id: '4', name: 'Causes', inward: 'is caused by', outward: 'causes' },
+  { id: '5', name: 'Cloners', inward: 'is cloned by', outward: 'clones' },
+  { id: '6', name: 'Polaris datapoint', inward: 'is idea for', outward: 'implements' },
+  { id: '7', name: 'Problem/Incident', inward: 'is caused by', outward: 'causes' },
+  { id: '8', name: 'Test', inward: 'is tested by', outward: 'tests' },
+]
+
+/** A document of one paragraph. */
+const doc = (text: string) => ({
+  version: 1,
+  type: 'doc',
+  content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+})
+
+interface Comment {
+  id: number
+  author: typeof ME
+  body: unknown
+  created: string
+  updated: string
+}
+
+interface Worklog {
+  id: number
+  author: typeof ME
+  seconds: number
+  started: string
+  comment: unknown
+  created: string
+  updated: string
+}
+
+/** A link as Jira stores it: `blocker` is the POST's `inwardIssue`, `blocked` its `outwardIssue`. */
+interface StoredLink {
+  id: number
+  typeId: string
+  blocker: string
+  blocked: string
+}
+
+const FIRST_COMMENT = 8000
+const FIRST_WORKLOG = 7000
+const FIRST_LINK = 9000
 
 interface Seed {
   n: number
@@ -420,6 +474,7 @@ const rawAttachment = (a: Attachment) => ({
   size: a.bytes.length,
   mimeType: a.mimeType,
   created: '2026-10-01T00:00:00.000+1000',
+  author: { accountId: 'u1', displayName: 'Test User' },
   content: `${FAKE_SITE}/rest/api/3/attachment/content/${String(a.id)}`,
 })
 
@@ -514,6 +569,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   setDescription: (key: string, description: unknown) => void
   /** Makes Jira store every saved description with a `localId` on each paragraph, as it may. */
   normaliseDescriptions: () => void
+  /** Makes the stand-in save dialog answer "cancelled" the next time it opens. */
+  cancelNextDownload: () => void
+  /** Reads and clears the cancel request. The e2e entry's save dialog calls it. */
+  takeDownloadCancel: () => boolean
 } {
   const bulk = Array.from({ length: options.bulk ?? 0 }, (_, i) =>
     issue({
@@ -551,6 +610,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     openExternal: [],
     quitPrompts: 0,
     avatarFetches: [],
+    downloads: [],
   }
   // Attachments by issue key. PSAPAC-1 starts with the image its description embeds.
   const attachments = new Map<string, Attachment[]>([
@@ -564,9 +624,70 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
           mimeType: 'image/png',
           bytes: png(),
         },
+        {
+          id: 5002,
+          filename: 'report.xlsx',
+          mediaId: mediaIdOf(5002),
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          bytes: new TextEncoder().encode('xlsx-bytes'),
+        },
       ],
     ],
   ])
+  const comments = new Map<string, Comment[]>([
+    [
+      'PSAPAC-1',
+      [
+        {
+          id: 7900,
+          author: ME,
+          body: doc('My first comment'),
+          created: '2026-10-02T01:00:00.000Z',
+          updated: '2026-10-02T01:00:00.000Z',
+        },
+        {
+          id: 7901,
+          author: OTHER,
+          body: doc('A comment by someone else'),
+          created: '2026-10-02T02:00:00.000Z',
+          updated: '2026-10-02T02:00:00.000Z',
+        },
+      ],
+    ],
+  ])
+  const worklogs = new Map<string, Worklog[]>([
+    [
+      'PSAPAC-2',
+      [
+        {
+          id: 6900,
+          author: ME,
+          seconds: 3600,
+          started: '2026-10-02T03:00:00.000Z',
+          comment: doc('Set up the model'),
+          created: '2026-10-02T03:00:00.000Z',
+          updated: '2026-10-02T03:00:00.000Z',
+        },
+        {
+          id: 6901,
+          author: OTHER,
+          seconds: 1800,
+          started: '2026-10-02T04:00:00.000Z',
+          comment: null,
+          created: '2026-10-02T04:00:00.000Z',
+          updated: '2026-10-02T04:00:00.000Z',
+        },
+      ],
+    ],
+  ])
+  const links: StoredLink[] = [
+    { id: 9900, typeId: '1', blocker: 'PSAPAC-1', blocked: 'PSAPAC-2' },
+    { id: 9901, typeId: '2', blocker: 'PSAPAC-3', blocked: 'PSAPAC-1' },
+  ]
+  let commentIds = 0
+  let worklogIds = 0
+  let linkIds = 0
+  let cancelDownload = false
   let uploaded = 0
   const heldUploads: (() => void)[] = []
   let failNextUpload = false
@@ -975,6 +1096,196 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       })
     }
 
+    // Comments, worklogs and links. Every write holds until `releaseEdit`, as an edit does.
+    const stamp = () => new Date(Date.UTC(2026, 9, 3, 0, 0, ++clock)).toISOString()
+    /** The refusal `refuseNextEdit` asked for, once. */
+    const refusedWrite = () => {
+      if (!refuseNext) return null
+      refuseNext = false
+      return refusal('body', 'The fake refuses this write.')
+    }
+    const missing = (what: string) => json({ errorMessages: [`${what} does not exist.`] }, 404)
+    const commentCollection = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)\/comment(?:\/(\d+))?$/.exec(
+      path,
+    )
+    if (commentCollection !== null) {
+      const target = find(commentCollection[1] ?? '')
+      if (target === undefined) return missing('Issue')
+      const list = comments.get(target.key) ?? []
+      const shownComment = (c: Comment) => ({ ...c, id: String(c.id) })
+      const found = list.find((c) => String(c.id) === commentCollection[2])
+      if (method === 'GET' && commentCollection[2] === undefined) {
+        return json({ total: list.length, comments: list.map(shownComment) })
+      }
+      if (method === 'POST' && commentCollection[2] === undefined) {
+        const { body: text } = body() as { body: unknown }
+        await hold({ comment: 'add', key: target.key, body: text })
+        const refused = refusedWrite()
+        if (refused !== null) return refused
+        const now = stamp()
+        const added: Comment = {
+          id: FIRST_COMMENT + commentIds++,
+          author: ME,
+          body: text,
+          created: now,
+          updated: now,
+        }
+        comments.set(target.key, [...list, added])
+        counts.applied++
+        return json(shownComment(added), 201)
+      }
+      if (method === 'PUT' && found !== undefined) {
+        const { body: text } = body() as { body: unknown }
+        await hold({ comment: 'edit', key: target.key, id: found.id, body: text })
+        const refused = refusedWrite()
+        if (refused !== null) return refused
+        found.body = text
+        found.updated = stamp()
+        counts.applied++
+        return json(shownComment(found))
+      }
+      if (method === 'DELETE' && found !== undefined) {
+        await hold({ comment: 'delete', key: target.key, id: found.id })
+        const refused = refusedWrite()
+        if (refused !== null) return refused
+        comments.set(
+          target.key,
+          list.filter((c) => c !== found),
+        )
+        counts.applied++
+        return new Response(null, { status: 204 })
+      }
+      if (commentCollection[2] !== undefined) return missing('Comment')
+    }
+
+    const worklogRoute = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)\/worklog(?:\/(\d+))?$/.exec(path)
+    if (worklogRoute !== null) {
+      const target = find(worklogRoute[1] ?? '')
+      if (target === undefined) return missing('Issue')
+      const list = worklogs.get(target.key) ?? []
+      const found = list.find((w) => String(w.id) === worklogRoute[2])
+      const shown = (w: Worklog) => ({
+        id: String(w.id),
+        author: w.author,
+        timeSpent:
+          w.seconds % 3600 === 0 ? `${String(w.seconds / 3600)}h` : `${String(w.seconds / 60)}m`,
+        timeSpentSeconds: w.seconds,
+        started: w.started,
+        comment: w.comment,
+        created: w.created,
+        updated: w.updated,
+      })
+      /** `adjustEstimate=auto`: the remaining estimate, and Time remaining (h) with it, move by `delta`. */
+      const adjust = (delta: number) => {
+        const left = target.fields.timetracking.remainingEstimateSeconds
+        if (left === undefined) return
+        const next = Math.max(0, left + delta)
+        target.fields.timetracking.remainingEstimateSeconds = next
+        target.fields[FIELDS.timeRemaining] = next / 3600
+        touch(target)
+      }
+      const adjusting = url.searchParams.get('adjustEstimate')
+      if (method === 'GET' && worklogRoute[2] === undefined) {
+        return json({ total: list.length, worklogs: list.map(shown) })
+      }
+      if (method === 'GET' && found !== undefined) return json(shown(found))
+      if (method === 'POST' && worklogRoute[2] === undefined) {
+        const input = body() as { timeSpent: string; started?: string; comment?: unknown }
+        await hold({ worklog: 'add', key: target.key, adjustEstimate: adjusting, ...input })
+        const refused = refusedWrite()
+        if (refused !== null) return refused
+        const now = stamp()
+        const added: Worklog = {
+          id: FIRST_WORKLOG + worklogIds++,
+          author: ME,
+          seconds: seconds(input.timeSpent),
+          started: input.started ?? now,
+          comment: input.comment ?? null,
+          created: now,
+          updated: now,
+        }
+        worklogs.set(target.key, [...list, added])
+        if (adjusting === 'auto') adjust(-added.seconds)
+        counts.applied++
+        return json(shown(added), 201)
+      }
+      if (method === 'PUT' && found !== undefined) {
+        const input = body() as { timeSpent?: string; started?: string; comment?: unknown }
+        await hold({ worklog: 'edit', key: target.key, adjustEstimate: adjusting, ...input })
+        const refused = refusedWrite()
+        if (refused !== null) return refused
+        const before = found.seconds
+        if (input.timeSpent !== undefined) found.seconds = seconds(input.timeSpent)
+        if (input.started !== undefined) found.started = input.started
+        if (input.comment !== undefined) found.comment = input.comment
+        found.updated = stamp()
+        if (adjusting === 'auto') adjust(before - found.seconds)
+        counts.applied++
+        return json(shown(found))
+      }
+      if (method === 'DELETE' && found !== undefined) {
+        await hold({ worklog: 'delete', key: target.key, adjustEstimate: adjusting, id: found.id })
+        const refused = refusedWrite()
+        if (refused !== null) return refused
+        worklogs.set(
+          target.key,
+          list.filter((w) => w !== found),
+        )
+        if (adjusting === 'auto') adjust(found.seconds)
+        counts.applied++
+        return new Response(null, { status: 204 })
+      }
+      if (worklogRoute[2] !== undefined) return missing('Worklog')
+    }
+
+    if (method === 'GET' && path === '/rest/api/3/issueLinkType') {
+      return json({ issueLinkTypes: LINK_TYPES })
+    }
+    if (method === 'POST' && path === '/rest/api/3/issueLink') {
+      const input = body() as {
+        type: { id?: string; name?: string }
+        inwardIssue: { key: string }
+        outwardIssue: { key: string }
+      }
+      const type = LINK_TYPES.find((t) => t.id === input.type.id || t.name === input.type.name)
+      if (type === undefined) return refusal('type', 'No such link type.')
+      if (find(input.inwardIssue.key) === undefined || find(input.outwardIssue.key) === undefined) {
+        return missing('Issue')
+      }
+      await hold({ link: 'add', ...input })
+      const refused = refusedWrite()
+      if (refused !== null) return refused
+      links.push({
+        id: FIRST_LINK + linkIds++,
+        typeId: type.id,
+        blocker: input.inwardIssue.key,
+        blocked: input.outwardIssue.key,
+      })
+      counts.applied++
+      return new Response(null, { status: 201 })
+    }
+    const linkRoute = /^\/rest\/api\/3\/issueLink\/(\d+)$/.exec(path)
+    if (linkRoute !== null) {
+      const found = links.find((l) => String(l.id) === linkRoute[1])
+      if (found === undefined) return missing('Link')
+      if (method === 'GET') {
+        return json({
+          id: String(found.id),
+          type: LINK_TYPES.find((t) => t.id === found.typeId),
+          inwardIssue: { key: found.blocker },
+          outwardIssue: { key: found.blocked },
+        })
+      }
+      if (method === 'DELETE') {
+        await hold({ link: 'remove', id: found.id })
+        const refused = refusedWrite()
+        if (refused !== null) return refused
+        links.splice(links.indexOf(found), 1)
+        counts.applied++
+        return new Response(null, { status: 204 })
+      }
+    }
+
     const one = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)$/.exec(path)
     if (method === 'GET' && one !== null && url.searchParams.get('fields') === 'attachment') {
       const target = find(one[1] ?? '')
@@ -982,6 +1293,35 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       return json({
         key: target.key,
         fields: { attachment: (attachments.get(target.key) ?? []).map(rawAttachment) },
+      })
+    }
+    if (method === 'GET' && one !== null && url.searchParams.get('fields') === 'issuelinks') {
+      const target = find(one[1] ?? '')
+      if (target === undefined) return missing('Issue')
+      // Seen from `target`: the link where it blocks lists the other as `outwardIssue`.
+      const seen = (key: string) => {
+        const other = find(key)
+        return {
+          key,
+          fields: {
+            summary: other?.fields.summary ?? '',
+            status: { name: other?.fields.status.name ?? '' },
+          },
+        }
+      }
+      return json({
+        key: target.key,
+        fields: {
+          issuelinks: links
+            .filter((l) => l.blocker === target.key || l.blocked === target.key)
+            .map((l) => ({
+              id: String(l.id),
+              type: LINK_TYPES.find((t) => t.id === l.typeId),
+              ...(l.blocker === target.key
+                ? { outwardIssue: seen(l.blocked) }
+                : { inwardIssue: seen(l.blocker) }),
+            })),
+        },
       })
     }
     if (method === 'GET' && one !== null) {
@@ -1052,6 +1392,14 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     normaliseDescriptions: () => {
       normalise = true
+    },
+    cancelNextDownload: () => {
+      cancelDownload = true
+    },
+    takeDownloadCancel: () => {
+      const asked = cancelDownload
+      cancelDownload = false
+      return asked
     },
   }
 }

@@ -45,8 +45,8 @@ const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 const heading = (name: string) => issuePage().getByRole('heading', { name })
 /** The Description region while editing. */
 const editor = () => issuePage().getByRole('textbox', { name: 'Description' })
-/** The Description region in either mode. */
-const body = () => issuePage().locator('.adf-editor')
+/** The Description region in either mode, not the comment editors beside it. */
+const body = () => issuePage().locator('.adf-editor[aria-label="Description"]')
 const editButton = (name: string | RegExp = /^(Edit|Add) description$/) =>
   issuePage().getByRole('button', { name })
 const save = () => issuePage().getByRole('button', { name: 'Save', exact: true })
@@ -840,13 +840,17 @@ test('drops an image onto the read-mode description, which opens the editor with
   expect(types).toContain('mediaSingle')
 })
 
-test('refuses a file that is not an image dropped on the read-mode description', async () => {
+test('attaches a file that is not an image dropped on the read-mode description', async () => {
   await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
   await dragFile(zone(), 'drop', { name: 'notes.txt', type: 'text/plain', data: btoa('hello') })
 
-  await expect(window.getByText('notes.txt was not added')).toBeVisible()
+  // It attaches to the issue and leaves the description alone.
+  await expect.poll(async () => (await counts(app)).uploads.length).toBe(1)
+  expect((await counts(app)).uploads[0]).toMatchObject({
+    filename: 'notes.txt',
+    type: 'text/plain',
+  })
   await expect(editor()).toHaveCount(0)
-  expect((await counts(app)).uploads).toHaveLength(0)
   expect(await edits()).toBe(0)
 })
 
@@ -881,7 +885,7 @@ test('a page that falls back for a missing issue drops its draft, so a quit is n
   await expect.poll(blocksUnload).toBe(false)
 })
 
-test('a mixed drop on the editor embeds the image and reports the other file', async () => {
+test('a mixed drop on the editor embeds the image and attaches the other file', async () => {
   await addDescription()
   await editor().evaluate((element, data) => {
     const transfer = new DataTransfer()
@@ -900,8 +904,9 @@ test('a mixed drop on the editor embeds the image and reports the other file', a
     )
   }, PNG)
 
-  await expect.poll(async () => (await counts(app)).uploads.length).toBe(1)
-  await expect(window.getByText('notes.txt was not added')).toBeVisible()
+  await expect.poll(async () => (await counts(app)).uploads.length).toBe(2)
+  const names = (await counts(app)).uploads.map((upload) => upload.filename).sort()
+  expect(names).toEqual(['notes.txt', 'shot.png'])
 })
 
 test('a read-mode drop keeps its draft against the description Jira holds now', async () => {

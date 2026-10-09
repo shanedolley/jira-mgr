@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { app } from 'electron'
@@ -32,6 +33,14 @@ start(
   createBackend({
     keychain: createFakeKeychain(),
     ...(lateReadMs !== undefined && { lateReadMs: Number(lateReadMs) }),
+    // Stands in for the native save dialog: a file under the state folder, or a cancel on request.
+    async chooseSavePath(defaultName) {
+      jira.counts.downloads.push(defaultName)
+      if (jira.takeDownloadCancel()) return null
+      const folder = join(stateDir, 'downloads')
+      await mkdir(folder, { recursive: true })
+      return join(folder, defaultName)
+    },
   }),
   {
     inactive: true,
