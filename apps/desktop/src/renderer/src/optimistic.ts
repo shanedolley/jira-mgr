@@ -93,6 +93,20 @@ export function current(client: QueryClient, key: string): Issue | undefined {
   return client.getQueryData<IssueDetail>(issueDetailKey(key))
 }
 
+/** True while an edit to the issue is in flight, so its optimistic value is not Jira's yet. */
+export function isEditing(client: QueryClient, key: string): boolean {
+  return (flights(client).get(key) ?? 0) > 0
+}
+
+/**
+ * Puts a read that was not asked for by an edit, such as a created issue's second read, into the
+ * caches. While an edit of the issue is in flight the read would bring back the old value over the
+ * optimistic one, so it is skipped: the edit reads the issue itself once it settles.
+ */
+export function applyUnaskedRead(client: QueryClient, fresh: IssueDetail): void {
+  if (!isEditing(client, fresh.key)) applyFreshIssue(client, fresh)
+}
+
 /**
  * Puts an issue read afresh into the caches. The phase lists keep the plain issue, in the phase
  * its status category belongs to, so a transition to Done moves it across without reloading

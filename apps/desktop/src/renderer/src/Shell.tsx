@@ -45,7 +45,7 @@ import {
   useToggles,
   useUnresolvedIssues,
 } from './queries'
-import { applyFreshIssue } from './optimistic'
+import { applyUnaskedRead } from './optimistic'
 import { describeEdit, undoStack } from './undo'
 import { useUndo } from './useUndo'
 import {
@@ -420,7 +420,7 @@ export function Shell({ session }: { session: Session }) {
         const first = created.current.get(read.key)
         if (first === undefined) return
         created.current.delete(read.key)
-        applyFreshIssue(client, read.issue)
+        applyUnaskedRead(client, read.issue)
         const late = describeLate(first.draft, first.notice, read)
         if (late !== null) setNotice({ notice: late, openKey: read.key })
       }),
