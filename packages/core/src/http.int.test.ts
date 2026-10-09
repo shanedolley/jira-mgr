@@ -1,9 +1,9 @@
 import { delay, http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { JIRA_SITE, server } from '../test/msw.js'
+import { JIRA_SITE, loadFixture, server } from '../test/msw.js'
 import { JiraMgrError } from './errors.js'
-import { createHttpClient, type HttpClientOptions } from './http.js'
+import { createHttpClient, requestBytes, requestMediaId, type HttpClientOptions } from './http.js'
 
 const EMAIL = 'shane@koinon.com.au'
 const TOKEN = 'ATATT3xFfGF0-secret_token=ABC123'
@@ -590,5 +590,183 @@ describe('debug output', () => {
     await api.request('GET', '/rest/api/3/myself')
     expect(stderr).toHaveBeenCalledTimes(1)
     assertNoSecrets(String(stderr.mock.calls[0]?.[0]))
+  })
+})
+
+/** Counts how a client uses response bodies: bodies cancelled, and readers taken to read one. */
+function spyOnBody() {
+  const counts = { cancels: 0, readers: 0 }
+  const real = globalThis.fetch
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (...args) => {
+    const response = await real(...args)
+    const body = response.body
+    if (body !== null) {
+      const cancel = body.cancel.bind(body)
+      body.cancel = (...reason: [unknown?]) => {
+        counts.cancels++
+        return cancel(...reason)
+      }
+      const getReader = body.getReader.bind(body) as () => ReadableStreamDefaultReader<Uint8Array>
+      body.getReader = (() => {
+        counts.readers++
+        return getReader()
+      }) as typeof body.getReader
+    }
+    return response
+  })
+  return counts
+}
+
+describe('bytes and media ids', () => {
+  const redirect = loadFixture('attachment-content-redirect') as {
+    status: number
+    location: string
+  }
+  const CONTENT = `${JIRA_SITE}/rest/api/3/attachment/content/652124`
+  const mediaId = (
+    api: ReturnType<typeof client>['api'],
+    path = '/rest/api/3/attachment/content/652124',
+  ) => requestMediaId(api, path)
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
+
+  it('bytes returns the body and content type without parsing JSON', async () => {
+    let accept: string | null = null
+    server.use(
+      http.get(CONTENT, ({ request }) => {
+        accept = request.headers.get('Accept')
+        return new HttpResponse(PNG, { headers: { 'Content-Type': 'image/png' } })
+      }),
+    )
+    const result = await requestBytes(
+      client().api,
+      'GET',
+      '/rest/api/3/attachment/content/652124',
+      {
+        maxBytes: 100,
+      },
+    )
+    expect(result.contentType).toBe('image/png')
+    expect([...result.bytes]).toEqual([...PNG])
+    expect(accept).toBe('*/*')
+  })
+
+  it('bytes refuses a Content-Length over maxBytes before reading', async () => {
+    const body = spyOnBody()
+    server.use(
+      http.get(
+        CONTENT,
+        () => new HttpResponse(new Uint8Array(10), { headers: { 'Content-Length': '1000' } }),
+      ),
+    )
+    const error = await rejection(
+      requestBytes(client().api, 'GET', '/rest/api/3/attachment/content/652124', { maxBytes: 100 }),
+    )
+    expect(error.code).toBe('validation_failed')
+    expect(body.readers).toBe(0)
+    expect(body.cancels).toBe(1)
+  })
+
+  it('bytes aborts a body that passes maxBytes', async () => {
+    const body = spyOnBody()
+    server.use(
+      http.get(CONTENT, () => {
+        const stream = new ReadableStream<Uint8Array>({
+          pull(controller) {
+            controller.enqueue(new Uint8Array(60))
+          },
+        })
+        return new HttpResponse(stream)
+      }),
+    )
+    const error = await rejection(
+      requestBytes(client().api, 'GET', '/rest/api/3/attachment/content/652124', { maxBytes: 100 }),
+    )
+    expect(error.code).toBe('validation_failed')
+    expect(body.readers).toBe(1)
+  })
+
+  it('bytes needs a limit, and maps a failure as any request does', async () => {
+    const error = await rejection(
+      client().api.request('GET', '/rest/api/3/attachment/content/652124', { as: 'bytes' }),
+    )
+    expect(error.code).toBe('validation_failed')
+    server.use(
+      http.get(CONTENT, () => HttpResponse.json({ errorMessages: ['No.'] }, { status: 404 })),
+    )
+    const missing = await rejection(
+      requestBytes(client().api, 'GET', '/rest/api/3/attachment/content/652124', { maxBytes: 5 }),
+    )
+    expect(missing.code).toBe('not_found')
+  })
+
+  it('mediaId returns the id from the recorded redirect without following it, and cancels the body', async () => {
+    const body = spyOnBody()
+    let followed = false
+    server.use(
+      http.get(
+        CONTENT,
+        () =>
+          new HttpResponse(new Uint8Array(1), {
+            status: redirect.status,
+            headers: { Location: redirect.location },
+          }),
+      ),
+      http.get(redirect.location.split('?')[0] ?? '', () => {
+        followed = true
+        return new HttpResponse(null)
+      }),
+    )
+    expect(await mediaId(client().api)).toBe('b779fa03-43a9-473f-bc64-531f0c7fa560')
+    expect(followed).toBe(false)
+    expect(body.cancels).toBe(1)
+    expect(body.readers).toBe(0)
+  })
+
+  it('mediaId refuses a path other than attachment content', async () => {
+    for (const path of [
+      '/rest/api/3/myself',
+      '/rest/api/3/attachment/content/abc',
+      '/rest/api/3/attachment/content/1/x',
+    ]) {
+      expect((await rejection(mediaId(client().api, path))).code).toBe('validation_failed')
+    }
+  })
+
+  it.each([
+    ['a missing Location', undefined],
+    ['another host', 'https://media.example.test/file/b779fa03-43a9-473f-bc64-531f0c7fa560/binary'],
+    ['http', 'http://api.media.atlassian.com/file/b779fa03-43a9-473f-bc64-531f0c7fa560/binary'],
+    ['no file id', 'https://api.media.atlassian.com/other/path?token=secret-media-token'],
+  ])('mediaId throws jira_error, with no cause or details, for %s', async (_name, location) => {
+    server.use(
+      http.get(
+        CONTENT,
+        () =>
+          new HttpResponse(null, { status: 302, headers: location ? { Location: location } : {} }),
+      ),
+    )
+    const error = await rejection(mediaId(client().api))
+    expect(error.code).toBe('jira_error')
+    expect(error.cause).toBeUndefined()
+    expect(error.details).toBeUndefined()
+    expect(error.message).not.toContain('secret-media-token')
+  })
+
+  it('mediaId throws jira_error for a 200', async () => {
+    server.use(http.get(CONTENT, () => new HttpResponse(PNG)))
+    expect((await rejection(mediaId(client().api))).code).toBe('jira_error')
+  })
+
+  it('mediaId never prints the Location under JM_DEBUG', async () => {
+    server.use(
+      http.get(
+        CONTENT,
+        () => new HttpResponse(null, { status: 302, headers: { Location: redirect.location } }),
+      ),
+    )
+    const { api, debugLines } = client()
+    await mediaId(api)
+    expect(debugLines.join('\n')).toContain('302')
+    expect(debugLines.join('\n')).not.toContain('api.media')
   })
 })

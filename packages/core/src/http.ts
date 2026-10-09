@@ -36,11 +36,43 @@ export interface RequestOptions {
   signal?: AbortSignal
   /** Overrides the client's timeout for this request, such as a large upload. */
   timeoutMs?: number
+  /**
+   * What to read back: JSON unless `bytes` (needs `maxBytes`) or `mediaId`. Callers use
+   * `requestBytes` and `requestMediaId`, which type the answer.
+   */
+  as?: 'json' | 'bytes' | 'mediaId'
+  /** With `as: 'bytes'`: the most bytes to read before refusing. */
+  maxBytes?: number
 }
 
 export interface HttpClient {
   /** Resolves to the parsed JSON body, or `undefined` for an empty one. Callers validate it. */
   request(method: string, path: string, options?: RequestOptions): Promise<unknown>
+}
+
+/** A body read as bytes, with the content type Jira declared. */
+export interface BytesResponse {
+  contentType: string | null
+  bytes: Uint8Array
+}
+
+/** Reads a body as bytes, refusing with `validation_failed` past `maxBytes`. */
+export function requestBytes(
+  http: HttpClient,
+  method: string,
+  path: string,
+  options: Omit<RequestOptions, 'as'> & { maxBytes: number },
+): Promise<BytesResponse> {
+  return http.request(method, path, { ...options, as: 'bytes' }) as Promise<BytesResponse>
+}
+
+/** The Media Services file id an attachment content path redirects to. No other path is allowed. */
+export function requestMediaId(
+  http: HttpClient,
+  path: string,
+  options: Omit<RequestOptions, 'as' | 'maxBytes'> = {},
+): Promise<string> {
+  return http.request('GET', path, { ...options, as: 'mediaId' }) as Promise<string>
 }
 
 const jiraErrorBody = z.object({
@@ -70,6 +102,70 @@ function readText(response: Response, signal: AbortSignal): Promise<string> {
       signal.addEventListener('abort', abort, { once: true })
     }),
   ])
+}
+
+const tooLarge = (maxBytes: number) =>
+  new JiraMgrError(
+    'validation_failed',
+    `Jira sent more than ${String(maxBytes)} bytes, which is more than this app reads.`,
+  )
+
+/** Reads at most `maxBytes` of the body, giving up when `signal` fires. */
+async function readBytes(
+  response: Response,
+  signal: AbortSignal,
+  maxBytes: number,
+): Promise<Uint8Array> {
+  const length = Number(response.headers.get('Content-Length'))
+  if (Number.isFinite(length) && length > maxBytes) {
+    void response.body?.cancel().catch(() => undefined)
+    throw tooLarge(maxBytes)
+  }
+  const reader = response.body?.getReader() as ReadableStreamDefaultReader<Uint8Array> | undefined
+  if (reader === undefined) return new Uint8Array()
+  const aborted = new Promise<never>((_, reject) => {
+    const abort = () => {
+      reject(signal.reason as Error)
+    }
+    if (signal.aborted) abort()
+    signal.addEventListener('abort', abort, { once: true })
+  })
+  const chunks: Uint8Array[] = []
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await Promise.race([reader.read(), aborted])
+      if (done) break
+      total += value.length
+      if (total > maxBytes) throw tooLarge(maxBytes)
+      chunks.push(value)
+    }
+  } catch (error) {
+    void reader.cancel().catch(() => undefined)
+    throw error
+  }
+  const bytes = new Uint8Array(total)
+  let at = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, at)
+    at += chunk.length
+  }
+  return bytes
+}
+
+const MEDIA_HOST = 'api.media.atlassian.com'
+const MEDIA_PATH = /^\/file\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i
+const CONTENT_PATH = /^\/rest\/api\/3\/attachment\/content\/[1-9]\d*$/
+
+/**
+ * The file id in a content redirect's `Location`, or `undefined` when it is not the media
+ * service's. The URL carries a short-lived media token, so only the id leaves this module.
+ */
+function mediaIdOf(location: string | null): string | undefined {
+  if (location === null || !URL.canParse(location)) return undefined
+  const url = new URL(location)
+  if (url.protocol !== 'https:' || url.hostname !== MEDIA_HOST) return undefined
+  return MEDIA_PATH.exec(url.pathname)?.[1]
 }
 
 /** What to do next, per status, so a message says more than what went wrong. */
@@ -158,9 +254,24 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   // ponytail: one Keychain read per request, cache it if the CLI makes enough calls to notice.
   const credentials = options.credentials ?? (() => getCredentials())
 
-  async function request(method: string, path: string, init: RequestOptions = {}) {
+  async function request(
+    method: string,
+    path: string,
+    init: RequestOptions = {},
+  ): Promise<unknown> {
     const limitMs = init.timeoutMs ?? timeoutMs
+    const mode = init.as ?? 'json'
+    const maxBytes = init.maxBytes ?? 0
+    if (mode === 'bytes' && init.maxBytes === undefined) {
+      throw new JiraMgrError('validation_failed', 'Reading bytes needs a maxBytes limit.')
+    }
     assertJiraPath(path)
+    if (mode === 'mediaId' && !CONTENT_PATH.test(path.split(/[?#]/, 1)[0] ?? '')) {
+      throw new JiraMgrError(
+        'validation_failed',
+        'A media id can be read only from an attachment content path.',
+      )
+    }
     if (init.body !== undefined && READ_METHODS.includes(method.toUpperCase())) {
       throw new JiraMgrError('validation_failed', `${method} cannot carry a body.`)
     }
@@ -185,7 +296,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
 
     const headers: Record<string, string> = {
       Authorization: `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`,
-      Accept: 'application/json',
+      Accept: mode === 'bytes' ? '*/*' : 'application/json',
     }
     let body: FormData | string | undefined
     if (init.body instanceof FormData) {
@@ -203,17 +314,28 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       const elapsed = () => `${String(Math.round(performance.now() - started))}ms`
       let response: Response
       let text = ''
+      let bytes: Uint8Array | undefined
       let wait: number | undefined
       try {
-        response = await fetch(url, { method, headers, body, redirect: 'error', signal })
+        response = await fetch(url, {
+          method,
+          headers,
+          body,
+          redirect: mode === 'mediaId' ? 'manual' : 'error',
+          signal,
+        })
         debug(`jm http ${label} ${String(response.status)} ${elapsed()}`)
         wait = attempt < maxRetries ? retryWait(response, attempt, MAX_RETRY_WAIT_MS) : undefined
-        if (wait === undefined) text = await readText(response, signal)
-        else await response.body?.cancel()
+        if (wait !== undefined || mode === 'mediaId')
+          void response.body?.cancel().catch(() => undefined)
+        else if (mode === 'bytes' && response.ok) {
+          bytes = await readBytes(response, signal, maxBytes)
+        } else text = await readText(response, signal)
       } catch (cause) {
         // The body can fail after the headers arrive: a stall hits the timeout, a reset throws.
         debug(`jm http ${label} failed ${elapsed()}`)
         if (init.signal?.aborted === true) throw cause
+        if (cause instanceof JiraMgrError) throw cause
         const timedOut = cause instanceof Error && cause.name === 'TimeoutError'
         const mayHaveRun = READ_METHODS.includes(method.toUpperCase())
           ? ''
@@ -238,7 +360,22 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
         }
         continue
       }
+      if (mode === 'mediaId' && response.status >= 300 && response.status < 400) {
+        const id = mediaIdOf(response.headers.get('Location'))
+        // No cause and no details: nothing of the redirect URL may reach a log or a message.
+        if (id === undefined) {
+          throw new JiraMgrError(
+            'jira_error',
+            `Jira sent a redirect for ${label} that this app cannot read.`,
+          )
+        }
+        return id
+      }
+      if (mode === 'mediaId' && response.ok) {
+        throw new JiraMgrError('jira_error', `Jira answered ${label} with no redirect to read.`)
+      }
       if (!response.ok) throw failure(response, text, method, url.pathname)
+      if (bytes !== undefined) return { contentType: response.headers.get('Content-Type'), bytes }
       if (text === '') return undefined
       try {
         return JSON.parse(text) as unknown
