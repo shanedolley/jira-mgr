@@ -59,6 +59,18 @@ async function settle(expected: number) {
   await expect.poll(async () => (await counts(app)).applied).toBe(expected)
 }
 
+test('shows the type icon in the Peek and in the page header', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await expect(peek().getByRole('img', { name: 'Story' })).toBeVisible()
+
+  await window.keyboard.press('Enter')
+  await expect(heading('Migrate the dashboards').first()).toBeVisible()
+  await expect(
+    issuePage().getByRole('heading', { name: /PSAPAC-4/ }).getByRole('img', { name: 'Story' }),
+  ).toBeVisible()
+})
+
 test('Enter opens the full page and Esc returns to the Tree, while Space keeps the Peek', async () => {
   await open()
   await item(/PSAPAC-4,/).click()

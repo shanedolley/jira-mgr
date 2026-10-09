@@ -320,6 +320,15 @@ test('a parent whose Customer differs asks before it changes the form', async ()
   await expect(field('Parent', /^Parent:/)).toBeFocused()
 })
 
+test("the parent picker shows each candidate's type icon", async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+
+  await field('Parent', /^Parent:/).click()
+  await window.getByRole('combobox', { name: 'Search Parent' }).fill('Reporting')
+  await expect(option(/Reporting/).getByRole('img', { name: 'Epic' })).toBeVisible()
+})
+
 test('a parent can be taken without its Customer and Engagement', async () => {
   await open()
   await openCreate(/PSAPAC-2,/)
