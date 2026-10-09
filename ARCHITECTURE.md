@@ -14,7 +14,7 @@ clients:  apps/desktop (main + renderer)      apps/cli (jm)
 
 | Path | Purpose |
 |---|---|
-| `apps/desktop/` | The Electron app: main process, preload script and React renderer, built with electron-vite |
+| `apps/desktop/` | The Electron app: main process, preload script, the shared IPC contract and the React renderer, built with electron-vite |
 | `apps/cli/` | The `jm` command, built with tsup |
 | `packages/core/` | `@jira-mgr/core`: the Jira client, domain rules, saved views schema, error codes and ADF conversion |
 | `packages/config-ts/` | `@jira-mgr/config-ts`: base `tsconfig` files |
