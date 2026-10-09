@@ -1,0 +1,86 @@
+// Assembles the unsigned local app at apps/desktop/dist/jira-mgr.app from Electron's prebuilt
+// Electron.app and the desktop build in apps/desktop/out. Run it with `pnpm package`.
+import { execFileSync } from 'node:child_process'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const desktop = fileURLToPath(new URL('../apps/desktop/', import.meta.url))
+const out = join(desktop, 'out')
+const target = join(desktop, 'dist', 'jira-mgr.app')
+const NAME = 'jira-mgr'
+const ID = 'au.com.koinon.jira-mgr'
+/** Test code and the fake Jira. The real entry must hold none of it. */
+const E2E_ENTRY = join(out, 'main', 'e2e.js')
+const FAKE_MARKERS = ['__fakeJira', 'good-token', 'fake.atlassian.net']
+
+function fail(message: string): never {
+  console.error(`package: ${message}`)
+  process.exit(1)
+}
+
+if (process.platform !== 'darwin') fail('the app packages on macOS only.')
+if (!existsSync(join(out, 'main', 'index.js'))) {
+  fail('apps/desktop/out is missing. Run `pnpm package`, which builds it first.')
+}
+
+// The electron package exports the path of its binary, downloading Electron on first use.
+const electronBinary = createRequire(join(desktop, 'package.json'))('electron') as string
+const electronApp = dirname(dirname(dirname(electronBinary)))
+if (!electronApp.endsWith('Electron.app')) fail(`unexpected Electron path ${electronBinary}.`)
+
+rmSync(target, { recursive: true, force: true })
+mkdirSync(dirname(target), { recursive: true })
+// ditto keeps the framework symlinks that cpSync would flatten.
+execFileSync('ditto', [electronApp, target])
+
+const appDir = join(target, 'Contents', 'Resources', 'app')
+cpSync(out, join(appDir, 'out'), { recursive: true, filter: (source) => source !== E2E_ENTRY })
+const { version } = JSON.parse(readFileSync(join(desktop, 'package.json'), 'utf8')) as {
+  version: string
+}
+writeFileSync(
+  join(appDir, 'package.json'),
+  JSON.stringify({ name: NAME, version, main: './out/main/index.js' }, null, 2) + '\n',
+)
+
+const plist = join(target, 'Contents', 'Info.plist')
+for (const [key, value] of [
+  ['CFBundleName', NAME],
+  ['CFBundleDisplayName', NAME],
+  ['CFBundleIdentifier', ID],
+  ['CFBundleShortVersionString', version],
+  ['CFBundleVersion', version],
+] as const) {
+  execFileSync('/usr/libexec/PlistBuddy', ['-c', `Set :${key} ${value}`, plist])
+}
+// Editing Info.plist breaks Electron's seal, and Apple silicon refuses a binary whose seal is
+// broken. An ad-hoc signature (no identity) makes it run on this Mac.
+execFileSync('codesign', ['--force', '--deep', '--sign', '-', target], { stdio: 'ignore' })
+
+const files = readdirSync(appDir, { recursive: true, withFileTypes: true })
+  .filter((entry) => entry.isFile())
+  .map((entry) => join(entry.parentPath, entry.name))
+if (files.some((file) => file.endsWith('e2e.js'))) fail('the package holds an e2e entry.')
+for (const file of files.filter((name) => name.endsWith('.js'))) {
+  const text = readFileSync(file, 'utf8')
+  const marker = FAKE_MARKERS.find((m) => text.includes(m))
+  if (marker !== undefined) fail(`${relative(appDir, file)} holds fake Jira code (${marker}).`)
+  // Electron and Node built-ins are all the app can load: it carries no node_modules.
+  for (const [, id = ''] of text.matchAll(/\brequire\("([^"./][^"]*)"\)/g)) {
+    if (id !== 'electron' && !id.startsWith('node:')) {
+      fail(`${relative(appDir, file)} requires ${id}, which the app does not carry.`)
+    }
+  }
+}
+
+console.log(`Packaged ${target}`)

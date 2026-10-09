@@ -10,4 +10,5 @@ Recipes for one task each, for a reader who already knows the codebase. Each arr
 | `add-cli-command.md` | Add a command to the schema, with `--json` output, an exit code and an end-to-end test | CLI |
 | `install-cli.md` | Build `jm` and link it with `npm link` | CLI |
 | `desktop-development.md` | Run, debug and build the Electron app | Desktop |
+| `install-desktop-app.md` | Package the unsigned app, install it, open it, find its state and uninstall it | Desktop |
 | `add-shortcut.md` | Add a single-key shortcut and its palette entry | Desktop |

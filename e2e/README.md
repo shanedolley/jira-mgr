@@ -17,3 +17,5 @@ The command builds the desktop app, then launches `apps/desktop/out/main/e2e.js`
 Electron downloads its binary on first launch.
 
 The CLI will get a `cli/` suite that runs the built `jm` binary as a subprocess and checks `--json` output and exit codes.
+
+`desktop/package.test.ts` launches the packaged `apps/desktop/dist/jira-mgr.app` on a scratch `JM_STATE_DIR` and expects the login screen. It skips unless `pnpm package` has built the app, so CI (Linux) skips it and the Mac check is `pnpm package && pnpm e2e`.

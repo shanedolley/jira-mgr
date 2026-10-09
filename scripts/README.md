@@ -2,11 +2,12 @@
 
 Repository automation that root `package.json` scripts and CI call.
 
-| Script              | Does                                                                                            |
-| ------------------- | ----------------------------------------------------------------------------------------------- |
-| `jm.ts`             | Runs the built CLI for `pnpm jm`, dropping the `--` that pnpm forwards                          |
-| `gen-reference.ts`  | Writes `docs/reference/cli.md` and `errors.md` from the built CLI's `help --json`               |
-| `record-fixture.ts` | Records one read-only Jira response body to `packages/core/fixtures/` for `pnpm fixture:record` |
+| Script              | Does                                                                                                  |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| `jm.ts`             | Runs the built CLI for `pnpm jm`, dropping the `--` that pnpm forwards                                |
+| `gen-reference.ts`  | Writes `docs/reference/cli.md` and `errors.md` from the built CLI's `help --json`                     |
+| `package.ts`        | Assembles `apps/desktop/dist/jira-mgr.app` for `pnpm package` and checks it holds no e2e or fake code |
+| `record-fixture.ts` | Records one read-only Jira response body to `packages/core/fixtures/` for `pnpm fixture:record`       |
 
 ## Record a Fixture
 
