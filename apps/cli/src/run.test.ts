@@ -35,6 +35,8 @@ const specs = [
     ],
   },
   { ...base, path: ['grp', 'leaf'], summary: 'A leaf under a noun' },
+  { ...base, path: ['hold'], summary: 'A Jira write that settles on Ctrl-C', writes: ['jira'] },
+  { ...base, path: ['drift'], summary: 'A Jira write that does not', writes: ['jira'] },
 ] as const satisfies readonly CommandSpec[]
 
 const boom: Handler = {
@@ -75,7 +77,31 @@ const boom: Handler = {
   },
 }
 const quiet: Handler = { run: () => Promise.resolve(null), render: () => '' }
-const deps = { specs, handlers: { boom, multi: quiet, 'grp leaf': quiet } }
+/** Waits for Ctrl-C, then fails with a message the person would want, as a half-done write does. */
+const halfDone = (settlesOnInterrupt: boolean): Handler => ({
+  run: (_input, ctx) =>
+    new Promise<never>((_, reject) => {
+      ctx.signal.addEventListener(
+        'abort',
+        () => {
+          reject(new JiraMgrError('jira_error', 'Created PSAPAC-9 but stopped.'))
+        },
+        { once: true },
+      )
+    }),
+  render: () => '',
+  settlesOnInterrupt,
+})
+const deps = {
+  specs,
+  handlers: {
+    boom,
+    multi: quiet,
+    'grp leaf': quiet,
+    hold: halfDone(true),
+    drift: halfDone(false),
+  },
+}
 
 const NO_COLOR = { NO_COLOR: '1' }
 
@@ -282,6 +308,21 @@ describe('run', () => {
     const early = new AbortController()
     early.abort()
     expect(await run(['boom', 'ok'], fakeIo({ signal: early.signal }).io, deps)).toBe(130)
+  })
+
+  it('Ctrl-C waits for a handler that settles on interrupt and prints its message, and for no other Jira write', async () => {
+    for (const [command, stderr] of [
+      ['hold', 'jm: Created PSAPAC-9 but stopped.\n'],
+      ['drift', ''],
+    ] as const) {
+      const controller = new AbortController()
+      const f = fakeIo({ signal: controller.signal })
+      const exit = run([command], f.io, deps)
+      controller.abort()
+      expect(await exit, command).toBe(130)
+      expect(f.stdout, command).toBe('')
+      expect(f.stderr, command).toBe(stderr)
+    }
   })
 
   it('EPIPE on stdout exits 0', async () => {

@@ -12,6 +12,9 @@ import { toIssueData, type IssueData } from './get.js'
 
 /** `jm issue create`: resolves the names, makes one create request, then returns the issue as `issue get` does. */
 export const create: Handler<SpecOf<'issue create'>, IssueData> = {
+  // Ctrl-C after the create must still print the new key, which the read-back error carries.
+  settlesOnInterrupt: true,
+
   async run(input, ctx) {
     // Everything that can refuse runs before the write, so a refusal leaves nothing half done.
     if (input.type === 'Subtask' && input.parent === undefined) {

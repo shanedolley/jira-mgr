@@ -91,8 +91,8 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<num
     specs,
     handlers,
     async (spec, input) => {
-      writesState = spec.writes.some((target) => target === 'state' || target === 'jira')
       const handler = handlers[idOf(spec)]
+      writesState = spec.writes.includes('state') || handler?.settlesOnInterrupt === true
       if (handler) outcome = { handler, data: await handler.run(input, ctx) }
     },
     {
@@ -118,11 +118,12 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<num
   const parsing = program.parseAsync([...argv], { from: 'user' })
   parsing.catch(() => undefined) // the race may end first; its late failure is not news
   /**
-   * A command that writes state or Jira may be half done when Ctrl-C lands, such as a stopped timer
-   * whose worklog is still in flight, or an issue created but not yet read back. `bin` exits right
-   * after 130, so let it settle first, which its aborted request makes quick. A second Ctrl-C kills
-   * the process, and the wait is capped. What the command says about its state (the timer paused, or
-   * the new issue's key) goes to stderr.
+   * A command that writes state may be half done when Ctrl-C lands, such as a stopped timer whose
+   * worklog is still in flight, and so may one whose handler sets `settlesOnInterrupt`, such as an
+   * issue created but not yet read back. `bin` exits right after 130, so let it settle first, which
+   * its aborted request makes quick. Other Jira writes do not wait: most pass no signal, so their
+   * request would run to the end. A second Ctrl-C kills the process, and the wait is capped. What
+   * the command says about its state (the timer paused, or the new issue's key) goes to stderr.
    */
   const interruptedExit = async () => {
     if (writesState) {

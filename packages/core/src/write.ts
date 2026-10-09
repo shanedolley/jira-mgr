@@ -110,8 +110,9 @@ const created = z.object({ id: z.string(), key: z.string() })
  * Creates an issue in the project from settings, then reads it back with `getIssue` and returns it,
  * so the caller sees what Jira holds after any automation rule has run. Customer and Engagement
  * are required on every type, and a Subtask needs `parentKey`. Throws `validation_failed` before
- * any request when the input is wrong. Aborting `signal` stops the create or the read. When the create succeeds and the read fails, throws
- * `jira_error` whose `details` carry the new `key` and `id`.
+ * any request when the input is wrong. Aborting `signal` stops the create or the read. When the
+ * create succeeds and the read fails, throws `jira_error` whose `details` carry the new `key` and
+ * `id`.
  */
 export async function createIssue(
   http: HttpClient,

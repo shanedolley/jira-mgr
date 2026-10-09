@@ -75,6 +75,12 @@ export interface Handler<S extends CommandSpec = CommandSpec, T = unknown> {
   run(input: InputOf<S>, ctx: Context): Promise<T> | T
   /** The TTY form. An empty string prints nothing. */
   render(data: T, tty: Tty): string
+  /**
+   * Set when `run` throws a `JiraMgrError` that the person needs after Ctrl-C, such as the key of
+   * an issue created but not read back. `run` then waits for the aborted call to settle and prints
+   * that message before exiting 130. A command that writes state always gets the wait.
+   */
+  settlesOnInterrupt?: boolean
 }
 
 /** Handlers by command id. A spec with no entry stays hidden. */
