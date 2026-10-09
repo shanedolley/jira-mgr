@@ -6,12 +6,14 @@ import type { CurrentUser } from '../../shared/ipc'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
 import type { Notice } from './create'
 import { DescriptionEditor } from './DescriptionEditor'
+import { dropDraft, getDraft } from './drafts'
 import { FileDragContext, useFileDrag } from './fileDrag'
 import { IssueProperties } from './IssueProperties'
 import { LoadError } from './LoadError'
 import { StatusDot } from './StatusDot'
 import { SummaryEditor } from './SummaryEditor'
 import { useIssueDetail } from './queries'
+import { removeUploadsOf } from './uploads'
 
 interface IssuePageProps {
   issueKey: string
@@ -148,8 +150,16 @@ export function IssuePage({
   const gone = detail.error?.code === 'not_found'
   useEffect(() => {
     if (!gone) return
+    // Its draft and uploads go with it, or they would hold up a quit and a logout for nothing.
+    const hadDraft = getDraft(issueKey) !== undefined
+    dropDraft(issueKey)
+    removeUploadsOf(issueKey)
     onBack()
-    onNotice({ title: `${issueKey} no longer exists`, notes: [], warned: false })
+    onNotice({
+      title: `${issueKey} no longer exists`,
+      notes: hadDraft ? ['Its unsaved description was dropped.'] : [],
+      warned: false,
+    })
     // Only the moment the issue goes missing matters, not each render's callbacks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gone])

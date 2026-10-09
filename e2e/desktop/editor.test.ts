@@ -851,3 +851,90 @@ test('falls back to the Tree when the issue on the page no longer exists', async
   await expect(window.getByText('PSAPAC-4 no longer exists')).toBeVisible()
   await expect(tree()).toBeVisible()
 })
+
+test('a page that falls back for a missing issue drops its draft, so a quit is not held up', async () => {
+  await addDescription()
+  await window.keyboard.type('Words that will be lost')
+  const blocksUnload = () => window.evaluate(() => typeof globalThis.onbeforeunload === 'function')
+  await expect.poll(blocksUnload).toBe(true)
+
+  await dropIssue(app, 'PSAPAC-4')
+  await app.evaluate(({ BrowserWindow }) => {
+    const [first] = BrowserWindow.getAllWindows()
+    first?.emit('blur')
+    first?.emit('focus')
+  })
+  await expect(issuePage()).toHaveCount(0)
+  await expect(window.getByText('Its unsaved description was dropped.')).toBeVisible()
+  await expect.poll(blocksUnload).toBe(false)
+})
+
+test('a mixed drop on the editor embeds the image and reports the other file', async () => {
+  await addDescription()
+  await editor().evaluate((element, data) => {
+    const transfer = new DataTransfer()
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0))
+    transfer.items.add(new File([bytes], 'shot.png', { type: 'image/png' }))
+    transfer.items.add(new File(['hello'], 'notes.txt', { type: 'text/plain' }))
+    const box = element.getBoundingClientRect()
+    element.dispatchEvent(
+      new DragEvent('drop', {
+        dataTransfer: transfer,
+        bubbles: true,
+        cancelable: true,
+        clientX: box.left + 10,
+        clientY: box.top + 10,
+      }),
+    )
+  }, PNG)
+
+  await expect.poll(async () => (await counts(app)).uploads.length).toBe(1)
+  await expect(window.getByText('notes.txt was not added')).toBeVisible()
+})
+
+test('a read-mode drop keeps its draft against the description Jira holds now', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  // Someone adds a description in Jira; the next focus reads it, so the page's base is the new one.
+  await setDescription(app, 'PSAPAC-4', {
+    version: 1,
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Theirs.' }] }],
+  })
+  await app.evaluate(({ BrowserWindow }) => {
+    const [first] = BrowserWindow.getAllWindows()
+    first?.emit('blur')
+    first?.emit('focus')
+  })
+  await expect(body()).toContainText('Theirs.')
+
+  await dragFile(zone(), 'drop')
+  await expect.poll(async () => (await counts(app)).uploads.length).toBe(1)
+  // Leave before the upload ends, so the draft kept at the drop is the one that comes back.
+  await issuePage().getByRole('button', { name: 'Back to issues' }).click()
+  await releaseUpload(app)
+  await openFromTree(/PSAPAC-4,/, 'Migrate the dashboards')
+  await expect(issuePage().getByText('Unsaved draft restored.')).toBeVisible()
+  await expect(editor().locator('img')).toBeVisible()
+
+  // Saved against a stale base this would be called a conflict with Jira's own text.
+  await save().click()
+  await expect.poll(edits).toBe(1)
+  await expect(issuePage().getByRole('alert')).toHaveCount(0)
+})
+
+test('the drop highlight clears when a drag leaves to nothing or the window loses focus', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  const page = window.locator('body')
+  // Two enters, one leave to nothing: the count says still inside, the target says outside.
+  await dragFile(page, 'dragenter')
+  await dragFile(page, 'dragenter')
+  await dragFile(page, 'dragleave')
+  await expect(zoneLabel()).toHaveCount(0)
+
+  await dragFile(page, 'dragenter')
+  await expect(zoneLabel()).toBeVisible()
+  await window.evaluate(() => {
+    globalThis.dispatchEvent(new Event('blur'))
+  })
+  await expect(zoneLabel()).toHaveCount(0)
+})

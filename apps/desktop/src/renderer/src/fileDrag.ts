@@ -31,11 +31,14 @@ export function useFileDrag(): boolean {
       if (!carriesFiles(event)) return
       event.preventDefault()
       if (event.dataTransfer !== null) event.dataTransfer.dropEffect = 'copy'
+      // Keeps the highlight right if a leave was counted wrongly.
+      setDragging(true)
     }
     const leave = (event: DragEvent) => {
       if (!carriesFiles(event)) return
       depth--
-      if (depth <= 0) clear()
+      // Leaving to nothing means leaving the window, whatever the count says.
+      if (depth <= 0 || event.relatedTarget === null) clear()
     }
     const drop = (event: DragEvent) => {
       if (carriesFiles(event)) event.preventDefault()
@@ -54,6 +57,7 @@ export function useFileDrag(): boolean {
     document.addEventListener('drop', drop)
     document.addEventListener('dragend', clear)
     document.addEventListener('keydown', key, true)
+    window.addEventListener('blur', clear)
     return () => {
       document.removeEventListener('dragenter', enter)
       document.removeEventListener('dragover', over)
@@ -61,6 +65,7 @@ export function useFileDrag(): boolean {
       document.removeEventListener('drop', drop)
       document.removeEventListener('dragend', clear)
       document.removeEventListener('keydown', key, true)
+      window.removeEventListener('blur', clear)
     }
   }, [])
 

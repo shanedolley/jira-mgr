@@ -6,6 +6,7 @@ import {
   getUpload,
   releasePreview,
   removeUpload,
+  removeUploadsOf,
   resetUploads,
   retryUpload,
   startUpload,
@@ -81,6 +82,17 @@ describe('uploads', () => {
     releasePreview(id)
     expect(store.revoked).toEqual(['blob:preview-1'])
     expect(getUpload(id)).toMatchObject({ preview: '', state: { status: 'done' } })
+  })
+
+  it("removes the uploads of one issue and leaves the others' alone", () => {
+    const store = deps(() => new Promise(() => undefined))
+    const a = startUpload('PSAPAC-1', png(), store)
+    const b = startUpload('PSAPAC-2', png(), store)
+    const c = startUpload('PSAPAC-1', png(), store)
+    removeUploadsOf('PSAPAC-1')
+    expect([getUpload(a), getUpload(c)]).toEqual([undefined, undefined])
+    expect(getUpload(b)).toBeDefined()
+    expect(store.revoked.sort()).toEqual(['blob:preview-1', 'blob:preview-3'])
   })
 
   it('removing an upload revokes its preview and forgets it', () => {

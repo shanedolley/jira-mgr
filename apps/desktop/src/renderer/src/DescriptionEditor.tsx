@@ -46,6 +46,7 @@ export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: Descri
   const dirty = useRef(restoredDraft !== undefined)
   const editor = useRef<AdfEditorHandle>(null)
   const mounted = useRef(true)
+  const queued = useRef<File[]>([])
   const save = useSetDescription(issueKey)
   // Still counted while the re-read after a save is pending, so the next edit starts from Jira's form.
   const pending = useIsMutating({ mutationKey: ['issues', issueKey, 'description'] }) > 0
@@ -58,6 +59,13 @@ export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: Descri
   }, [])
 
   const editing = phase === 'edit'
+
+  useEffect(() => {
+    if (phase !== 'edit' || queued.current.length === 0) return
+    const files = queued.current
+    queued.current = []
+    editor.current?.addImages(files)
+  }, [phase])
 
   function startEdit(at: number | 'end') {
     setBase(value)
@@ -151,7 +159,7 @@ export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: Descri
   const empty = value === null && phase === 'read'
 
   /** Files dropped on the section: images start an edit and embed, anything else is refused. */
-  function takeFiles(files: File[]) {
+  function takeFiles(files: File[], handled: boolean) {
     const images = files.filter((file) => (IMAGE_TYPES as readonly string[]).includes(file.type))
     const others = files.filter((file) => !images.includes(file))
     if (others.length > 0) {
@@ -161,7 +169,8 @@ export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: Descri
         warned: false,
       })
     }
-    if (images.length === 0) return
+    // Images dropped on the editor are already embedded; only the rest was left over.
+    if (handled || images.length === 0) return
     if (unsupported || phase === 'saving' || pending) {
       onNotice({
         title: 'The description cannot take images now',
@@ -170,8 +179,13 @@ export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: Descri
       })
       return
     }
-    if (phase === 'read') startEdit('end')
-    editor.current?.addImages(images)
+    if (phase === 'edit') {
+      editor.current?.addImages(images)
+      return
+    }
+    // Added once the edit has started, so the draft is kept against the base it began on.
+    queued.current = images
+    startEdit('end')
   }
 
   return (

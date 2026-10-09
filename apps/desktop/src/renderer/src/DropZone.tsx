@@ -5,8 +5,11 @@ import { FileDragContext } from './fileDrag'
 interface DropZoneProps {
   /** Shown over the zone while a file is dragged over the page, and what the drop does. */
   label: string
-  /** The files dropped on the zone, unless something inside it took the drop already. */
-  onFiles: (files: File[]) => void
+  /**
+   * The files dropped on the zone. `handled` is true when something inside it, such as the
+   * editor, took the drop already, so the zone should report only what that left over.
+   */
+  onFiles: (files: File[], handled: boolean) => void
   className?: string
   children: ReactNode
 }
@@ -29,11 +32,12 @@ export function DropZone({ label, onFiles, className = '', children }: DropZoneP
         event.dataTransfer.dropEffect = 'copy'
       }}
       onDrop={(event) => {
+        if (!carriesFiles(event)) return
         // The editor takes image files dropped on it while editing and says so with preventDefault.
-        if (event.defaultPrevented || !carriesFiles(event)) return
+        const handled = event.defaultPrevented
         event.preventDefault()
         const files = Array.from(event.dataTransfer.files)
-        if (files.length > 0) onFiles(files)
+        if (files.length > 0) onFiles(files, handled)
       }}
     >
       {children}

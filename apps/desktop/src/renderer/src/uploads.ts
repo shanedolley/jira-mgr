@@ -136,6 +136,13 @@ export function releasePreview(id: string): void {
   emit()
 }
 
+/** Forgets the uploads of one issue and revokes their previews, when the issue is gone. */
+export function removeUploadsOf(key: string): void {
+  for (const [id, entry] of [...entries]) {
+    if (entry.key === key) removeUpload(id)
+  }
+}
+
 /** Forgets every upload and revokes every preview, on logout. */
 export function clearUploads(): void {
   for (const entry of entries.values()) deps.revokeUrl(entry.preview)
