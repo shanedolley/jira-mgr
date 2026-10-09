@@ -1,0 +1,392 @@
+# 0002: Issue Tree
+
+**Status:** accepted
+**Owner:** @shanedolley
+**Refs:** #29
+
+## Problem
+
+D1 (#28, merged in #68) shows a flat list of unresolved issues, loaded in full before anything renders, beside an always-open detail pane. The main view Q5 asks for is the Tree: Customer, then Epic, then Story, Task or Bug, then Subtask, in collapsible groups, with mismatch badges (Q15), a No Epic group (Q17), Done chips (Q27), three remembered toggles (Q28), a filter bar, `J`/`K` navigation and a space-bar Peek. Core's `buildHierarchy` (C7) and `issueMatcher` (C8) already compute the tree and the filters, and `jm issue tree` prints them. The app has to load all of PSAPAC without making the user wait for the 2029 Done issues, and render up to about 3200 rows without lag.
+
+## Goals
+
+- The Tree renders from core's `buildHierarchy`, with no grouping, sorting or Done rules of its own. Its mismatch badges and Done chips match `jm issue tree` for the same issues and toggles.
+- The unresolved issues show as soon as their phase loads. Done issues then load in the background with a running count, and the Done chips appear when they arrive.
+- The list renders only the rows in view, so a keypress or a scroll costs the same with 3200 rows as with 30.
+- "Hide done", "Assignee: me" and "Hide empty Customers" persist in `settings.json` under the existing `toggles` key.
+- The filter bar holds core's `ViewFilters` shape, so D8 saves it as a view unchanged.
+- The Tree works fully by keyboard, reads correctly as an ARIA tree, and leaves every single-letter key but `J` and `K` to D7.
+- No new runtime dependency, and no change to a public contract.
+
+## Design
+
+### Layout
+
+```
+packages/core/src/hierarchy.ts  exports STATUS_ORDER; Done ancestors of open issues stay as context
+apps/desktop/src/
+  shared/ipc.ts               issues:list takes a phase and a load id; new channels and the progress event
+  main/backend.ts             per-phase loads with progress and abort; me, customers, serialised toggles
+  main/handlers.ts            schemas for the new arguments; passes a progress sender through
+  main/app.ts                 hands each handler the requesting window's sender
+  preload/index.ts            onIssuesProgress
+  renderer/src/
+    queries.ts                the two phase queries, me, customers, toggles
+    optimistic.ts             phase-aware summary edit
+    tree.ts                   pure: mergeIssues, flattenTree, moveActive, windowRange, fallbackRow
+    IssueTree.tsx             replaces IssueList.tsx: the virtual window, keys, scroll anchoring
+    TreeRow.tsx               one row of any kind
+    TreeToolbar.tsx           toggles, Filter and Groups menus, filter chips, text filter
+    IssueDetail.tsx           becomes the Peek
+    Shell.tsx                 owns the tree state; sidebar, Tree, and the Peek column while open
+```
+
+### Core Changes
+
+Two changes to `@jira-mgr/core/hierarchy`, both in this story:
+
+- **Done ancestors stay as context.** Under "Hide done", an open issue keeps its Done ancestors as dimmed `contextOnly` rows, with their other Done children dropped, whether or not a filter or "Assignee: me" is on. Today `buildHierarchy` rescues Done ancestors only inside its `assigneeMe || match` branch (`hierarchy.ts:89-104`), so with no filter a Done Epic drops with its open Story; once the app loads Done issues, that Story vanishes. This extends the orchestrator decision of 2026-10-07 for "Assignee: me" (handover, Open Decisions) to every case, decided by the orchestrator on 2026-10-09. The pinned test `drops a Done Epic with its whole subtree` becomes `keeps a Done Epic as context for its open child`, beside a new `drops a Done Epic whose children are all Done`. Core's README changes to match.
+- **`STATUS_ORDER` is exported,** so the status filter lists statuses in the Q21 order without copying the list. A test pins the order.
+
+The CLI's output does not change: with Done hidden it never loads the Done phase, so no Done ancestor is in its input. One difference remains. `jm issue tree` prints an open Story whose Epic is Done under No Epic, with no Done chips, while the app shows it under its dimmed Epic, with chips. The app shows it under No Epic too until its Done issues arrive, then moves it under the Epic; scroll anchoring keeps the rows in view steady when that happens.
+
+### Channels
+
+| Channel | Change | Args | Result | Core |
+|---|---|---|---|---|
+| `issues:list` | Takes a phase and a load id | `{ phase: 'unresolved' \| 'done', loadId: number }` | `Issue[]`, or `null` when the load was aborted | `search#searchIssuePages` with `phases: [phase]` and a `signal` |
+| `user:me` | New | none | `{ accountId, displayName }` | `lookups#getCurrentUser` |
+| `fields:customers` | New | none | `{ id, value }[]`, the shape `buildHierarchy` takes | `lookups#getFieldOptions(http, 'customer')`, mapped as `jm issue tree` maps it |
+| `settings:getToggles` | New | none | `{ hideDone, assigneeMe, hideEmptyCustomers }` | `state#readSettings` |
+| `settings:setToggles` | New | the same three booleans, a strict object | the toggles stored | `state#readSettings`, then `writeSettings` with only `toggles` replaced |
+| `issues:progress` | New event, main to renderer | | `{ phase, loadId, loaded }` | the `loaded` of each page `searchIssuePages` yields |
+
+The toggles type is `Pick<HierarchyOptions, 'hideDone' | 'assigneeMe' | 'hideEmptyCustomers'>` from the renderer-safe `/hierarchy`, so `shared/ipc.ts` imports nothing Node-only. `issues:setSummary` is unchanged. The IPC contract is internal to the app, the error codes are unchanged, and `settings.json` keeps its shape, so none of this is a public contract change.
+
+Each handler receives a second argument, `{ sendProgress(progress) }`. `app.ts` builds it from `event.sender`, skipping a destroyed sender, so progress reaches only the window that asked. Preload exposes `onIssuesProgress(listener)`, shaped like `onWindowFocus`. The renderer numbers each load it starts and ignores progress for any other `loadId`, so a superseded load cannot set the count back.
+
+The backend serialises `setToggles` on a promise chain, so two quick presses write in order and the second never reads settings from before the first.
+
+### Loading
+
+PSAPAC holds 2793 issues: 764 unresolved and 2029 Done (round 2, measured 2026-10-07). At core's 100 per page, that is 8 pages, then 21.
+
+1. The Shell starts `['issues', 'unresolved']`, `['toggles']` and `['me']` at once.
+2. The Tree renders once the unresolved phase and the toggles have data, and `me` too when "Assignee: me" is on or the assignee filter holds `me`. Until then the list shows `Loading issues: 300` from the progress events. A partial phase never renders, because it can hold a Story whose Epic is on a later page.
+3. `['issues', 'done']` is enabled once the unresolved query holds data. It runs whatever "Hide done" says, because Done chips need the Done issues under open parents (Q27). `jm issue tree` skips the Done phase when hiding Done, and so prints no chips.
+4. While Done first loads, the toolbar shows `Loading Done issues: 600`. The Tree works meanwhile with no chips. When the phase completes, the Tree rebuilds and the chips appear. A later Done reload shows no count, and the existing chips stay until its data lands.
+
+The visible count is the text of an `aria-hidden` span, shown only while its query has no data. A `role="status"` region announces only the start and end of each first load, so a screen reader hears two messages, not 29.
+
+`mergeIssues(unresolved, done)` builds the input to `buildHierarchy`: unresolved issues, then Done ones. An issue resolved between the two loads, or reopened since Done last loaded, appears in both. The merge keeps the copy whose `Date.parse(updated)` is later, the unresolved copy on a tie, since a duplicate key would duplicate a root row.
+
+### Failures
+
+| Fails | Shows |
+|---|---|
+| Unresolved, with no data yet | D1's error state: the message, Retry, and Log in again for `permission_denied` |
+| Unresolved or Done refetch, with data | The Tree stays. A non-blocking banner above it reads `Could not refresh. Retry` |
+| Done first load | The Tree stays. The banner reads `Could not load Done issues, so the "N done" chips are unavailable. Retry` |
+| Toggles | The error state with Retry. An unreadable settings file also stops the search, so nothing useful renders without it |
+| `me`, while needed | The error state with Retry in place of the Tree. The toolbar stays usable, so turning off "Assignee: me" and removing Me from the filter shows the Tree |
+| Customers | The Tree builds as if "Hide empty Customers" were on, with a banner: `Could not load the Customer list, so empty Customers stay hidden. Retry` |
+
+The error state replaces the Tree only while its query has no data, so a failed background refetch never blanks the screen.
+
+### Cancellation
+
+The backend keeps one `AbortController` per phase:
+
+- A new `issues:list` for a phase aborts the load already running for it. TanStack Query only starts a second fetch of a query after it has discarded the first (a Retry, or a refetch after `cancelQueries`), so the aborted call has no reader.
+- `session:logout` aborts both loads before core removes the token, so no page is fetched with a token that is going away.
+- An aborted load returns `null` and logs nothing; it never becomes an `internal` error. Its `finally` removes the map entry only while the entry is still its own controller, so it cannot drop the newer load's.
+
+The renderer still cannot abort a load by itself. These rules cover every case where a load's result would be discarded, so a cancel channel would add nothing.
+
+### Freshness
+
+ADR-0002's focus refetch applies per phase:
+
+| Query | `staleTime` | On focus |
+|---|---|---|
+| `['issues', 'unresolved']` | 0, as D1 | Refetches (8 requests) |
+| `['issues', 'done']` | 5 minutes | Refetches only when stale (21 requests) |
+| `['me']`, `['customers']`, `['toggles']` | Infinity | Never. Logout removes `me` and `customers` |
+
+Refetching 21 Done pages on every switch back to the app would cost more than it shows. Done issues change only when something is resolved or reopened, and the unresolved refetch sees both. A key that leaves the unresolved set was resolved, deleted or moved: the unresolved query function copies those issues, as last loaded, into the Done cache with `setQueryData`, then invalidates `['issues', 'done']`. The issue therefore stays in the Tree, with its old status, until the Done reload replaces it, instead of blinking out for the 15 seconds the reload takes. A reopened issue reappears in the unresolved set at once and wins the merge by `updated`.
+
+`['customers']` is enabled only while "Hide empty Customers" is off, since `buildHierarchy` needs the option list only then.
+
+### Optimistic Edits
+
+The Tree and the Peek read from the phase caches, so D1's summary edit shows in both. `optimistic.ts` changes from one `['issues']` key to the phases that hold the issue, usually one, both while the merge dedupes it:
+
+- `onMutate` cancels, and patches, every phase cache holding the key.
+- `onError` rolls back in each of them, under D1's rule that it touches the issue only while it still shows the optimistic text.
+- Touched phases go into a `WeakMap<QueryClient, Set<phase>>` beside D1's `inFlight` count. The last edit to settle invalidates every phase in the set and clears it.
+
+An edit to an unresolved issue therefore never cancels or restarts the 21-page Done load. An edit to a Done issue cancels a Done load in flight, whose result TanStack discards, and the invalidation on settle starts it again from the first page. The chips keep their data meanwhile. D1's README listed "a saved summary refetches the whole list" as a limit for D2; this narrows it to the issue's phase. Re-reading only the edited issue through `getIssue` belongs with D3, whose pickers make edits frequent.
+
+### Tree Model
+
+The Shell derives everything during render, with `useMemo`:
+
+1. `issues = mergeIssues(unresolved, done ?? [])`
+2. `match = issueMatcher(filters, { accountId })` from `/view-filter`
+3. `groups = buildHierarchy(issues, { ...toggles, accountId, customers, match })`, with `match` left out when `undefined`, as core's README directs
+4. `rows = flattenTree(groups, { collapsed, revealed })`
+
+`filters` passes through `useDeferredValue`, so typing in the text filter stays responsive while the Tree rebuilds.
+
+`flattenTree` turns `CustomerGroup[]` into the visible rows, in this order: each Customer header; its Epics, each followed by its children (open first, as core orders them), then the Epic's Done chip; then its No Epic header and those issues. A node's subtree and chip appear only when the node is expanded. A chip's Done children appear only when the chip is revealed, one level below it.
+
+| Kind | Id | Level | Shows | Expandable |
+|---|---|---|---|---|
+| Customer header | `c:<option id>`, `c:none` | 1 | The Customer's name, or "No Customer", and its issue count. An empty group shows "No issues" | When it has rows |
+| Issue | `i:<key>` | 2 for an Epic, 3 for a child, 4 for a Subtask; one more under a chip | Status, key, type, summary, mismatch badge, assignee; an Epic adds its issue count. Dimmed when `contextOnly` | When it has children or Done children |
+| No Epic header | `n:<option id>`, `n:none` | 2 | "No Epic" and its issue count | Yes |
+| Done chip | `d:<parent key>` | The parent's level plus one | "N done" | Yes: revealing lists the Done children |
+
+A count is the number of issues in the subtree, context rows included and issues behind a chip excluded. Each row also carries `parentId`, `expandable`, `setSize` and `posInSet` among its siblings, chips included. Ids are stable across refetches and toggles, since an issue appears once in the Tree and a Customer once at the top.
+
+**Mismatch badge.** Shown exactly when `node.customerMismatch !== null`, the condition `jm issue tree` prints as `[Customer: X, Epic: Y]`. The row shows a compact "Customer" badge with a tooltip naming both, such as "Customer: Acme. Epic's Customer: Beta Ltd." The Peek shows both in full. The one-click "match Epic's Customer" fix (Q15) ships with D3, which builds the Customer edit and its optimistic mutation; D7 then adds its undo.
+
+**Done chip.** Shown exactly when `node.doneCount > 0`, the condition `jm issue tree` prints as `+N done`. It reads "N done", and "Hide N done" while revealed.
+
+**Tree state.** The Shell holds the active row id, the Peek's issue key, and two `Set<string>` of row ids: `collapsed` (every group starts expanded) and `revealed` (every chip starts hidden). Holding them in the Shell keeps them through refetches, failures, toggles and filters. They last for the session and reset on restart; the Groups menu's Collapse all and Expand all make a fresh start cheap to reshape. A collapse is never written to Jira or a file.
+
+**Active row fallback.** When a rebuild removes the active row, `fallbackRow(previousRows, rows, id)` picks the next surviving sibling, then the nearest ancestor still in the rows, then the row now at the old index.
+
+### Virtualisation
+
+| Case | Rows |
+|---|---|
+| Default: "Hide done" on, all expanded | up to 764 issues, 42 Customer and up to 42 No Epic headers, plus one chip per open parent with Done children: about 1000 |
+| "Hide done" off, every chip revealed | 2793 issues, 84 headers and the chips: about 3200 |
+| Rows in view in an 800-pixel window | about 22 |
+
+Rendering 3200 rows would mount around 25 000 DOM nodes and reconcile all of them on every rebuild, such as each keystroke in the text filter. Every row has one fixed height, 32 pixels, since summaries truncate to one line and badges, counts and chips sit inline. With fixed heights the window is arithmetic, a few dozen lines with no dependency:
+
+- The scroll container holds one inner element `rows.length * 32` pixels tall. A `ResizeObserver` tracks the container's height, and `onScroll` its `scrollTop`.
+- `windowRange(scrollTop, height, count, activeIndex)` returns the sorted indices to render: those in view plus 10 rows of overscan each side, and `activeIndex` wherever it is, so `aria-activedescendant` never points at a missing element. Each row is absolutely positioned at `index * 32`.
+- A keyboard move scrolls the active row into view by setting `scrollTop`.
+- **Scroll anchoring.** Before a rebuild commits, the Tree notes the first visible row's id and its offset from the top. A `useLayoutEffect` finds that id in the new rows and sets `scrollTop` so it sits at the same offset, before paint. Chips arriving or a Story moving under its Epic above the viewport therefore shift nothing in view. When the id is gone, `scrollTop` stays.
+
+That renders about 42 rows at any moment. The window keeps D1's 900-pixel minimum width, and the Peek column takes width from the summary, never from the key or status.
+
+### Toggles and Filter Bar
+
+The toolbar above the Tree holds three toggle buttons, a Filter menu, a Groups menu, the active filter chips and a text field. It wraps onto a second line when the chips need it.
+
+**Toggles.** "Hide done", "Assignee: me" and "Hide empty Customers", each a `button` with `aria-pressed` equal to the stored boolean and a check mark when pressed, so the state does not rest on colour. A press updates `['toggles']` in the cache at once, so the Tree rebuilds, then writes through `settings:setToggles`. A failed write refetches `['toggles']`, so the toolbar shows what the file holds, and shows the error in a `role="alert"` under the toolbar. First launch reads core's defaults: on, off, on (Q28). The CLI keeps ignoring `settings.toggles`, as design 0001 decided.
+
+**Filters.** The state is one `ViewFilters` object in Shell state, with its values stored exactly as core and the CLI read them:
+
+| Field | Choices | Value stored |
+|---|---|---|
+| Assignee | Me, Unassigned, then each assignee among the loaded issues | `me`, `unassigned`, or an accountId |
+| Status | Every status in `STATUS_ORDER`, then any other loaded status | The name |
+| Label | The labels among the loaded issues | The label, exactly |
+| Type | The types among the loaded issues | The name |
+| Sprint | Current sprint, then each sprint among the loaded issues | `current`, or the sprint id |
+| Text | The text field: key or summary | `text` |
+
+The filter can only match loaded issues, so choices other than statuses come from them and need no channel. The Filter button opens a native `popover` listing the five fields; each opens a checkbox list of its choices. Each active field shows as a chip such as "Status: To Do, In Progress", with a remove button, and "Clear" empties every field. As in `jm issue tree`, a matching issue keeps its ancestors as dimmed context rows, so a matching Story keeps its Epic.
+
+**Groups.** A menu with Collapse all, which collapses every expandable row and hides every revealed chip, and Expand all, which clears `collapsed`.
+
+**Feedback.** After a toggle or filter change settles for 500 milliseconds, a `role="status"` region announces "N issues shown". When nothing matches, the Tree area reads "No issues match", names the toggles that are on ("Hide done and Assignee: me are on"), and offers Clear filters when a filter is active.
+
+Filters reset on restart. Q28 asks only the toggles to persist, and saving filters is what saved views are for.
+
+**Left for D8.** The views list in the sidebar, applying a view (`applyViewToggles`, then the view's filters replace the bar's), the starters "My issues" and "Current sprint", and create, rename and delete. D8 also decides whether applying a view writes its toggles back to `settings.json`. D2's state already has the `{ filters, toggles }` shape `createView` takes.
+
+### Keyboard and Focus
+
+The Tree is one focusable element, `role="tree"` with `aria-label="Issues"` and `tabIndex={0}`, and it takes focus when it first renders. It tracks the active row with `aria-activedescendant` rather than moving DOM focus row to row, because the window unmounts rows. Its `onKeyDown` calls `moveActive(rows, state, event)`, a pure function returning the next active id, collapsed set, revealed set and Peek state, or `null` for a key it does not handle.
+
+| Key | On an issue row | On a header or chip |
+|---|---|---|
+| `J`, `ArrowDown` | Next row | Next row |
+| `K`, `ArrowUp` | Previous row | Previous row |
+| `PageDown`, `PageUp` | One window height down or up | The same |
+| `ArrowRight` | Expands; when expanded, moves to the first child | The same; a chip reveals |
+| `ArrowLeft` | Collapses; when collapsed or a leaf, moves to the parent row | The same; a chip hides |
+| `Shift+ArrowLeft`, `Shift+ArrowRight` | Collapse all, Expand all; Collapse all makes the row's Customer header active | The same |
+| `Home`, `End` | First or last row | First or last row |
+| `Enter` | Opens the issue: the Peek until D3, the issue page after. With the Peek open, moves focus into it | Expands or collapses; a chip reveals or hides |
+| `Space` | Opens or closes the Peek | Nothing |
+| `Esc` | Closes the Peek when open | The same |
+
+`J` and `K` match in either case, so Shift and Caps Lock make no difference. Moves stop at the first and last rows. The Tree calls `preventDefault` on every key in the table, `Space` and the page keys included, so the container never scrolls by itself. A click makes a row active and focuses the Tree. A click on a row's chevron expands or collapses it; elsewhere, a click opens an issue row and toggles a header or chip.
+
+**Focus.** After any toolbar control acts (a toggle, a chip's remove, Clear, a Groups item) and when the Filter popover closes, focus returns to the Tree, so `J` and `K` work at once. `Esc` routes by where focus is:
+
+| Focus | `Esc` |
+|---|---|
+| The text filter | Clears it; when already empty, returns focus to the Tree |
+| The Peek's summary field | Cancels the edit and returns focus to the Tree |
+| The Filter popover | Closes it; focus returns to the Tree |
+| The Tree | Closes the Peek |
+
+Closing the Peek by `Esc`, `Space` or its Close button returns focus to the Tree.
+
+**ARIA.** Rows are a flat list of `role="treeitem"` elements, each with an `id`, `aria-level`, `aria-setsize`, `aria-posinset`, and `aria-expanded` on expandable rows only. `aria-selected="true"` marks only the row the Peek shows, not every row `J` and `K` pass. Each row's accessible name follows one format:
+
+| Kind | Name |
+|---|---|
+| Issue | `PSAPAC-120, Story, To Do, Build the loader, Ann Lee` (or `unassigned`), then `, Customer differs from Epic` and `, context` when they apply |
+| Customer header | `Acme Corp, 12 issues` |
+| No Epic header | `No Epic, 3 issues` |
+| Done chip | `4 done` |
+
+Rows contain no buttons, since a `treeitem` holds no focusable children: the Tree's keys and a row click are its controls. The active row carries a focus ring of at least 3:1 contrast, distinct from the hover background and from dimmed context rows, in both themes. Context rows keep WCAG 2.2 AA text contrast. Expanding animates nothing, so `prefers-reduced-motion` needs no case.
+
+**Boundary with D7.** The handler sits on the Tree element, so it never sees a keystroke typed into the text filter or the Peek's summary field, which the React standard requires. It ignores any event with `metaKey`, `ctrlKey` or `altKey`, so `Cmd+K` and `Cmd+Z` pass through. D7's global shortcuts (`C`, `S`, `A`, `L`, `P`, `E`, and `T` in D9) share no key with it. D2 lifts the active issue key to the Shell, where D7 reads it as the target of `S`, `A` and the rest. When D7 adds its global `Esc`, it skips events already handled (`defaultPrevented`).
+
+Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Close button for `Esc` and `Space`, the chevron and chip for the arrows, and the Groups menu for `Shift` with the arrows.
+
+### Peek
+
+D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.
+
+The Peek shows the issue under `peekKey`, which follows the active row with these exceptions:
+
+- On a header or chip row it keeps showing the last issue.
+- While its summary field holds an unsaved edit, it stays on that issue; `J` and `K` still move the active row, and the Peek catches up once the edit is saved or cancelled.
+- When its issue leaves the Tree, through a refetch or a filter, it keeps showing the issue's last data under the label "No longer in this view", until the user moves the active row or closes the Peek.
+
+### Testing
+
+Pure functions carry the logic and get unit tests. The components are thin, and the e2e suite drives them through the D1 fake Jira. Testing Library is not installed, and these tests reach the same behaviour without it.
+
+**Unit tests:**
+
+| File | Test |
+|---|---|
+| `core/src/hierarchy.test.ts` | `keeps a Done Epic as context for its open child` (replaces `drops a Done Epic with its whole subtree`) |
+| | `drops a Done Epic whose children are all Done` |
+| | `STATUS_ORDER runs Opportunity, To Do, In Progress, Review, Hold, Done` |
+| `renderer/src/tree.test.ts` | `keeps one copy of an issue both phases hold, the later updated` |
+| | `keeps the unresolved copy when both have the same updated` |
+| | `lists Customer, Epic, child and Subtask rows in tree order at levels 1 to 4` |
+| | `puts the No Epic header after a Customer's Epics at level 2` |
+| | `hides a collapsed Customer's rows and a collapsed issue's subtree` |
+| | `adds an N done chip after an open parent's children` |
+| | `lists Done children under a revealed chip, one level down` |
+| | `gives an empty Customer group a header that cannot expand` |
+| | `numbers siblings with setSize and posInSet, chips included` |
+| | `gives each row its parentId and expandable flag` |
+| | `counts a subtree's issues, context included and chips excluded` |
+| | `carries contextOnly and the mismatch onto the row` |
+| | `J and ArrowDown move down, K and ArrowUp move up, stopping at the ends` |
+| | `Shift+J and Caps Lock J move like J` |
+| | `PageDown and PageUp move one window height` |
+| | `ArrowRight expands a collapsed row, then moves to its first child` |
+| | `ArrowLeft collapses an expanded row, then moves to its parent` |
+| | `Shift+ArrowLeft collapses all and activates the Customer header; Shift+ArrowRight expands all` |
+| | `Home and End move to the first and last row` |
+| | `Enter toggles a header or chip and opens an issue` |
+| | `Space toggles the Peek on an issue row only` |
+| | `ignores keys pressed with Cmd, Ctrl or Alt` |
+| | `leaves every other key unhandled` |
+| | `windowRange covers the visible rows plus overscan, clamped at both ends` |
+| | `windowRange includes an active row outside the window` |
+| | `fallbackRow picks the next surviving sibling, then the nearest surviving ancestor, then the old index` |
+| `renderer/src/optimistic.test.ts` | `patches and cancels every phase that holds the issue` |
+| | `an edit to an unresolved issue leaves the Done load running` |
+| | `refetches only the touched phases once the last edit settles` |
+| `renderer/src/queries.test.ts` | `the Done query waits for the unresolved phase` |
+| | `copies an issue that left the unresolved set into Done, then invalidates Done` |
+| | `ignores progress from another load id` |
+| | `a failed toggle write refetches the toggles` |
+| | `logout removes the issues, me and customers queries` |
+| `main/backend.test.ts` | `loads one phase and reports progress per page with its load id` |
+| | `a second load of a phase aborts the first, which returns null` |
+| | `an aborted load leaves the newer load's controller in place` |
+| | `logout aborts every load before removing the token` |
+| | `setToggles writes in call order and keeps the other settings` |
+| | `customers maps field options to the hierarchy's shape` |
+| `main/handlers.test.ts` | `issues:list refuses an unknown phase or a missing load id` |
+| | `settings:setToggles refuses a missing, extra or non-boolean key` |
+| | `issues:list passes each page's progress to sendProgress` |
+| | `an aborted load logs nothing` |
+
+**Fake Jira.** `apps/desktop/src/main/e2e-fake.ts` grows to:
+
+- A Done-category status (`{ key: 'done' }`) and an Epic type (`hierarchyLevel: 1`) beside the existing ones.
+- A hierarchy: three Customers including "Collibra (Internal team)", and a fourth Customer option with no issues; Epics; Stories, a Task and a Bug under them; a Subtask (`subtask: true`, `hierarchyLevel: -1`); a Story whose Customer differs from its Epic's; Done Stories under an open Epic; a Done Epic with one open and one Done child; a Story with no Epic; issues assigned to the test user and to another user; labels and an active sprint on some. PSAPAC-1 to PSAPAC-4 keep their summaries, types, statuses and assignees, under one Epic.
+- Search by phase: it tests the JQL for `!= Done` before `= Done`, since the second is a substring of the first, and pages by `maxResults` and `nextPageToken`, so each phase spans several pages.
+- `releaseDone()`, holding the first Done page as `releaseEdit` holds edits, so a test sees the Tree before Done arrives without a timing window, and `failDone()`, making the next Done page answer 500.
+- `allowedValues` for the Customer field in the createmeta response, for `getFieldOptions`.
+- `createFakeJira({ bulk })`, which `e2e.ts` calls with `JM_E2E_BULK`, adding `bulk` generated open Stories under one open Epic.
+- `counts.searches` split into `unresolved` and `done`.
+
+**End-to-end tests,** in `e2e/desktop/tree.test.ts`:
+
+| Test |
+|---|
+| `groups issues by Customer with the internal Customer last` |
+| `shows the Tree before Done issues load, then their N done chips` |
+| `moves an open Story under its Done Epic once Done issues load` |
+| `reveals a parent's Done children from its chip` |
+| `marks a Story whose Customer differs from its Epic's` |
+| `collapses and expands groups by click, by arrow keys and with Collapse all` |
+| `moves with J and K and peeks with the space bar` |
+| `Esc clears the text filter, then returns focus to the Tree` |
+| `turning Hide done off shows the Done Epic with its subtree` |
+| `Assignee: me keeps my issues with their ancestors dimmed` |
+| `turning Hide empty Customers off shows the Customer with no issues` |
+| `remembers the toggles across a relaunch` |
+| `filters by status and by text, keeping ancestors as context` |
+| `shows No issues match with Clear filters when nothing matches` |
+| `keeps the Tree and offers Retry when the Done load fails` |
+| `renders a bounded number of rows for 2000 issues and reaches the last with End` |
+
+The bounded-rows test launches with `JM_E2E_BULK=2000`, so the 2000 issues are open and show with default toggles. It expects the inner element's height to be within one row of the row count times 32, fewer than 100 `treeitem` elements in the DOM, and, after `End`, the last issue's key visible on the active row. A relaunch starts with an empty fake Keychain, since it lives in the process, so the relaunch test logs in again and then checks the toggles.
+
+**Changes to `e2e/desktop/shell.test.ts`:**
+
+- `logs in to the layout and logs out again`: rows are `treeitem` elements in the `tree` named "Issues", so the count of four `button` elements in the `list` becomes a check that the PSAPAC-3 row is visible; "Select an issue to see it here." becomes a check that no Peek is shown; the detail is the `complementary` region named "Peek". Its field checks stay, since PSAPAC-3 keeps its values.
+- `updates a summary before Jira answers, and restores it when Jira refuses`: the three row lookups by `button` name become `treeitem` lookups, and the detail becomes the Peek.
+- `refetches the issues when the window regains focus`: it waits for the `tree`, not the `list`, and counts `searches.unresolved`, since the Done query is not stale after one focus.
+
+## Alternatives
+
+| Option | For | Against |
+|---|---|---|
+| **Hand-rolled fixed-height window** (chosen) | A few dozen lines; no dependency; every row is one height already | Variable-height rows would need a rewrite; none are planned |
+| `@tanstack/react-virtual` | Maintained; handles variable heights and scroll restoration | A new runtime dependency for arithmetic that fixed heights make trivial |
+| Render every row, with CSS `content-visibility: auto` | Native; no windowing code | Still mounts and reconciles about 25 000 nodes on each rebuild; not the virtualised list the acceptance criteria ask for |
+| **Two phase queries, progress pushed as events** (chosen) | Unresolved renders first; core's generator pages unchanged; a running count | One more event in preload |
+| One query loading both phases | Least code | Nothing shows until all 29 pages load, against ADR-0002 |
+| Renderer-driven paging, one IPC call per page with Jira's token | The renderer controls cancellation | Core keeps its paging state inside the generator; exposing tokens changes core's API, and refetching stored tokens assumes they never expire |
+| **Done ancestors kept as context in core** (chosen) | One rule for the CLI and the app; an open issue never vanishes | Changes a pinned C7 behaviour; the app moves the issue once Done loads |
+| Leave core alone; the app shows such issues under No Epic | No core change | The issue vanishes from the app once Done loads, since core then drops it with its Epic |
+| **`role="tree"`, flat treeitems, `aria-activedescendant`** (chosen) | Matches the interaction: rows are selected, not their cells; survives virtualisation | The row's columns are not separate cells to a screen reader |
+| `role="treegrid"` | Cell-level navigation | Needs a cell focus model no D2 interaction uses |
+| Nested `ul` of buttons, as D1 | Semantic HTML | Cannot virtualise without losing nesting, and a roving tabindex breaks when the focused row unmounts |
+| **Done refetched when stale (5 minutes) or when an issue leaves the unresolved set** (chosen) | Focus refetch costs 8 requests, not 29; a resolved issue never blinks out | A Done issue edited elsewhere shows its old summary for up to 5 minutes |
+| Done refetched on every focus | Simplest | 29 requests and about 15 seconds of loading on every switch back |
+| **Collapse state for the session only** (chosen) | No file or contract change; Collapse all reshapes a fresh start in one action | Collapsed groups open again on each launch |
+| Collapse state in `settings.json` or `localStorage` | Survives a restart | A settings shape change (Ask First), or against the React standard's rule for view state |
+| **Mismatch fix in D3** (chosen) | D3 builds the Customer edit, its rollback and its picker | The badge ships a story before its fix |
+| **Peek replaces the always-open pane** (chosen) | Q5 asks for a page plus a peek; the Tree gets the width | D1's e2e assertions change |
+
+Skeleton rows, an approximate total, assignee type-ahead and an inline Done count on collapsed parents stay out of D2.
+
+## Rollout
+
+D2 ships in one pull request from `d2-issue-tree` with `Refs #29`, after this doc, built in this order:
+
+1. Core: the context rule and `STATUS_ORDER`, with their tests and README.
+2. Data: the channels, backend loads with progress and abort, the event in preload, the phase queries, the phase-aware optimistic edit, and their unit tests.
+3. Tree model: `tree.ts` and its tests.
+4. Components: `IssueTree`, `TreeRow`, `TreeToolbar`, the Peek in the Shell.
+5. The fake Jira's hierarchy, the new e2e suite and the `shell.test.ts` changes.
+
+The same pull request updates `apps/desktop/README.md` (layout table, IPC section, known limits), `e2e/README.md` (`releaseDone`, `failDone`, `JM_E2E_BULK`) and core's README (the context rule, `STATUS_ORDER`). No decision here is hard to reverse, so none needs an ADR. Backing out is a revert: the only state D2 writes is `settings.json`'s `toggles`, which the schema already holds and the CLI ignores.
+
+## Open Questions
+
+None. The orchestrator settled the two that remained on 2026-10-09: an open issue keeps its Done ancestors as context under "Hide done" (Core Changes), and collapse state lasts for the session only, revisited if Shane asks.
