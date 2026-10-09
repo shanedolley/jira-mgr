@@ -1,4 +1,5 @@
 import type { Issue, JiraMgrError } from '@jira-mgr/core'
+import type { IssueDetail } from '@jira-mgr/core/issue'
 import {
   CancelledError,
   queryOptions,
@@ -10,9 +11,26 @@ import {
 } from '@tanstack/react-query'
 import { useSyncExternalStore } from 'react'
 
-import type { IssuePhase, IssuesProgress, LoginArgs, SessionState, Toggles } from '../../shared/ipc'
+import type {
+  EditIssueArgs,
+  IssuePhase,
+  IssuesProgress,
+  LoginArgs,
+  OptionField,
+  SetSprintArgs,
+  SetStatusArgs,
+  SessionState,
+  Toggles,
+} from '../../shared/ipc'
 import { call } from './ipc'
-import { doneKey, issuesKey, summaryMutation, unresolvedKey } from './optimistic'
+import {
+  doneKey,
+  issueDetailKey,
+  issueMutation,
+  issuesKey,
+  summaryMutation,
+  unresolvedKey,
+} from './optimistic'
 
 export const sessionKey = ['session'] as const
 
@@ -188,11 +206,15 @@ export function useSetToggles() {
   return useMutation(togglesMutation(client, (toggles) => call('settings:setToggles', toggles)))
 }
 
-/** What the next account must not see: this one's issues, user and Customer list. */
+/** Prefix of the picker queries: transitions, sprints, users and field options. */
+export const pickerKey = ['picker'] as const
+
+/** What the next account must not see: this one's issues, user, Customer list and picker choices. */
 export function clearAccountData(client: QueryClient): void {
   client.removeQueries({ queryKey: issuesKey })
   client.removeQueries({ queryKey: meKey })
   client.removeQueries({ queryKey: customersKey })
+  client.removeQueries({ queryKey: pickerKey })
 }
 
 /**
@@ -243,7 +265,103 @@ export function useLogout() {
   return useMutation(logoutMutation(client, () => call('session:logout')))
 }
 
+const rereadIssue = (key: string): Promise<IssueDetail> => call('issues:get', { key })
+
+/** An edit that sends `changes`, shows `patch` at once and reads the issue again once it settles. */
+export type EditArgs = EditIssueArgs & { patch: Partial<Issue> }
+export type StatusArgs = SetStatusArgs & { patch: Partial<Issue> }
+export type SprintArgs = SetSprintArgs & { patch: Partial<Issue> }
+
 export function useSetSummary() {
   const client = useQueryClient()
-  return useMutation(summaryMutation(client, (args) => call('issues:setSummary', args)))
+  return useMutation(
+    summaryMutation(client, (args) => call('issues:setSummary', args), rereadIssue),
+  )
+}
+
+export function useEditIssue() {
+  const client = useQueryClient()
+  return useMutation(
+    issueMutation(
+      client,
+      ({ key, changes }: EditArgs) => call('issues:edit', { key, changes }),
+      ({ patch }) => patch,
+      rereadIssue,
+    ),
+  )
+}
+
+export function useSetStatus() {
+  const client = useQueryClient()
+  return useMutation(
+    issueMutation(
+      client,
+      ({ key, statusId }: StatusArgs) => call('issues:setStatus', { key, statusId }),
+      ({ patch }) => patch,
+      rereadIssue,
+    ),
+  )
+}
+
+export function useSetSprint() {
+  const client = useQueryClient()
+  return useMutation(
+    issueMutation(
+      client,
+      ({ key, sprintId }: SprintArgs) => call('issues:setSprint', { key, sprintId }),
+      ({ patch }) => patch,
+      rereadIssue,
+    ),
+  )
+}
+
+/** One issue with its description and subtasks. It refetches on focus, like the lists. */
+export function useIssueDetail(key: string | null) {
+  return useQuery({
+    queryKey: issueDetailKey(key ?? ''),
+    queryFn: () => call('issues:get', { key: key ?? '' }),
+    enabled: key !== null,
+  })
+}
+
+/** The statuses the issue can move to now, read when the status picker opens. */
+export function useTransitions(key: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...pickerKey, 'transitions', key],
+    queryFn: () => call('issues:transitions', { key }),
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+  })
+}
+
+/** Active and future sprints, or every sprint. They change rarely, so a minute is fresh. */
+export function useSprints(all: boolean, enabled: boolean) {
+  return useQuery({
+    queryKey: [...pickerKey, 'sprints', all],
+    queryFn: () => call('sprints:list', { all }),
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
+/** Assignable users matching `query`, read while the assignee picker is open. */
+export function useUsers(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...pickerKey, 'users', query],
+    queryFn: () => call('users:search', { query }),
+    enabled,
+    staleTime: 30_000,
+  })
+}
+
+/** Customer, Engagement, priority or issue type options from the create metadata. */
+export function useFieldOptions(field: OptionField, enabled: boolean) {
+  return useQuery({
+    queryKey: [...pickerKey, 'options', field],
+    queryFn: () => call('fields:options', { field }),
+    enabled,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  })
 }

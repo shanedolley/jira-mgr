@@ -17,7 +17,10 @@ export function Sidebar({
   const logout = useLogout()
   const site = new URL(session.siteUrl).hostname
   return (
-    <nav aria-label="Main" className="flex min-h-0 flex-col border-r border-line bg-sidebar">
+    <nav
+      aria-label="Main"
+      className="col-start-1 row-start-1 flex min-h-0 flex-col border-r border-line bg-sidebar"
+    >
       <div className="app-drag h-10 shrink-0" />
       <div className="px-3 pb-3">
         <p className="font-semibold">{session.projectKey}</p>

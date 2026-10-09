@@ -5,6 +5,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { SavedView, Session, Toggles } from '../../shared/ipc'
 import { Banner } from './Banner'
 import { IssueDetail } from './IssueDetail'
+import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { LoadError } from './LoadError'
 import { Sidebar } from './Sidebar'
@@ -107,8 +108,11 @@ export function Shell({ session }: { session: Session }) {
   const [peekOpen, setPeekOpen] = useState(false)
   const [lastIssueKey, setLastIssueKey] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
+  // The issue whose full page is open. The Tree stays mounted under it, so its scroll survives.
+  const [pageKey, setPageKey] = useState<string | null>(null)
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
+  const pageRef = useRef<HTMLElement>(null)
 
   const customersQuery = useCustomers(toggles?.hideEmptyCustomers === false)
   const customersFailed = customersQuery.isError && customersQuery.data === undefined
@@ -167,8 +171,10 @@ export function Shell({ session }: { session: Session }) {
     setPeekOpen(next.peekOpen)
     if (!next.peekOpen) setEditingKey(null)
     const row = rows.find((r) => r.id === next.activeId)
-    if (row?.kind === 'issue') setLastIssueKey(row.node.issue.key)
-    if (next.focusPeek) peekRef.current?.focus()
+    if (row?.kind === 'issue') {
+      setLastIssueKey(row.node.issue.key)
+      if (next.openPage) setPageKey(row.node.issue.key)
+    }
   }
 
   function focusTree() {
@@ -182,15 +188,26 @@ export function Shell({ session }: { session: Session }) {
     if (next !== null) apply(next)
   }
 
+  // Focus follows the page: into it when it opens, back to the Tree when it closes.
+  const pageOpen = pageKey !== null
+  const wasPageOpen = useRef(false)
+  useEffect(() => {
+    if (pageOpen) pageRef.current?.focus()
+    else if (wasPageOpen.current) treeRef.current?.focus()
+    wasPageOpen.current = pageOpen
+  }, [pageOpen])
+
   /**
    * A view replaces the bar's filters and sets the toggles. The toggles go through the same write
    * as a press on a toggle button, so they stay as the view left them after a restart (Q28: each
-   * toggle remembers its last state).
+   * toggle remembers its last state). The sidebar stays clickable under an open page, whose Tree
+   * is inert, so applying a view closes the page, and focus then returns to the Tree.
    */
   function applyView(view: SavedView) {
     setFilters(view.filters)
     if (toggles !== undefined) setToggles.mutate(applyViewToggles(toggles, view))
-    focusTree()
+    if (pageOpen) setPageKey(null)
+    else focusTree()
   }
 
   function closePeek() {
@@ -283,14 +300,18 @@ export function Shell({ session }: { session: Session }) {
 
   return (
     <div
-      className={`grid h-full ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
+      className={`relative grid h-full grid-rows-[minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
     >
       <Sidebar
         session={session}
         count={unresolved.data?.length}
         views={<ViewsList filters={filters} toggles={toggles} onApply={applyView} />}
       />
-      <section aria-label="Issue list" className="flex min-h-0 min-w-0 flex-col bg-canvas">
+      <section
+        aria-label="Issue list"
+        inert={pageOpen}
+        className="col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
+      >
         <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4">
           <h1 className="font-semibold">Issues</h1>
           <span role="status" className="text-xs text-muted">
@@ -346,12 +367,29 @@ export function Shell({ session }: { session: Session }) {
           mismatch={peekedNode?.customerMismatch ?? null}
           inView={peekedNode !== undefined}
           onClose={closePeek}
+          onOpenPage={setPageKey}
           onEditingChange={(editing) => {
             setEditingKey(editing ? lastIssueKey : null)
           }}
           onLeave={focusTree}
+          inert={pageOpen}
           asideRef={peekRef}
         />
+      )}
+      {pageKey !== null && (
+        <div className="[grid-column:2/-1] row-start-1 min-h-0">
+          <IssuePage
+            issueKey={pageKey}
+            issues={issues}
+            me={meQuery.data}
+            mismatch={nodes.get(pageKey)?.customerMismatch ?? null}
+            onBack={() => {
+              setPageKey(null)
+            }}
+            onOpen={setPageKey}
+            pageRef={pageRef}
+          />
+        </div>
       )}
     </div>
   )

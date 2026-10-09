@@ -248,8 +248,8 @@ export interface KeyInput {
 }
 
 export interface MoveResult extends TreeState {
-  /** Enter on an issue row while the Peek is open: the Shell moves focus into the Peek. */
-  focusPeek: boolean
+  /** Enter on an issue row, or a double click: the Shell opens the active issue's full page. */
+  openPage: boolean
 }
 
 export interface MoveContext {
@@ -316,9 +316,9 @@ export function moveActive(
   const to = (target: number): MoveResult => ({
     ...state,
     activeId: rows[Math.min(last, Math.max(0, target))]?.id ?? null,
-    focusPeek: false,
+    openPage: false,
   })
-  const stay = (next: TreeState = state): MoveResult => ({ ...next, focusPeek: false })
+  const stay = (next: TreeState = state): MoveResult => ({ ...next, openPage: false })
 
   switch (input.key) {
     case 'j':
@@ -361,8 +361,7 @@ export function moveActive(
     case 'Enter': {
       if (row === undefined) return null
       if (row.kind !== 'issue') return stay(toggle(row, state))
-      if (state.peekOpen) return { ...state, focusPeek: true }
-      return stay({ ...state, peekOpen: true })
+      return { ...state, openPage: true }
     }
     case ' ': {
       if (row?.kind !== 'issue') return stay()

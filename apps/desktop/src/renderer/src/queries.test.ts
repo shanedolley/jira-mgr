@@ -3,7 +3,7 @@ import { CancelledError, QueryClient, MutationObserver, QueryObserver } from '@t
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Toggles } from '../../shared/ipc'
-import { doneKey, unresolvedKey } from './optimistic'
+import { doneKey, issueDetailKey, unresolvedKey } from './optimistic'
 import {
   clearAccountData,
   createLoadTracker,
@@ -12,6 +12,7 @@ import {
   loginMutation,
   logoutMutation,
   meKey,
+  pickerKey,
   sessionKey,
   togglesKey,
   togglesMutation,
@@ -193,16 +194,20 @@ describe('togglesMutation', () => {
 })
 
 describe('clearAccountData', () => {
-  it('logout removes the issues, me and customers queries', () => {
+  it("logout removes the issues, an issue's own read, me, customers and the picker choices", () => {
     const client = new QueryClient()
     client.setQueryData(unresolvedKey, [issue('PSAPAC-1')])
     client.setQueryData(doneKey, [issue('PSAPAC-2', 'Done')])
     client.setQueryData(meKey, { accountId: 'u1', displayName: 'Me' })
     client.setQueryData(customersKey, [])
+    client.setQueryData(issueDetailKey('PSAPAC-1'), issue('PSAPAC-1'))
+    client.setQueryData([...pickerKey, 'users', ''], [])
     client.setQueryData(togglesKey, { hideDone: true, assigneeMe: false, hideEmptyCustomers: true })
 
     clearAccountData(client)
 
+    expect(client.getQueryData(issueDetailKey('PSAPAC-1'))).toBeUndefined()
+    expect(client.getQueryData([...pickerKey, 'users', ''])).toBeUndefined()
     expect(client.getQueryData(unresolvedKey)).toBeUndefined()
     expect(client.getQueryData(doneKey)).toBeUndefined()
     expect(client.getQueryData(meKey)).toBeUndefined()

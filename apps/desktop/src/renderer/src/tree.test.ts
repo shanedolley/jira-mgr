@@ -459,20 +459,20 @@ describe('moveActive', () => {
     expect(move('i:P-2', press('End'))?.activeId).toBe('i:P-6')
   })
 
-  it('Enter toggles a header or chip and opens an issue', () => {
+  it('Enter toggles a header or chip and opens the full page of an issue', () => {
     const header = move('c:1', press('Enter'))
     expect([...(header?.collapsed ?? [])]).toEqual(['c:1'])
-    expect(header?.peekOpen).toBe(false)
+    expect(header).toMatchObject({ peekOpen: false, openPage: false })
 
     const chip = move('d:P-1', press('Enter'))
     expect([...(chip?.revealed ?? [])]).toEqual(['d:P-1'])
+    expect(chip?.openPage).toBe(false)
 
-    const issueRow = move('i:P-4', press('Enter'))
-    expect(issueRow).toMatchObject({ peekOpen: true, focusPeek: false })
-    // With the Peek open, Enter moves focus into it.
+    // The Peek is Space's: Enter leaves it as it was, open or closed.
+    expect(move('i:P-4', press('Enter'))).toMatchObject({ peekOpen: false, openPage: true })
     expect(move('i:P-4', press('Enter'), { peekOpen: true })).toMatchObject({
       peekOpen: true,
-      focusPeek: true,
+      openPage: true,
     })
   })
 
