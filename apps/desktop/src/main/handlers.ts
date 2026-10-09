@@ -1,9 +1,11 @@
 import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
+import { adfDocSchema, type AdfDoc } from '@jira-mgr/core/adf'
 import { SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { z } from 'zod'
 
-import { CREATE_TYPES } from '../shared/ipc'
+import { CREATE_TYPES, IMAGE_LIMIT_BYTES, IMAGE_TYPES } from '../shared/ipc'
 import type {
+  AddImageArgs,
   ArgsOf,
   Channel,
   CreateIssueArgs,
@@ -13,6 +15,7 @@ import type {
   EditIssueArgs,
   FieldOptionsArgs,
   IpcError,
+  ImageArgs,
   IpcResult,
   IssueChanges,
   KeyArgs,
@@ -20,6 +23,7 @@ import type {
   LoginArgs,
   RenameViewArgs,
   ResultOf,
+  SetDescriptionArgs,
   SetSprintArgs,
   SetStatusArgs,
   SetSummaryArgs,
@@ -33,6 +37,8 @@ const MAX_EMAIL_BYTES = 254
 /** Jira's limit on a summary. */
 const MAX_SUMMARY = 255
 /** Caps on a saved view, far above any real one. Core owns the name rules (trimmed, unique). */
+/** The most JSON a description may be. Jira refuses far less than this, so it only bounds the work. */
+const MAX_ADF_BYTES = 1_000_000
 const MAX_VIEW_NAME = 80
 const MAX_FILTER_VALUES = 200
 const MAX_FILTER_VALUE = 500
@@ -59,6 +65,45 @@ const setSummaryArgs: z.ZodType<SetSummaryArgs> = z.strictObject({
 })
 
 const keyArgs: z.ZodType<KeyArgs> = z.strictObject({ key: issueKey })
+
+/**
+ * An ADF document under 1 MB. A document nested past the stack makes the parser throw instead of
+ * fail, so it is caught here and refused like any other invalid value.
+ */
+const adfArg = z.unknown().transform((value, ctx): AdfDoc | null => {
+  if (value === null) return null
+  try {
+    if (JSON.stringify(value).length <= MAX_ADF_BYTES) return adfDocSchema.parse(value)
+  } catch {
+    // Not ADF, or nested too deeply for the parser: refused below.
+  }
+  ctx.addIssue({ code: 'custom', message: 'must be an ADF document of at most 1 MB' })
+  return z.NEVER
+})
+
+const setDescriptionArgs: z.ZodType<SetDescriptionArgs> = z.strictObject({
+  key: issueKey,
+  description: adfArg,
+  base: adfArg,
+})
+
+const addImageArgs: z.ZodType<AddImageArgs> = z.strictObject({
+  key: issueKey,
+  filename: text(255),
+  mimeType: z.enum(IMAGE_TYPES),
+  bytes: z
+    .instanceof(Uint8Array)
+    .refine((bytes) => bytes.length > 0 && bytes.length <= IMAGE_LIMIT_BYTES, {
+      message: 'must hold 1 byte to 100 MB',
+    }),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+})
+
+const imageArgs: z.ZodType<ImageArgs> = z.strictObject({
+  key: issueKey,
+  mediaId: z.uuid(),
+})
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD')
 const label = z.string().regex(/^\S+$/, 'must hold no spaces').max(255)
@@ -171,6 +216,9 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'issues:setSummary': setSummaryArgs,
   'issues:get': keyArgs,
   'issues:edit': editIssueArgs,
+  'issues:setDescription': setDescriptionArgs,
+  'attachments:addImage': addImageArgs,
+  'attachments:image': imageArgs,
   'issues:transitions': keyArgs,
   'issues:setStatus': setStatusArgs,
   'issues:setSprint': setSprintArgs,
@@ -277,6 +325,11 @@ export function createHandlers(
       await backend.editIssue(args)
       return null
     }),
+    'issues:setDescription': handle('issues:setDescription', (args) =>
+      backend.setDescription(args),
+    ),
+    'attachments:addImage': handle('attachments:addImage', (args) => backend.addImage(args)),
+    'attachments:image': handle('attachments:image', (args) => backend.image(args)),
     'issues:transitions': handle('issues:transitions', (args) => backend.listTransitions(args)),
     'issues:setStatus': handle('issues:setStatus', async (args) => {
       await backend.setStatus(args)

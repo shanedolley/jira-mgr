@@ -1,4 +1,5 @@
 import type { ErrorCode, Issue } from '@jira-mgr/core'
+import type { AdfDoc, AdfNode } from '@jira-mgr/core/adf'
 import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
 import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
 import type { SavedView } from '@jira-mgr/core/state'
@@ -78,6 +79,47 @@ export interface IssueChanges {
   originalEstimate?: string
   timeRemainingHours?: number | null
   type?: SwappableType
+}
+
+/** The image types the editor embeds, which main checks by magic bytes. */
+export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const
+
+export type ImageType = (typeof IMAGE_TYPES)[number]
+
+/** The largest image a drop embeds: Jira's attachment limit on PSAPAC (Q34). */
+export const IMAGE_LIMIT_BYTES = 100_000_000
+
+/** The largest attachment shown in the editor, so a page of huge images stays light. */
+export const PREVIEW_LIMIT_BYTES = 20_000_000
+
+/** A description edit with the description the edit started from, which main compares to Jira's. */
+export interface SetDescriptionArgs {
+  key: string
+  description: AdfDoc | null
+  base: AdfDoc | null
+}
+
+/** Saved, or Jira's description changed since the edit began and nothing was written. */
+export type SetDescriptionResult = { saved: true } | { saved: false; current: AdfDoc | null }
+
+export interface AddImageArgs {
+  key: string
+  filename: string
+  mimeType: ImageType
+  bytes: Uint8Array
+  width?: number
+  height?: number
+}
+
+export interface ImageArgs {
+  key: string
+  /** The Media Services file id of a `media` node. */
+  mediaId: string
+}
+
+export interface ImageResult {
+  mimeType: ImageType
+  bytes: Uint8Array
 }
 
 export interface EditIssueArgs {
@@ -197,6 +239,12 @@ export interface IpcContract {
   /** One issue with its description and subtasks, read afresh. */
   'issues:get': { args: KeyArgs; result: IssueDetail }
   'issues:edit': { args: EditIssueArgs; result: null }
+  /** Writes the description unless Jira's no longer matches `base`. */
+  'issues:setDescription': { args: SetDescriptionArgs; result: SetDescriptionResult }
+  /** Attaches a dropped image to the issue and returns the `mediaSingle` that embeds it. */
+  'attachments:addImage': { args: AddImageArgs; result: { node: AdfNode } }
+  /** The bytes of an image attachment, found by the media id a description embeds. */
+  'attachments:image': { args: ImageArgs; result: ImageResult }
   'issues:transitions': { args: KeyArgs; result: StatusOption[] }
   'issues:setStatus': { args: SetStatusArgs; result: null }
   'issues:setSprint': { args: SetSprintArgs; result: null }
@@ -230,6 +278,9 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'issues:setSummary': true,
   'issues:get': true,
   'issues:edit': true,
+  'issues:setDescription': true,
+  'attachments:addImage': true,
+  'attachments:image': true,
   'issues:transitions': true,
   'issues:setStatus': true,
   'issues:setSprint': true,

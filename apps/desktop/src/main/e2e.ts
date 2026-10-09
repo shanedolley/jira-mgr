@@ -21,4 +21,14 @@ const jira = createFakeJira({ bulk: Number.isInteger(bulk) && bulk > 0 ? bulk : 
 globalThis.fetch = jira.fetch
 ;(globalThis as { __fakeJira?: unknown }).__fakeJira = jira
 
-start(createBackend({ keychain: createFakeKeychain() }), { inactive: true })
+start(createBackend({ keychain: createFakeKeychain() }), {
+  inactive: true,
+  // Stand-ins that count, so a test never opens a browser or waits on a native dialog.
+  openExternal: (url) => {
+    jira.counts.openExternal.push(url)
+  },
+  confirmQuit: () => {
+    jira.counts.quitPrompts++
+    return true
+  },
+})

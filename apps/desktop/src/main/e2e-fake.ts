@@ -13,6 +13,90 @@ export const REJECTED_SUMMARY = 'reject me'
 export const REJECTED_PRIORITY = 'Highest'
 /** The issue the fake refuses to delete, so a test can watch a delete roll back. */
 export const REJECTED_DELETE = 'PSAPAC-3'
+/** A 1 by 1 PNG, so an attached image has a real size to decode. */
+const PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+/** The media id of the image PSAPAC-1's description embeds, which belongs to its attachment 5001. */
+export const SEED_MEDIA_ID = 'aaaaaaaa-0000-4000-8000-000000005001'
+/** The first id an uploaded attachment gets. */
+const FIRST_UPLOADED = 6000
+
+/** The media id Jira would give attachment `id`, built so a test can predict it. */
+const mediaIdOf = (id: number) => `aaaaaaaa-0000-4000-8000-${String(id).padStart(12, '0')}`
+
+/**
+ * PSAPAC-1's description: every kind of content the editor must keep. The panel, the table, the
+ * mention and the image are read-only; the paragraphs and the linked code are editable.
+ */
+const RICH_DESCRIPTION = {
+  version: 1,
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      attrs: { localId: 'p-scope' },
+      content: [{ type: 'text', text: 'Agree the scope with the sponsor.' }],
+    },
+    {
+      type: 'panel',
+      attrs: { panelType: 'info' },
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Panel kept as it is.' }] }],
+    },
+    {
+      type: 'table',
+      attrs: { isNumberColumnEnabled: false, layout: 'default' },
+      content: [
+        {
+          type: 'tableRow',
+          content: [
+            {
+              type: 'tableCell',
+              attrs: {},
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Cell A' }] }],
+            },
+            {
+              type: 'tableCell',
+              attrs: {},
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Cell B' }] }],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Ask ' },
+        { type: 'mention', attrs: { id: 'u2', text: '@Other User' } },
+        { type: 'text', text: ' to run ' },
+        {
+          type: 'text',
+          text: 'make test',
+          marks: [{ type: 'code' }, { type: 'link', attrs: { href: 'https://example.test/docs' } }],
+        },
+        { type: 'text', text: '.' },
+      ],
+    },
+    {
+      type: 'mediaSingle',
+      attrs: { layout: 'center' },
+      content: [
+        {
+          type: 'media',
+          attrs: {
+            type: 'file',
+            id: SEED_MEDIA_ID,
+            collection: '',
+            alt: 'diagram.png',
+            width: 1,
+            height: 1,
+          },
+        },
+      ],
+    },
+  ],
+}
+
 /** The first number a created issue gets, clear of the seeds and of `JM_E2E_BULK`'s 1000 to 1999. */
 const FIRST_CREATED = 2000
 
@@ -32,6 +116,12 @@ export interface FakeJiraCounts {
    * and for a delete `{ delete: key, deleteSubtasks }`.
    */
   editBodies: unknown[]
+  /** Attachment uploads received, in order of arrival. */
+  uploads: { key: string; filename: string; type: string; size: number }[]
+  /** Links the app opened in a browser, as the e2e entry's stand-in for `shell.openExternal` saw them. */
+  openExternal: string[]
+  /** Times the quit prompt was raised. */
+  quitPrompts: number
 }
 
 export interface FakeJiraOptions {
@@ -114,6 +204,8 @@ interface Seed {
   estimate?: number
   /** One paragraph of description. */
   description?: string
+  /** The description holds every kind of content, and the issue has one image attached. */
+  rich?: true
 }
 
 /**
@@ -131,7 +223,7 @@ const SEEDS: Seed[] = [
     status: 'doing',
     parent: 10,
     customer: 'acme',
-    description: 'Agree the scope with the sponsor.',
+    rich: true,
   },
   {
     n: 2,
@@ -289,6 +381,39 @@ interface EditBody {
   }
 }
 
+interface Attachment {
+  id: number
+  filename: string
+  mediaId: string
+  mimeType: string
+  bytes: Uint8Array
+}
+
+const png = () => new Uint8Array(Buffer.from(PNG_BASE64, 'base64'))
+
+/** The attachment as Jira's REST responses show it: no media id, which only the content redirect gives. */
+const rawAttachment = (a: Attachment) => ({
+  id: String(a.id),
+  filename: a.filename,
+  size: a.bytes.length,
+  mimeType: a.mimeType,
+  created: '2026-10-01T00:00:00.000+1000',
+  content: `${FAKE_SITE}/rest/api/3/attachment/content/${String(a.id)}`,
+})
+
+/** Adds a `localId` to every paragraph that lacks one, as Jira may when it stores a description. */
+function withLocalIds(node: unknown, next: () => string): unknown {
+  if (Array.isArray(node)) return node.map((child) => withLocalIds(child, next))
+  if (node === null || typeof node !== 'object') return node
+  const copy = { ...(node as Record<string, unknown>) }
+  if (copy.type === 'paragraph') {
+    const attrs = (copy.attrs ?? {}) as Record<string, unknown>
+    copy.attrs = { ...attrs, localId: attrs.localId ?? next() }
+  }
+  if (Array.isArray(copy.content)) copy.content = withLocalIds(copy.content, next)
+  return copy
+}
+
 interface RawIssue {
   id: string
   key: string
@@ -319,8 +444,9 @@ function issue(seed: Seed): RawIssue {
       [FIELDS.sprint]: SPRINTS.filter((s) => s.id === seed.sprint),
       [FIELDS.startDate]: null,
       [FIELDS.timeRemaining]: seed.estimate === undefined ? null : seed.estimate / 3600,
-      description:
-        seed.description === undefined
+      description: seed.rich
+        ? structuredClone(RICH_DESCRIPTION)
+        : seed.description === undefined
           ? null
           : {
               version: 1,
@@ -354,6 +480,14 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   dropIssue: (key: string) => void
   /** Moves an issue to another status as if someone else did: no hold and no count, so the next refetch sees it. */
   moveIssue: (key: string, status: keyof typeof STATUSES) => void
+  /** Lets the oldest held attachment upload proceed. The test waits for `counts.uploads` first. */
+  releaseUpload: () => void
+  /** Makes the next attachment upload answer 500 at once, without holding it. */
+  failUpload: () => void
+  /** Replaces an issue's description as if someone else did: no hold and no count. */
+  setDescription: (key: string, description: unknown) => void
+  /** Makes Jira store every saved description with a `localId` on each paragraph, as it may. */
+  normaliseDescriptions: () => void
 } {
   const bulk = Array.from({ length: options.bulk ?? 0 }, (_, i) =>
     issue({
@@ -387,7 +521,29 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     applied: 0,
     issueReads: [],
     editBodies: [],
+    uploads: [],
+    openExternal: [],
+    quitPrompts: 0,
   }
+  // Attachments by issue key. PSAPAC-1 starts with the image its description embeds.
+  const attachments = new Map<string, Attachment[]>([
+    [
+      'PSAPAC-1',
+      [
+        {
+          id: 5001,
+          filename: 'diagram.png',
+          mediaId: SEED_MEDIA_ID,
+          mimeType: 'image/png',
+          bytes: png(),
+        },
+      ],
+    ],
+  ])
+  let uploaded = 0
+  const heldUploads: (() => void)[] = []
+  let failNextUpload = false
+  let normalise = false
   let unresolvedComplete = false
   // Every write waits here, so a test sees the optimistic state with Jira's answer still pending.
   const held: (() => void)[] = []
@@ -403,6 +559,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   // Each applied write moves `updated` on, so a read always shows the later copy.
   let clock = 0
   let created = 0
+  let localIds = 0
 
   const find = (key: string) => issues.find((i) => i.key === key)
   const touch = (target: RawIssue) => {
@@ -467,6 +624,11 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       target.fields[FIELDS.timeRemaining] = fields[FIELDS.timeRemaining]
     if ('parent' in fields) {
       target.fields.parent = fields.parent as { key: string }
+    }
+    if ('description' in fields) {
+      target.fields.description = normalise
+        ? withLocalIds(fields.description, () => `n${String(++localIds)}`)
+        : fields.description
     }
     const customer = Object.values(CUSTOMERS).find(
       (c) => c.id === (fields[FIELDS.customer] as { id: string } | undefined)?.id,
@@ -726,7 +888,62 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       return new Response(null, { status: 204 })
     }
 
+    if (method === 'GET' && path === '/rest/api/3/attachment/meta') {
+      return json({ enabled: true, uploadLimit: 100_000_000 })
+    }
+    const upload = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)\/attachments$/.exec(path)
+    if (method === 'POST' && upload !== null) {
+      const target = find(upload[1] ?? '')
+      if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
+      const file = (init?.body as FormData).get('file') as File
+      counts.uploads.push({
+        key: target.key,
+        filename: file.name,
+        type: file.type,
+        size: file.size,
+      })
+      if (failNextUpload) {
+        failNextUpload = false
+        return json({ errorMessages: ['The fake failed this upload.'] }, 500)
+      }
+      await new Promise<void>((resolve) => heldUploads.push(resolve))
+      const id = FIRST_UPLOADED + uploaded++
+      const stored: Attachment = {
+        id,
+        filename: file.name,
+        mediaId: mediaIdOf(id),
+        mimeType: file.type,
+        bytes: new Uint8Array(await file.arrayBuffer()),
+      }
+      attachments.set(target.key, [...(attachments.get(target.key) ?? []), stored])
+      return json([rawAttachment(stored)])
+    }
+    const content = /^\/rest\/api\/3\/attachment\/content\/(\d+)$/.exec(path)
+    if (method === 'GET' && content !== null) {
+      const found = [...attachments.values()].flat().find((a) => String(a.id) === content[1])
+      if (found === undefined) return json({ errorMessages: ['No such attachment.'] }, 404)
+      if (url.searchParams.get('redirect') === 'false') {
+        return new Response(new Uint8Array(found.bytes), { headers: { 'content-type': found.mimeType } })
+      }
+      // Jira redirects to the media service, with the file id in the path and a token the real
+      // one adds and this does not.
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: `https://api.media.atlassian.com/file/${found.mediaId}/binary?client=fake&dl=true&name=${encodeURIComponent(found.filename)}`,
+        },
+      })
+    }
+
     const one = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)$/.exec(path)
+    if (method === 'GET' && one !== null && url.searchParams.get('fields') === 'attachment') {
+      const target = find(one[1] ?? '')
+      if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
+      return json({
+        key: target.key,
+        fields: { attachment: (attachments.get(target.key) ?? []).map(rawAttachment) },
+      })
+    }
     if (method === 'GET' && one !== null) {
       const target = find(one[1] ?? '')
       if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
@@ -776,6 +993,21 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       if (target === undefined) return
       target.fields.status = STATUSES[status]
       touch(target)
+    },
+    releaseUpload: () => {
+      heldUploads.shift()?.()
+    },
+    failUpload: () => {
+      failNextUpload = true
+    },
+    setDescription: (key, description) => {
+      const target = find(key)
+      if (target === undefined) return
+      target.fields.description = description
+      touch(target)
+    },
+    normaliseDescriptions: () => {
+      normalise = true
     },
   }
 }
