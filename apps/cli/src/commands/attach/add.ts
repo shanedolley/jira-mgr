@@ -4,10 +4,10 @@ import { basename } from 'node:path'
 
 import { JiraMgrError } from '@jira-mgr/core'
 import { addAttachments, type Attachment } from '@jira-mgr/core/extras'
+import { assertInProject } from '@jira-mgr/core/state'
 
 import type { Handler } from '../../context.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 import { renderAttachments } from './list.js'
 
 const refuse = (message: string) => new JiraMgrError('validation_failed', message)

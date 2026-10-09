@@ -1,11 +1,11 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import { moveToBacklog, moveToSprint } from '@jira-mgr/core/sprints'
+import { assertInProject } from '@jira-mgr/core/state'
 
 import type { Handler } from '../../context.js'
 import { stripControl } from '../../output.js'
 import { resolveSprint } from '../../resolve.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 
 /** Jira moves at most this many issues in one call. */
 const MAX_KEYS = 50

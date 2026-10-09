@@ -1,9 +1,9 @@
 import { markdownToAdf } from '@jira-mgr/core/adf'
 import { addWorklog, type Worklog } from '@jira-mgr/core/extras'
+import { assertInProject } from '@jira-mgr/core/state'
 
 import type { Handler } from '../../context.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 
 /** `jm worklog add <key>`: core sends `adjustEstimate=auto`, so the remaining estimate falls by the time logged. */
 export const add: Handler<SpecOf<'worklog add'>, Worklog> = {

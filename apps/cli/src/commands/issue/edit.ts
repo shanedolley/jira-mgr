@@ -1,12 +1,12 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import { getIssue } from '@jira-mgr/core/search'
+import { assertInProject } from '@jira-mgr/core/state'
 import { editIssue, type EditIssueInput } from '@jira-mgr/core/write'
 
 import type { Handler } from '../../context.js'
 import { readRichText } from '../../input.js'
 import { resolveAssignee, resolveOption } from '../../resolve.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 
 /** The option each sent input came from, as `changed` names it. */
 const OPTION_NAMES: Record<keyof EditIssueInput, string> = {

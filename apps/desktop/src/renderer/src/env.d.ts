@@ -1,4 +1,4 @@
 interface Window {
   /** Exposed by the preload script. */
-  jm: { platform: string }
+  jm: import('../../shared/ipc').JmApi
 }

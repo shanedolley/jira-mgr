@@ -1,8 +1,8 @@
 import { editComment, type IssueComment } from '@jira-mgr/core/extras'
+import { assertInProject } from '@jira-mgr/core/state'
 
 import type { Handler } from '../../context.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 import { readBody } from './body.js'
 
 /** `jm comment edit <key> <comment-id>`: replaces the body. Jira answers 403, exit 4, for another user's comment. */

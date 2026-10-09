@@ -1,4 +1,5 @@
 import { JiraMgrError } from '@jira-mgr/core'
+import { assertInProject } from '@jira-mgr/core/state'
 import { createIssue } from '@jira-mgr/core/write'
 
 import type { Handler } from '../../context.js'
@@ -6,7 +7,7 @@ import { readRichText } from '../../input.js'
 import { resolveAssignee, resolveOption } from '../../resolve.js'
 import { stripControl } from '../../output.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject, siteUrl } from '../../site.js'
+import { siteUrl } from '../../site.js'
 
 interface Created {
   key: string

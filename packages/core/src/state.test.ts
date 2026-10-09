@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { JiraMgrError } from './errors.js'
 import {
+  assertInProject,
   createView,
   deleteView,
   findView,
@@ -279,5 +280,30 @@ describe('view management', () => {
     await deleteView('my-issues')
     await deleteView('current-sprint')
     expect(await names()).toEqual(['Extra'])
+  })
+})
+
+describe('assertInProject', () => {
+  it('accepts a key in the settings project, in any case of the project key', async () => {
+    await writeSettings({ projectKey: 'psapac' })
+    await expect(assertInProject('PSAPAC-12')).resolves.toBeUndefined()
+  })
+
+  it('refuses a key from another project with validation_failed, naming both', async () => {
+    await writeSettings({ projectKey: 'PSAPAC' })
+    const error = await validationError(assertInProject('OTHER-5'))
+    expect(error.code).toBe('validation_failed')
+    expect(error.message).toBe('OTHER-5 is not in PSAPAC. jm manages the PSAPAC project only.')
+  })
+
+  it('refuses a key whose project only starts like the settings project', async () => {
+    await writeSettings({ projectKey: 'PSAPAC' })
+    expect((await validationError(assertInProject('PSAPACX-1'))).code).toBe('validation_failed')
+  })
+
+  it('refuses everything with permission_denied when no project is set', async () => {
+    const error = await validationError(assertInProject('PSAPAC-1'))
+    expect(error.code).toBe('permission_denied')
+    expect(error.message).toBe('No project is set. Run `jm auth login`.')
   })
 })

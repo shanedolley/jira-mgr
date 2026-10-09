@@ -1,11 +1,11 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import { getIssue } from '@jira-mgr/core/search'
+import { assertInProject } from '@jira-mgr/core/state'
 import { deleteIssue } from '@jira-mgr/core/write'
 
 import type { Handler } from '../../context.js'
 import { stripControl } from '../../output.js'
 import type { SpecOf } from '../../schema.js'
-import { assertInProject } from '../../site.js'
 
 interface Deleted {
   key: string

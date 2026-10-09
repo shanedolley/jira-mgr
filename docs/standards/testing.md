@@ -8,9 +8,10 @@ Jira holds the data and the rules, so `core` tests run against a fake Jira.
 | `core` integration | Vitest and MSW | `<file>.int.test.ts` beside the source | The MSW fake |
 | Live read-only checks | Vitest | `<file>.live.test.ts` beside the source | Real PSAPAC, reads only |
 | CLI | Vitest calling `run(argv, io, deps)` in process, plus a few smoke tests of the built binary | `apps/cli/src/` beside the source | The MSW fake, except the binary smoke tests, which need no Jira |
-| Desktop end to end | Playwright's Electron driver | `e2e/` | The MSW fake |
+| Desktop units: IPC validation, optimistic updates, focus | Vitest | `<file>.test.ts` beside the source in `apps/desktop/src/` | Nothing external |
+| Desktop end to end | Playwright's Electron driver | `e2e/` | An in-memory fake Jira inside the app's `e2e` entry |
 
-`pnpm test` runs the first two layers and the CLI tests, which build the bundle first. `pnpm test:live` runs the live layer, and `pnpm e2e` runs the desktop end-to-end layer.
+`pnpm test` runs the first two layers, the desktop unit tests and the CLI tests, which build the bundle first. `pnpm test:live` runs the live layer, and `pnpm e2e` runs the desktop end-to-end layer.
 
 ## The Fake
 
@@ -19,7 +20,7 @@ Jira holds the data and the rules, so `core` tests run against a fake Jira.
 - Serve a fixture in a test with `serveFixture(method, path, name)` from `packages/core/test/msw.ts`, which CLI tests import as `@jira-mgr/core/test/msw`. The setup file fails any request with no handler and resets handlers after each test.
 - Refresh a fixture when Jira's response shape changes, and record why in the pull request. `docs/how-to/refresh-fixtures.md` holds the steps once written.
 - The fake answers writes with canned responses and records the requests, so a test asserts what core would send.
-- Desktop end-to-end tests start the same fake and point the app at it. CLI tests call `run()` in process and inject a client, because MSW cannot intercept a child process and core refuses any site but `https://<name>.atlassian.net`.
+- Desktop end-to-end tests launch the app's `e2e` entry, which swaps `fetch` for an in-memory fake Jira and the Keychain for a fake `security`, because MSW cannot intercept Electron's main process. CLI tests call `run()` in process and inject a client, because MSW cannot intercept a child process and core refuses any site but `https://<name>.atlassian.net`.
 
 ## Live Tests
 
