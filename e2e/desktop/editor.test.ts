@@ -7,6 +7,7 @@ import { expect, test, type ElectronApplication, type Locator, type Page } from 
 
 import {
   counts,
+  dropIssue,
   failUpload,
   launch,
   logIn,
@@ -764,4 +765,89 @@ test("removing a pasted copy of another issue's upload leaves that upload runnin
   await expect.poll(edits).toBe(1)
   const types = ((await lastBody())?.content ?? []).map((node) => node.type)
   expect(types).toContain('mediaSingle')
+})
+
+/** Fires a drag event carrying one file at the element, as a file dragged in from the desktop would. */
+async function dragFile(
+  target: Locator,
+  type: 'dragenter' | 'dragleave' | 'drop',
+  file: { name: string; type: string; data: string } = {
+    name: 'shot.png',
+    type: 'image/png',
+    data: PNG,
+  },
+) {
+  await target.evaluate(
+    (element, [kind, name, mime, data]) => {
+      const bytes = Uint8Array.from(atob(data ?? ''), (c) => c.charCodeAt(0))
+      const transfer = new DataTransfer()
+      transfer.items.add(new File([bytes], name ?? 'a', { type: mime ?? '' }))
+      element.dispatchEvent(
+        new DragEvent(kind ?? 'drop', { dataTransfer: transfer, bubbles: true, cancelable: true }),
+      )
+    },
+    [type, file.name, file.type, file.data],
+  )
+}
+
+const zone = () => issuePage().locator('[data-drop-zone="Add images into description"]')
+const zoneLabel = () => issuePage().getByText('Add images into description')
+
+test('lights up the description while a file is dragged over the page, and clears on leave and Esc', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  await expect(zoneLabel()).toHaveCount(0)
+
+  await dragFile(window.locator('body'), 'dragenter')
+  await expect(zoneLabel()).toBeVisible()
+  await dragFile(window.locator('body'), 'dragleave')
+  await expect(zoneLabel()).toHaveCount(0)
+
+  await dragFile(window.locator('body'), 'dragenter')
+  await expect(zoneLabel()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(zoneLabel()).toHaveCount(0)
+  // Esc ended the drag and did not also leave the page.
+  await expect(heading('Migrate the dashboards')).toBeVisible()
+})
+
+test('drops an image onto the read-mode description, which opens the editor with the upload', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  await dragFile(window.locator('body'), 'dragenter')
+  await expect(zoneLabel()).toBeVisible()
+  await dragFile(zone(), 'drop')
+
+  await expect(zoneLabel()).toHaveCount(0)
+  await expect.poll(async () => (await counts(app)).uploads.length).toBe(1)
+  await expect(editor().getByRole('status')).toContainText('Uploading shot.png')
+  await releaseUpload(app)
+  await expect(editor().locator('img')).toBeVisible()
+  await expect(save()).toBeEnabled()
+  await save().click()
+  await expect.poll(edits).toBe(1)
+  const types = ((await lastBody())?.content ?? []).map((node) => node.type)
+  expect(types).toContain('mediaSingle')
+})
+
+test('refuses a file that is not an image dropped on the read-mode description', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  await dragFile(zone(), 'drop', { name: 'notes.txt', type: 'text/plain', data: btoa('hello') })
+
+  await expect(window.getByText('notes.txt was not added')).toBeVisible()
+  await expect(editor()).toHaveCount(0)
+  expect((await counts(app)).uploads).toHaveLength(0)
+  expect(await edits()).toBe(0)
+})
+
+test('falls back to the Tree when the issue on the page no longer exists', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  await dropIssue(app, 'PSAPAC-4')
+  // The next window focus reads the issue again.
+  await app.evaluate(({ BrowserWindow }) => {
+    const [first] = BrowserWindow.getAllWindows()
+    first?.emit('blur')
+    first?.emit('focus')
+  })
+  await expect(issuePage()).toHaveCount(0)
+  await expect(window.getByText('PSAPAC-4 no longer exists')).toBeVisible()
+  await expect(tree()).toBeVisible()
 })

@@ -43,6 +43,8 @@ export interface AdfEditorHandle {
   focus(at: number | 'end'): void
   /** Replaces the content with `doc` and forgets the edit history. */
   reset(doc: AdfDoc | null): void
+  /** Starts uploading `files` and puts their placeholders at the end of the document, even while reading. */
+  addImages(files: File[]): void
   /** The document as ADF, or `null` when it holds no text. Throws `validation_failed` for an image still uploading. */
   adf(): AdfDoc | null
 }
@@ -302,6 +304,11 @@ export function AdfEditor(props: AdfEditorProps) {
   }
 
   useImperativeHandle(props.ref, () => ({
+    addImages: (files) => {
+      // The document refuses edits while read-only, and the host is about to start editing.
+      editor.setEditable(true, false)
+      embed(editor, files, editor.state.doc.content.size)
+    },
     focus: (at) => {
       editor.commands.focus(at)
     },

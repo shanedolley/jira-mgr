@@ -10,6 +10,13 @@ import { applyTheme } from './theme'
 import './styles.css'
 
 applyTheme()
+// A file dropped anywhere in the window must not navigate it to the file. Pages that take drops
+// say so with a drop zone.
+for (const type of ['dragover', 'drop']) {
+  window.addEventListener(type, (event) => {
+    if ((event as DragEvent).dataTransfer?.types.includes('Files') === true) event.preventDefault()
+  })
+}
 bridgeWindowFocus((listener) => window.jm.onWindowFocus(listener))
 window.jm.onIssuesProgress((progress) => {
   loads.report(progress)

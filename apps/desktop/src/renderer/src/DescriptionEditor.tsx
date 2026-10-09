@@ -2,7 +2,10 @@ import { adfToMarkdown, type AdfDoc, type EditorDoc } from '@jira-mgr/core/adf'
 import { useIsMutating } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
+import { IMAGE_TYPES } from '../../shared/ipc'
 import { AdfEditor, type AdfEditorHandle } from './AdfEditor'
+import type { Notice } from './create'
+import { DropZone } from './DropZone'
 import { DiscardDialog } from './DiscardDialog'
 import { dropDraft, getDraft, putDraft } from './drafts'
 import { conflictOf, useSetDescription, type DescriptionConflict } from './queries'
@@ -13,6 +16,8 @@ interface DescriptionEditorProps {
   value: AdfDoc | null
   /** The edit ended, so the editor's controls are gone: the caller puts focus somewhere that still works. */
   onLeave: () => void
+  /** Reports something to the user in the corner of the window. */
+  onNotice: (notice: Notice) => void
 }
 
 /** `read` shows the description, `edit` changes it, `saving` waits on Jira with the draft still in the editor. */
@@ -25,7 +30,7 @@ const cannotEdit = 'This description cannot be edited here. It is unchanged in J
  * conflict and draft handling around it. A save shows at once and rolls back if Jira refuses; the
  * text being edited is kept as a draft for the session until it is saved or discarded.
  */
-export function DescriptionEditor({ issueKey, value, onLeave }: DescriptionEditorProps) {
+export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: DescriptionEditorProps) {
   // A draft kept when the page was left comes back as an edit in progress.
   const [restoredDraft] = useState(() => getDraft(issueKey))
   const [phase, setPhase] = useState<Phase>(restoredDraft === undefined ? 'read' : 'edit')
@@ -145,8 +150,32 @@ export function DescriptionEditor({ issueKey, value, onLeave }: DescriptionEdito
 
   const empty = value === null && phase === 'read'
 
+  /** Files dropped on the section: images start an edit and embed, anything else is refused. */
+  function takeFiles(files: File[]) {
+    const images = files.filter((file) => (IMAGE_TYPES as readonly string[]).includes(file.type))
+    const others = files.filter((file) => !images.includes(file))
+    if (others.length > 0) {
+      onNotice({
+        title: `${others.map((file) => file.name).join(', ')} was not added`,
+        notes: ['Only images go into the description. Other files cannot be attached here yet.'],
+        warned: false,
+      })
+    }
+    if (images.length === 0) return
+    if (unsupported || phase === 'saving' || pending) {
+      onNotice({
+        title: 'The description cannot take images now',
+        notes: [unsupported ? cannotEdit : 'It is still saving. Drop the image again in a moment.'],
+        warned: false,
+      })
+      return
+    }
+    if (phase === 'read') startEdit('end')
+    editor.current?.addImages(images)
+  }
+
   return (
-    <div className="space-y-2">
+    <DropZone label="Add images into description" onFiles={takeFiles} className="space-y-2">
       {unsupported && (
         <>
           <p className="text-muted">{cannotEdit}</p>
@@ -237,7 +266,7 @@ export function DescriptionEditor({ issueKey, value, onLeave }: DescriptionEdito
           onDiscard={discard}
         />
       )}
-    </div>
+    </DropZone>
   )
 }
 
