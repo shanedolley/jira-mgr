@@ -233,6 +233,43 @@ describe('issueMutation', () => {
     expect(read).toHaveBeenLastCalledWith('PSAPAC-2')
   })
 
+  it('sends an edit of an issue only once Jira has answered the edit before it, even a refusal', async () => {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
+    const gates = [deferred<null>(), deferred<null>()]
+    let answered = 0
+    const sent: { labels: string[] | undefined; answered: number }[] = []
+    const send = ({ patch }: Args) => {
+      sent.push({ labels: patch.labels, answered })
+      return gates[sent.length - 1]?.promise ?? Promise.resolve(null)
+    }
+    const { read } = reader({ 'PSAPAC-1': detail(issue('PSAPAC-1', 'One', { labels: ['b'] })) })
+    const first = new MutationObserver(client, options(client, send, read))
+    const second = new MutationObserver(client, options(client, send, read))
+    const labels = () => client.getQueryData<Issue[]>(unresolvedKey)?.[0]?.labels
+
+    const firstDone = first.mutate({ key: 'PSAPAC-1', patch: { labels: ['a'] } })
+    const secondDone = second.mutate({ key: 'PSAPAC-1', patch: { labels: ['b'] } })
+    await expect.poll(labels).toEqual(['b'])
+    await expect.poll(() => sent.length).toBe(1)
+
+    // The refusal leaves the later edit showing, and only then does that edit go out.
+    answered = 1
+    gates[0]?.reject(new JiraMgrError('validation_failed', 'Jira refused the labels.'))
+    await expect(firstDone).rejects.toBeInstanceOf(JiraMgrError)
+    expect(labels()).toEqual(['b'])
+    await expect.poll(() => sent.length).toBe(2)
+    expect(read).not.toHaveBeenCalled()
+
+    gates[1]?.resolve(null)
+    await secondDone
+    expect(sent).toEqual([
+      { labels: ['a'], answered: 0 },
+      { labels: ['b'], answered: 1 },
+    ])
+    expect(read).toHaveBeenCalledOnce()
+  })
+
   it('reads once when two edits of one issue settle in the same tick', async () => {
     const client = new QueryClient()
     client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
