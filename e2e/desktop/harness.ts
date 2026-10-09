@@ -58,7 +58,11 @@ export async function launch(
     args: process.env.CI ? ['--no-sandbox', entry] : [entry],
     env: { ...process.env, ...env, JM_STATE_DIR: stateDir },
   })
-  return { app, window: await app.firstWindow() }
+  const window = await app.firstWindow()
+  // The first window arrives before its page has loaded, and a read of computed style before the
+  // stylesheet applies sees an unstyled page.
+  await window.waitForLoadState()
+  return { app, window }
 }
 
 export const counts = (app: ElectronApplication) =>
