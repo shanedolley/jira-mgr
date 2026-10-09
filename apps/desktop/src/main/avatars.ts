@@ -31,6 +31,13 @@ const AVATAR_HOSTS = [
 
 const refuse = (message: string) => new JiraMgrError('not_found', message)
 
+/** A URL main will not fetch. Nothing was asked of a host, so the answer is not cached. */
+class Refused extends JiraMgrError {}
+const refused = (message: string) => new Refused('not_found', message)
+
+/** The most URLs one session remembers. The oldest goes first. */
+const CACHE_LIMIT = 200
+
 /** Reads at most `limit` bytes of the body, cancelling the stream past it. */
 async function readCapped(response: Response, limit: number): Promise<Uint8Array> {
   const declared = Number(response.headers.get('content-length') ?? '0')
@@ -71,20 +78,20 @@ export function createAvatarFetcher(deps: {
   const cache = new Map<string, Promise<AvatarImage>>()
 
   async function load(url: string): Promise<AvatarImage> {
-    if (!URL.canParse(url)) throw refuse('Not an image URL.')
+    if (!URL.canParse(url)) throw refused('Not an image URL.')
     const target = new URL(url)
     if (target.protocol !== 'https:' || target.username !== '' || target.password !== '') {
-      throw refuse('Only plain https image URLs load.')
-    }
-    const { siteUrl, email, token } = await deps.credentials()
-    const isSite = target.host === new URL(siteUrl).host
-    // The renderer picks the URL, so main fetches only hosts Jira serves avatars from. Anything
-    // else, loopback and private addresses included, is refused before a request leaves.
-    if (!isSite && !AVATAR_HOSTS.some((host) => host(target))) {
-      throw refuse('That host does not serve profile images.')
+      throw refused('Only plain https image URLs load.')
     }
     const headers: Record<string, string> = { Accept: 'image/*' }
-    if (isSite) {
+    // The renderer picks the URL, so main fetches only hosts Jira serves avatars from. A CDN host
+    // needs no credentials, so they are read only for a host that could be the site. Anything
+    // else, loopback and private addresses included, is refused before a request leaves.
+    if (!AVATAR_HOSTS.some((host) => host(target))) {
+      const { siteUrl, email, token } = await deps.credentials()
+      if (target.host !== new URL(siteUrl).host) {
+        throw refused('That host does not serve profile images.')
+      }
       headers.Authorization = `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`
     }
     let bytes: Uint8Array
@@ -111,8 +118,13 @@ export function createAvatarFetcher(deps: {
     get(url) {
       let hit = cache.get(url)
       if (hit === undefined) {
-        hit = load(url)
-        cache.set(url, hit)
+        const loading = load(url)
+        hit = loading
+        cache.set(url, loading)
+        loading.catch((error: unknown) => {
+          if (error instanceof Refused && cache.get(url) === loading) cache.delete(url)
+        })
+        if (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value as string)
       }
       return hit
     },

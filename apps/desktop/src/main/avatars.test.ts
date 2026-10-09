@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { AVATAR_LIMIT_BYTES, createAvatarFetcher, imageType } from './avatars'
 
@@ -20,6 +20,10 @@ function setup(respond: (url: URL, init: RequestInit) => Response) {
   })
   return { fetcher, calls }
 }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 const CDN = 'https://avatars.example.atl-paas.net/a/48'
 
@@ -81,6 +85,8 @@ describe('createAvatarFetcher', () => {
     'https://192.168.1.10/a.png',
     'https://169.254.169.254/latest/meta-data',
     'https://evil.com/a.png',
+    'https://evilatl-paas.net/a.png',
+    'https://secure.gravatar.com.evil.com/a.png',
     'https://evil.com/.atl-paas.net',
     'https://atl-paas.net.evil.com/a.png',
     'https://avatars.example.atl-paas.net:8443/a.png',
@@ -126,7 +132,35 @@ describe('createAvatarFetcher', () => {
     hang.abort()
     await expect(result).rejects.toMatchObject({ code: 'not_found' })
     expect(timeout).toHaveBeenCalledWith(10_000)
-    timeout.mockRestore()
+  })
+
+  it('reads no credentials for a CDN host, and never caches a refused URL', async () => {
+    const read = vi.fn(credentials)
+    const calls: string[] = []
+    const fetcher = createAvatarFetcher({
+      credentials: read,
+      fetch: ((url: URL) => {
+        calls.push(String(url))
+        return Promise.resolve(image())
+      }) as unknown as typeof fetch,
+    })
+    await fetcher.get(CDN)
+    expect(read).not.toHaveBeenCalled()
+    await expect(fetcher.get('https://evil.example.test/a')).rejects.toThrow('does not serve')
+    await expect(fetcher.get('https://evil.example.test/a')).rejects.toThrow('does not serve')
+    expect(read).toHaveBeenCalledTimes(2)
+    expect(calls).toEqual([CDN])
+  })
+
+  it('remembers the 200 most recent URLs and drops the oldest', async () => {
+    const { fetcher, calls } = setup(() => image())
+    const url = (n: number) => `https://avatars.example.atl-paas.net/${String(n)}/48`
+    for (let n = 0; n < 201; n++) await fetcher.get(url(n))
+    expect(calls).toHaveLength(201)
+    await fetcher.get(url(200))
+    expect(calls).toHaveLength(201)
+    await fetcher.get(url(0))
+    expect(calls).toHaveLength(202)
   })
 
   it('names a missing body, not a large one', async () => {
