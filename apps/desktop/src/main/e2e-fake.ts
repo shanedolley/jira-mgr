@@ -348,6 +348,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failDone: () => void
   /** Makes the next read of one issue answer 500. */
   failRead: () => void
+  /** Makes the next issue edit answer 400, whatever it holds, so a test can watch an undo refused. */
+  refuseNextEdit: () => void
   /** Removes an issue as if someone else deleted it: no hold and no count, so the next refetch loses it. */
   dropIssue: (key: string) => void
   /** Moves an issue to another status as if someone else did: no hold and no count, so the next refetch sees it. */
@@ -397,6 +399,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   let doneHeld = false
   let failNextDone = false
   let failNextRead = false
+  let refuseNext = false
   // Each applied write moves `updated` on, so a read always shows the later copy.
   let clock = 0
   let created = 0
@@ -437,6 +440,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
 
   function applyEdit(target: RawIssue, body: EditBody): Response | null {
     const { fields = {}, update = {} } = body
+    if (refuseNext) {
+      refuseNext = false
+      return refusal('summary', 'The fake refuses this edit.')
+    }
     if (typeof fields.summary === 'string' && fields.summary === REJECTED_SUMMARY) {
       return refusal('summary', 'The fake refuses this summary.')
     }
@@ -756,6 +763,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failRead: () => {
       failNextRead = true
+    },
+    refuseNextEdit: () => {
+      refuseNext = true
     },
     dropIssue: (key) => {
       const target = find(key)

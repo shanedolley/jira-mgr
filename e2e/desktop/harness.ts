@@ -28,6 +28,7 @@ interface FakeJira {
   failDone: () => void
   failRead: () => void
   dropIssue: (key: string) => void
+  refuseNextEdit: () => void
   moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
 }
 
@@ -73,6 +74,12 @@ export const failDone = (app: ElectronApplication) =>
 export const failRead = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failRead()
+  })
+
+/** Makes the fake Jira answer 400 to the next issue edit. */
+export const refuseNextEdit = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.refuseNextEdit()
   })
 
 /** Removes an issue from the fake Jira, as if someone else deleted it. The next refetch loses it. */

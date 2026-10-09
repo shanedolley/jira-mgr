@@ -111,7 +111,7 @@ export const describeUndo = (entry: UndoEntry) =>
 /**
  * The edit that writes the old values back, or `null` when core cannot: Priority, Customer,
  * Engagement, the parent and the original estimate have no "clear" in `issues:edit`, so an edit
- * that set one from nothing cannot be undone. `before` holds every field the edit changed.
+ * that set one from nothing cannot be undone, and neither can an edit with nothing left to put back. `before` holds every field the edit changed.
  */
 export function invertChanges(changes: IssueChanges, before: Fields): IssueChanges | null {
   const back: IssueChanges = {}
@@ -165,7 +165,8 @@ export function invertChanges(changes: IssueChanges, before: Fields): IssueChang
     if (name === undefined || !(SWAPPABLE_TYPES as readonly string[]).includes(name)) return null
     back.type = name as SwappableType
   }
-  return back
+  // An edit that put back nothing, such as a label that was already there, has nothing to send.
+  return Object.keys(back).length === 0 ? null : back
 }
 
 interface Done {

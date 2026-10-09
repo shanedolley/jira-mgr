@@ -45,8 +45,9 @@ describe('invertChanges', () => {
     })
   })
 
-  it('leaves alone a label that was already there', () => {
-    expect(invertChanges({ addLabels: ['a'] }, { labels: ['a'] })).toEqual({})
+  it('has nothing to send for a label that was already there', () => {
+    expect(invertChanges({ addLabels: ['a'] }, { labels: ['a'] })).toBeNull()
+    expect(invertChanges({ removeLabels: ['z'] }, { labels: ['a'] })).toBeNull()
   })
 
   it('puts the estimate, time remaining and type back', () => {

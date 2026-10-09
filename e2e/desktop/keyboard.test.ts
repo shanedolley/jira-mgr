@@ -4,7 +4,15 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, moveIssue, releaseDone, releaseEdit } from './harness.js'
+import {
+  counts,
+  launch,
+  logIn,
+  moveIssue,
+  refuseNextEdit,
+  releaseDone,
+  releaseEdit,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -445,4 +453,32 @@ test('Cmd+Z refuses to overwrite a change made elsewhere since', async () => {
   // Nothing was sent, and the issue keeps what Jira holds.
   expect(await writes()).toBe(before + 1)
   await expect(peekPicker('Status')).toHaveAccessibleName('Status: To Do')
+})
+
+test('a refused undo shows the value as it was, says why, and is not retried', async () => {
+  await open()
+  await select(/PSAPAC-4,/)
+  const before = await writes()
+
+  await window.keyboard.press('p')
+  await expect(window.getByRole('listbox', { name: 'Priority' })).toBeFocused()
+  await expect(option('Low')).toBeVisible()
+  await window.keyboard.press('ArrowDown')
+  await window.keyboard.press('Enter')
+  await settle(before + 1)
+  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Low')
+
+  await refuseNextEdit(app)
+  await window.keyboard.press('Meta+z')
+  // The old value shows at once, then goes back to where it was when Jira refuses.
+  await expect.poll(writes).toBe(before + 2)
+  await releaseEdit(app)
+  await expect(window.getByRole('alert')).toContainText('Could not undo the priority of PSAPAC-4')
+  await expect(window.getByRole('alert')).toContainText('The fake refuses this edit.')
+  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Low')
+
+  // The refused entry is gone, so another Cmd+Z has nothing to retry and sends nothing.
+  await window.keyboard.press('Meta+z')
+  await expect(notice('Nothing to undo')).toBeVisible()
+  expect(await writes()).toBe(before + 2)
 })
