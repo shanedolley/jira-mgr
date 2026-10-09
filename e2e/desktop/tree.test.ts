@@ -424,3 +424,116 @@ test('reports each page of a load to the window that asked', async () => {
   )
   expect(progress.at(-1)?.loaded).toBeGreaterThan(2000)
 })
+
+test('shows No issues match for a filter that matches nothing, with empty Customers shown', async () => {
+  await open()
+  await toggle('Hide empty Customers').click()
+  await expect(item('Zeta Corp, 0 issues', true)).toBeVisible()
+
+  await window.getByLabel('Filter by key or summary').fill('zzzz-no-such-issue')
+
+  // An empty Customer header must not stand in for the empty state.
+  await expect(window.getByText('No issues match')).toBeVisible()
+  await expect(window.getByText('Hide done is on.')).toBeVisible()
+  await window.getByRole('button', { name: 'Clear filters' }).click()
+  await expect(window.getByText('No issues match')).toHaveCount(0)
+  await expect(item(/PSAPAC-10,/)).toBeVisible()
+})
+
+test('shows a focus ring when Enter moves focus into the Peek', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await expect(peek()).toBeVisible()
+
+  await window.keyboard.press('Enter')
+
+  await expect(peek()).toBeFocused()
+  expect(
+    await window.evaluate<string>('getComputedStyle(document.activeElement).outlineStyle'),
+  ).toBe('solid')
+})
+
+test('refetches Done issues only when they are stale, not on every focus', async () => {
+  await openWithDone()
+  const focusCycle = () =>
+    app.evaluate(({ BrowserWindow }) => {
+      const [first] = BrowserWindow.getAllWindows()
+      first?.emit('blur')
+      first?.emit('focus')
+    })
+  const before = await counts(app)
+
+  // Two cycles, so a Done refetch started by the first has had time to be served.
+  await focusCycle()
+  await expect
+    .poll(async () => (await counts(app)).searches.unresolved)
+    .toBeGreaterThan(before.searches.unresolved)
+  const between = (await counts(app)).searches.unresolved
+  await focusCycle()
+  await expect.poll(async () => (await counts(app)).searches.unresolved).toBeGreaterThan(between)
+
+  expect((await counts(app)).searches.done).toBe(before.searches.done)
+})
+
+test('marks aria-selected on the peeked issue only, whichever row is active', async () => {
+  await open()
+  const selected = tree().locator('[aria-selected]')
+  await expect(selected).toHaveCount(0)
+
+  await window.keyboard.press('j')
+  await window.keyboard.press(' ')
+  await expect(peek()).toBeVisible()
+  await expect(selected).toHaveCount(1)
+  await expect(item(/PSAPAC-10,/)).toHaveAttribute('aria-selected', 'true')
+
+  // A header is active now; the Peek keeps its issue, and so does the mark.
+  await window.keyboard.press('k')
+  await expect(tree()).toHaveAttribute('aria-activedescendant', 'tree-row-c:1')
+  await expect(selected).toHaveCount(1)
+  await expect(item(/PSAPAC-10,/)).toHaveAttribute('aria-selected', 'true')
+
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+  await expect(selected).toHaveCount(0)
+})
+
+test('asks for Done issues only after the unresolved phase has loaded', async () => {
+  await app.close()
+  ;({ app, window } = await launch(stateDir, { JM_E2E_BULK: '2000' }))
+  await logIn(window)
+  await expect(item(/PSAPAC-900,/)).toBeVisible()
+  // 21 unresolved pages take a while: a Done request sent at mount would have arrived early.
+  await expect(window.getByText('Loading Done issues:')).toBeVisible()
+
+  expect((await counts(app)).doneEarly).toBe(0)
+})
+
+test('prevents the default of the keys it handles and of no other', async () => {
+  await open()
+  // Window-level, so it sees each event after the Tree's own handler has run. Windows open
+  // without focus under test, so a browser default such as scrolling cannot be observed itself.
+  await window.evaluate(
+    'window.addEventListener("keydown", (e) => { (window.__keys ??= []).push([e.key, e.defaultPrevented]) })',
+  )
+
+  for (const key of ['j', ' ', 'PageDown', 'ArrowRight', 'Home', 'x', 'Meta+k']) {
+    await window.keyboard.press(key)
+  }
+
+  const seen = await window.evaluate<[string, boolean][]>('window.__keys')
+  // Handled keys, Space and the page keys included, never reach the container's own scrolling.
+  // The unhandled `x` and Cmd+K stay available to D7 and the system.
+  expect(
+    seen.filter(([key]) => ['j', ' ', 'PageDown', 'ArrowRight', 'Home'].includes(key)),
+  ).toEqual([
+    ['j', true],
+    [' ', true],
+    ['PageDown', true],
+    ['ArrowRight', true],
+    ['Home', true],
+  ])
+  expect(seen.filter(([key]) => key === 'x' || key === 'k')).toEqual([
+    ['x', false],
+    ['k', false],
+  ])
+})

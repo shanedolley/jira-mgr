@@ -39,7 +39,14 @@ export interface CustomerGroup {
 }
 
 /** The statuses in display order (Q21). Any other status sorts after them. */
-export const STATUS_ORDER = ['Opportunity', 'To Do', 'In Progress', 'Review', 'Hold', 'Done']
+export const STATUS_ORDER: readonly string[] = [
+  'Opportunity',
+  'To Do',
+  'In Progress',
+  'Review',
+  'Hold',
+  'Done',
+]
 const INTERNAL_CUSTOMERS = ['Collibra (Internal team)', 'Collibra (Internal template)']
 
 const isEpic = (i: Issue) => i.issueType.hierarchyLevel >= 1

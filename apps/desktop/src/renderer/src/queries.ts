@@ -1,5 +1,6 @@
-import { JiraMgrError, type Issue } from '@jira-mgr/core'
+import type { Issue, JiraMgrError } from '@jira-mgr/core'
 import {
+  CancelledError,
   queryOptions,
   useMutation,
   useQuery,
@@ -70,10 +71,11 @@ export const loads = createLoadTracker()
 
 type LoadPhase = (phase: IssuePhase) => Promise<Issue[]>
 
-/** One phase from main. A `null` answer means the load was aborted, which nobody should read. */
+/** One phase from main. A `null` answer means the load was aborted. */
 const loadFromMain: LoadPhase = async (phase) => {
   const issues = await call('issues:list', { phase, loadId: loads.begin(phase) })
-  if (issues === null) throw new JiraMgrError('internal', 'The issue load was cancelled.')
+  // Nobody reads an aborted load, so it ends the query quietly instead of failing it.
+  if (issues === null) throw new CancelledError({ silent: true })
   return issues
 }
 

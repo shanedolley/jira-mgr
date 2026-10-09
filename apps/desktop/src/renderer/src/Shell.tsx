@@ -64,7 +64,7 @@ function NoMatch({
 }) {
   const on = activeToggleNames(toggles)
   return (
-    <div className="absolute inset-0 grid place-items-center p-6 text-center">
+    <div className="absolute inset-0 grid place-items-center bg-canvas p-6 text-center">
       <div className="space-y-2">
         <p className="font-medium">No issues match</p>
         {on.length > 0 && (
@@ -193,6 +193,8 @@ export function Shell({ session }: { session: Session }) {
     [issues, peekedKey],
   )
   const peekedNode = peekedKey === null ? undefined : nodes.get(peekedKey)
+  // A pinned edit whose issue is gone has no editor left, so it must not hold the Peek.
+  if (editingKey !== null && peekedIssue === undefined) setEditingKey(null)
 
   const unresolvedCount = useLoadedCount('unresolved')
   const doneCount = useLoadedCount('done')
@@ -252,14 +254,16 @@ export function Shell({ session }: { session: Session }) {
         onChange={apply}
         treeRef={treeRef}
         empty={
-          <NoMatch
-            toggles={toggles}
-            filtered={hasFilters(filters)}
-            onClear={() => {
-              setFilters({})
-              focusTree()
-            }}
-          />
+          shown > 0 ? null : (
+            <NoMatch
+              toggles={toggles}
+              filtered={hasFilters(filters)}
+              onClear={() => {
+                setFilters({})
+                focusTree()
+              }}
+            />
+          )
         }
       />
     )

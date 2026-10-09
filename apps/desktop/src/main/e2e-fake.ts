@@ -13,6 +13,8 @@ export const REJECTED_SUMMARY = 'reject me'
 export interface FakeJiraCounts {
   /** Search pages served, per phase. */
   searches: { unresolved: number; done: number }
+  /** Done pages requested before the unresolved phase had served its last page. */
+  doneEarly: number
   /** Edits received. */
   edits: number
   /** Edits applied, which happens when a test calls `releaseEdit`. */
@@ -267,7 +269,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         ]),
     ...bulk,
   ]
-  const counts: FakeJiraCounts = { searches: { unresolved: 0, done: 0 }, edits: 0, applied: 0 }
+  const counts: FakeJiraCounts = {
+    searches: { unresolved: 0, done: 0 },
+    doneEarly: 0,
+    edits: 0,
+    applied: 0,
+  }
+  let unresolvedComplete = false
   // Every edit waits here, so a test sees the optimistic state with Jira's answer still pending.
   const held: (() => void)[] = []
   // The first Done page waits here, so a test sees the Tree before Done issues arrive.
@@ -310,6 +318,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       }
       // "!= Done" holds "= Done" as a substring, so test it first.
       const phase = body.jql.includes('statusCategory != Done') ? 'unresolved' : 'done'
+      if (phase === 'done' && !unresolvedComplete) counts.doneEarly++
       if (phase === 'done' && !doneHeld) {
         doneHeld = true
         await firstDone
@@ -324,6 +333,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         .sort((a, b) => keyNumber(b.key) - keyNumber(a.key))
       const start = Number(body.nextPageToken ?? '0')
       const end = start + body.maxResults
+      if (phase === 'unresolved' && end >= matching.length) unresolvedComplete = true
       return json({
         issues: matching.slice(start, end),
         isLast: end >= matching.length,

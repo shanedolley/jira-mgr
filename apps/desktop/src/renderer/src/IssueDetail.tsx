@@ -128,7 +128,7 @@ export function IssueDetail({
       ref={asideRef}
       tabIndex={-1}
       aria-label="Peek"
-      className="min-h-0 overflow-y-auto border-l border-line bg-panel focus-visible:outline-none"
+      className="min-h-0 overflow-y-auto border-l border-line bg-panel"
     >
       <div className="app-drag flex h-10 shrink-0 items-center justify-end px-3">
         <button

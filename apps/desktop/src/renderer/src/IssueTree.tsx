@@ -32,7 +32,7 @@ interface IssueTreeProps {
   /** Called with the next state after a key or a click. */
   onChange: (next: MoveResult) => void
   treeRef: RefObject<HTMLDivElement | null>
-  /** Shown over the empty Tree, which stays mounted so focus is not lost. */
+  /** Shown over a Tree with no issues, which stays mounted so focus is not lost. */
   empty: ReactNode
 }
 
@@ -93,6 +93,8 @@ export function IssueTree({
     if (index === undefined) return
     const wanted = index * ROW_HEIGHT - held.offset
     if (Math.abs(tree.scrollTop - wanted) > 0.5) tree.scrollTop = wanted
+    // The scroll event comes after paint, so the window must not wait for it.
+    setScrollTop(tree.scrollTop)
   }, [indexById, treeRef])
 
   // A keyboard move scrolls the active row into view. Only a new active row does, so a rebuild
@@ -107,6 +109,7 @@ export function IssueTree({
     else if (top + ROW_HEIGHT > tree.scrollTop + tree.clientHeight) {
       tree.scrollTop = top + ROW_HEIGHT - tree.clientHeight
     }
+    setScrollTop(tree.scrollTop)
   }, [state.activeId, activeIndex, treeRef])
 
   const indices = useMemo(
@@ -181,7 +184,7 @@ export function IssueTree({
           })}
         </div>
       </div>
-      {rows.length === 0 && empty}
+      {empty}
     </div>
   )
 }
