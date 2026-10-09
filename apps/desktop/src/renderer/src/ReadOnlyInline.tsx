@@ -17,7 +17,20 @@ export function ReadOnlyInline({ node }: ReactNodeViewProps) {
         shape.kind === 'mention' ? 'rounded bg-selected px-1 text-accent' : 'rounded bg-hover px-1'
       }
     >
-      {safe !== null ? <a href={safe}>{shape.text}</a> : shape.text}
+      {safe !== null ? (
+        <a
+          href={safe}
+          onClick={(event) => {
+            // The editor ignores events inside a node view, so the card opens its own link.
+            event.preventDefault()
+            window.open(safe, '_blank', 'noopener,noreferrer')
+          }}
+        >
+          {shape.text}
+        </a>
+      ) : (
+        shape.text
+      )}
     </NodeViewWrapper>
   )
 }

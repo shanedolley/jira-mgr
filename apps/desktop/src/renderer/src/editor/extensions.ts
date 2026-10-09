@@ -289,6 +289,23 @@ const Clicks = (behaviour: () => Behaviour) =>
       return [
         new Plugin({
           key: new PluginKey('adfClicks'),
+          // A click on a link must never follow it: the editor opens it itself, in the browser. This
+          // listens on the editor element, so it also covers the links inside node views.
+          view: (view) => {
+            const refuse = (event: MouseEvent) => {
+              if (event.target instanceof Element && event.target.closest('a[href]') !== null) {
+                event.preventDefault()
+              }
+            }
+            view.dom.addEventListener('click', refuse)
+            view.dom.addEventListener('auxclick', refuse)
+            return {
+              destroy() {
+                view.dom.removeEventListener('click', refuse)
+                view.dom.removeEventListener('auxclick', refuse)
+              },
+            }
+          },
           props: {
             handleClick: (view, pos, event) => {
               const target = event.target instanceof Element ? event.target : null

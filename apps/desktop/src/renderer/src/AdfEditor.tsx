@@ -7,6 +7,7 @@ import {
 } from '@jira-mgr/core/adf'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
+import { Selection } from '@tiptap/pm/state'
 import {
   EditorContent,
   ReactNodeViewRenderer,
@@ -90,6 +91,14 @@ function snapshotOf(editor: Editor, base: PMNode): Snapshot {
   return { dirty: !editor.state.doc.eq(base), blocked }
 }
 
+/**
+ * The end of the last text, not of the document: a document that ends in an image or a read-only
+ * block would otherwise start editing with that block selected, and the first key would replace it.
+ */
+function endOfText(doc: PMNode): number | null {
+  return Selection.findFrom(doc.resolve(doc.content.size), -1, true)?.from ?? null
+}
+
 const sameSnapshot = (a: Snapshot, b: Snapshot | null) =>
   b !== null && a.dirty === b.dirty && a.blocked === b.blocked
 
@@ -138,6 +147,7 @@ export function AdfEditor(props: AdfEditorProps) {
     [],
   )
   const editorRef = useRef<Editor | null>(null)
+  const caretRef = useRef<number | null>(null)
 
   const editor = useEditor(
     {
@@ -148,6 +158,9 @@ export function AdfEditor(props: AdfEditorProps) {
       shouldRerenderOnTransaction: false,
       onContentError: () => {
         live.current.onUnsupported()
+      },
+      onSelectionUpdate: ({ editor: updated }) => {
+        if (live.current.editing) caretRef.current = updated.state.selection.from
       },
       onUpdate: ({ editor: updated }) => {
         const dirty = !updated.state.doc.eq(baseRef.current)
@@ -162,7 +175,8 @@ export function AdfEditor(props: AdfEditorProps) {
                 'aria-label': live.current.label,
                 class: 'adf-editor adf-editing',
               }
-            : { 'aria-label': live.current.label, class: 'adf-editor' },
+            : // TipTap makes every editor a textbox unless told otherwise, and a read view is not one.
+              { role: 'group', 'aria-label': live.current.label, class: 'adf-editor' },
       },
     },
     [],
@@ -181,8 +195,28 @@ export function AdfEditor(props: AdfEditorProps) {
   // Read and edit mode are one instance, so the read view shows what editing will.
   useEffect(() => {
     editor.setEditable(editing, false)
-    if (editing && props.focusAt !== null && props.focusAt !== undefined) {
-      editor.commands.focus(props.focusAt)
+    if (editing) {
+      const { doc } = editor.state
+      const caret = caretRef.current
+      let target: number | null
+      if (typeof props.focusAt === 'number') target = props.focusAt
+      else if (props.focusAt === 'end' || caret === null) target = endOfText(doc)
+      // No target: the caret goes back to where it was, which is what a failed save wants.
+      else target = Math.min(caret, doc.content.size)
+      if (target === null) editor.commands.focus('end')
+      else {
+        editor.commands.setTextSelection(target)
+        const focus = () => {
+          editor.view.focus()
+          editor.commands.scrollIntoView()
+        }
+        focus()
+        // A page restored with a draft mounts the editor in this same pass, and the shell then
+        // moves focus to the page, so look again on the next frame.
+        requestAnimationFrame(() => {
+          if (!editor.view.hasFocus()) focus()
+        })
+      }
     }
     // Focus only when editing starts, not each time the caret target changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps

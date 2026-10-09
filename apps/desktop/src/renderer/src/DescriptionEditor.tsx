@@ -91,6 +91,7 @@ export function DescriptionEditor({ issueKey, value, onLeave }: DescriptionEdito
         const reason = error instanceof Error ? error.message : String(error)
         setProblem(`Could not save the description, so Jira still holds the old one. ${reason}`)
       }
+      setFocusAt(null)
       setPhase('edit')
       return
     }
