@@ -2,11 +2,13 @@
 
 ## Start Here
 
-Measured 2026-10-09 by reading open issues' blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`) and every page of `gh issue list --state open --limit 200`. Work in order:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` and each open issue's blockers (`gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`). Work in order:
 
-1. **Desktop D4 editor (#31)**, In Progress in worktree `/Users/shanedolley/Development/personal/jira-mgr-d4` on `d4-editor`. Finish the build, have a reviewer pass it, then run the live image-embed check with Shane before the pull request merges. D5 activity (#32) and then D9 timer (#36) wait on it.
-2. **Live check with Shane present:** D6's create and delete in the app (#33, back in HIL Review for it at Shane's request, 2026-10-09), alongside D4's image embed. Then Shane closes #33.
-3. Nothing else is unblocked: D5 (#32) and D9 (#36) wait on D4, and D6 (#33) waits on its live check. Every other issue is closed (2026-10-09). Stop and report.
+1. **Desktop D4 editor (#31)**, In Progress in worktree `/Users/shanedolley/Development/personal/jira-mgr-d4` on `d4-editor`. Its live image-embed check passed on 2026-10-09. Finish the final Low fixes, have a reviewer other than the builder pass it, open the pull request and merge it. Then D5 activity (#32), built to Shane's attachments spec on the issue, then D9 timer (#36).
+2. **Desktop D12 issue type icons (#85)**, In Progress on `d12-type-icons`: finish the review, then open the pull request.
+3. **Desktop D13 profile images (#86)**, In Progress on `d13-avatars`: run the security review (it adds a network path), then open the pull request, then move it to `status:hil-review` through `kothar:project-manager`.
+4. **#84**, the D6 create toast missing automation changes that land after its re-read. After D4 merges, **#83**, D11 click the summary to edit it (it touches `IssuePage`).
+5. **#33** (D6) waits on Shane: its live check passed and he closes it. Stop and report once the rest is done or blocked.
 
 ## Reading Order
 

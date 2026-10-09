@@ -45,12 +45,15 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 | D2 | Issue tree | Virtualised tree list from C7 with collapsible groups, mismatch badges, "N done" chips, toggles, filter bar, `J`/`K` navigation and space-bar peek; Done issues load in the background. Design doc first | D1 |
 | D3 | Issue page | Full page with properties sidebar and every picker: status, assignee (me and recent first), labels, sprint, parent with the Customer prompt (Q16), Customer, Engagement, dates, estimates, priority, type | D2 |
 | D4 | Editor | TipTap with ADF round trip; unknown nodes kept as read-only blocks; image drop embeds inline ([ADR-0005](../adr/0005-tiptap-editor-with-adf-round-trip.md)). Design doc first | D3 |
-| D5 | Activity | Comments, worklogs, links and attachments on the issue page; file drop anywhere attaches | D4 |
+| D5 | Activity | Comments, worklogs, links and attachments on the issue page. An Attachments section at the bottom lists files of any type with download, and a file dropped on its "Attach file to issue" zone attaches (the zone lights up with the description's during a drag) | D4 |
 | D6 | Create and delete | `C` create modal with prefill and "Create more"; delete modal listing subtasks | D3 |
 | D7 | Keyboard | `Cmd+K` palette with issue search; `S`, `A`, `L`, `P`, `E`, `Esc` shortcuts; `Cmd+Z` undo of field edits with toast | D3 |
 | D8 | Saved views | Create, rename and delete views in the sidebar, shared with the CLI | D2 |
 | D9 | Timer | `T` start and stop; elapsed time on row, page and sidebar; stop and switch dialogs; long-timer confirmation; reminder notifications while the app runs | D5 |
 | D10 | Packaging | `pnpm package` builds an unsigned local `.app`; install steps in `docs/how-to/` | D1 |
+| D11 | Click to edit summary | Clicking the summary on the issue page edits it in place with the existing optimistic edit and undo; Enter or blur saves, `Esc` cancels, and the Edit summary button goes. Issue #83; start after D4 merges, since both touch the issue page | D3, D7 |
+| D12 | Issue type icons | A coloured icon for Epic, Story, Bug, Task and Subtask before the key on Tree rows, the Peek, the issue page header, the palette and the parent picker, as inline SVG with an accessible name. Issue #85 | D3 |
+| D13 | Profile images | Jira profile images beside users in the Tree, Peek, page, assignee picker and sidebar, with initials as the fallback. Main fetches the images under strict rules, so it gets a security review. Issue #86 | D3 |
 
 ## Working Rules
 
