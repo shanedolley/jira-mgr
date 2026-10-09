@@ -400,7 +400,7 @@ The drop test builds a `DataTransfer` holding a `File` in the page and dispatche
 
 ## Rollout
 
-D4 ships in one pull request from `d4-editor` with `Refs #31`, after this doc and Shane's answer on the packages, built in this order:
+D4 shipped in one pull request (#90) with `Refs #31`, after this doc and Shane's answer on the packages, built in this order:
 
 1. Core: `adf-editor.ts` with its tests and the fixture export.
 2. Core: the `http` options, `attachmentMediaId`, `attachmentContent`, the content type on uploads, the recorded redirect fixture, their tests, and the live test, run once with `pnpm test:live` before step 4 relies on the redirect.
