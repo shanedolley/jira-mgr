@@ -6,11 +6,13 @@ import type {
   Channel,
   IpcError,
   IpcResult,
+  ListIssuesArgs,
   LoginArgs,
   ResultOf,
   SetSummaryArgs,
+  Toggles,
 } from '../shared/ipc'
-import type { Backend } from './backend'
+import type { Backend, ProgressSender } from './backend'
 
 const MAX_TOKEN_BYTES = 1024
 const MAX_EMAIL_BYTES = 254
@@ -36,15 +38,32 @@ const setSummaryArgs: z.ZodType<SetSummaryArgs> = z.strictObject({
   summary: z.string().trim().min(1).max(MAX_SUMMARY),
 })
 
+const listIssuesArgs: z.ZodType<ListIssuesArgs> = z.strictObject({
+  phase: z.enum(['unresolved', 'done']),
+  loadId: z.number().int().nonnegative(),
+})
+
+const togglesArgs: z.ZodType<Toggles> = z.strictObject({
+  hideDone: z.boolean(),
+  assigneeMe: z.boolean(),
+  hideEmptyCustomers: z.boolean(),
+})
+
 export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'session:get': z.undefined(),
   'session:login': loginArgs,
   'session:logout': z.undefined(),
-  'issues:list': z.undefined(),
+  'issues:list': listIssuesArgs,
   'issues:setSummary': setSummaryArgs,
+  'user:me': z.undefined(),
+  'fields:customers': z.undefined(),
+  'settings:getToggles': z.undefined(),
+  'settings:setToggles': togglesArgs,
 }
 
-export type Handlers = { [C in Channel]: (raw: unknown) => Promise<IpcResult<ResultOf<C>>> }
+export type Handlers = {
+  [C in Channel]: (raw: unknown, progress: ProgressSender) => Promise<IpcResult<ResultOf<C>>>
+}
 
 const INTERNAL_MESSAGE =
   'The app hit an unexpected error. Try again, and restart it if it persists.'
@@ -82,9 +101,9 @@ export function createHandlers(
 ): Handlers {
   function handle<C extends Channel>(
     channel: C,
-    run: (args: ArgsOf<C>) => Promise<ResultOf<C>>,
-  ): (raw: unknown) => Promise<IpcResult<ResultOf<C>>> {
-    return async (raw) => {
+    run: (args: ArgsOf<C>, progress: ProgressSender) => Promise<ResultOf<C>>,
+  ): (raw: unknown, progress: ProgressSender) => Promise<IpcResult<ResultOf<C>>> {
+    return async (raw, progress) => {
       const parsed = argSchemas[channel].safeParse(raw)
       if (!parsed.success) {
         // Issue messages name the field and the rule, never the value, so a token cannot leak.
@@ -100,7 +119,7 @@ export function createHandlers(
         }
       }
       try {
-        return { ok: true, data: await run(parsed.data) }
+        return { ok: true, data: await run(parsed.data, progress) }
       } catch (error) {
         const mapped = toIpcError(error)
         // Names the channel and code only: messages may carry issue text.
@@ -118,10 +137,14 @@ export function createHandlers(
     'session:get': handle('session:get', () => backend.getSession()),
     'session:login': handle('session:login', (args) => backend.login(args)),
     'session:logout': handle('session:logout', () => backend.logout()),
-    'issues:list': handle('issues:list', () => backend.listIssues()),
+    'issues:list': handle('issues:list', (args, progress) => backend.listIssues(args, progress)),
     'issues:setSummary': handle('issues:setSummary', async (args) => {
       await backend.setSummary(args)
       return null
     }),
+    'user:me': handle('user:me', () => backend.getMe()),
+    'fields:customers': handle('fields:customers', () => backend.listCustomers()),
+    'settings:getToggles': handle('settings:getToggles', () => backend.getToggles()),
+    'settings:setToggles': handle('settings:setToggles', (args) => backend.setToggles(args)),
   }
 }

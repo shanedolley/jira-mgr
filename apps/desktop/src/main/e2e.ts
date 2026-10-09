@@ -15,7 +15,9 @@ if (stateDir === undefined || stateDir === '') {
 // Electron's own storage (the theme choice) stays out of the real app's data too.
 app.setPath('userData', join(stateDir, 'electron'))
 
-const jira = createFakeJira()
+// JM_E2E_BULK adds that many open Stories, for the virtual window test.
+const bulk = Number(process.env.JM_E2E_BULK ?? '0')
+const jira = createFakeJira({ bulk: Number.isInteger(bulk) && bulk > 0 ? bulk : 0 })
 globalThis.fetch = jira.fetch
 ;(globalThis as { __fakeJira?: unknown }).__fakeJira = jira
 

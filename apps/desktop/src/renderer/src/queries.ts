@@ -1,15 +1,17 @@
-import type { JiraMgrError } from '@jira-mgr/core'
+import { JiraMgrError, type Issue } from '@jira-mgr/core'
 import {
+  queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
   type MutationOptions,
   type QueryClient,
 } from '@tanstack/react-query'
+import { useSyncExternalStore } from 'react'
 
-import type { LoginArgs, SessionState } from '../../shared/ipc'
+import type { IssuePhase, IssuesProgress, LoginArgs, SessionState, Toggles } from '../../shared/ipc'
 import { call } from './ipc'
-import { issuesKey, summaryMutation } from './optimistic'
+import { doneKey, issuesKey, summaryMutation, unresolvedKey } from './optimistic'
 
 export const sessionKey = ['session'] as const
 
@@ -23,8 +25,172 @@ export function useSession() {
   })
 }
 
-export function useIssues() {
-  return useQuery({ queryKey: issuesKey, queryFn: () => call('issues:list') })
+export const meKey = ['me'] as const
+export const customersKey = ['customers'] as const
+export const togglesKey = ['toggles'] as const
+
+/** Done issues change only when something resolves or reopens, which the unresolved refetch sees. */
+const DONE_STALE_MS = 5 * 60_000
+
+/**
+ * Numbers each load the renderer starts and keeps the running count of the latest load per phase.
+ * Progress for any other load id is ignored, so a superseded load cannot set the count back.
+ */
+export function createLoadTracker() {
+  let lastId = 0
+  const current: Partial<Record<IssuePhase, { loadId: number; loaded: number }>> = {}
+  const listeners = new Set<() => void>()
+  const emit = () => {
+    for (const listener of listeners) listener()
+  }
+  return {
+    /** Starts a load of `phase` and returns its id. The count starts again from 0. */
+    begin(phase: IssuePhase): number {
+      lastId += 1
+      current[phase] = { loadId: lastId, loaded: 0 }
+      emit()
+      return lastId
+    },
+    report({ phase, loadId, loaded }: IssuesProgress): void {
+      if (current[phase]?.loadId !== loadId) return
+      current[phase] = { loadId, loaded }
+      emit()
+    },
+    loaded: (phase: IssuePhase): number => current[phase]?.loaded ?? 0,
+    subscribe: (listener: () => void): (() => void) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+  }
+}
+
+export const loads = createLoadTracker()
+
+type LoadPhase = (phase: IssuePhase) => Promise<Issue[]>
+
+/** One phase from main. A `null` answer means the load was aborted, which nobody should read. */
+const loadFromMain: LoadPhase = async (phase) => {
+  const issues = await call('issues:list', { phase, loadId: loads.begin(phase) })
+  if (issues === null) throw new JiraMgrError('internal', 'The issue load was cancelled.')
+  return issues
+}
+
+/**
+ * An issue that left the unresolved set was resolved, deleted or moved. It stays in the Tree with
+ * its last status until Done reloads, instead of blinking out for the length of the reload.
+ * Done is left alone while it holds no data: its first load reads Jira afresh.
+ */
+function keepDeparted(client: QueryClient, next: Issue[]): void {
+  const previous = client.getQueryData<Issue[]>(unresolvedKey)
+  if (previous === undefined || client.getQueryData<Issue[]>(doneKey) === undefined) return
+  const present = new Set(next.map((i) => i.key))
+  const departed = previous.filter((i) => !present.has(i.key))
+  if (departed.length === 0) return
+  const gone = new Set(departed.map((i) => i.key))
+  client.setQueryData<Issue[]>(doneKey, (done) => [
+    ...(done ?? []).filter((i) => !gone.has(i.key)),
+    ...departed,
+  ])
+  void client.invalidateQueries({ queryKey: doneKey })
+}
+
+/** Unresolved issues, refetched on every focus. */
+export function unresolvedQuery(client: QueryClient, load: LoadPhase = loadFromMain) {
+  return queryOptions({
+    queryKey: unresolvedKey,
+    queryFn: async () => {
+      const issues = await load('unresolved')
+      keepDeparted(client, issues)
+      return issues
+    },
+  })
+}
+
+/** Done issues, loaded once the unresolved phase has data and refetched only when stale. */
+export function doneQuery(enabled: boolean, load: LoadPhase = loadFromMain) {
+  return queryOptions({
+    queryKey: doneKey,
+    queryFn: () => load('done'),
+    enabled,
+    staleTime: DONE_STALE_MS,
+  })
+}
+
+export function useUnresolvedIssues() {
+  return useQuery(unresolvedQuery(useQueryClient()))
+}
+
+export function useDoneIssues(enabled: boolean) {
+  return useQuery(doneQuery(enabled))
+}
+
+/** The issues loaded so far in the running load of `phase`. */
+export function useLoadedCount(phase: IssuePhase): number {
+  return useSyncExternalStore(loads.subscribe, () => loads.loaded(phase))
+}
+
+/** The signed-in user. It changes only with a login. */
+export function useMe() {
+  return useQuery({
+    queryKey: meKey,
+    queryFn: () => call('user:me'),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/** Every Customer option, which `buildHierarchy` needs only while empty Customers show. */
+export function useCustomers(enabled: boolean) {
+  return useQuery({
+    queryKey: customersKey,
+    queryFn: () => call('fields:customers'),
+    enabled,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useToggles() {
+  return useQuery({
+    queryKey: togglesKey,
+    queryFn: () => call('settings:getToggles'),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Shows a toggle at once, then writes it. A failed write refetches the toggles, so the toolbar
+ * shows what the settings file holds.
+ */
+export function togglesMutation(
+  client: QueryClient,
+  send: (toggles: Toggles) => Promise<Toggles>,
+): MutationOptions<Toggles, JiraMgrError, Toggles> {
+  return {
+    mutationFn: send,
+    async onMutate(toggles) {
+      await client.cancelQueries({ queryKey: togglesKey })
+      client.setQueryData<Toggles>(togglesKey, toggles)
+    },
+    async onError() {
+      await client.invalidateQueries({ queryKey: togglesKey })
+    },
+  }
+}
+
+export function useSetToggles() {
+  const client = useQueryClient()
+  return useMutation(togglesMutation(client, (toggles) => call('settings:setToggles', toggles)))
+}
+
+/** What the next account must not see: this one's issues, user and Customer list. */
+export function clearAccountData(client: QueryClient): void {
+  client.removeQueries({ queryKey: issuesKey })
+  client.removeQueries({ queryKey: meKey })
+  client.removeQueries({ queryKey: customersKey })
 }
 
 /**
@@ -54,8 +220,7 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => call('session:logout'),
     onSuccess: (state: SessionState) => {
-      // The next account must not see this one's issues.
-      client.removeQueries({ queryKey: issuesKey })
+      clearAccountData(client)
       client.setQueryData(sessionKey, state)
     },
   })

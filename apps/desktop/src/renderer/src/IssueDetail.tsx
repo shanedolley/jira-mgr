@@ -1,5 +1,6 @@
 import type { Issue } from '@jira-mgr/core'
-import { useState, type SyntheticEvent, type ReactNode } from 'react'
+import type { CustomerOption } from '@jira-mgr/core/hierarchy'
+import { useState, type ReactNode, type RefObject, type SyntheticEvent } from 'react'
 
 import { StatusDot } from './StatusDot'
 import { useSetSummary } from './queries'
@@ -13,15 +14,27 @@ function Property({ name, children }: { name: string; children: ReactNode }) {
   )
 }
 
-function SummaryEditor({ issue }: { issue: Issue }) {
+interface SummaryEditorProps {
+  issue: Issue
+  onEditingChange: (editing: boolean) => void
+  /** The edit ended with Esc: the Shell puts focus back on the Tree. */
+  onLeave: () => void
+}
+
+function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditorProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(issue.summary)
   const save = useSetSummary()
 
+  function finish() {
+    setEditing(false)
+    onEditingChange(false)
+  }
+
   function submit(event: SyntheticEvent) {
     event.preventDefault()
     const summary = draft.trim()
-    setEditing(false)
+    finish()
     if (summary !== '' && summary !== issue.summary) save.mutate({ key: issue.key, summary })
   }
 
@@ -38,7 +51,9 @@ function SummaryEditor({ issue }: { issue: Issue }) {
               setDraft(event.target.value)
             }}
             onKeyDown={(event) => {
-              if (event.key === 'Escape') setEditing(false)
+              if (event.key !== 'Escape') return
+              finish()
+              onLeave()
             }}
             className="w-full rounded-md border border-line bg-panel px-2 py-1.5 text-base font-semibold"
           />
@@ -52,9 +67,7 @@ function SummaryEditor({ issue }: { issue: Issue }) {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setEditing(false)
-            }}
+            onClick={finish}
             className="rounded-md border border-line px-3 py-1 hover:bg-hover"
           >
             Cancel
@@ -72,6 +85,7 @@ function SummaryEditor({ issue }: { issue: Issue }) {
           setDraft(issue.summary)
           save.reset()
           setEditing(true)
+          onEditingChange(true)
         }}
         className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
       >
@@ -86,41 +100,84 @@ function SummaryEditor({ issue }: { issue: Issue }) {
   )
 }
 
-/** Summary, key, status, type and assignee of the selected issue. The summary edits in place. */
-export function IssueDetail({ issue }: { issue: Issue | undefined }) {
-  if (issue === undefined) {
-    return (
-      <aside
-        aria-label="Issue detail"
-        className="grid place-items-center border-l border-line bg-panel p-6 text-muted"
-      >
-        <p>Select an issue to see it here.</p>
-      </aside>
-    )
-  }
+interface PeekProps {
+  /** `undefined` when the issue no longer exists in the loaded data. */
+  issue: Issue | undefined
+  /** Set when the issue's Customer differs from its Epic's. */
+  mismatch: { own: CustomerOption | null; epic: CustomerOption | null } | null
+  /** False when a refetch or a filter removed the issue from the Tree. */
+  inView: boolean
+  onClose: () => void
+  onEditingChange: (editing: boolean) => void
+  onLeave: () => void
+  asideRef: RefObject<HTMLElement | null>
+}
+
+/** The space-bar preview: summary, key, status, type, people, Customer and Engagement. The summary edits in place. */
+export function IssueDetail({
+  issue,
+  mismatch,
+  inView,
+  onClose,
+  onEditingChange,
+  onLeave,
+  asideRef,
+}: PeekProps) {
   return (
     <aside
-      aria-label="Issue detail"
-      className="min-h-0 overflow-y-auto border-l border-line bg-panel"
+      ref={asideRef}
+      tabIndex={-1}
+      aria-label="Peek"
+      className="min-h-0 overflow-y-auto border-l border-line bg-panel focus-visible:outline-none"
     >
-      <div className="app-drag h-10 shrink-0" />
-      <div className="space-y-5 px-5 pb-6">
-        <p className="font-mono text-xs text-muted">{issue.key}</p>
-        {/* Remounting on the key drops the edit state and any error of the previous issue. */}
-        <SummaryEditor key={issue.key} issue={issue} />
-        <dl>
-          <Property name="Status">
-            <span className="inline-flex items-center gap-2">
-              <StatusDot status={issue.status} />
-              {issue.status.name}
-            </span>
-          </Property>
-          <Property name="Type">{issue.issueType.name}</Property>
-          <Property name="Assignee">{issue.assignee?.displayName ?? 'Unassigned'}</Property>
-          <Property name="Customer">{issue.customer?.value ?? 'None'}</Property>
-          <Property name="Updated">{new Date(issue.updated).toLocaleDateString()}</Property>
-        </dl>
+      <div className="app-drag flex h-10 shrink-0 items-center justify-end px-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+        >
+          Close
+        </button>
       </div>
+      {issue === undefined ? (
+        <p className="px-5 pb-6 text-muted">This issue is no longer available.</p>
+      ) : (
+        <div className="space-y-5 px-5 pb-6">
+          <div className="space-y-1">
+            <p className="font-mono text-xs text-muted">
+              {issue.key}
+              {issue.parentKey !== null && ` in ${issue.parentKey}`}
+            </p>
+            {!inView && <p className="text-xs text-muted">No longer in this view</p>}
+          </div>
+          {/* Remounting on the key drops the edit state and any error of the previous issue. */}
+          <SummaryEditor
+            key={issue.key}
+            issue={issue}
+            onEditingChange={onEditingChange}
+            onLeave={onLeave}
+          />
+          <dl>
+            <Property name="Status">
+              <span className="inline-flex items-center gap-2">
+                <StatusDot status={issue.status} />
+                {issue.status.name}
+              </span>
+            </Property>
+            <Property name="Type">{issue.issueType.name}</Property>
+            <Property name="Assignee">{issue.assignee?.displayName ?? 'Unassigned'}</Property>
+            <Property name="Customer">{issue.customer?.value ?? 'None'}</Property>
+            <Property name="Engagement">{issue.engagement?.value ?? 'None'}</Property>
+            <Property name="Updated">{new Date(issue.updated).toLocaleDateString()}</Property>
+          </dl>
+          {mismatch !== null && (
+            <p className="rounded-md border border-line px-3 py-2 text-xs">
+              Customer differs from the Epic. Customer: {mismatch.own?.value ?? 'none'}. Epic&apos;s
+              Customer: {mismatch.epic?.value ?? 'none'}.
+            </p>
+          )}
+        </div>
+      )}
     </aside>
   )
 }
