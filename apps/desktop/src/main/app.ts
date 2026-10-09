@@ -2,9 +2,18 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { APP_NAME } from '@jira-mgr/core'
-import { app, BrowserWindow, ipcMain, session, type IpcMainInvokeEvent } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  session,
+  shell,
+  type IpcMainInvokeEvent,
+} from 'electron'
 
 import { CHANNELS, ISSUES_PROGRESS_EVENT, WINDOW_FOCUS_EVENT } from '../shared/ipc'
+import { externalUrl } from '../shared/links'
 import type { Backend } from './backend'
 import { createHandlers } from './handlers'
 import { isTrustedFrame } from './trust'
@@ -26,7 +35,32 @@ function fromOurWindow(event: IpcMainInvokeEvent): boolean {
   )
 }
 
-function createWindow(inactive: boolean): void {
+/** What the window does for the renderer that Electron owns: the browser and the quit prompt. */
+interface WindowHooks {
+  /** Opens a checked URL in the user's browser. */
+  openExternal: (url: string) => void
+  /** Asks whether to quit with unsaved text. True quits, false stays. */
+  confirmQuit: (window: BrowserWindow) => boolean
+}
+
+function nativeHooks(): WindowHooks {
+  return {
+    openExternal(url) {
+      void shell.openExternal(url)
+    },
+    confirmQuit: (window) =>
+      dialog.showMessageBoxSync(window, {
+        type: 'warning',
+        message: 'Quit with unsaved changes?',
+        detail: 'A description you are editing has not been saved. Quitting discards it.',
+        buttons: ['Quit', 'Stay'],
+        defaultId: 1,
+        cancelId: 1,
+      }) === 0,
+  }
+}
+
+function createWindow(inactive: boolean, hooks: WindowHooks): void {
   const hideForTest = inactive && process.platform === 'darwin'
   const window = new BrowserWindow({
     // A test run shows its window without taking focus, so it never steals the user's keystrokes.
@@ -49,8 +83,18 @@ function createWindow(inactive: boolean): void {
     },
   })
 
-  // The renderer shows one page. Links and new windows never leave it.
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  // The renderer shows one page. A link opens in the browser, after this check as well as the
+  // renderer's, and never in a window of its own.
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    const target = externalUrl(url)
+    if (target !== null) hooks.openExternal(target)
+    return { action: 'deny' }
+  })
+  // The renderer sets `onbeforeunload` while a description holds unsaved text, which raises this
+  // when the window closes or the app quits. Preventing the event lets the unload go ahead.
+  window.webContents.on('will-prevent-unload', (event) => {
+    if (hooks.confirmQuit(window)) event.preventDefault()
+  })
   window.webContents.on('will-navigate', (event) => {
     event.preventDefault()
   })
@@ -80,11 +124,18 @@ function createWindow(inactive: boolean): void {
 export interface StartOptions {
   /** Open windows invisible, click-through and without focus. Only the e2e entry sets it. */
   inactive?: boolean
+  /** Replaces `shell.openExternal`, so a test counts links instead of opening a browser. */
+  openExternal?: WindowHooks['openExternal']
+  /** Replaces the native quit dialog, so a test counts prompts instead of showing one. */
+  confirmQuit?: WindowHooks['confirmQuit']
 }
 
 /** Registers the IPC handlers for `backend` and opens the window once Electron is ready. */
 export function start(backend: Backend, options: StartOptions = {}): void {
   const inactive = options.inactive ?? false
+  const hooks: WindowHooks = { ...nativeHooks() }
+  if (options.openExternal !== undefined) hooks.openExternal = options.openExternal
+  if (options.confirmQuit !== undefined) hooks.confirmQuit = options.confirmQuit
   const handlers = createHandlers(backend)
   for (const channel of CHANNELS) {
     ipcMain.handle(channel, (event, raw: unknown) =>
@@ -106,9 +157,9 @@ export function start(backend: Backend, options: StartOptions = {}): void {
       callback(false)
     })
     session.defaultSession.setPermissionCheckHandler(() => false)
-    createWindow(inactive)
+    createWindow(inactive, hooks)
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow(inactive)
+      if (BrowserWindow.getAllWindows().length === 0) createWindow(inactive, hooks)
     })
   })
 

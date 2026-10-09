@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { adfDocSchema } from './adf-schema.js'
 import { JiraMgrError } from './errors.js'
 import { fetchAll } from './fields.js'
-import type { HttpClient } from './http.js'
+import { requestBytes, requestMediaId, type BytesResponse, type HttpClient } from './http.js'
 import { jiraTime } from './issue.js'
 import { duration, issueKey, jiraId, parseInput, parseResponse } from './validate.js'
 
@@ -370,6 +370,11 @@ const addAttachmentInput = z.strictObject({
       z.strictObject({
         filename: z.string().min(1).max(255),
         content: z.union([z.instanceof(Blob), z.instanceof(Uint8Array)]),
+        /** The type the multipart part declares. Without it the part is `application/octet-stream`. */
+        contentType: z
+          .string()
+          .regex(/^[a-z]+\/[a-z0-9][a-z0-9.+-]*$/, 'Not a content type such as image/png.')
+          .optional(),
       }),
     )
     .min(1),
@@ -388,13 +393,19 @@ const UPLOAD_MS_PER_MB = 10_000
 export async function addAttachments(
   http: HttpClient,
   key: string,
-  files: { filename: string; content: Blob | Uint8Array }[],
+  files: { filename: string; content: Blob | Uint8Array; contentType?: string }[],
 ): Promise<Attachment[]> {
   const input = parseInput(addAttachmentInput, { key, files }, 'attach the files')
-  const blobs = input.files.map(({ filename, content }) => ({
-    filename,
-    blob: content instanceof Blob ? content : new Blob([new Uint8Array(content)]),
-  }))
+  const blobs = input.files.map(({ filename, content, contentType }) => {
+    if (content instanceof Blob) {
+      // Re-typing slices the Blob, so a Blob that needs no new type is kept as it is.
+      return {
+        filename,
+        blob: contentType === undefined ? content : content.slice(0, content.size, contentType),
+      }
+    }
+    return { filename, blob: new Blob([new Uint8Array(content)], { type: contentType ?? '' }) }
+  })
   const meta = parseResponse(
     attachmentMeta,
     await http.request('GET', '/rest/api/3/attachment/meta'),
@@ -438,11 +449,35 @@ export async function addAttachments(
 export const addAttachment = (
   http: HttpClient,
   key: string,
-  file: { filename: string; content: Blob | Uint8Array },
+  file: { filename: string; content: Blob | Uint8Array; contentType?: string },
 ): Promise<Attachment[]> => addAttachments(http, key, [file])
 
 /** Removes an attachment by its id. */
 export async function removeAttachment(http: HttpClient, attachmentId: string): Promise<void> {
   const id = parseInput(jiraId, attachmentId, 'remove the attachment')
   await http.request('DELETE', `/rest/api/3/attachment/${id}`)
+}
+
+/**
+ * The Media Services file id of an attachment, which is what a description's `media` node holds.
+ * The attachment REST responses carry no such id, so this reads it from the content redirect
+ * without following it. Throws `jira_error` when the redirect is not the media service's.
+ */
+export async function attachmentMediaId(http: HttpClient, attachmentId: string): Promise<string> {
+  const id = parseInput(jiraId, attachmentId, 'read the attachment')
+  return requestMediaId(http, `/rest/api/3/attachment/content/${id}`)
+}
+
+/**
+ * An attachment's bytes and the content type Jira declared. `redirect=false` makes Jira answer
+ * with the bytes itself, so the request stays on the site under the same credentials. Throws
+ * `validation_failed` when the file is larger than `maxBytes`.
+ */
+export async function attachmentContent(
+  http: HttpClient,
+  attachmentId: string,
+  options: { maxBytes: number; signal?: AbortSignal },
+): Promise<BytesResponse> {
+  const id = parseInput(jiraId, attachmentId, 'read the attachment')
+  return requestBytes(http, 'GET', `/rest/api/3/attachment/content/${id}?redirect=false`, options)
 }

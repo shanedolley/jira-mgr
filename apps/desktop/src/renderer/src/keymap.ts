@@ -36,7 +36,7 @@ export interface KeyTarget {
 
 /** Controls where a letter is typing or choosing, not a command. */
 const OWN_KEYS =
-  'input, textarea, select, dialog, [popover], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="menu"]'
+  'input, textarea, select, dialog, [popover], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="alertdialog"], [role="combobox"], [role="listbox"], [role="menu"]'
 
 /** Where `Cmd+K` must not open a second layer: over a dialog or an open picker. */
 const OVERLAYS = 'dialog, [popover]'

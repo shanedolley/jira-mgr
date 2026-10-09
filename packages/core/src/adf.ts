@@ -1,29 +1,28 @@
 import { parseMarkdown } from './adf-parse.js'
 import { renderBlocksToMarkdown } from './adf-render.js'
-import { adfDocSchema, type AdfDoc } from './adf-schema.js'
+import { adfDocSchema, refuseDeepNesting, same, type AdfDoc } from './adf-schema.js'
 import { JiraMgrError } from './errors.js'
 
 export {
   adfDocSchema,
   adfNodeSchema,
+  isBlockNode,
+  isInlineNode,
   type AdfDoc,
   type AdfMark,
   type AdfNode,
 } from './adf-schema.js'
-
-/** A document nested past the stack overflows the recursive reader, so it is refused instead. */
-function refuseDeepNesting<T>(run: () => T): T {
-  try {
-    return run()
-  } catch (error) {
-    if (error instanceof RangeError) {
-      throw new JiraMgrError('validation_failed', 'The document is nested too deeply to convert.', {
-        cause: error,
-      })
-    }
-    throw error
-  }
-}
+export {
+  adfToEditor,
+  editorToAdf,
+  equivalentAdf,
+  imageNode,
+  type EditorDoc,
+  type EditorMark,
+  type EditorNode,
+} from './adf-editor.js'
+/** Deep equality of two ADF values, blind to key order. */
+export const sameAdf = same
 
 /**
  * Markdown for an ADF document. Reading it back with `markdownToAdf` returns the same document,

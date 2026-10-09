@@ -39,6 +39,9 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     setSummary: record('setSummary', undefined),
     getIssue: record('getIssue', {} as never),
     editIssue: record('editIssue', undefined),
+    setDescription: record('setDescription', { saved: true }),
+    addImage: record('addImage', { node: { type: 'mediaSingle' } }),
+    image: record('image', { mimeType: 'image/png', bytes: new Uint8Array() }),
     listTransitions: record('listTransitions', []),
     setStatus: record('setStatus', undefined),
     setSprint: record('setSprint', undefined),
@@ -489,5 +492,96 @@ describe('saved views', () => {
       ok: false,
       error: { code: 'validation_failed', message: 'A view named "Bugs" already exists.' },
     })
+  })
+})
+
+describe('editor channels', () => {
+  const DOC = { version: 1, type: 'doc', content: [{ type: 'paragraph' }] }
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  const IMAGE = {
+    key: 'PSAPAC-12',
+    filename: 'shot.png',
+    mimeType: 'image/png',
+    bytes: PNG,
+  }
+
+  function nested(depth: number): unknown {
+    let node: unknown = { type: 'paragraph' }
+    for (let i = 0; i < depth; i++) node = { type: 'blockquote', content: [node] }
+    return { version: 1, type: 'doc', content: [node] }
+  }
+
+  it.each([
+    ['a description that is not ADF', { description: { type: 'doc' }, base: null }],
+    ['a base that is not ADF', { description: DOC, base: 'text' }],
+    ['a missing base', { description: DOC }],
+    [
+      'a description over 1 MB',
+      {
+        description: {
+          ...DOC,
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'x'.repeat(1_000_000) }] },
+          ],
+        },
+        base: null,
+      },
+    ],
+    ['a description nested too deeply', { description: nested(20_000), base: null }],
+    ['an unknown field', { description: DOC, base: null, extra: 1 }],
+  ])('issues:setDescription refuses %s', async (_name, rest) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['issues:setDescription'](
+      { key: 'PSAPAC-12', ...rest },
+      noProgress,
+    )
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('issues:setDescription passes a valid description and a null base to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const args = { key: 'PSAPAC-12', description: DOC, base: null }
+    const result = await createHandlers(backend)['issues:setDescription'](args, noProgress)
+    expect(result.ok).toBe(true)
+    expect(calls).toEqual([{ method: 'setDescription', args: [args] }])
+  })
+
+  it.each([
+    ['another type', { ...IMAGE, mimeType: 'image/svg+xml' }],
+    ['an empty file', { ...IMAGE, bytes: new Uint8Array() }],
+    ['an oversized file', { ...IMAGE, bytes: new Uint8Array(100_000_001) }],
+    ['bytes that are not a Uint8Array', { ...IMAGE, bytes: [1, 2, 3] }],
+    ['a long filename', { ...IMAGE, filename: 'a'.repeat(256) }],
+    ['an empty filename', { ...IMAGE, filename: '' }],
+    ['a zero width', { ...IMAGE, width: 0 }],
+    ['a key of another shape', { ...IMAGE, key: 'psapac-1' }],
+  ])('attachments:addImage refuses %s', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['attachments:addImage'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('attachments:addImage passes a valid image to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const args = { ...IMAGE, width: 10, height: 20 }
+    const result = await createHandlers(backend)['attachments:addImage'](args, noProgress)
+    expect(result.ok).toBe(true)
+    expect(calls).toEqual([{ method: 'addImage', args: [args] }])
+  })
+
+  it('attachments:image refuses a media id that is not a UUID', async () => {
+    const { backend, calls } = fakeBackend()
+    for (const mediaId of ['652124', '../x', '', 'f06ee6e2-999b-491f-acb0']) {
+      const result = await createHandlers(backend)['attachments:image'](
+        { key: 'PSAPAC-12', mediaId },
+        noProgress,
+      )
+      expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    }
+    const good = { key: 'PSAPAC-12', mediaId: 'f06ee6e2-999b-491f-acb0-f299310206ec' }
+    expect((await createHandlers(backend)['attachments:image'](good, noProgress)).ok).toBe(true)
+    expect(calls).toEqual([{ method: 'image', args: [good] }])
   })
 })

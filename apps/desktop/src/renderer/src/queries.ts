@@ -1,7 +1,9 @@
-import type { Issue, JiraMgrError } from '@jira-mgr/core'
+import { JiraMgrError, type Issue } from '@jira-mgr/core'
+import type { AdfDoc } from '@jira-mgr/core/adf'
 import type { IssueDetail } from '@jira-mgr/core/issue'
 import {
   CancelledError,
+  MutationObserver,
   queryOptions,
   useMutation,
   useQuery,
@@ -18,12 +20,15 @@ import type {
   IssuesProgress,
   LoginArgs,
   OptionField,
+  SetDescriptionArgs,
+  SetDescriptionResult,
   SetSprintArgs,
   SetStatusArgs,
   SetSummaryArgs,
   SessionState,
   Toggles,
 } from '../../shared/ipc'
+import { clearDrafts } from './drafts'
 import { call } from './ipc'
 import {
   applyCreated,
@@ -35,9 +40,21 @@ import {
   summaryMutation,
   unresolvedKey,
 } from './optimistic'
-import { editEntry, recorder, sprintEntry, statusEntry, summaryEntry, undoStack } from './undo'
+import {
+  descriptionEntry,
+  editEntry,
+  recorder,
+  sprintEntry,
+  statusEntry,
+  summaryEntry,
+  undoStack,
+} from './undo'
+import { clearUploads } from './uploads'
 
 export const sessionKey = ['session'] as const
+
+/** Prefix of the image queries: `[key, issueKey, mediaId]` holds an object URL. */
+export const attachmentsKey = ['attachments'] as const
 
 /** Who is logged in. It changes only when this app logs in or out, so it never refetches by itself. */
 export function useSession() {
@@ -220,6 +237,10 @@ export function clearAccountData(client: QueryClient): void {
   client.removeQueries({ queryKey: meKey })
   client.removeQueries({ queryKey: customersKey })
   client.removeQueries({ queryKey: pickerKey })
+  // Removing the image queries revokes their object URLs (see `watchImageUrls`).
+  client.removeQueries({ queryKey: attachmentsKey })
+  clearDrafts()
+  clearUploads()
   // An undo must not write one account's old values into the next account's issues.
   undoStack(client).clear()
 }
@@ -398,5 +419,117 @@ export function useFieldOptions(field: OptionField, enabled: boolean) {
     enabled,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+  })
+}
+
+/** The `details` a conflict carries: Jira's description, which differs from the one the edit began on. */
+export interface DescriptionConflict {
+  conflict: true
+  current: AdfDoc | null
+}
+
+/** The conflict a failed description save carries, or `null` for any other failure. */
+export function conflictOf(error: unknown): DescriptionConflict | null {
+  if (!(error instanceof JiraMgrError)) return null
+  const details = error.details as Partial<DescriptionConflict> | undefined
+  return details?.conflict === true ? { conflict: true, current: details.current ?? null } : null
+}
+
+/** A description save. `undoing` marks an undo, which the stack must not record again. */
+export type DescriptionArgs = SetDescriptionArgs & { undoing?: boolean }
+
+/**
+ * A description save that shows at once, rolls back on any refusal and reads the issue again. A
+ * conflict result becomes a refusal that carries Jira's description, so it rolls back the same
+ * way. An accepted save goes to `record`, which is what lets Cmd+Z restore the old description.
+ */
+export function descriptionMutation(
+  client: QueryClient,
+  issueKey: string,
+  send: (args: SetDescriptionArgs) => Promise<SetDescriptionResult>,
+  reread: (key: string) => Promise<IssueDetail>,
+  record?: Parameters<typeof issueMutation<DescriptionArgs>>[4],
+) {
+  return {
+    // Counted by `useIsMutating`, which stays above zero until the re-read has landed.
+    mutationKey: ['issues', issueKey, 'description'],
+    ...issueMutation(
+      client,
+      async ({ key, description, base, undoing }: DescriptionArgs) => {
+        const result = await send({ key, description, base })
+        if (!result.saved) {
+          throw new JiraMgrError(
+            'validation_failed',
+            undoing === true
+              ? `Could not undo: ${key}'s description changed in Jira since your save.`
+              : `${key}'s description changed in Jira while you edited.`,
+            { details: { conflict: true, current: result.current } satisfies DescriptionConflict },
+          )
+        }
+      },
+      ({ description }) => ({ description }),
+      reread,
+      record,
+    ),
+  }
+}
+
+/** The options of a description save on the real IPC, recording an undo entry. */
+function descriptionOptions(client: QueryClient, issueKey: string) {
+  return descriptionMutation(
+    client,
+    issueKey,
+    (args) => call('issues:setDescription', args),
+    rereadIssue,
+    recorder(client, descriptionEntry),
+  )
+}
+
+export function useSetDescription(issueKey: string) {
+  const client = useQueryClient()
+  return useMutation(descriptionOptions(client, issueKey))
+}
+
+/** Writes a description outside a component, as an undo does. Resolves when the re-read has landed. */
+export function saveDescription(client: QueryClient, args: DescriptionArgs): Promise<unknown> {
+  return new MutationObserver(client, descriptionOptions(client, args.key)).mutate(args)
+}
+
+const IMAGE_RETRY_LIMIT = 2
+
+/** An image of the issue as an object URL. The URL is cached, never the bytes. */
+export function useAttachmentImage(issueKey: string, mediaId: string) {
+  return useQuery({
+    queryKey: [...attachmentsKey, issueKey, mediaId],
+    queryFn: async () => {
+      const { mimeType, bytes } = await call('attachments:image', { key: issueKey, mediaId })
+      // Typed from what main checked, never from the response headers.
+      return URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: mimeType }))
+    },
+    staleTime: Infinity,
+    gcTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: (count, error) =>
+      count < IMAGE_RETRY_LIMIT && error.code !== 'not_found' && error.code !== 'validation_failed',
+  })
+}
+
+/** Revokes an image's object URL when its query leaves the cache, so no image outlives its query. */
+export function watchImageUrls(client: QueryClient): () => void {
+  // The URL each image query showed last, so a refetch can revoke the one it replaces.
+  const shown = new WeakMap<object, string>()
+  return client.getQueryCache().subscribe((event) => {
+    const queryKey = event.query.queryKey as readonly unknown[]
+    if (queryKey[0] !== attachmentsKey[0]) return
+    const url: unknown = event.query.state.data
+    if (event.type === 'removed') {
+      if (typeof url === 'string') URL.revokeObjectURL(url)
+      return
+    }
+    if (event.type === 'updated' && event.action.type === 'success' && typeof url === 'string') {
+      const previous = shown.get(event.query)
+      if (previous !== undefined && previous !== url) URL.revokeObjectURL(previous)
+      shown.set(event.query, url)
+    }
   })
 }

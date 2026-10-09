@@ -634,6 +634,9 @@ export function Shell({ session }: { session: Session }) {
             onOpen={setPageKey}
             onDelete={setDeleting}
             pageRef={pageRef}
+            onNotice={(reported) => {
+              setNotice({ notice: reported, openKey: null })
+            }}
           />
         </div>
       )}

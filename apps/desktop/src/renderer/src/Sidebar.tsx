@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react'
+import { useState, useSyncExternalStore, type ReactNode } from 'react'
 
 import type { Session } from '../../shared/ipc'
+import { DiscardDialog } from './DiscardDialog'
 import { ThemeToggle } from './ThemeToggle'
+import { draftCount, subscribeDrafts } from './drafts'
 import { useLogout } from './queries'
 
 export function Sidebar({
@@ -15,6 +17,8 @@ export function Sidebar({
   views?: ReactNode
 }) {
   const logout = useLogout()
+  const unsaved = useSyncExternalStore(subscribeDrafts, draftCount)
+  const [confirming, setConfirming] = useState(false)
   const site = new URL(session.siteUrl).hostname
   return (
     <nav
@@ -51,7 +55,8 @@ export function Sidebar({
           type="button"
           disabled={logout.isPending}
           onClick={() => {
-            logout.mutate()
+            if (unsaved > 0) setConfirming(true)
+            else logout.mutate()
           }}
           className="w-full rounded-md border border-line px-2 py-1 hover:bg-hover disabled:opacity-60"
         >
@@ -63,6 +68,20 @@ export function Sidebar({
           </p>
         )}
       </div>
+      {confirming && (
+        <DiscardDialog
+          title={`Log out and discard ${String(unsaved)} unsaved ${unsaved === 1 ? 'description' : 'descriptions'}?`}
+          keepLabel="Keep editing"
+          discardLabel="Discard and log out"
+          onKeep={() => {
+            setConfirming(false)
+          }}
+          onDiscard={() => {
+            setConfirming(false)
+            logout.mutate()
+          }}
+        />
+      )}
     </nav>
   )
 }

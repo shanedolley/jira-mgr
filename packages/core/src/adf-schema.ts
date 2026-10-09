@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { JiraMgrError } from './errors.js'
+
 const attrs = z.record(z.string(), z.unknown())
 
 export const adfMarkSchema = z.looseObject({ type: z.string(), attrs: attrs.optional() })
@@ -117,7 +119,7 @@ export function note(type: string, patch: Patch): string {
 
 export const NOTE = /^<!--adf (\w+) (.*?)-->$/
 
-function canonical(value: unknown): string {
+export function canonical(value: unknown): string {
   return JSON.stringify(value, (_key, item: unknown) =>
     item !== null && typeof item === 'object' && !Array.isArray(item)
       ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => (a < b ? -1 : 1)))
@@ -128,4 +130,18 @@ function canonical(value: unknown): string {
 /** Deep equality of JSON values, blind to key order. */
 export function same(a: unknown, b: unknown): boolean {
   return canonical(a) === canonical(b)
+}
+
+/** A document nested past the stack overflows the recursive readers, so it is refused instead. */
+export function refuseDeepNesting<T>(run: () => T): T {
+  try {
+    return run()
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw new JiraMgrError('validation_failed', 'The document is nested too deeply to convert.', {
+        cause: error,
+      })
+    }
+    throw error
+  }
 }

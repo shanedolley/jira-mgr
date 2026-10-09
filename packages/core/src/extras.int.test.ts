@@ -7,6 +7,8 @@ import {
   addAttachment,
   addAttachments,
   addComment,
+  attachmentContent,
+  attachmentMediaId,
   addLink,
   addWorklog,
   deleteComment,
@@ -625,5 +627,79 @@ describe('responses', () => {
   ])('throws jira_error for a malformed %s response', async (_name, run) => {
     serveRecorded(() => HttpResponse.json({ surprise: true }))
     expect((await failure(run(client))).code).toBe('jira_error')
+  })
+})
+
+const fileIdOf = (location: string) => /\/file\/([0-9a-f-]{36})\//.exec(location)?.[1]
+
+describe('attachment content', () => {
+  const redirect = loadFixture('attachment-content-redirect') as {
+    status: number
+    location: string
+  }
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
+
+  it('attachmentMediaId reads the file id from the content redirect', async () => {
+    const requests = serveRecorded(
+      () =>
+        new HttpResponse(null, {
+          status: redirect.status,
+          headers: { Location: redirect.location },
+        }),
+    )
+    expect(await attachmentMediaId(client, '652124')).toBe(fileIdOf(redirect.location))
+    expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+      'GET /rest/api/3/attachment/content/652124',
+    ])
+  })
+
+  it('attachmentContent asks for redirect=false and returns the bytes', async () => {
+    const requests = serveRecorded(
+      () => new HttpResponse(PNG, { headers: { 'Content-Type': 'image/png' } }),
+    )
+    const result = await attachmentContent(client, '652124', { maxBytes: 10 })
+    expect(requests.map((r) => r.path)).toEqual([
+      '/rest/api/3/attachment/content/652124?redirect=false',
+    ])
+    expect(result.contentType).toBe('image/png')
+    expect([...result.bytes]).toEqual([...PNG])
+    expect((await failure(attachmentContent(client, '652124', { maxBytes: 2 }))).code).toBe(
+      'validation_failed',
+    )
+  })
+
+  it('addAttachments declares the content type on the multipart part', async () => {
+    const requests = serveRecorded(({ method }) =>
+      method === 'GET'
+        ? HttpResponse.json(fixture('attachment-meta'))
+        : HttpResponse.json([
+            (fixture('issue-attachments-psapac-3017').fields as { attachment: unknown[] })
+              .attachment[0],
+          ]),
+    )
+    await addAttachment(client, 'PSAPAC-3017', {
+      filename: 'shot.png',
+      content: PNG,
+      contentType: 'image/png',
+    })
+    const part = (requests[1]?.body as FormData).get('file') as File
+    expect([part.name, part.type]).toEqual(['shot.png', 'image/png'])
+    const bad = await failure(
+      addAttachment(client, 'PSAPAC-3017', { filename: 'a', content: PNG, contentType: 'x' }),
+    )
+    expect(bad.code).toBe('validation_failed')
+  })
+
+  it('both refuse an attachment id that is not digits', async () => {
+    const requests = serveRecorded(() => new HttpResponse(null))
+    for (const refusal of [
+      attachmentMediaId(client, '1/../2'),
+      attachmentMediaId(client, ''),
+      attachmentContent(client, 'abc', { maxBytes: 1 }),
+      attachmentContent(client, '12?x=1', { maxBytes: 1 }),
+    ]) {
+      expect((await failure(refusal)).code).toBe('validation_failed')
+    }
+    expect(requests).toEqual([])
   })
 })

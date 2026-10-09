@@ -19,6 +19,12 @@ export interface Counts {
   issueReads: string[]
   /** The body of every write received, in order. A delete is `{ delete, deleteSubtasks }`. */
   editBodies: unknown[]
+  /** Attachment uploads received, in order of arrival. */
+  uploads: { key: string; filename: string; type: string; size: number }[]
+  /** Links the app opened in a browser. */
+  openExternal: string[]
+  /** Times the quit prompt was raised. */
+  quitPrompts: number
 }
 
 interface FakeJira {
@@ -30,6 +36,10 @@ interface FakeJira {
   dropIssue: (key: string) => void
   refuseNextEdit: () => void
   moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
+  releaseUpload: () => void
+  failUpload: () => void
+  setDescription: (key: string, description: unknown) => void
+  normaliseDescriptions: () => void
 }
 
 interface WithFake {
@@ -87,6 +97,33 @@ export const dropIssue = (app: ElectronApplication, key: string) =>
   app.evaluate((_electron, name) => {
     ;(globalThis as unknown as WithFake).__fakeJira.dropIssue(name)
   }, key)
+
+/** Lets the fake Jira answer the oldest attachment upload it holds. Call it once `counts().uploads` shows it arrived. */
+export const releaseUpload = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.releaseUpload()
+  })
+
+/** Makes the fake Jira answer 500 to the next attachment upload, without holding it. */
+export const failUpload = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.failUpload()
+  })
+
+/** Replaces an issue's description in the fake Jira, as if someone else edited it. */
+export const setDescription = (app: ElectronApplication, key: string, description: unknown) =>
+  app.evaluate(
+    (_electron, [name, adf]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.setDescription(name as string, adf)
+    },
+    [key, description],
+  )
+
+/** Makes the fake Jira store each saved description with a `localId` on every paragraph. */
+export const normaliseDescriptions = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.normaliseDescriptions()
+  })
 
 export async function logIn(window: Page, token = TOKEN) {
   await window.getByLabel('Site URL').fill(SITE)

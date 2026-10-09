@@ -1,6 +1,8 @@
 import { JiraMgrError, type Issue } from '@jira-mgr/core'
+import { imageNode, sameAdf, type AdfNode } from '@jira-mgr/core/adf'
 import { createKeychain, getCredentials, login, logout, type Keychain } from '@jira-mgr/core/auth'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
+import { addAttachment, attachmentMediaId } from '@jira-mgr/core/extras'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
 import { assertTypeChangeAllowed, type IssueDetail } from '@jira-mgr/core/issue'
 import { getCurrentUser, getFieldOptions, searchAssignableUsers } from '@jira-mgr/core/lookups'
@@ -25,6 +27,7 @@ import {
 } from '@jira-mgr/core/write'
 
 import type {
+  AddImageArgs,
   CreateIssueArgs,
   CreatedIssue,
   CreateViewArgs,
@@ -35,6 +38,8 @@ import type {
   EditIssueArgs,
   FieldChoice,
   FieldOptionsArgs,
+  ImageArgs,
+  ImageResult,
   IssuePhase,
   IssuesProgress,
   ListIssuesArgs,
@@ -42,6 +47,8 @@ import type {
   LoginArgs,
   RenameViewArgs,
   SessionState,
+  SetDescriptionArgs,
+  SetDescriptionResult,
   SetSprintArgs,
   SetStatusArgs,
   SetSummaryArgs,
@@ -50,6 +57,8 @@ import type {
   Toggles,
   UserOption,
 } from '../shared/ipc'
+import { imageType, uploadFilename } from './images'
+import { createMediaIndex } from './media'
 import { desktopMessage } from './messages'
 
 /** What a handler gives the backend to report on the window that asked. */
@@ -68,6 +77,16 @@ export interface Backend {
   /** One issue with its description and subtasks, read afresh. */
   getIssue(args: KeyArgs): Promise<IssueDetail>
   editIssue(args: EditIssueArgs): Promise<void>
+  /**
+   * Writes the description unless Jira's no longer matches the one the edit started from, in
+   * which case nothing is written and Jira's is returned. Jira has no conditional write, so an
+   * edit that lands between the read and the write still loses.
+   */
+  setDescription(args: SetDescriptionArgs): Promise<SetDescriptionResult>
+  /** Attaches a dropped image and returns the `mediaSingle` that embeds it. */
+  addImage(args: AddImageArgs): Promise<{ node: AdfNode }>
+  /** The bytes of an image attachment, found by the media id a description embeds. */
+  image(args: ImageArgs): Promise<ImageResult>
   listTransitions(args: KeyArgs): Promise<StatusOption[]>
   setStatus(args: SetStatusArgs): Promise<void>
   setSprint(args: SetSprintArgs): Promise<void>
@@ -97,6 +116,8 @@ export interface BackendDeps {
   /** Tests inject a fake Keychain. Production uses core's `/usr/bin/security` one. */
   keychain?: Keychain
   http?: HttpClient
+  /** Tests inject a clock for the media index's 30 second windows. */
+  now?: () => number
 }
 
 /** The key a `createIssue` that could not read the new issue back carries in its details. */
@@ -120,6 +141,8 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     if (token === null) return { loggedIn: false, prefill: { siteUrl, projectKey, email } }
     return { loggedIn: true, session: { siteUrl, projectKey, email } }
   }
+
+  const media = createMediaIndex(http, deps.now)
 
   /** The load running for each phase. A newer load of a phase, and a logout, abort it. */
   const loads = new Map<IssuePhase, AbortController>()
@@ -176,6 +199,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       // No page may be fetched with a token that is going away.
       for (const controller of loads.values()) controller.abort()
       loads.clear()
+      media.clear()
       await logout({ keychain })
       return getSession()
     },
@@ -195,6 +219,37 @@ export function createBackend(deps: BackendDeps = {}): Backend {
         assertTypeChangeAllowed(key, (await getIssue(http, key)).issueType.name)
       }
       await editIssue(http, key, changes)
+    },
+    async setDescription({ key, description, base }) {
+      await assertInProject(key)
+      const current = (await getIssue(http, key)).description
+      // Compared by value and blind to key order, so the user's own field edits raise no conflict.
+      if (!sameAdf(current, base)) return { saved: false, current }
+      await editIssue(http, key, { description })
+      return { saved: true }
+    },
+    async addImage({ key, filename, mimeType, bytes, width, height }) {
+      await assertInProject(key)
+      if (imageType(bytes) !== mimeType) {
+        throw new JiraMgrError('validation_failed', 'The file is not the image type it claims.')
+      }
+      const name = uploadFilename(filename, mimeType)
+      const [attachment] = await addAttachment(http, key, {
+        filename: name,
+        content: bytes,
+        contentType: mimeType,
+      })
+      if (attachment === undefined) {
+        throw new JiraMgrError('jira_error', 'Jira did not say which attachment it stored.')
+      }
+      const mediaId = await attachmentMediaId(http, attachment.id)
+      media.add(key, attachment, mediaId)
+      // Jira's filename, not the one sent, since Jira may have renamed a duplicate.
+      return { node: imageNode({ mediaId, filename: attachment.filename, width, height }) }
+    },
+    async image({ key, mediaId }) {
+      await assertInProject(key)
+      return media.image(key, mediaId)
     },
     async listTransitions({ key }) {
       // Two transitions can reach one status, and a picker lists each status once.
