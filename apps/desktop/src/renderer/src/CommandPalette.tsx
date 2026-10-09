@@ -59,7 +59,11 @@ export function CommandPalette({ issues, onOpen, onClose, returnFocus }: Command
         break
       case 'Enter':
         event.preventDefault()
-        if (active !== undefined && !event.nativeEvent.isComposing) onOpen(active.key)
+        if (!event.nativeEvent.isComposing) {
+          // The list lags the field while it is deferred, so Enter reads the current query's top result.
+          const target = deferred === query ? active : searchIssues(issues, query).shown[0]
+          if (target !== undefined) onOpen(target.key)
+        }
         break
     }
   }
