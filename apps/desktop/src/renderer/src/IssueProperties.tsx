@@ -6,47 +6,34 @@ import {
   propertyRules,
   type SwappableType,
 } from '@jira-mgr/core/issue'
-import { STATUS_ORDER } from '@jira-mgr/core/hierarchy'
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 
-import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
+import type { CurrentUser, FieldChoice } from '../../shared/ipc'
 import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
+import {
+  AssigneePicker,
+  LabelsPicker,
+  PriorityPicker,
+  StatusPicker,
+  refusal,
+  useIssueChange,
+} from './PropertyPickers'
 import { Row } from './PropertyRow'
-import { StatusDot } from './StatusDot'
 import {
   NONE,
   STATE_LABELS,
-  assigneeChoices,
-  assigneeOptions,
-  assigneePatch,
   currentSprint,
   customerPatch,
   engagementPatch,
-  isLabel,
-  labelsPatch,
   parentChoices,
   parentMatch,
-  priorityPatch,
-  projectLabels,
-  recentAssignees,
   shownSprints,
   sprintPatch,
-  statusPatch,
   typePatch,
   type ParentMatch,
-  type Person,
 } from './properties'
-import {
-  useEditIssue,
-  useFieldOptions,
-  useSetSprint,
-  useSetStatus,
-  useSprints,
-  useTransitions,
-  useUsers,
-} from './queries'
-import { useDebounced } from './useDebounced'
+import { useFieldOptions, useSetSprint, useSprints } from './queries'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -154,8 +141,6 @@ interface IssuePropertiesProps {
  */
 export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
   const rules = propertyRules(issue.issueType)
-  const edit = useEditIssue()
-  const setStatus = useSetStatus()
   const setSprint = useSetSprint()
   const [error, setError] = useState<string | null>(null)
   const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)
@@ -167,15 +152,6 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
     wasPrompting.current = prompt !== null
   }, [prompt])
 
-  const [statusOpen, setStatusOpen] = useState(false)
-  const transitions = useTransitions(issue.key, statusOpen)
-
-  const [assigneeOpen, setAssigneeOpen] = useState(false)
-  const [assigneeQuery, setAssigneeQuery] = useState('')
-  const found = useUsers(useDebounced(assigneeQuery.trim()), assigneeOpen)
-
-  const [priorityOpen, setPriorityOpen] = useState(false)
-  const priorities = useFieldOptions('priority', priorityOpen)
   const [typeOpen, setTypeOpen] = useState(false)
   const types = useFieldOptions('issueType', typeOpen)
   const [customerOpen, setCustomerOpen] = useState(false)
@@ -189,78 +165,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
 
   const [parentQuery, setParentQuery] = useState('')
 
-  function fail(what: string, failure: Error) {
-    setError(
-      `Could not change ${what}, so ${issue.key} shows its old value again. ${failure.message}`,
-    )
-  }
-
-  function change(what: string, changes: IssueChanges, patch: Partial<Issue>) {
-    setError(null)
-    edit.mutate(
-      { key: issue.key, changes, patch },
-      {
-        onError: (failure) => {
-          fail(what, failure)
-        },
-      },
-    )
-  }
-
-  // Status
-  const statusOptions: PickerOption[] = (() => {
-    const reachable = transitions.data ?? []
-    const all = reachable.some((o) => o.id === issue.status.id)
-      ? reachable
-      : [
-          { id: issue.status.id, name: issue.status.name, category: issue.status.category },
-          ...reachable,
-        ]
-    const rank = (name: string) => {
-      const at = STATUS_ORDER.indexOf(name)
-      return at < 0 ? STATUS_ORDER.length : at
-    }
-    return [...all]
-      .sort((a, b) => rank(a.name) - rank(b.name))
-      .map((o) => ({
-        id: o.id,
-        label: o.name,
-        leading: <StatusDot status={{ id: o.id, name: o.name, category: o.category ?? 'new' }} />,
-      }))
-  })()
-
-  function chooseStatus(id: string) {
-    const option = transitions.data?.find((o) => o.id === id)
-    if (option === undefined || id === issue.status.id) return
-    setError(null)
-    setStatus.mutate(
-      { key: issue.key, statusId: id, patch: statusPatch(issue, option) },
-      {
-        onError: (failure) => {
-          fail('the status', failure)
-        },
-      },
-    )
-  }
-
-  // Assignee
-  const meUser: Person | undefined =
-    me === undefined
-      ? undefined
-      : { accountId: me.accountId, displayName: me.displayName, avatarUrl: null }
-  const recent = recentAssignees(issues, me?.accountId ?? '')
-  const choices = assigneeChoices(meUser, recent, found.data ?? [], assigneeQuery.trim())
-  const people = new Map<string, Person>(
-    [...choices.suggested, ...choices.others].map((p) => [p.accountId, p]),
-  )
-  const assigneeList: PickerOption[] = assigneeOptions(choices, assigneeQuery, me?.accountId)
-
-  function chooseAssignee(id: string) {
-    const person = id === NONE ? null : (people.get(id) ?? null)
-    if (id !== NONE && person === null) return
-    if ((issue.assignee?.accountId ?? NONE) === id) return
-    change('the assignee', { assignee: person?.accountId ?? null }, assigneePatch(person))
-  }
+  const change = useIssueChange(issue, setError)
 
   // Simple option fields
   const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
@@ -278,30 +183,10 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
     change('the Engagement', { engagementId: id }, engagementPatch(choice))
   }
 
-  function choosePriority(id: string) {
-    const choice = priorities.data?.find((c) => c.id === id)
-    if (choice === undefined || issue.priority?.id === id) return
-    change('the priority', { priorityId: id }, priorityPatch(choice))
-  }
-
   function chooseType(id: string) {
     const choice = types.data?.find((c) => c.id === id)
     if (choice === undefined || issue.issueType.id === id) return
     change('the type', { type: choice.name as SwappableType }, typePatch(issue, choice))
-  }
-
-  // Labels
-  const labelOptions: PickerOption[] = [
-    ...new Set([...issue.labels, ...projectLabels(issues)]),
-  ].map((label) => ({ id: label, label }))
-
-  function toggleLabel(label: string) {
-    const on = !issue.labels.includes(label)
-    change(
-      'the labels',
-      on ? { addLabels: [label] } : { removeLabels: [label] },
-      labelsPatch(issue, label, on),
-    )
   }
 
   // Sprint
@@ -327,7 +212,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
       { key: issue.key, sprintId: target?.id ?? null, patch: sprintPatch(issue, target) },
       {
         onError: (failure) => {
-          fail('the sprint', failure)
+          setError(refusal(issue.key, 'the sprint', failure))
         },
       },
     )
@@ -385,73 +270,16 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
     >
       <Group title="Status">
         <Row name="Status">
-          <Picker
-            label="Status"
-            valueText={issue.status.name}
-            leading={<StatusDot status={issue.status} />}
-            options={statusOptions}
-            selected={[issue.status.id]}
-            onSelect={chooseStatus}
-            onOpenChange={setStatusOpen}
-            note={
-              transitions.isPending
-                ? 'Loading statuses'
-                : transitions.isError
-                  ? `Could not load the statuses. ${transitions.error.message}`
-                  : undefined
-            }
-          />
+          <StatusPicker issue={issue} report={setError} />
         </Row>
         <Row name="Assignee">
-          <Picker
-            label="Assignee"
-            valueText={issue.assignee?.displayName ?? 'Unassigned'}
-            options={assigneeList}
-            selected={[issue.assignee?.accountId ?? NONE]}
-            searchable
-            onQuery={setAssigneeQuery}
-            onSelect={chooseAssignee}
-            onOpenChange={setAssigneeOpen}
-            note={
-              found.isError
-                ? `Could not search people. ${found.error.message}`
-                : found.isFetching
-                  ? 'Searching'
-                  : undefined
-            }
-          />
+          <AssigneePicker issue={issue} issues={issues} me={me} report={setError} />
         </Row>
         <Row name="Priority">
-          <Picker
-            label="Priority"
-            valueText={issue.priority?.name ?? 'None'}
-            options={fromChoices(priorities.data)}
-            selected={issue.priority === null ? [] : [issue.priority.id]}
-            onSelect={choosePriority}
-            onOpenChange={setPriorityOpen}
-            note={
-              priorities.isPending
-                ? 'Loading priorities'
-                : priorities.isError
-                  ? `Could not load the priorities. ${priorities.error.message}`
-                  : undefined
-            }
-          />
+          <PriorityPicker issue={issue} report={setError} />
         </Row>
         <Row name="Labels">
-          <Picker
-            label="Labels"
-            valueText={issue.labels.length === 0 ? 'None' : issue.labels.join(', ')}
-            options={labelOptions}
-            selected={issue.labels}
-            multiple
-            searchable
-            create={{ valid: isLabel, label: (text) => `Create "${text}"` }}
-            onSelect={toggleLabel}
-            onCreate={(text) => {
-              if (!issue.labels.includes(text)) toggleLabel(text)
-            }}
-          />
+          <LabelsPicker issue={issue} issues={issues} report={setError} />
         </Row>
       </Group>
 

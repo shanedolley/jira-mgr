@@ -8,15 +8,12 @@ import {
   deleteFailureNotes,
   describeCreated,
   initialDraft,
-  isCreateKey,
-  keepsLetters,
   listWords,
   missingFields,
   nextDraft,
   toCreateArgs,
   withType,
   type CreateDraft,
-  type CreateKeyEvent,
 } from './create'
 import type { TreeRow } from './tree'
 
@@ -341,60 +338,6 @@ describe('createContext', () => {
     const header = { kind: 'customer', customer: BETA } as TreeRow
     expect(createContext(header, ISSUES)).toEqual({ selected: null, group: BETA })
     expect(createContext(undefined, ISSUES)).toEqual({ selected: null, group: null })
-  })
-})
-
-describe('the C key', () => {
-  const key = (extra: Partial<CreateKeyEvent> = {}): CreateKeyEvent => ({
-    key: 'c',
-    metaKey: false,
-    ctrlKey: false,
-    altKey: false,
-    defaultPrevented: false,
-    repeat: false,
-    isComposing: false,
-    ...extra,
-  })
-
-  it('is the letter C alone, in either case', () => {
-    expect(isCreateKey(key())).toBe(true)
-    expect(isCreateKey(key({ key: 'C' }))).toBe(true)
-    expect(isCreateKey(key({ key: 'x' }))).toBe(false)
-  })
-
-  it('is never Cmd, Ctrl or Alt with C, nor a held, composed or handled key', () => {
-    for (const extra of [
-      { metaKey: true },
-      { ctrlKey: true },
-      { altKey: true },
-      { repeat: true },
-      { isComposing: true },
-      { defaultPrevented: true },
-    ]) {
-      expect(isCreateKey(key(extra))).toBe(false)
-    }
-  })
-
-  it('stays out of text fields, pickers, dialogs and editors', () => {
-    const inside = (selector: string) => ({
-      closest: (list: string) => (list.split(', ').includes(selector) ? {} : null),
-    })
-
-    for (const own of [
-      'input',
-      'textarea',
-      'select',
-      'dialog',
-      '[popover]',
-      '[role="listbox"]',
-      '[role="combobox"]',
-      '[role="textbox"]',
-      '[role="menu"]',
-    ]) {
-      expect(keepsLetters(inside(own))).toBe(true)
-    }
-    expect(keepsLetters({ closest: () => null })).toBe(false)
-    expect(keepsLetters(null)).toBe(false)
   })
 })
 

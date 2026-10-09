@@ -681,3 +681,45 @@ describe('deleteMutation', () => {
     expect(cancelled).toEqual([unresolvedKey])
   })
 })
+
+describe('issueMutation record', () => {
+  function recording(cache: Issue[] = [issue('PSAPAC-1', 'One')]) {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, cache)
+    const request = deferred<null>()
+    const record = vi.fn()
+    const { read } = reader({ 'PSAPAC-1': detail(issue('PSAPAC-1', 'One, edited')) })
+    const observer = new MutationObserver(
+      client,
+      summaryMutation(client, () => request.promise, read, record),
+    )
+    return { observer, request, record }
+  }
+
+  it('hands an accepted edit its new and old fields', async () => {
+    const { observer, request, record } = recording()
+    const done = observer.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    request.resolve(null)
+    await done
+    expect(record).toHaveBeenCalledExactlyOnceWith(
+      { key: 'PSAPAC-1', summary: 'One, edited' },
+      { patch: { summary: 'One, edited' }, before: { summary: 'One' } },
+    )
+  })
+
+  it('records nothing for an edit Jira refused', async () => {
+    const { observer, request, record } = recording()
+    const done = observer.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    request.reject(new JiraMgrError('validation_failed', 'No.'))
+    await expect(done).rejects.toBeInstanceOf(JiraMgrError)
+    expect(record).not.toHaveBeenCalled()
+  })
+
+  it('records nothing for an issue no cache holds, which has no old value to keep', async () => {
+    const { observer, request, record } = recording([])
+    const done = observer.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    request.resolve(null)
+    await done
+    expect(record).not.toHaveBeenCalled()
+  })
+})

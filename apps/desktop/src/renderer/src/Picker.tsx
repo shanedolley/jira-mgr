@@ -27,6 +27,8 @@ export interface PickerOption {
 export interface PickerProps {
   /** Names the property. The trigger reads "<label>: <value>" to a screen reader. */
   label: string
+  /** The single key that opens this picker from anywhere (D7), shown in the tooltip. */
+  shortcut?: string
   /** What the trigger shows and a screen reader hears after the label. */
   valueText: string
   leading?: ReactNode
@@ -83,6 +85,7 @@ function Check() {
  */
 export function Picker({
   label,
+  shortcut,
   valueText,
   leading,
   options,
@@ -218,6 +221,8 @@ export function Picker({
         aria-expanded={open}
         aria-controls={popoverId}
         aria-label={`${label}: ${valueText}`}
+        aria-keyshortcuts={shortcut}
+        title={shortcut === undefined ? undefined : `${label} (${shortcut})`}
         disabled={disabled}
         popoverTarget={popoverId}
         onKeyDown={(event) => {

@@ -28,6 +28,8 @@ interface FakeJira {
   failDone: () => void
   failRead: () => void
   dropIssue: (key: string) => void
+  refuseNextEdit: () => void
+  moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
 }
 
 interface WithFake {
@@ -74,6 +76,12 @@ export const failRead = (app: ElectronApplication) =>
     ;(globalThis as unknown as WithFake).__fakeJira.failRead()
   })
 
+/** Makes the fake Jira answer 400 to the next issue edit. */
+export const refuseNextEdit = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.refuseNextEdit()
+  })
+
 /** Removes an issue from the fake Jira, as if someone else deleted it. The next refetch loses it. */
 export const dropIssue = (app: ElectronApplication, key: string) =>
   app.evaluate((_electron, name) => {
@@ -87,3 +95,16 @@ export async function logIn(window: Page, token = TOKEN) {
   await window.getByLabel('API token').fill(token)
   await window.getByRole('button', { name: 'Log in' }).click()
 }
+
+/** Moves an issue to another status in the fake Jira, as if someone else did. The next refetch sees it. */
+export const moveIssue = (
+  app: ElectronApplication,
+  key: string,
+  status: 'todo' | 'doing' | 'done',
+) =>
+  app.evaluate(
+    (_electron, [name, to]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.moveIssue(name ?? '', to as 'todo')
+    },
+    [key, status],
+  )

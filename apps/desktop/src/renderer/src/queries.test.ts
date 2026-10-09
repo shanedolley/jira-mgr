@@ -18,6 +18,7 @@ import {
   togglesMutation,
   unresolvedQuery,
 } from './queries'
+import { undoStack, type UndoEntry } from './undo'
 
 const login = {
   siteUrl: 'https://x.test',
@@ -214,6 +215,22 @@ describe('clearAccountData', () => {
     expect(client.getQueryData(customersKey)).toBeUndefined()
     // The toggles live in the settings file, not with the account.
     expect(client.getQueryData(togglesKey)).toBeDefined()
+  })
+
+  it("logout empties the undo stack, so one account's old values never reach the next", () => {
+    const client = new QueryClient()
+    const entry: UndoEntry = {
+      key: 'PSAPAC-1',
+      what: 'status',
+      after: {},
+      before: {},
+      reversal: null,
+    }
+    undoStack(client).push(entry)
+
+    clearAccountData(client)
+
+    expect(undoStack(client).size).toBe(0)
   })
 })
 

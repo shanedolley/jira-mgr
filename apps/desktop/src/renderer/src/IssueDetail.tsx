@@ -1,15 +1,25 @@
 import type { Issue } from '@jira-mgr/core'
-import type { ReactNode, RefObject } from 'react'
+import { useState, type ReactNode, type RefObject } from 'react'
 
+import type { CurrentUser } from '../../shared/ipc'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
-import { StatusDot } from './StatusDot'
+import { AssigneePicker, LabelsPicker, PriorityPicker, StatusPicker } from './PropertyPickers'
 import { SummaryEditor } from './SummaryEditor'
 
-function Property({ name, children }: { name: string; children: ReactNode }) {
+/** `control` pulls a picker's button left by its own padding, so its text lines up with the plain values. */
+function Property({
+  name,
+  control = false,
+  children,
+}: {
+  name: string
+  control?: boolean
+  children: ReactNode
+}) {
   return (
     <div className="grid grid-cols-[6rem_1fr] items-center gap-2 py-1">
       <dt className="text-muted">{name}</dt>
-      <dd className="min-w-0 truncate">{children}</dd>
+      <dd className={`min-w-0 truncate ${control ? '-ml-2' : ''}`}>{children}</dd>
     </div>
   )
 }
@@ -17,6 +27,9 @@ function Property({ name, children }: { name: string; children: ReactNode }) {
 interface PeekProps {
   /** `undefined` when the issue no longer exists in the loaded data. */
   issue: Issue | undefined
+  /** Every loaded issue: the assignee and label pickers draw their choices from them. */
+  issues: readonly Issue[]
+  me: CurrentUser | undefined
   /** Set when the issue's Customer differs from its Epic's. */
   mismatch: Mismatch | null
   /** False when a refetch or a filter removed the issue from the Tree. */
@@ -36,12 +49,17 @@ interface PeekProps {
 /** Keyed by the issue, so moving to another one drops the edit state and any error of the last. */
 function PeekIssue({
   issue,
+  issues,
+  me,
   mismatch,
   inView,
   onEditingChange,
   onLeave,
-}: Pick<PeekProps, 'mismatch' | 'inView' | 'onEditingChange' | 'onLeave'> & { issue: Issue }) {
+}: Pick<PeekProps, 'issues' | 'me' | 'mismatch' | 'inView' | 'onEditingChange' | 'onLeave'> & {
+  issue: Issue
+}) {
   const fix = useMatchCustomer(issue)
+  const [error, setError] = useState<string | null>(null)
   return (
     <div className="space-y-5 px-5 pb-6">
       <div className="space-y-1">
@@ -53,18 +71,28 @@ function PeekIssue({
       </div>
       <SummaryEditor issue={issue} onEditingChange={onEditingChange} onLeave={onLeave} />
       <dl>
-        <Property name="Status">
-          <span className="inline-flex items-center gap-2">
-            <StatusDot status={issue.status} />
-            {issue.status.name}
-          </span>
+        <Property name="Status" control>
+          <StatusPicker issue={issue} report={setError} />
         </Property>
         <Property name="Type">{issue.issueType.name}</Property>
-        <Property name="Assignee">{issue.assignee?.displayName ?? 'Unassigned'}</Property>
+        <Property name="Assignee" control>
+          <AssigneePicker issue={issue} issues={issues} me={me} report={setError} />
+        </Property>
+        <Property name="Priority" control>
+          <PriorityPicker issue={issue} report={setError} />
+        </Property>
+        <Property name="Labels" control>
+          <LabelsPicker issue={issue} issues={issues} report={setError} />
+        </Property>
         <Property name="Customer">{issue.customer?.value ?? 'None'}</Property>
         <Property name="Engagement">{issue.engagement?.value ?? 'None'}</Property>
         <Property name="Updated">{new Date(issue.updated).toLocaleDateString()}</Property>
       </dl>
+      {error !== null && (
+        <p role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
       {mismatch !== null && (
         <CustomerMismatch
           mismatch={mismatch}
@@ -84,10 +112,14 @@ function PeekIssue({
 
 /**
  * The space-bar preview: summary, key, status, type, people, Customer and Engagement. The summary
- * edits in place, a mismatch offers its one-click fix, and Open goes to the full page.
+ * edits in place, a mismatch offers its one-click fix, and Open goes to the full page. Status,
+ * Assignee, Priority and Labels are the page's own pickers, so the Tree's `S`, `A`, `P` and `L`
+ * open them here (D7) without leaving the list.
  */
 export function IssueDetail({
   issue,
+  issues,
+  me,
   mismatch,
   inView,
   onClose,
@@ -143,6 +175,8 @@ export function IssueDetail({
         <PeekIssue
           key={issue.key}
           issue={issue}
+          issues={issues}
+          me={me}
           mismatch={mismatch}
           inView={inView}
           onEditingChange={onEditingChange}

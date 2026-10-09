@@ -41,8 +41,9 @@ test('logs in to the layout and logs out again', async () => {
   await expect(detail.getByRole('heading', { name: 'Fix the export timeout' })).toBeVisible()
   await expect(detail.getByText('PSAPAC-3')).toBeVisible()
   await expect(detail.getByText('Bug')).toBeVisible()
-  await expect(detail.getByText('To Do')).toBeVisible()
-  await expect(detail.getByText('Unassigned')).toBeVisible()
+  // Status and Assignee are the page's own pickers (D7), whose closed lists also hold their text.
+  await expect(detail.getByRole('button', { name: 'Status: To Do' })).toBeVisible()
+  await expect(detail.getByRole('button', { name: 'Assignee: Unassigned' })).toBeVisible()
 
   await window.getByRole('button', { name: 'Log out' }).click()
   await expect(window.getByRole('heading', { name: 'Log in to Jira' })).toBeVisible()

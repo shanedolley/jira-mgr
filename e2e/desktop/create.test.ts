@@ -129,7 +129,10 @@ test('C does nothing with Cmd or Ctrl, in a text field, or while a picker has th
   // A listbox with no search field takes the letters too.
   await item(/PSAPAC-4,/).click()
   await window.keyboard.press('Enter')
-  const status = window.getByRole('button', { name: /^Status:/ })
+  // The Peek under the page has a Status picker too, so the query names the page's sidebar.
+  const status = window
+    .getByRole('complementary', { name: 'Properties' })
+    .getByRole('button', { name: /^Status:/ })
   await status.focus()
   await window.keyboard.press('ArrowDown')
   await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()

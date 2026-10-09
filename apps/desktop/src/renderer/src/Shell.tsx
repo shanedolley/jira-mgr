@@ -1,6 +1,7 @@
 import type { Issue } from '@jira-mgr/core'
 import { buildHierarchy } from '@jira-mgr/core/hierarchy'
 import { applyViewToggles, issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   useCallback,
   useDeferredValue,
@@ -10,9 +11,11 @@ import {
   useRef,
   useState,
 } from 'react'
+import { flushSync } from 'react-dom'
 
 import type { DeleteIssueArgs, SavedView, Session, Toggles } from '../../shared/ipc'
 import { Banner } from './Banner'
+import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
 import { DeleteIssueDialog } from './DeleteIssueDialog'
 import { IssueDetail } from './IssueDetail'
@@ -23,8 +26,9 @@ import { Sidebar } from './Sidebar'
 import { Toast } from './Toast'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
-import { createContext, deleteFailureNotes, isCreateKey, keepsLetters, type Notice } from './create'
+import { createContext, deleteFailureNotes, type Notice } from './create'
 import { filterChoices, hasFilters } from './filters'
+import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
 import {
   useCustomers,
   useDeleteIssue,
@@ -35,6 +39,8 @@ import {
   useToggles,
   useUnresolvedIssues,
 } from './queries'
+import { describeEdit, undoStack } from './undo'
+import { useUndo } from './useUndo'
 import {
   ancestorIds,
   expandableIds,
@@ -130,7 +136,14 @@ export function Shell({ session }: { session: Session }) {
   // The issue whose delete modal is open, held whole: the lists may not hold it (a Done parent
   // opened from a page before Done loads) or may drop it while the modal is open.
   const [deleting, setDeleting] = useState<Issue | null>(null)
-  const [notice, setNotice] = useState<{ notice: Notice; openKey: string | null } | null>(null)
+  // The Cmd+K palette (D7).
+  const [searching, setSearching] = useState(false)
+  // `undoable` puts an Undo button on a field edit's toast.
+  const [notice, setNotice] = useState<{
+    notice: Notice
+    openKey: string | null
+    undoable?: boolean
+  } | null>(null)
   // A created issue to make active once its row exists.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const deleteIssue = useDeleteIssue()
@@ -247,6 +260,17 @@ export function Shell({ session }: { session: Session }) {
     else focusTree()
   }
 
+  /** Opens the page of the issue the palette chose, and makes its row active when the Tree shows it. */
+  function openFromPalette(key: string) {
+    setSearching(false)
+    const row = rows.find((r) => r.kind === 'issue' && r.node.issue.key === key)
+    if (row !== undefined) {
+      setTrack((t) => ({ ...t, activeId: row.id }))
+      setLastIssueKey(key)
+    }
+    setPageKey(key)
+  }
+
   function closePeek() {
     setPeekOpen(false)
     setEditingKey(null)
@@ -276,23 +300,108 @@ export function Shell({ session }: { session: Session }) {
     )
   }
 
-  // `C` creates an issue (D6). The key lives here, beside the Tree's own, so D7 can fold it into
-  // its keymap. It never fires while a field, picker, dialog or editor has the letter.
-  const onCreateKey = useEffectEvent((event: KeyboardEvent) => {
-    if (!isCreateKey(event) || !canCreate) return
-    if (keepsLetters(event.target instanceof Element ? event.target : null)) return
-    event.preventDefault()
-    openCreate()
+  /** The active Tree row's issue, which `S`, `A`, `L`, `P` and `E` act on. A header or chip has none. */
+  const activeRow = rows.find((r) => r.id === activeId)
+  const activeKey = activeRow?.kind === 'issue' ? activeRow.node.issue.key : null
+
+  /** Puts focus back where the keyboard was: the page when one is open, else the Tree. */
+  function restoreFocus() {
+    if (pageKey !== null) pageRef.current?.focus()
+    else focusTree()
+  }
+
+  /**
+   * Opens one property of `key`: from the Tree, that issue's Peek (opened if need be, since the
+   * Peek holds the same pickers as the page and leaves the list in view); from a page, the page's
+   * own sidebar. The shortcut clicks the control that advertises its key with `aria-keyshortcuts`,
+   * so it is the picker the mouse opens and no code is duplicated. The click does not move focus,
+   * so when the picker closes the browser hands focus back to where the key was pressed: a pick
+   * made from the Tree lets `S`, an arrow, Enter and then `J` flow without the mouse.
+   */
+  function openProperty(command: PropertyCommand, key: string) {
+    if (pageKey === null) {
+      // The Peek must show this issue before its control can be found.
+      flushSync(() => {
+        setLastIssueKey(key)
+        setPeekOpen(true)
+      })
+    }
+    const surface = pageKey === null ? peekRef.current : pageRef.current
+    surface?.querySelector<HTMLElement>(`[aria-keyshortcuts="${PROPERTY_KEYS[command]}"]`)?.click()
+  }
+
+  const undo = useUndo((reported) => {
+    setNotice({ notice: reported, openKey: null })
+  })
+
+  // Every global shortcut (D7), asked of `resolveKey` in one place. The Tree's own keys sit on the
+  // Tree element and the page's Esc on the page, so both have run, and called `preventDefault`
+  // when they acted, before this listener sees the event.
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    const target = event.target instanceof Element ? event.target : null
+    const command = resolveKey(event, target)
+    if (command === null) return
+    switch (command) {
+      case 'palette':
+        event.preventDefault()
+        setSearching(true)
+        return
+      case 'undo':
+        event.preventDefault()
+        undo()
+        return
+      case 'create':
+        if (!canCreate) return
+        event.preventDefault()
+        openCreate()
+        return
+      case 'escape':
+        // Focus is on a button, the sidebar or the body, not in the Tree or on the page. The page
+        // covers the Peek, so it leaves first; a second Esc closes the Peek.
+        if (pageOpen) {
+          event.preventDefault()
+          setPageKey(null)
+        } else if (peekOpen) {
+          event.preventDefault()
+          closePeek()
+        }
+        return
+      default: {
+        const key = pageKey ?? activeKey
+        if (key === null || !treeReady || creating !== null || deleting !== null) return
+        event.preventDefault()
+        openProperty(command, key)
+      }
+    }
   })
   useEffect(() => {
     const listen = (event: KeyboardEvent) => {
-      onCreateKey(event)
+      onKey(event)
     }
     document.addEventListener('keydown', listen)
     return () => {
       document.removeEventListener('keydown', listen)
     }
   }, [])
+
+  // Each accepted field edit says what changed and offers Undo. It stays an ordinary notice, so a
+  // create's or delete's toast and an edit's replace one another.
+  const client = useQueryClient()
+  useEffect(
+    () =>
+      undoStack(client).onPush((entry) => {
+        setNotice({
+          notice: {
+            title: describeEdit(entry),
+            notes: entry.reversal === null ? ['This change cannot be undone here.'] : [],
+            warned: false,
+          },
+          openKey: null,
+          undoable: entry.reversal !== null,
+        })
+      }),
+    [client],
+  )
 
   const dismissNotice = useCallback(() => {
     setNotice(null)
@@ -426,6 +535,19 @@ export function Shell({ session }: { session: Session }) {
             </span>
             <button
               type="button"
+              aria-keyshortcuts="Meta+K"
+              onClick={() => {
+                setSearching(true)
+              }}
+              className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+            >
+              Search
+              <kbd aria-hidden className="font-mono text-muted">
+                Cmd K
+              </kbd>
+            </button>
+            <button
+              type="button"
               disabled={!canCreate}
               aria-keyshortcuts="C"
               onClick={openCreate}
@@ -484,6 +606,8 @@ export function Shell({ session }: { session: Session }) {
       {peekOpen && (
         <IssueDetail
           issue={peekedIssue}
+          issues={issues}
+          me={meQuery.data}
           mismatch={peekedNode?.customerMismatch ?? null}
           inView={peekedNode !== undefined}
           onClose={closePeek}
@@ -542,9 +666,27 @@ export function Shell({ session }: { session: Session }) {
           returnFocus={focusTree}
         />
       )}
+      {searching && (
+        <CommandPalette
+          issues={issues}
+          onOpen={openFromPalette}
+          onClose={() => {
+            setSearching(false)
+          }}
+          returnFocus={restoreFocus}
+        />
+      )}
       {notice !== null && (
         <Toast
           notice={notice.notice}
+          onUndo={
+            notice.undoable === true
+              ? () => {
+                  undo()
+                  restoreFocus()
+                }
+              : undefined
+          }
           onOpen={
             notice.openKey === null
               ? undefined

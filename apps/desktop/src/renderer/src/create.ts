@@ -250,41 +250,6 @@ export function describeCreated(draft: CreateDraft, result: CreatedIssue): Notic
   return { title: `Created ${key}: ${issue.summary}`, notes, warned }
 }
 
-export interface CreateKeyEvent {
-  key: string
-  metaKey: boolean
-  ctrlKey: boolean
-  altKey: boolean
-  defaultPrevented: boolean
-  repeat: boolean
-  isComposing: boolean
-}
-
-/** The `C` shortcut: the letter alone, in either case, not held down and not already handled. */
-export function isCreateKey(event: CreateKeyEvent): boolean {
-  return (
-    (event.key === 'c' || event.key === 'C') &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.altKey &&
-    !event.defaultPrevented &&
-    !event.repeat &&
-    !event.isComposing
-  )
-}
-
-/** Controls where a letter is typing or choosing, not a command. */
-const OWN_KEYS =
-  'input, textarea, select, dialog, [popover], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="menu"]'
-
-/**
- * Whether the key went to a text field, picker, dialog or editor, which keep their letters.
- * Takes anything with `closest`, so a test needs no DOM.
- */
-export function keepsLetters(target: { closest(selector: string): unknown } | null): boolean {
-  return target !== null && target.closest(OWN_KEYS) !== null
-}
-
 /** "a", "a and b", "a, b and c". */
 export const listWords = (words: readonly string[]): string =>
   words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`
