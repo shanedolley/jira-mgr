@@ -630,6 +630,8 @@ describe('responses', () => {
   })
 })
 
+const fileIdOf = (location: string) => /\/file\/([0-9a-f-]{36})\//.exec(location)?.[1]
+
 describe('attachment content', () => {
   const redirect = loadFixture('attachment-content-redirect') as {
     status: number
@@ -645,7 +647,7 @@ describe('attachment content', () => {
           headers: { Location: redirect.location },
         }),
     )
-    expect(await attachmentMediaId(client, '652124')).toBe('b779fa03-43a9-473f-bc64-531f0c7fa560')
+    expect(await attachmentMediaId(client, '652124')).toBe(fileIdOf(redirect.location))
     expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual([
       'GET /rest/api/3/attachment/content/652124',
     ])

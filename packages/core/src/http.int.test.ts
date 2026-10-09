@@ -593,6 +593,9 @@ describe('debug output', () => {
   })
 })
 
+/** The file id in a recorded `Location`. */
+const fileIdOf = (location: string) => /\/file\/([0-9a-f-]{36})\//.exec(location)?.[1]
+
 /** Counts how a client uses response bodies: bodies cancelled, and readers taken to read one. */
 function spyOnBody() {
   const counts = { cancels: 0, readers: 0 }
@@ -716,7 +719,7 @@ describe('bytes and media ids', () => {
         return new HttpResponse(null)
       }),
     )
-    expect(await mediaId(client().api)).toBe('b779fa03-43a9-473f-bc64-531f0c7fa560')
+    expect(await mediaId(client().api)).toBe(fileIdOf(redirect.location))
     expect(followed).toBe(false)
     expect(body.cancels).toBe(1)
     expect(body.readers).toBe(0)

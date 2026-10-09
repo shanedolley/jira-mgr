@@ -1,5 +1,4 @@
 {
-  "status": 302,
-  "location": "https://api.media.atlassian.com/file/b779fa03-43a9-473f-bc64-531f0c7fa560/binary?client=a1b2c3d4-0000-4000-8000-000000000000&collection=&dl=true&max-age=2592000&name=1f4a1.png",
-  "note": "Shape written from Atlassian's documented behaviour, with no token parameter. Not yet recorded from a live read: re-record with one read of /rest/api/3/attachment/content/<id> and keep the status and Location only."
+  "status": 303,
+  "location": "https://api.media.atlassian.com/file/b779fa03-43a9-473f-bc64-531f0c7fa560/binary?client=f035658b-9bea-466b-9df6-99897d891a41&dl=true&name=2139-fe0f.png"
 }
