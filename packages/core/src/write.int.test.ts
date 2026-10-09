@@ -169,6 +169,29 @@ describe('createIssue', () => {
     expect(requests.map((r) => r.method)).toEqual(['POST', 'GET'])
   })
 
+  it('stops on an aborted signal: nothing is sent before the create, and the key survives after it', async () => {
+    const before = new AbortController()
+    before.abort()
+    const none = serve(createdResponse)
+    const early = await createIssue(client, base, { signal: before.signal }).catch(
+      (e: unknown) => e,
+    )
+    expect(early).toBeInstanceOf(Error)
+    expect(early).not.toBeInstanceOf(JiraMgrError)
+    expect(none).toEqual([])
+    server.resetHandlers()
+
+    const during = new AbortController()
+    const requests = serve((request) => {
+      if (request.method === 'GET') during.abort()
+      return createdResponse(request)
+    })
+    const error = await failure(createIssue(client, base, { signal: during.signal }))
+    expect(error.code).toBe('jira_error')
+    expect(error.details).toEqual(CREATED)
+    expect(requests.map((r) => r.method)).toEqual(['POST', 'GET'])
+  })
+
   it.each(['Epic', 'Story', 'Task', 'Bug', 'Subtask'] as const)(
     'requires Customer and Engagement on a %s',
     async (type) => {

@@ -110,10 +110,14 @@ const created = z.object({ id: z.string(), key: z.string() })
  * Creates an issue in the project from settings, then reads it back with `getIssue` and returns it,
  * so the caller sees what Jira holds after any automation rule has run. Customer and Engagement
  * are required on every type, and a Subtask needs `parentKey`. Throws `validation_failed` before
- * any request when the input is wrong. When the create succeeds and the read fails, throws
+ * any request when the input is wrong. Aborting `signal` stops the create or the read. When the create succeeds and the read fails, throws
  * `jira_error` whose `details` carry the new `key` and `id`.
  */
-export async function createIssue(http: HttpClient, input: CreateIssueInput): Promise<IssueDetail> {
+export async function createIssue(
+  http: HttpClient,
+  input: CreateIssueInput,
+  options: { signal?: AbortSignal } = {},
+): Promise<IssueDetail> {
   const issue = parseInput(createInput, input, 'create the issue')
   if (issue.type === 'Subtask' && issue.parentKey === undefined) {
     throw new JiraMgrError(
@@ -126,7 +130,10 @@ export async function createIssue(http: HttpClient, input: CreateIssueInput): Pr
     throw new JiraMgrError('permission_denied', 'No project is set. Run `jm auth login`.')
   }
   const fields = { project: { key: projectKey }, ...jiraFields(await getFieldIds(), issue) }
-  const raw = await http.request('POST', '/rest/api/3/issue', { body: { fields } })
+  const raw = await http.request('POST', '/rest/api/3/issue', {
+    body: { fields },
+    signal: options.signal,
+  })
   const parsed = created.safeParse(raw)
   if (!parsed.success) {
     throw new JiraMgrError('jira_error', 'Jira sent an unexpected create response.', {
@@ -135,7 +142,7 @@ export async function createIssue(http: HttpClient, input: CreateIssueInput): Pr
   }
   const { key, id } = parsed.data
   try {
-    return await getIssue(http, key)
+    return await getIssue(http, key, options)
   } catch (cause) {
     // The issue exists, so the caller must not lose its key to a failed read.
     const reason = cause instanceof Error ? cause.message : String(cause)

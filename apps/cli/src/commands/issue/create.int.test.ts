@@ -446,6 +446,36 @@ describe('jm issue create output and failures', () => {
     expect(tty.f.stderr).toMatch(/^jm: Created PSAPAC-14, but could not read it back/)
   })
 
+  it('exits 130 and prints the new key when Ctrl-C lands during the read-back', async () => {
+    const controller = new AbortController()
+    serveWrites({
+      respond: ({ method, path }) => {
+        if (method === 'GET' && path.startsWith('/rest/api/3/issue/PSAPAC-14?')) {
+          controller.abort()
+        }
+        return undefined
+      },
+    })
+    const { code, f } = await runJson(create(...base), undefined, { signal: controller.signal })
+    expect(code).toBe(130)
+    expect(f.stdout).toBe('')
+    expect(f.stderr).toMatch(/^jm: Created PSAPAC-14, but could not read it back/)
+    expect(f.stderr).toContain('jm issue get PSAPAC-14')
+  })
+
+  it('creates nothing and names no key when Ctrl-C lands before the create', async () => {
+    const { requests } = serveWrites()
+    const controller = new AbortController()
+    controller.abort()
+    const { code, f } = await runJson(create(...base), undefined, { signal: controller.signal })
+    expect(code).toBe(130)
+    expect(f.stdout).toBe('')
+    expect(f.stderr).toBe('')
+    expect(requests.filter((r) => r.method === 'POST' && r.path === '/rest/api/3/issue')).toEqual(
+      [],
+    )
+  })
+
   it('maps a Jira 400 to exit 2 naming the field', async () => {
     serveWrites({
       respond: ({ method, path }) =>

@@ -33,21 +33,25 @@ export const create: Handler<SpecOf<'issue create'>, IssueData> = {
     const assignee =
       input.assignee === undefined ? undefined : await resolveAssignee(ctx, input.assignee)
 
-    const issue = await createIssue(ctx.http(), {
-      type: input.type as 'Epic' | 'Story' | 'Task' | 'Bug' | 'Subtask',
-      summary: input.summary,
-      customerId,
-      engagementId,
-      parentKey: input.parent,
-      description,
-      assignee,
-      priorityId,
-      labels: input.label.length > 0 ? input.label : undefined,
-      startDate: input.start,
-      dueDate: input.due,
-      originalEstimate: input.estimate,
-      timeRemainingHours: input.timeRemaining,
-    })
+    const issue = await createIssue(
+      ctx.http(),
+      {
+        type: input.type as 'Epic' | 'Story' | 'Task' | 'Bug' | 'Subtask',
+        summary: input.summary,
+        customerId,
+        engagementId,
+        parentKey: input.parent,
+        description,
+        assignee,
+        priorityId,
+        labels: input.label.length > 0 ? input.label : undefined,
+        startDate: input.start,
+        dueDate: input.due,
+        originalEstimate: input.estimate,
+        timeRemainingHours: input.timeRemaining,
+      },
+      { signal: ctx.signal },
+    )
     return toIssueData(issue, site)
   },
 
