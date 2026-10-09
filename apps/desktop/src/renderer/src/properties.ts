@@ -18,6 +18,15 @@ interface Option {
   value: string
 }
 
+/** The id of the "nothing" choice in a picker: Unassigned, Backlog. */
+export const NONE = '__none__'
+
+export const STATE_LABELS: Record<SprintOption['state'], string> = {
+  active: 'Active',
+  future: 'Future',
+  closed: 'Closed',
+}
+
 /** An assignee, as the pickers list one. */
 export type Person = Pick<UserOption, 'accountId' | 'displayName' | 'avatarUrl'>
 
@@ -52,6 +61,36 @@ export function assigneeChoices(
   )
   const taken = new Set(suggested.map((person) => person.accountId))
   return { suggested, others: found.filter((person) => !taken.has(person.accountId)) }
+}
+
+interface AssigneeOption {
+  id: string
+  label: string
+  detail?: string
+  group: string
+}
+
+/**
+ * The assignee picker's options: Unassigned when the query allows it, then the suggested people
+ * (the user shown as "Me"), then the rest of the search.
+ */
+export function assigneeOptions(
+  choices: { suggested: readonly Person[]; others: readonly Person[] },
+  query: string,
+  meId: string | undefined,
+): AssigneeOption[] {
+  return [
+    ...('unassigned'.includes(query.trim().toLowerCase())
+      ? [{ id: NONE, label: 'Unassigned', group: 'Suggested' }]
+      : []),
+    ...choices.suggested.map((p) => ({
+      id: p.accountId,
+      label: p.accountId === meId ? 'Me' : p.displayName,
+      ...(p.accountId === meId ? { detail: p.displayName } : {}),
+      group: 'Suggested',
+    })),
+    ...choices.others.map((p) => ({ id: p.accountId, label: p.displayName, group: 'People' })),
+  ]
 }
 
 const SPRINT_ORDER = { active: 0, future: 1, closed: 2 } as const
@@ -101,7 +140,7 @@ const BY_KEY_DESC = (a: Issue, b: Issue) =>
 
 /** The parents the issue may take whose key or summary matches `query`, open ones first, at most `limit`. */
 export function parentChoices(
-  issue: Issue,
+  issue: Pick<Issue, 'key'> & { issueType: Pick<Issue['issueType'], 'subtask' | 'hierarchyLevel'> },
   issues: readonly Issue[],
   query: string,
   limit = 50,
@@ -122,7 +161,10 @@ export interface ParentMatch {
  * What a new parent holds that differs from the issue (Q16): its Customer and Engagement where
  * it has one and the issue has another or none. Both `null` means moving needs no question.
  */
-export function parentMatch(issue: Issue, parent: Issue): ParentMatch {
+export function parentMatch(
+  issue: Pick<Issue, 'customer' | 'engagement'>,
+  parent: Pick<Issue, 'customer' | 'engagement'>,
+): ParentMatch {
   const differs = (own: Option | null, other: Option | null) =>
     other !== null && own?.id !== other.id ? other : null
   return {

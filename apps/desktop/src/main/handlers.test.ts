@@ -42,6 +42,8 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     listTransitions: record('listTransitions', []),
     setStatus: record('setStatus', undefined),
     setSprint: record('setSprint', undefined),
+    createIssue: record('createIssue', { key: 'PSAPAC-1', issue: null, warning: null }),
+    deleteIssue: record('deleteIssue', { key: 'PSAPAC-1', deletedSubtasks: [] }),
     listSprints: record('listSprints', []),
     searchUsers: record('searchUsers', []),
     listFieldOptions: record('listFieldOptions', []),
@@ -185,6 +187,82 @@ describe('issue edits', () => {
       { method: 'setSprint', args: [{ key: 'PSAPAC-1', sprintId: null }] },
       { method: 'searchUsers', args: [{ query: '' }] },
     ])
+  })
+})
+
+const NEW_ISSUE = {
+  type: 'Story',
+  summary: 'Write the runbook',
+  customerId: '1',
+  engagementId: '7',
+}
+
+describe('issues:create', () => {
+  it.each([
+    ['no summary', { ...NEW_ISSUE, summary: undefined }],
+    ['a blank summary', { ...NEW_ISSUE, summary: '   ' }],
+    ['a summary over 255 characters', { ...NEW_ISSUE, summary: 'x'.repeat(256) }],
+    ['no Customer', { ...NEW_ISSUE, customerId: undefined }],
+    ['no Engagement', { ...NEW_ISSUE, engagementId: undefined }],
+    ['an empty Customer', { ...NEW_ISSUE, customerId: '' }],
+    ['a type Jira may not create here', { ...NEW_ISSUE, type: 'Initiative' }],
+    ['a parent that is not an issue key', { ...NEW_ISSUE, parentKey: 'parent' }],
+    ['a label with a space', { ...NEW_ISSUE, labels: ['two words'] }],
+    ['a fractional sprint', { ...NEW_ISSUE, sprintId: 1.5 }],
+    ['a field it does not take', { ...NEW_ISSUE, dueDate: '2026-10-09' }],
+    ['no argument', undefined],
+  ])('refuses %s before the backend runs', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['issues:create'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes a new issue to the backend with the summary trimmed', async () => {
+    const { backend, calls } = fakeBackend()
+    const full = {
+      ...NEW_ISSUE,
+      summary: '  Write the runbook  ',
+      parentKey: 'PSAPAC-10',
+      assignee: 'u1',
+      priorityId: '3',
+      labels: ['docs'],
+      originalEstimate: '2h',
+      sprintId: 5,
+    }
+    const result = await createHandlers(backend)['issues:create'](full, noProgress)
+    expect(result).toMatchObject({ ok: true })
+    expect(calls).toEqual([
+      { method: 'createIssue', args: [{ ...full, summary: 'Write the runbook' }] },
+    ])
+  })
+})
+
+describe('issues:delete', () => {
+  it.each([
+    ['no cascade choice', { key: 'PSAPAC-1', subtasks: [] }],
+    [
+      'a cascade choice that is not a boolean',
+      { key: 'PSAPAC-1', deleteSubtasks: 1, subtasks: [] },
+    ],
+    ['no list of subtasks shown', { key: 'PSAPAC-1', deleteSubtasks: false }],
+    ['a subtask that is not a key', { key: 'PSAPAC-1', deleteSubtasks: true, subtasks: ['x'] }],
+    ['a key that is not an issue key', { key: 'one', deleteSubtasks: false, subtasks: [] }],
+    ['an extra field', { key: 'PSAPAC-1', deleteSubtasks: false, subtasks: [], force: true }],
+    ['no argument', undefined],
+  ])('refuses %s before the backend runs', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['issues:delete'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes the key, the cascade choice and the subtasks shown to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const args = { key: 'PSAPAC-1', deleteSubtasks: true, subtasks: ['PSAPAC-2'] }
+    const result = await createHandlers(backend)['issues:delete'](args, noProgress)
+    expect(result).toMatchObject({ ok: true })
+    expect(calls).toEqual([{ method: 'deleteIssue', args: [args] }])
   })
 })
 

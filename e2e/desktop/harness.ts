@@ -12,12 +12,12 @@ export const TOKEN = 'good-token'
 export interface Counts {
   searches: { unresolved: number; done: number }
   doneEarly: number
-  /** Writes received: edits, transitions and sprint moves. */
+  /** Writes received: edits, transitions, sprint moves, creates and deletes. */
   edits: number
   applied: number
   /** Reads of one issue, in order of arrival. */
   issueReads: string[]
-  /** The body of every write received, in order. */
+  /** The body of every write received, in order. A delete is `{ delete, deleteSubtasks }`. */
   editBodies: unknown[]
 }
 

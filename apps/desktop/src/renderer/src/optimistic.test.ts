@@ -4,7 +4,9 @@ import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-qu
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  applyCreated,
   applyFreshIssue,
+  deleteMutation,
   doneKey,
   issueDetailKey,
   issueMutation,
@@ -462,5 +464,138 @@ describe('applyFreshIssue', () => {
     applyFreshIssue(client, fresh)
     expect(client.getQueryData<Issue[]>(unresolvedKey)?.[0]).not.toHaveProperty('subtasks')
     expect(client.getQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'))?.subtasks).toHaveLength(1)
+  })
+})
+
+describe('applyCreated', () => {
+  it('puts the read-back into the list of its phase and the page cache, with no reload', () => {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
+    client.setQueryData<Issue[]>(doneKey, [])
+    const fresh = detail(issue('PSAPAC-9', 'New'))
+
+    applyCreated(client, { key: 'PSAPAC-9', issue: fresh, warning: null })
+
+    expect(summariesOf(client, unresolvedKey)).toEqual(['One', 'New'])
+    expect(summariesOf(client, doneKey)).toEqual([])
+    expect(client.getQueryData(issueDetailKey('PSAPAC-9'))).toBe(fresh)
+    expect(client.getQueryState(unresolvedKey)?.isInvalidated).toBe(false)
+  })
+
+  it('reloads the unresolved list when the read-back failed, since there is no issue to put', () => {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
+
+    applyCreated(client, { key: 'PSAPAC-9', issue: null, warning: 'Could not read.' })
+
+    expect(summariesOf(client, unresolvedKey)).toEqual(['One'])
+    expect(client.getQueryState(unresolvedKey)?.isInvalidated).toBe(true)
+  })
+})
+
+describe('deleteMutation', () => {
+  const sub = (key: string, parent: string) =>
+    issue(key, key, { parentKey: parent, issueType: { subtask: true } as Issue['issueType'] })
+
+  function deleteSetup() {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [
+      issue('PSAPAC-1', 'Epic'),
+      issue('PSAPAC-2', 'Child', { parentKey: 'PSAPAC-1' }),
+      issue('PSAPAC-3', 'Story'),
+      sub('PSAPAC-4', 'PSAPAC-3'),
+    ])
+    client.setQueryData<Issue[]>(doneKey, [
+      issue('PSAPAC-5', 'Finished', { parentKey: 'PSAPAC-1' }),
+    ])
+    const request = deferred<{ key: string; deletedSubtasks: string[] }>()
+    const observer = new MutationObserver(
+      client,
+      deleteMutation(client, () => request.promise),
+    )
+    const keys = (list: readonly string[]) => client.getQueryData<Issue[]>(list)?.map((i) => i.key)
+    return { client, observer, request, keys }
+  }
+
+  it('takes the issue out of the list before Jira answers', async () => {
+    const { observer, request, keys } = deleteSetup()
+    const done = observer.mutate({ key: 'PSAPAC-3', deleteSubtasks: false, subtasks: [] })
+    await expect.poll(() => keys(unresolvedKey)).toEqual(['PSAPAC-1', 'PSAPAC-2', 'PSAPAC-4'])
+    request.resolve({ key: 'PSAPAC-3', deletedSubtasks: [] })
+    await done
+    expect(keys(unresolvedKey)).toEqual(['PSAPAC-1', 'PSAPAC-2', 'PSAPAC-4'])
+  })
+
+  it('takes the subtasks the user chose out with it, from either list', async () => {
+    const { observer, request, keys } = deleteSetup()
+    const done = observer.mutate({
+      key: 'PSAPAC-3',
+      deleteSubtasks: true,
+      subtasks: ['PSAPAC-4'],
+    })
+    await expect.poll(() => keys(unresolvedKey)).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+    request.resolve({ key: 'PSAPAC-3', deletedSubtasks: ['PSAPAC-4'] })
+    await done
+  })
+
+  it('leaves a subtask in the list when the user did not choose to delete it', async () => {
+    const { observer, request, keys } = deleteSetup()
+    const done = observer.mutate({ key: 'PSAPAC-3', deleteSubtasks: false, subtasks: ['PSAPAC-4'] })
+    await expect.poll(() => keys(unresolvedKey)).not.toContain('PSAPAC-3')
+    expect(keys(unresolvedKey)).toContain('PSAPAC-4')
+    request.resolve({ key: 'PSAPAC-3', deletedSubtasks: [] })
+    await done
+  })
+
+  it('leaves the children of a deleted Epic without a parent, in both lists', async () => {
+    const { client, observer, request } = deleteSetup()
+    const done = observer.mutate({ key: 'PSAPAC-1', deleteSubtasks: false, subtasks: [] })
+    await expect
+      .poll(() => client.getQueryData<Issue[]>(unresolvedKey)?.map((i) => i.key))
+      .not.toContain('PSAPAC-1')
+    const parents = (list: readonly string[]) =>
+      client.getQueryData<Issue[]>(list)?.map((i) => [i.key, i.parentKey])
+    expect(parents(unresolvedKey)).toContainEqual(['PSAPAC-2', null])
+    expect(parents(doneKey)).toEqual([['PSAPAC-5', null]])
+    request.resolve({ key: 'PSAPAC-1', deletedSubtasks: [] })
+    await done
+  })
+
+  it('puts everything back when Jira refuses', async () => {
+    const { client, observer, request, keys } = deleteSetup()
+    const done = observer.mutate({ key: 'PSAPAC-1', deleteSubtasks: false, subtasks: [] })
+    await expect.poll(() => keys(unresolvedKey)).not.toContain('PSAPAC-1')
+    request.reject(new JiraMgrError('permission_denied', 'Not allowed.'))
+    await expect(done).rejects.toMatchObject({ code: 'permission_denied' })
+
+    expect(keys(unresolvedKey)?.sort()).toEqual(['PSAPAC-1', 'PSAPAC-2', 'PSAPAC-3', 'PSAPAC-4'])
+    const parents = client.getQueryData<Issue[]>(doneKey)?.map((i) => i.parentKey)
+    expect(parents).toEqual(['PSAPAC-1'])
+    expect(
+      client.getQueryData<Issue[]>(unresolvedKey)?.find((i) => i.key === 'PSAPAC-2')?.parentKey,
+    ).toBe('PSAPAC-1')
+  })
+
+  it('puts a refused cascade back, subtasks included', async () => {
+    const { observer, request, keys } = deleteSetup()
+    const done = observer.mutate({ key: 'PSAPAC-3', deleteSubtasks: true, subtasks: ['PSAPAC-4'] })
+    await expect.poll(() => keys(unresolvedKey)).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+    request.reject(new JiraMgrError('jira_error', 'Jira is down.'))
+    await expect(done).rejects.toBeInstanceOf(JiraMgrError)
+    expect(keys(unresolvedKey)?.sort()).toEqual(['PSAPAC-1', 'PSAPAC-2', 'PSAPAC-3', 'PSAPAC-4'])
+  })
+
+  it('does not cancel the list of a phase that holds none of the issues', async () => {
+    const { client, observer, request } = deleteSetup()
+    const cancelled: unknown[] = []
+    const original = client.cancelQueries.bind(client)
+    client.cancelQueries = (filters, options) => {
+      cancelled.push(filters?.queryKey)
+      return original(filters, options)
+    }
+    const done = observer.mutate({ key: 'PSAPAC-3', deleteSubtasks: false, subtasks: [] })
+    request.resolve({ key: 'PSAPAC-3', deletedSubtasks: [] })
+    await done
+    expect(cancelled).toEqual([unresolvedKey])
   })
 })

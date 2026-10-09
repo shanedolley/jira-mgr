@@ -89,6 +89,50 @@ export interface KeyArgs {
   key: string
 }
 
+/** The types the create modal offers, the ones core's `createIssue` takes. */
+export const CREATE_TYPES = ['Story', 'Task', 'Bug', 'Epic', 'Subtask'] as const
+
+export type CreateType = (typeof CREATE_TYPES)[number]
+
+/** A new issue. Customer and Engagement are required on every type (Q14). */
+export interface CreateIssueArgs {
+  type: CreateType
+  summary: string
+  customerId: string
+  engagementId: string
+  /** Required for a Subtask, and never sent for an Epic. */
+  parentKey?: string
+  assignee?: string
+  priorityId?: string
+  labels?: string[]
+  /** A Jira duration such as `2h 30m`. */
+  originalEstimate?: string
+  /** Core's create takes no sprint, so main moves the new issue into it after the create. */
+  sprintId?: number
+}
+
+/** What a create left behind. The issue exists whenever this comes back. */
+export interface CreatedIssue {
+  key: string
+  /** The issue as Jira holds it after the create, the sprint move and any automation. `null` when a read-back failed. */
+  issue: IssueDetail | null
+  /** Set when the issue was created but a later step failed: the read-back or the sprint move. */
+  warning: string | null
+}
+
+export interface DeleteIssueArgs {
+  key: string
+  /** True only when the user chose to delete the subtasks too. */
+  deleteSubtasks: boolean
+  /** The subtasks the user was shown, so one added since is never deleted unseen. */
+  subtasks: string[]
+}
+
+export interface DeletedIssue {
+  key: string
+  deletedSubtasks: string[]
+}
+
 export interface SetStatusArgs {
   key: string
   /** The id of the status to reach. */
@@ -156,6 +200,9 @@ export interface IpcContract {
   'issues:transitions': { args: KeyArgs; result: StatusOption[] }
   'issues:setStatus': { args: SetStatusArgs; result: null }
   'issues:setSprint': { args: SetSprintArgs; result: null }
+  'issues:create': { args: CreateIssueArgs; result: CreatedIssue }
+  /** Permanent. Refuses to cascade to subtasks the user was not shown. */
+  'issues:delete': { args: DeleteIssueArgs; result: DeletedIssue }
   /** Active and future sprints of the project's board, or every sprint with `all`. */
   'sprints:list': { args: { all: boolean }; result: SprintOption[] }
   /** Assignable users whose name or email matches `query`. */
@@ -186,6 +233,8 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'issues:transitions': true,
   'issues:setStatus': true,
   'issues:setSprint': true,
+  'issues:create': true,
+  'issues:delete': true,
   'sprints:list': true,
   'users:search': true,
   'fields:options': true,

@@ -12,6 +12,7 @@ import {
 import { useSyncExternalStore } from 'react'
 
 import type {
+  CreateIssueArgs,
   EditIssueArgs,
   IssuePhase,
   IssuesProgress,
@@ -24,6 +25,8 @@ import type {
 } from '../../shared/ipc'
 import { call } from './ipc'
 import {
+  applyCreated,
+  deleteMutation,
   doneKey,
   issueDetailKey,
   issueMutation,
@@ -313,6 +316,22 @@ export function useSetSprint() {
       rereadIssue,
     ),
   )
+}
+
+/** Creates an issue and puts the read-back into the lists. Not optimistic: the key is Jira's to give. */
+export function useCreateIssue() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (args: CreateIssueArgs) => call('issues:create', args),
+    onSuccess: (created) => {
+      applyCreated(client, created)
+    },
+  })
+}
+
+export function useDeleteIssue() {
+  const client = useQueryClient()
+  return useMutation(deleteMutation(client, (args) => call('issues:delete', args)))
 }
 
 /** One issue with its description and subtasks. It refetches on focus, like the lists. */

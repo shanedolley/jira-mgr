@@ -24,6 +24,8 @@ interface PeekProps {
   onClose: () => void
   /** Opens the issue's full page. */
   onOpenPage: (key: string) => void
+  /** Opens the delete confirmation for the issue. */
+  onDelete: (key: string) => void
   onEditingChange: (editing: boolean) => void
   onLeave: () => void
   /** True while the full page covers the Peek, so nothing in it can be reached. */
@@ -90,6 +92,7 @@ export function IssueDetail({
   inView,
   onClose,
   onOpenPage,
+  onDelete,
   onEditingChange,
   onLeave,
   inert,
@@ -105,15 +108,26 @@ export function IssueDetail({
     >
       <div className="app-drag flex h-10 shrink-0 items-center justify-end gap-2 px-3">
         {issue !== undefined && (
-          <button
-            type="button"
-            onClick={() => {
-              onOpenPage(issue.key)
-            }}
-            className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-          >
-            Open
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                onOpenPage(issue.key)
+              }}
+              className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onDelete(issue.key)
+              }}
+              className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs text-danger hover:bg-hover"
+            >
+              Delete
+            </button>
+          </>
         )}
         <button
           type="button"

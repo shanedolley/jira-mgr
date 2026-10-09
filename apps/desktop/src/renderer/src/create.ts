@@ -1,0 +1,290 @@
+import type { Issue } from '@jira-mgr/core'
+import type { CustomerOption } from '@jira-mgr/core/hierarchy'
+import {
+  formatEstimate,
+  parentCandidates,
+  parseEstimate,
+  propertyRules,
+  type PropertyRules,
+} from '@jira-mgr/core/issue'
+
+import type {
+  CreateIssueArgs,
+  CreatedIssue,
+  CreateType,
+  FieldChoice,
+  SprintOption,
+} from '../../shared/ipc'
+import { currentSprint, type Person } from './properties'
+import type { TreeRow } from './tree'
+
+/**
+ * The pure model behind the create modal (Q33): what the form starts with, which fields a type
+ * has, what is missing, the request, and how to tell the user what Jira did after the create.
+ * What Jira accepts stays in core; this only shapes the form.
+ */
+
+/** Everything the form holds. The pickers keep whole choices, so the form can show their names. */
+export interface CreateDraft {
+  type: CreateType
+  summary: string
+  parent: Issue | null
+  customer: FieldChoice | null
+  engagement: FieldChoice | null
+  sprint: SprintOption | null
+  assignee: Person | null
+  labels: string[]
+  priority: FieldChoice | null
+  /** A Jira duration such as `2h 30m`, or empty. */
+  estimate: string
+}
+
+/** What the type lets the form show. An Epic has no parent, sprint or estimate; a Subtask no sprint. */
+export const typeRules = (type: CreateType): PropertyRules =>
+  propertyRules({ name: type, subtask: type === 'Subtask' })
+
+const choice = (option: CustomerOption | null | undefined): FieldChoice | null =>
+  option === null || option === undefined ? null : { id: option.id, name: option.value }
+
+/** The first Epic at or above `issue`, found through the loaded issues' parent keys. */
+export function nearestEpic(issue: Issue, issues: readonly Issue[]): Issue | null {
+  const byKey = new Map(issues.map((i) => [i.key, i]))
+  let at: Issue | undefined = issue
+  // A parent chain is three levels deep at most; the bound only guards against a cycle.
+  for (let step = 0; at !== undefined && step < 8; step++) {
+    if (at.issueType.hierarchyLevel >= 1) return at
+    at = at.parentKey === null ? undefined : byKey.get(at.parentKey)
+  }
+  return null
+}
+
+const typed = (type: CreateType) => ({
+  key: '',
+  issueType: { subtask: type === 'Subtask', hierarchyLevel: type === 'Epic' ? 1 : 0 },
+})
+
+/** Whether `parent` may hold a new issue of `type`: Epics for a Story, Task or Bug; those three for a Subtask. */
+export const fitsParent = (type: CreateType, parent: Issue): boolean =>
+  parentCandidates(typed(type), [parent]).length === 1
+
+/**
+ * The parent a new issue of `type` starts with, from the issue the user selected: the nearest Epic
+ * for a Story, Task or Bug (the Epic itself when it is selected), the selected issue for a
+ * Subtask, or the selected Subtask's own parent. `null` when nothing fits.
+ */
+export function defaultParent(
+  type: CreateType,
+  selected: Issue | null,
+  issues: readonly Issue[],
+): Issue | null {
+  if (selected === null || type === 'Epic') return null
+  if (type !== 'Subtask') return nearestEpic(selected, issues)
+  if (fitsParent(type, selected)) return selected
+  const parent = issues.find((i) => i.key === selected.parentKey)
+  return parent !== undefined && fitsParent(type, parent) ? parent : null
+}
+
+/**
+ * The form for `C` pressed with `selected` active: a Story, under the Epic at or above the
+ * selection, with the Customer and Engagement of that Epic, else of the selection itself (the
+ * Epic wins so a new Story does not start as a Customer mismatch, Q15). With no selected issue,
+ * `group` (a Customer header the user stood on) supplies the Customer.
+ */
+export function initialDraft(
+  selected: Issue | null,
+  issues: readonly Issue[],
+  group: CustomerOption | null = null,
+): CreateDraft {
+  const parent = defaultParent('Story', selected, issues)
+  return {
+    type: 'Story',
+    summary: '',
+    parent,
+    customer: choice(parent?.customer ?? selected?.customer ?? group),
+    engagement: choice(parent?.engagement ?? selected?.engagement),
+    sprint: null,
+    assignee: null,
+    labels: [],
+    priority: null,
+    estimate: '',
+  }
+}
+
+/**
+ * What `C` was pressed on: the active issue, a chip's open parent, or a Customer header, whose
+ * Customer the form takes when no issue is selected. Nothing for a blank Tree.
+ */
+export function createContext(
+  row: TreeRow | undefined,
+  issues: readonly Issue[],
+): { selected: Issue | null; group: CustomerOption | null } {
+  switch (row?.kind) {
+    case 'issue':
+      return { selected: row.node.issue, group: null }
+    case 'chip':
+      return { selected: issues.find((i) => i.key === row.parentKey) ?? null, group: null }
+    case 'customer':
+    case 'noEpic':
+      return { selected: null, group: row.customer }
+    default:
+      return { selected: null, group: null }
+  }
+}
+
+/** Changes the type, keeping the parent if it still fits and otherwise taking the new type's default. */
+export function withType(
+  draft: CreateDraft,
+  type: CreateType,
+  selected: Issue | null,
+  issues: readonly Issue[],
+): CreateDraft {
+  const parent =
+    draft.parent !== null && fitsParent(type, draft.parent)
+      ? draft.parent
+      : defaultParent(type, selected, issues)
+  const rules = typeRules(type)
+  return {
+    ...draft,
+    type,
+    parent: rules.parent ? parent : null,
+    sprint: rules.sprint ? draft.sprint : null,
+    estimate: rules.estimates ? draft.estimate : '',
+  }
+}
+
+/** What the form still needs before it can be sent, as phrases for "Add ...". Empty when it is ready. */
+export function missingFields(draft: CreateDraft): string[] {
+  const rules = typeRules(draft.type)
+  return [
+    ...(draft.summary.trim() === '' ? ['a summary'] : []),
+    ...(draft.customer === null ? ['a Customer'] : []),
+    ...(draft.engagement === null ? ['an Engagement'] : []),
+    ...(draft.type === 'Subtask' && draft.parent === null ? ['a parent'] : []),
+    ...(rules.estimates && draft.estimate.trim() !== '' && parseEstimate(draft.estimate) === null
+      ? ['an estimate such as 2h 30m']
+      : []),
+  ]
+}
+
+/** The request for a ready draft. Fields the type does not have are left out. */
+export function toCreateArgs(draft: CreateDraft): CreateIssueArgs | null {
+  if (missingFields(draft).length > 0 || draft.customer === null || draft.engagement === null) {
+    return null
+  }
+  const rules = typeRules(draft.type)
+  const estimate = draft.estimate.trim()
+  return {
+    type: draft.type,
+    summary: draft.summary.trim(),
+    customerId: draft.customer.id,
+    engagementId: draft.engagement.id,
+    ...(rules.parent && draft.parent !== null && { parentKey: draft.parent.key }),
+    ...(draft.assignee !== null && { assignee: draft.assignee.accountId }),
+    ...(draft.priority !== null && { priorityId: draft.priority.id }),
+    ...(draft.labels.length > 0 && { labels: draft.labels }),
+    ...(rules.estimates && estimate !== '' && { originalEstimate: estimate }),
+    ...(rules.sprint && draft.sprint !== null && { sprintId: draft.sprint.id }),
+  }
+}
+
+/** After "Create more": the same form with nothing typed for the next issue. */
+export const nextDraft = (draft: CreateDraft): CreateDraft => ({ ...draft, summary: '' })
+
+export interface Notice {
+  title: string
+  /** What Jira did differently from the form, and any step that failed. One sentence each. */
+  notes: string[]
+  /** True when a step after the create failed, so the notice stays until dismissed. */
+  warned: boolean
+}
+
+/**
+ * What to tell the user after a create. PSAPAC's automation rewrites new issues (it adds a label,
+ * sets the estimates, and on a Task replaced the Customer, the parent and the sprint), so the
+ * notice compares what the form asked for with what Jira holds, field by field.
+ */
+export function describeCreated(draft: CreateDraft, result: CreatedIssue): Notice {
+  const { issue, warning, key } = result
+  const warned = warning !== null
+  if (issue === null) {
+    return {
+      title: `Created ${key}`,
+      notes: warning === null ? [] : [warning],
+      warned,
+    }
+  }
+  const notes: string[] = []
+  const differs = (field: string, held: string, chosen: string) => {
+    notes.push(`${field} is ${held} (you chose ${chosen}).`)
+  }
+  const heldCustomer = issue.customer?.value ?? 'empty'
+  if (issue.customer?.id !== draft.customer?.id) {
+    differs('Customer', heldCustomer, draft.customer?.name ?? 'none')
+  }
+  if (issue.engagement?.id !== draft.engagement?.id) {
+    differs('Engagement', issue.engagement?.value ?? 'empty', draft.engagement?.name ?? 'none')
+  }
+  const chosenParent = typeRules(draft.type).parent ? (draft.parent?.key ?? null) : null
+  if (issue.parentKey !== chosenParent) {
+    differs('Parent', issue.parentKey ?? 'none', chosenParent ?? 'none')
+  }
+  const heldSprint = currentSprint(issue)
+  if ((heldSprint?.id ?? null) !== (draft.sprint?.id ?? null)) {
+    differs('Sprint', heldSprint?.name ?? 'the backlog', draft.sprint?.name ?? 'none')
+  }
+  const added = issue.labels.filter((l) => !draft.labels.includes(l))
+  if (added.length > 0) {
+    notes.push(`Jira added the label${added.length === 1 ? '' : 's'} ${added.join(', ')}.`)
+  }
+  const chosenSeconds = parseEstimate(draft.estimate)
+  if (issue.originalEstimateSeconds !== chosenSeconds) {
+    differs(
+      'Original estimate',
+      issue.originalEstimateSeconds === null
+        ? 'none'
+        : formatEstimate(issue.originalEstimateSeconds),
+      chosenSeconds === null ? 'none' : draft.estimate.trim(),
+    )
+  }
+  if (warning !== null) notes.push(warning)
+  return { title: `Created ${key}: ${issue.summary}`, notes, warned }
+}
+
+export interface CreateKeyEvent {
+  key: string
+  metaKey: boolean
+  ctrlKey: boolean
+  altKey: boolean
+  defaultPrevented: boolean
+  repeat: boolean
+  isComposing: boolean
+}
+
+/** The `C` shortcut: the letter alone, in either case, not held down and not already handled. */
+export function isCreateKey(event: CreateKeyEvent): boolean {
+  return (
+    (event.key === 'c' || event.key === 'C') &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.defaultPrevented &&
+    !event.repeat &&
+    !event.isComposing
+  )
+}
+
+/** Controls where a letter is typing or choosing, not a command. */
+const OWN_KEYS =
+  'input, textarea, select, dialog, [popover], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"], [role="listbox"], [role="menu"]'
+
+/**
+ * Whether the key went to a text field, picker, dialog or editor, which keep their letters.
+ * Takes anything with `closest`, so a test needs no DOM.
+ */
+export function keepsLetters(target: { closest(selector: string): unknown } | null): boolean {
+  return target !== null && target.closest(OWN_KEYS) !== null
+}
+
+/** "a", "a and b", "a, b and c". */
+export const listWords = (words: readonly string[]): string =>
+  words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`

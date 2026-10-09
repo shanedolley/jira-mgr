@@ -2,10 +2,13 @@ import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
 import { SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { z } from 'zod'
 
+import { CREATE_TYPES } from '../shared/ipc'
 import type {
   ArgsOf,
   Channel,
+  CreateIssueArgs,
   CreateViewArgs,
+  DeleteIssueArgs,
   DeleteViewArgs,
   EditIssueArgs,
   FieldOptionsArgs,
@@ -94,6 +97,26 @@ const setSprintArgs: z.ZodType<SetSprintArgs> = z.strictObject({
   sprintId: z.number().int().positive().nullable(),
 })
 
+/** A new issue. Core checks the values and the Subtask rule; this checks shape and size. */
+const createIssueArgs: z.ZodType<CreateIssueArgs> = z.strictObject({
+  type: z.enum(CREATE_TYPES),
+  summary: z.string().trim().min(1).max(MAX_SUMMARY),
+  customerId: text(64),
+  engagementId: text(64),
+  parentKey: issueKey.optional(),
+  assignee: text(128).optional(),
+  priorityId: text(64).optional(),
+  labels: labelList.optional(),
+  originalEstimate: text(64).optional(),
+  sprintId: z.number().int().positive().optional(),
+})
+
+const deleteIssueArgs: z.ZodType<DeleteIssueArgs> = z.strictObject({
+  key: issueKey,
+  deleteSubtasks: z.boolean(),
+  subtasks: z.array(issueKey).max(MAX_FILTER_VALUES),
+})
+
 const sprintListArgs = z.strictObject({ all: z.boolean() })
 
 const userSearchArgs = z.strictObject({ query: z.string().max(200) })
@@ -151,6 +174,8 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'issues:transitions': keyArgs,
   'issues:setStatus': setStatusArgs,
   'issues:setSprint': setSprintArgs,
+  'issues:create': createIssueArgs,
+  'issues:delete': deleteIssueArgs,
   'sprints:list': sprintListArgs,
   'users:search': userSearchArgs,
   'fields:options': fieldOptionsArgs,
@@ -261,6 +286,8 @@ export function createHandlers(
       await backend.setSprint(args)
       return null
     }),
+    'issues:create': handle('issues:create', (args) => backend.createIssue(args)),
+    'issues:delete': handle('issues:delete', (args) => backend.deleteIssue(args)),
     'sprints:list': handle('sprints:list', (args) => backend.listSprints(args)),
     'users:search': handle('users:search', (args) => backend.searchUsers(args)),
     'fields:options': handle('fields:options', (args) => backend.listFieldOptions(args)),

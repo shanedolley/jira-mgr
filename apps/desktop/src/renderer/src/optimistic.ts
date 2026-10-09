@@ -2,7 +2,13 @@ import type { Issue, JiraMgrError } from '@jira-mgr/core'
 import type { IssueDetail } from '@jira-mgr/core/issue'
 import type { MutationOptions, QueryClient } from '@tanstack/react-query'
 
-import type { IssuePhase, SetSummaryArgs } from '../../shared/ipc'
+import type {
+  CreatedIssue,
+  DeleteIssueArgs,
+  DeletedIssue,
+  IssuePhase,
+  SetSummaryArgs,
+} from '../../shared/ipc'
 
 /** Prefix of both phase queries and of every issue read on its own. */
 export const issuesKey = ['issues'] as const
@@ -182,4 +188,83 @@ export function summaryMutation(
   reread: (key: string) => Promise<IssueDetail>,
 ) {
   return issueMutation(client, send, ({ summary }) => ({ summary }), reread)
+}
+
+/**
+ * Puts a new issue into the caches without reloading a list: the read-back lands in the phase its
+ * status belongs to, and the page's own read takes it too. A create whose read-back failed has no
+ * issue to put, so the unresolved list reloads and shows what Jira holds.
+ */
+export function applyCreated(client: QueryClient, created: CreatedIssue): void {
+  if (created.issue === null) {
+    void client.invalidateQueries({ queryKey: unresolvedKey })
+    return
+  }
+  applyFreshIssue(client, created.issue)
+}
+
+interface DeleteRollback {
+  /** The issues taken out, with the phase each came from. */
+  removed: { phase: IssuePhase; issue: Issue }[]
+  /** Children that kept existing and lost their parent with it. */
+  orphaned: string[]
+  /** The deleted key, which the children's parent is restored to. */
+  parentKey: string
+}
+
+/**
+ * A delete that shows at once. The issue, and the subtasks the user chose to delete with it, leave
+ * every list; the children that stay lose their parent, as Jira does for an Epic. A refusal puts
+ * every one back. Only the caches that hold a deleted issue are cancelled, so a delete never
+ * restarts a load of the other phase. Nothing is read afterwards: the next focus refetch reconciles.
+ */
+export function deleteMutation(
+  client: QueryClient,
+  send: (args: DeleteIssueArgs) => Promise<DeletedIssue>,
+): MutationOptions<DeletedIssue, JiraMgrError, DeleteIssueArgs, DeleteRollback> {
+  return {
+    mutationFn: send,
+    async onMutate({ key, deleteSubtasks, subtasks }) {
+      const gone = new Set([key, ...(deleteSubtasks ? subtasks : [])])
+      const holders = PHASES.map(phaseKey).filter((queryKey) =>
+        client.getQueryData<Issue[]>(queryKey)?.some((i) => gone.has(i.key)),
+      )
+      await Promise.all(holders.map((queryKey) => client.cancelQueries({ queryKey })))
+      const removed: DeleteRollback['removed'] = []
+      const orphaned: string[] = []
+      for (const phase of PHASES) {
+        const issues = client.getQueryData<Issue[]>(phaseKey(phase))
+        if (issues === undefined) continue
+        for (const issue of issues) {
+          if (gone.has(issue.key)) removed.push({ phase, issue })
+          else if (issue.parentKey === key) orphaned.push(issue.key)
+        }
+        client.setQueryData<Issue[]>(
+          phaseKey(phase),
+          issues
+            .filter((i) => !gone.has(i.key))
+            .map((i) => (i.parentKey === key ? { ...i, parentKey: null } : i)),
+        )
+      }
+      return { removed, orphaned, parentKey: key }
+    },
+    onError(_error, _args, rollback) {
+      if (rollback === undefined) return
+      const { removed, orphaned, parentKey } = rollback
+      for (const phase of PHASES) {
+        client.setQueryData<Issue[]>(phaseKey(phase), (issues) => {
+          if (issues === undefined) return issues
+          const held = new Set(issues.map((i) => i.key))
+          return [
+            ...issues.map((i) =>
+              orphaned.includes(i.key) && i.parentKey === null ? { ...i, parentKey } : i,
+            ),
+            ...removed
+              .filter((r) => r.phase === phase && !held.has(r.issue.key))
+              .map((r) => r.issue),
+          ]
+        })
+      }
+    },
+  }
 }

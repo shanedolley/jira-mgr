@@ -1,19 +1,32 @@
 import { buildHierarchy } from '@jira-mgr/core/hierarchy'
 import { applyViewToggles, issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
-import type { SavedView, Session, Toggles } from '../../shared/ipc'
+import type { DeleteIssueArgs, SavedView, Session, Toggles } from '../../shared/ipc'
 import { Banner } from './Banner'
+import { CreateIssueDialog } from './CreateIssueDialog'
+import { DeleteIssueDialog } from './DeleteIssueDialog'
 import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { LoadError } from './LoadError'
 import { Sidebar } from './Sidebar'
+import { Toast } from './Toast'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
+import { createContext, isCreateKey, keepsLetters, type Notice } from './create'
 import { filterChoices, hasFilters } from './filters'
 import {
   useCustomers,
+  useDeleteIssue,
   useDoneIssues,
   useLoadedCount,
   useMe,
@@ -22,6 +35,7 @@ import {
   useUnresolvedIssues,
 } from './queries'
 import {
+  ancestorIds,
   expandableIds,
   fallbackRow,
   flattenTree,
@@ -110,6 +124,14 @@ export function Shell({ session }: { session: Session }) {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   // The issue whose full page is open. The Tree stays mounted under it, so its scroll survives.
   const [pageKey, setPageKey] = useState<string | null>(null)
+  // The create modal, opened by `C` or the New issue button, with the selection it started from.
+  const [creating, setCreating] = useState<ReturnType<typeof createContext> | null>(null)
+  // The issue whose delete modal is open.
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ notice: Notice; openKey: string | null } | null>(null)
+  // A created issue to make active once its row exists.
+  const [pendingSelect, setPendingSelect] = useState<string | null>(null)
+  const deleteIssue = useDeleteIssue()
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
@@ -158,6 +180,18 @@ export function Shell({ session }: { session: Session }) {
     setTrack({ rows, activeId: fallbackRow(track.rows, rows, track.activeId) })
   }
   const activeId = track.activeId
+
+  // A created issue becomes the active row. Its ancestors open first when a collapsed group hides it.
+  if (pendingSelect !== null && issues.some((i) => i.key === pendingSelect)) {
+    setPendingSelect(null)
+    const hidden = ancestorIds(groups, revealed, pendingSelect).filter((id) => collapsed.has(id))
+    if (hidden.length > 0)
+      setCollapsed(new Set([...collapsed].filter((id) => !hidden.includes(id))))
+    if (nodes.has(pendingSelect)) {
+      setTrack((t) => ({ ...t, activeId: `i:${pendingSelect}` }))
+      setLastIssueKey(pendingSelect)
+    }
+  }
 
   const state = useMemo<TreeState>(
     () => ({ activeId, collapsed, revealed, peekOpen }),
@@ -225,6 +259,77 @@ export function Shell({ session }: { session: Session }) {
   const peekedNode = peekedKey === null ? undefined : nodes.get(peekedKey)
   // A pinned edit whose issue is gone has no editor left, so it must not hold the Peek.
   if (editingKey !== null && peekedIssue === undefined) setEditingKey(null)
+
+  const canCreate = treeReady && creating === null && deleting === null
+
+  function openCreate() {
+    if (!canCreate) return
+    setCreating(
+      pageKey === null
+        ? createContext(
+            rows.find((r) => r.id === activeId),
+            issues,
+          )
+        : { selected: issues.find((i) => i.key === pageKey) ?? null, group: null },
+    )
+  }
+
+  // `C` creates an issue (D6). The key lives here, beside the Tree's own, so D7 can fold it into
+  // its keymap. It never fires while a field, picker, dialog or editor has the letter.
+  const onCreateKey = useEffectEvent((event: KeyboardEvent) => {
+    if (!isCreateKey(event) || !canCreate) return
+    if (keepsLetters(event.target instanceof Element ? event.target : null)) return
+    event.preventDefault()
+    openCreate()
+  })
+  useEffect(() => {
+    const listen = (event: KeyboardEvent) => {
+      onCreateKey(event)
+    }
+    document.addEventListener('keydown', listen)
+    return () => {
+      document.removeEventListener('keydown', listen)
+    }
+  }, [])
+
+  const dismissNotice = useCallback(() => {
+    setNotice(null)
+  }, [])
+
+  /** Sends the delete the moment the user confirms; the lists already show it gone. */
+  function confirmDelete(args: DeleteIssueArgs) {
+    const gone = new Set([args.key, ...(args.deleteSubtasks ? args.subtasks : [])])
+    setDeleting(null)
+    if (pageKey !== null && gone.has(pageKey)) setPageKey(null)
+    if (peekedKey !== null && gone.has(peekedKey)) closePeek()
+    deleteIssue.mutate(args, {
+      onSuccess: ({ key, deletedSubtasks }) => {
+        setNotice({
+          notice: {
+            title:
+              deletedSubtasks.length === 0
+                ? `Deleted ${key}`
+                : `Deleted ${key} and ${deletedSubtasks.join(', ')}`,
+            notes: [],
+            warned: false,
+          },
+          openKey: null,
+        })
+      },
+      onError: (failure) => {
+        setNotice({
+          notice: {
+            title: `Could not delete ${args.key}`,
+            notes: [failure.message, 'It is back in the list.'],
+            warned: true,
+          },
+          openKey: null,
+        })
+      },
+    })
+  }
+
+  const deletingIssue = deleting === null ? undefined : issues.find((i) => i.key === deleting)
 
   const unresolvedCount = useLoadedCount('unresolved')
   const doneCount = useLoadedCount('done')
@@ -315,9 +420,23 @@ export function Shell({ session }: { session: Session }) {
       >
         <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4">
           <h1 className="font-semibold">Issues</h1>
-          <span role="status" className="text-xs text-muted">
-            {unresolved.isFetching && unresolved.data !== undefined ? 'Updating...' : ''}
-          </span>
+          <div className="flex items-center gap-3">
+            <span role="status" className="text-xs text-muted">
+              {unresolved.isFetching && unresolved.data !== undefined ? 'Updating...' : ''}
+            </span>
+            <button
+              type="button"
+              disabled={!canCreate}
+              aria-keyshortcuts="C"
+              onClick={openCreate}
+              className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-50"
+            >
+              New issue
+              <kbd aria-hidden className="font-mono text-muted">
+                C
+              </kbd>
+            </button>
+          </div>
         </header>
         {toggles !== undefined && (
           <TreeToolbar
@@ -369,6 +488,7 @@ export function Shell({ session }: { session: Session }) {
           inView={peekedNode !== undefined}
           onClose={closePeek}
           onOpenPage={setPageKey}
+          onDelete={setDeleting}
           onEditingChange={(editing) => {
             setEditingKey(editing ? lastIssueKey : null)
           }}
@@ -388,9 +508,53 @@ export function Shell({ session }: { session: Session }) {
               setPageKey(null)
             }}
             onOpen={setPageKey}
+            onDelete={setDeleting}
             pageRef={pageRef}
           />
         </div>
+      )}
+      {creating !== null && (
+        <CreateIssueDialog
+          selected={creating.selected}
+          group={creating.group}
+          issues={issues}
+          me={meQuery.data}
+          onClose={() => {
+            setCreating(null)
+          }}
+          onCreated={(result, created, more) => {
+            if (!more) setCreating(null)
+            setPendingSelect(result.issue === null ? null : result.key)
+            if (!more)
+              setNotice({ notice: created, openKey: result.issue === null ? null : result.key })
+          }}
+          returnFocus={focusTree}
+        />
+      )}
+      {deletingIssue !== undefined && (
+        <DeleteIssueDialog
+          issue={deletingIssue}
+          issues={issues}
+          onCancel={() => {
+            setDeleting(null)
+          }}
+          onConfirm={confirmDelete}
+          returnFocus={focusTree}
+        />
+      )}
+      {notice !== null && (
+        <Toast
+          notice={notice.notice}
+          onOpen={
+            notice.openKey === null
+              ? undefined
+              : () => {
+                  setPageKey(notice.openKey)
+                  setNotice(null)
+                }
+          }
+          onDismiss={dismissNotice}
+        />
       )}
     </div>
   )
