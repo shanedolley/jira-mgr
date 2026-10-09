@@ -1,4 +1,4 @@
-import { JiraMgrError } from '@jira-mgr/core'
+import { assertTypeChangeAllowed } from '@jira-mgr/core/issue'
 import { getIssue } from '@jira-mgr/core/search'
 import { assertInProject } from '@jira-mgr/core/state'
 import { editIssue, type EditIssueInput } from '@jira-mgr/core/write'
@@ -27,8 +27,6 @@ const OPTION_NAMES: Record<keyof EditIssueInput, string> = {
   type: 'type',
 }
 
-const SWAPPABLE = ['Story', 'Task', 'Bug']
-
 interface Edited {
   key: string
   changed: string[]
@@ -42,12 +40,7 @@ export const edit: Handler<SpecOf<'issue edit'>, Edited> = {
     if (input.type !== undefined) {
       // Q23: a Story, Task or Bug can swap among the three; an Epic or Subtask cannot change type at all.
       const current = (await getIssue(ctx.http(), input.key, { signal: ctx.signal })).issueType.name
-      if (!SWAPPABLE.includes(current)) {
-        throw new JiraMgrError(
-          'validation_failed',
-          `${input.key} is ${/^[AEIOU]/i.test(current) ? 'an' : 'a'} ${current}. The type can change only among Story, Task and Bug.`,
-        )
-      }
+      assertTypeChangeAllowed(input.key, current)
     }
     const description = input.clearDescription
       ? null

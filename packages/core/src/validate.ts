@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { JiraMgrError } from './errors.js'
+import { DURATION_PATTERN } from './issue.js'
 import { readSettings } from './state.js'
 
 export const issueKey = z
@@ -8,9 +9,7 @@ export const issueKey = z
   .regex(/^[A-Z][A-Z0-9_]*-[1-9]\d*$/, 'Not an issue key such as PSAPAC-12.')
 
 /** A Jira duration such as "2h 30m" or "1w 2d". */
-export const duration = z
-  .string()
-  .regex(/^\d+[wdhm](?: \d+[wdhm])*$/, 'Use a Jira duration such as "2h 30m".')
+export const duration = z.string().regex(DURATION_PATTERN, 'Use a Jira duration such as "2h 30m".')
 
 /** The id of a comment, worklog, link, attachment or sprint: digits, so it cannot alter a path. */
 export const jiraId = z.string().regex(/^[1-9]\d*$/, 'Not a Jira id such as 10042.')
