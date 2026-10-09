@@ -32,8 +32,23 @@ const ADF_NODES = [
   'hardBreak',
 ]
 
-/** The nonce stamped on what this editor copies, made once per app session. */
-export const CLIP_NONCE = crypto.randomUUID()
+/**
+ * Stamps each copy with a fresh nonce and trusts pasted HTML only if it carries the latest one.
+ * A copy from another app, an older copy or a crafted page cannot know it, so cannot carry raw ADF.
+ */
+export function createClipGuard() {
+  let latest: string | null = null
+  return {
+    /** The nonce for a copy being made now. It replaces the last one. */
+    next(): string {
+      latest = crypto.randomUUID()
+      return latest
+    },
+    trusts: (html: string) => latest !== null && html.includes(`data-jm-clip="${latest}"`),
+  }
+}
+
+const clips = createClipGuard()
 
 /** What the editor asks of its host, read when a key or a click needs it, so it is never stale. */
 export interface Behaviour {
@@ -103,6 +118,11 @@ function atom(
         {
           tag: `${options.tag}[data-${name.toLowerCase()}]`,
           getAttrs: (element) => {
+            // An image still uploading has no node yet, only the id of its upload in this session.
+            const upload = element.getAttribute('data-adf-upload')
+            if (name === 'adfImage' && upload !== null && upload !== '') {
+              return { node: null, uploadId: upload }
+            }
             const node = readAdfAttr(element.getAttribute('data-adf'), kind)
             // An image holds a file, never inline content or another block.
             if (node === null || (name === 'adfImage') !== (node.type === 'mediaSingle'))
@@ -117,7 +137,9 @@ function atom(
         options.tag,
         mergeAttributes(HTMLAttributes, {
           [`data-${name.toLowerCase()}`]: '',
-          'data-adf': atomHtml(node),
+          ...(node.attrs.node === null
+            ? { 'data-adf-upload': String(node.attrs.uploadId ?? '') }
+            : { 'data-adf': atomHtml(node) }),
         }),
       ]
     },
@@ -185,8 +207,8 @@ const Keys = (behaviour: () => Behaviour) =>
   })
 
 /** Removes every `data-adf` attribute, so HTML from outside this editor cannot plant a node. */
-export function sanitizePastedHtml(html: string, nonce: string = CLIP_NONCE): string {
-  if (html.includes(`data-jm-clip="${nonce}"`)) return html
+export function sanitizePastedHtml(html: string): string {
+  if (clips.trusts(html)) return html
   const parsed = new DOMParser().parseFromString(html, 'text/html')
   for (const element of parsed.body.querySelectorAll('*')) {
     for (const name of element.getAttributeNames()) {
@@ -200,7 +222,11 @@ function stripMark(mark: PMNode['marks'][number]) {
   return 'adf' in mark.attrs ? mark.type.create({ ...mark.attrs, adf: null }) : mark
 }
 
-/** A pasted slice without the ADF attributes of its mapped nodes, and without upload ids. */
+/**
+ * A pasted slice without the ADF attributes of its mapped nodes. An upload id stays: it names an
+ * upload of this session, and a view whose upload is unknown or belongs to another issue shows
+ * as failed, so it can carry nothing in.
+ */
 function stripPasted(fragment: Fragment): Fragment {
   const nodes: PMNode[] = []
   fragment.forEach((node) => {
@@ -210,7 +236,6 @@ function stripPasted(fragment: Fragment): Fragment {
     }
     const attrs: Record<string, unknown> = { ...node.attrs }
     if ('adf' in attrs) attrs.adf = null
-    if ('uploadId' in attrs) attrs.uploadId = null
     nodes.push(node.type.create(attrs, stripPasted(node.content), node.marks.map(stripMark)))
   })
   return Fragment.fromArray(nodes)
@@ -229,7 +254,10 @@ const Clipboard = (behaviour: () => Behaviour) =>
       // Stamps what this session copies, so only a copy made here may carry raw ADF back in.
       serializer.serializeFragment = (...args) => {
         const out = serializeFragment(...args)
-        for (const child of out.children) child.setAttribute('data-jm-clip', CLIP_NONCE)
+        // Nested calls pass a target; only the outermost one is a copy.
+        if (args[2] !== undefined) return out
+        const nonce = clips.next()
+        for (const child of out.children) child.setAttribute('data-jm-clip', nonce)
         return out
       }
       return [

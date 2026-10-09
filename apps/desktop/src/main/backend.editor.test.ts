@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { JiraMgrError } from '@jira-mgr/core'
 import type { AdfDoc } from '@jira-mgr/core/adf'
 import type { HttpClient } from '@jira-mgr/core/http'
 import { writeFields, writeSettings } from '@jira-mgr/core/state'
@@ -393,6 +394,24 @@ describe('image', () => {
     }
     await all
     expect(jira.peak()).toBe(4)
+  })
+
+  it('does not let one unreadable attachment fail the images beside it', async () => {
+    const jira = fakeJira({ attachments: many(3) })
+    const real = jira.http.request.bind(jira.http)
+    const flaky: typeof jira.http = {
+      request: (method, path, init) =>
+        init?.as === 'mediaId' && path.endsWith('/100')
+          ? Promise.reject(new JiraMgrError('jira_error', 'No redirect for 100.'))
+          : real(method, path, init),
+    }
+    const backend = createBackend({ http: flaky })
+    const ok = await backend.image({ key: KEY, mediaId: mediaOf(101) })
+    expect(ok.mimeType).toBe('image/png')
+    // When the wanted image is missing and a read failed, the failure is the answer.
+    expect(await failure(backend.image({ key: KEY, mediaId: mediaOf(999) }))).toMatchObject({
+      code: 'jira_error',
+    })
   })
 
   it('clears the media index on logout', async () => {

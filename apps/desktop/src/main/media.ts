@@ -107,22 +107,35 @@ export function createMediaIndex(http: HttpClient, now: () => number = Date.now)
     return task
   }
 
-  /** Reads image attachments in batches until one holds `mediaId`, or none is left to read. */
+  /**
+   * Reads image attachments in batches until one holds `mediaId`, or none is left to read. One
+   * attachment that cannot be read does not fail the others: its error is thrown only when the
+   * wanted image is still missing at the end.
+   */
   async function resolve(e: Entry, mediaId: string): Promise<Attachment | undefined> {
+    const failed = new Map<string, unknown>()
     for (;;) {
       const found = e.byMedia.get(mediaId)
       if (found !== undefined) return found
       const unread = (e.attachments ?? []).filter(
-        (a) => !e.reads.has(a.id) && a.mimeType?.startsWith('image/') === true,
+        (a) => !e.reads.has(a.id) && !failed.has(a.id) && a.mimeType?.startsWith('image/') === true,
       )
       if (unread.length > 0) {
-        await Promise.all(unread.slice(0, BATCH).map((a) => read(e, a)))
+        const batch = unread.slice(0, BATCH)
+        const results = await Promise.allSettled(batch.map((a) => read(e, a)))
+        results.forEach((result, i) => {
+          const attachment = batch[i]
+          if (result.status === 'rejected' && attachment !== undefined) {
+            failed.set(attachment.id, result.reason)
+          }
+        })
         continue
       }
       // Another lookup may still be reading the rest: wait for it, then look once more.
-      const outstanding = [...e.reads.values()]
-      await Promise.allSettled(outstanding)
-      return e.byMedia.get(mediaId)
+      await Promise.allSettled([...e.reads.values()])
+      const last = e.byMedia.get(mediaId)
+      if (last === undefined && failed.size > 0) throw [...failed.values()][0]
+      return last
     }
   }
 

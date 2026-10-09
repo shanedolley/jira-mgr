@@ -8,7 +8,7 @@ import {
 import { adfFixtures } from '@jira-mgr/core/test/adf-fixtures'
 import { describe, expect, it } from 'vitest'
 
-import { editorSchema, readAdfAttr, schemaAccepts } from './extensions'
+import { createClipGuard, editorSchema, readAdfAttr, schemaAccepts } from './extensions'
 
 /** What a top-level block may hold and stay editable, named without reading the converter. */
 const EDITABLE = new Set([
@@ -171,5 +171,21 @@ describe('the editor schema', () => {
     const unknown = JSON.stringify({ type: 'futureNode' })
     expect(readAdfAttr(unknown, 'block')).toMatchObject({ type: 'futureNode' })
     expect(readAdfAttr(unknown, 'inline')).toMatchObject({ type: 'futureNode' })
+  })
+})
+
+describe('the clip guard', () => {
+  const html = (nonce: string) => `<p data-jm-clip="${nonce}">x</p>`
+
+  it('trusts only HTML stamped with the latest copy, so an older copy cannot carry ADF back', () => {
+    const guard = createClipGuard()
+    expect(guard.trusts(html('anything'))).toBe(false)
+    const first = guard.next()
+    expect(guard.trusts(html(first))).toBe(true)
+    expect(guard.trusts('<p>no stamp</p>')).toBe(false)
+    const second = guard.next()
+    expect(second).not.toBe(first)
+    expect(guard.trusts(html(first))).toBe(false)
+    expect(guard.trusts(html(second))).toBe(true)
   })
 })

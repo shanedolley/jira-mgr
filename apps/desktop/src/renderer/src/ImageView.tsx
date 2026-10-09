@@ -72,7 +72,10 @@ function UploadingImage({
   onDone: (node: AdfNode) => void
   onRemove: () => void
 }) {
-  const upload = useUpload(uploadId)
+  const issueKey = useContext(IssueKeyContext)
+  // An upload of another issue, pasted in from its editor, is not this editor's to embed.
+  const found = useUpload(uploadId)
+  const upload = found?.key === issueKey ? found : undefined
   const done = upload?.state.status === 'done' ? upload.state.node : null
   useEffect(() => {
     if (done !== null) onDone(done)

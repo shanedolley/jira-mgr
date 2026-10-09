@@ -693,3 +693,26 @@ test('typing and then deleting it again is no change, so Esc closes with no dial
   await expect(editor()).toHaveCount(0)
   expect(await edits()).toBe(0)
 })
+
+test('cutting and pasting an image during its upload keeps the upload', async () => {
+  await addDescription()
+  await window.keyboard.type('Text')
+  await dropImage(editor())
+  await expect.poll(async () => (await counts(app)).uploads.length).toBe(1)
+  const uploading = editor().getByRole('status')
+  await expect(uploading).toBeVisible()
+
+  await editor().locator('figure').click({ delay: 60 })
+  await window.keyboard.press(`${MOD}+x`)
+  await expect(uploading).toHaveCount(0)
+  await window.keyboard.press(`${MOD}+v`)
+  await expect(uploading).toBeVisible()
+
+  await releaseUpload(app)
+  await expect(editor().locator('img')).toBeVisible()
+  await expect(save()).toBeEnabled()
+  await window.keyboard.press(`${MOD}+Enter`)
+  await expect.poll(edits).toBe(1)
+  const types = ((await lastBody())?.content ?? []).map((node) => node.type)
+  expect(types).toContain('mediaSingle')
+})
