@@ -35,6 +35,8 @@ import { Kbd } from './Kbd'
 import { LoadError } from './LoadError'
 import { ShortcutHelp } from './ShortcutHelp'
 import { Sidebar } from './Sidebar'
+import { useViews } from './viewQueries'
+import { activeView } from './views'
 import { TimerDialog } from './TimerDialog'
 import { Toast } from './Toast'
 import { pushToast, spoken, type ToastItem } from './toasts'
@@ -194,6 +196,7 @@ export function Shell({ session }: { session: Session }) {
   const unresolved = useUnresolvedIssues()
   const done = useDoneIssues(unresolved.data !== undefined)
   const toggles = togglesQuery.data
+  const savedViews = useViews().data
 
   const [filters, setFilters] = useState<ViewFilters>({})
   const deferredFilters = useDeferredValue(filters)
@@ -842,6 +845,7 @@ export function Shell({ session }: { session: Session }) {
       <Sidebar
         session={session}
         count={unresolved.data?.length}
+        issuesCurrent={activeView(savedViews ?? [], filters, toggles) === undefined}
         views={<ViewsList filters={filters} toggles={toggles} onApply={applyView} />}
         onOpenIssue={setPageKey}
         onStopTimer={stopFromSidebar}
