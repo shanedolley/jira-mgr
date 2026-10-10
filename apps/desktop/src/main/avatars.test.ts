@@ -171,7 +171,7 @@ describe('createAvatarFetcher', () => {
     await expect(fetcher.get(CDN)).rejects.toThrow('no body')
   })
 
-  it('does not follow a redirect, even one that carries an image', async () => {
+  it('refuses a redirect from an atl-paas.net host, even one that carries an image', async () => {
     const { fetcher, calls } = setup(
       () =>
         new Response(PNG, {
@@ -182,6 +182,133 @@ describe('createAvatarFetcher', () => {
     await expect(fetcher.get(CDN)).rejects.toThrow('answered 302')
     expect(calls).toHaveLength(1)
     expect(calls[0]?.init.redirect).toBe('manual')
+  })
+
+  it('refuses a redirect from an atl-paas.net host to a Gravatar proxy', async () => {
+    const { fetcher, calls } = setup(
+      () =>
+        new Response(null, {
+          status: 302,
+          headers: {
+            location:
+              'https://i0.wp.com/avatar-management--avatars.us-west-2.prod.public.atl-paas.net/initials/AB-1.png',
+          },
+        }),
+    )
+    await expect(fetcher.get(CDN)).rejects.toThrow('answered 302')
+    expect(calls).toHaveLength(1)
+  })
+
+  describe('Gravatar redirect', () => {
+    const GRAVATAR = 'https://secure.gravatar.com/avatar/abc?d=x'
+    const WP =
+      'https://i0.wp.com/avatar-management--avatars.us-west-2.prod.public.atl-paas.net/initials/AB-1.png?ssl=1'
+    const redirect = (location?: string, status = 302) =>
+      new Response(null, { status, headers: location === undefined ? {} : { location } })
+
+    it.each(['i0', 'i1', 'i2'])('loads the image Gravatar redirects to on %s.wp.com', async (n) => {
+      const to = WP.replace('i0', n)
+      const { fetcher, calls } = setup((url) =>
+        url.host === 'secure.gravatar.com' ? redirect(to) : image(),
+      )
+      await expect(fetcher.get(GRAVATAR)).resolves.toMatchObject({ type: 'image/png' })
+      expect(calls.map((c) => c.url)).toEqual([GRAVATAR, to])
+    })
+
+    it('refuses a relative Location, which stays on Gravatar', async () => {
+      const { fetcher, calls } = setup(() => redirect('/x'))
+      await expect(fetcher.get(GRAVATAR)).rejects.toThrow('answered 302')
+      expect(calls).toHaveLength(1)
+    })
+
+    it('shares one timeout signal across both requests', async () => {
+      const timeout = vi.spyOn(AbortSignal, 'timeout')
+      const { fetcher, calls } = setup((url) =>
+        url.host === 'secure.gravatar.com' ? redirect(WP) : image(),
+      )
+      await fetcher.get(GRAVATAR)
+      expect(timeout).toHaveBeenCalledTimes(1)
+      expect(calls[1]?.init.signal).toBe(calls[0]?.init.signal)
+    })
+
+    it('sends no Authorization on either request', async () => {
+      const { fetcher, calls } = setup((url) =>
+        url.host === 'secure.gravatar.com' ? redirect(WP) : image(),
+      )
+      await fetcher.get(GRAVATAR)
+      expect(calls).toHaveLength(2)
+      for (const call of calls) {
+        expect(call.init.headers).not.toHaveProperty('Authorization')
+        expect(call.init.redirect).toBe('manual')
+      }
+    })
+
+    it.each([
+      'https://evil.example.test/a.png',
+      'https://i3.wp.com/a.png',
+      'https://i0.wp.com.evil.test/a.png',
+      'http://i0.wp.com/a.png',
+      'https://u:p@i0.wp.com/a.png',
+      'https://i0.wp.com:8443/a.png',
+      'https://i0.wp.com/evil.example.test/a.png',
+      'https://i0.wp.com/evilatl-paas.net/a.png',
+      'https://i0.wp.com/atl-paas.net/a.png',
+      'https://i0.wp.com/evil.test%2Fx.atl-paas.net/a.png',
+      'https://i0.wp.com/x.atl-paas.net.evil.test/a.png',
+      'https://i0.wp.com/',
+      'https://avatars.example.atl-paas.net/a.png',
+      'https://secure.gravatar.com/a.png',
+      'https://localhost/a.png',
+    ])('refuses a redirect to %s without a second request', async (to) => {
+      const { fetcher, calls } = setup(() => redirect(to))
+      await expect(fetcher.get(GRAVATAR)).rejects.toThrow('answered 302')
+      expect(calls).toHaveLength(1)
+    })
+
+    it('refuses a redirect with no Location', async () => {
+      const { fetcher, calls } = setup(() => redirect())
+      await expect(fetcher.get(GRAVATAR)).rejects.toThrow('answered 302')
+      expect(calls).toHaveLength(1)
+    })
+
+    it('refuses a second redirect', async () => {
+      const { fetcher, calls } = setup((url) =>
+        url.host === 'secure.gravatar.com' ? redirect(WP) : redirect('https://i1.wp.com/a.png'),
+      )
+      await expect(fetcher.get(GRAVATAR)).rejects.toThrow('answered 302')
+      expect(calls).toHaveLength(2)
+    })
+
+    it('refuses a redirect from the site host and sends no second request', async () => {
+      const { fetcher, calls } = setup(() => redirect(WP))
+      await expect(fetcher.get('https://site.example.test/secure/useravatar')).rejects.toThrow(
+        'answered 302',
+      )
+      expect(calls).toHaveLength(1)
+      expect(calls[0]?.init.headers).toHaveProperty('Authorization')
+    })
+
+    it('applies the size cap and the image check after the redirect', async () => {
+      const big = new Uint8Array(AVATAR_LIMIT_BYTES + 1)
+      big.set(PNG)
+      const oversize = setup((url) =>
+        url.host === 'secure.gravatar.com' ? redirect(WP) : image(big),
+      )
+      await expect(oversize.fetcher.get(GRAVATAR)).rejects.toThrow('too large')
+      const html = setup((url) =>
+        url.host === 'secure.gravatar.com'
+          ? redirect(WP)
+          : image(new TextEncoder().encode('<html>')),
+      )
+      await expect(html.fetcher.get(GRAVATAR)).rejects.toThrow('not a PNG')
+    })
+
+    it('caches a refused redirect as a miss', async () => {
+      const { fetcher, calls } = setup(() => redirect('https://evil.example.test/a'))
+      await expect(fetcher.get(GRAVATAR)).rejects.toThrow()
+      await expect(fetcher.get(GRAVATAR)).rejects.toThrow()
+      expect(calls).toHaveLength(1)
+    })
   })
 
   it('refuses a body over the cap, declared or streamed', async () => {
