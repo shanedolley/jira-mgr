@@ -208,6 +208,30 @@ describe('searchText', () => {
     expect((await second)?.length).toBe(1)
   })
 
+  it('returns null for a search that Jira answers after a newer one aborted it', async () => {
+    await logIn()
+    const answers: (() => void)[] = []
+    // Ignores the signal, so the first answer still arrives after the abort.
+    const http: HttpClient = {
+      request: () =>
+        new Promise((resolve) => {
+          answers.push(() => {
+            resolve({ issues: [rawIssue(answers.length)], isLast: true })
+          })
+        }),
+    }
+    const backend = createBackend({ http })
+    const first = backend.searchText({ query: 'one' })
+    await expect.poll(() => answers.length).toBe(1)
+    const second = backend.searchText({ query: 'two' })
+    await expect.poll(() => answers.length).toBe(2)
+
+    answers[0]?.()
+    await expect(first).resolves.toBeNull()
+    answers[1]?.()
+    expect((await second)?.length).toBe(1)
+  })
+
   it('logout aborts the search in flight', async () => {
     await logIn()
     const { http, requests } = textSearchHttp()

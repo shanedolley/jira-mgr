@@ -38,7 +38,15 @@ export const TEXT_SEARCH_LIMIT = 20
 /** The longest text one search takes. */
 export const TEXT_QUERY_MAX = 200
 
-const textQuery = z.string().trim().min(1, 'Enter text to search for.').max(TEXT_QUERY_MAX)
+/** Jira refuses a tab or NUL in a `text ~` string and has no escape for them, so each becomes a space. */
+const withoutControls = (text: string) =>
+  Array.from(text, (c) => (c.charCodeAt(0) < 0x20 || c.charCodeAt(0) === 0x7f ? ' ' : c)).join('')
+
+const textQuery = z
+  .string()
+  .max(TEXT_QUERY_MAX)
+  .transform((text) => withoutControls(text).trim())
+  .pipe(z.string().min(1, 'Enter text to search for.'))
 
 const quote = (text: string) => `"${text.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
 

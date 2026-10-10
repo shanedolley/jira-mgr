@@ -106,6 +106,10 @@ export function CommandPalette({ issues, onOpen, onClose, returnFocus }: Command
       <h2 id={titleId} className="sr-only">
         Search issues
       </h2>
+      {/* Mounted before the group appears, so a screen reader announces its first state. */}
+      <span aria-live="polite" className="sr-only">
+        {jiraStatus(jira, found.length)}
+      </span>
       <input
         autoFocus
         type="text"
@@ -141,7 +145,7 @@ export function CommandPalette({ issues, onOpen, onClose, returnFocus }: Command
           <div role="group" aria-labelledby={jiraId} className="mt-1 border-t border-line pt-1">
             <div className="flex h-9 items-center justify-between gap-3 px-3 text-xs text-muted">
               <span id={jiraId}>Search text in Jira</span>
-              <span aria-live="polite" className="truncate">
+              <span aria-hidden className="truncate">
                 {jiraStatus(jira, found.length)}
               </span>
             </div>

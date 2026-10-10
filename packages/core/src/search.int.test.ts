@@ -437,7 +437,19 @@ describe('searchText', () => {
   })
 
   it.each([
+    ['a tab', 'a\tb'],
+    ['a NUL', 'a\u0000b'],
+    ['a newline', 'a\nb'],
+    ['a DEL', 'a\u007fb'],
+  ])('turns %s into a space, which Jira would refuse in the string', async (_name, input) => {
+    const requests = serveRaw({ issues: [], isLast: true })
+    await searchText(client, input)
+    expect(requests[0]?.jql).toBe('project = "PSAPAC" AND text ~ "a b" ORDER BY updated DESC')
+  })
+
+  it.each([
     ['empty', ''],
+    ['only control characters', '\t\u0000\n'],
     ['blank', '   '],
     ['over-long', 'x'.repeat(TEXT_QUERY_MAX + 1)],
   ])('refuses %s text before any request', async (_name, input) => {
