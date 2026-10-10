@@ -35,6 +35,7 @@ const peek = () => window.getByRole('complementary', { name: 'Peek' })
 const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 const props = () => issuePage().getByRole('complementary', { name: 'Properties' })
 const heading = (name: string) => issuePage().getByRole('heading', { name })
+const summary = (name: string) => issuePage().getByRole('button', { name })
 const picker = (label: string, value: string | RegExp) =>
   props().getByRole('button', { name: typeof value === 'string' ? `${label}: ${value}` : value })
 const option = (name: string | RegExp) => window.getByRole('option', { name })
@@ -676,13 +677,13 @@ test('a click on Cancel in the Customer prompt returns focus to the Parent butto
 test('ending a summary edit returns focus to the page, so Esc still leaves it', async () => {
   await openPage(/PSAPAC-3,/, 'Fix the export timeout')
 
-  await issuePage().getByRole('button', { name: 'Edit summary' }).click()
+  await summary('Fix the export timeout').click()
   await window.keyboard.press('Escape')
   await expect(issuePage()).toBeFocused()
 
-  await issuePage().getByRole('button', { name: 'Edit summary' }).click()
+  await summary('Fix the export timeout').click()
   await issuePage().getByLabel('Summary').fill('Fix the export time limit')
-  await issuePage().getByRole('button', { name: 'Save' }).click()
+  await window.keyboard.press('Enter')
   await expect(issuePage()).toBeFocused()
   await expect(heading('Fix the export time limit')).toBeVisible()
   await settle(1)
@@ -690,6 +691,77 @@ test('ending a summary edit returns focus to the page, so Esc still leaves it', 
   await window.keyboard.press('Escape')
   await expect(issuePage()).toHaveCount(0)
   await expect(tree()).toBeFocused()
+})
+
+test('clicking the summary edits it in place, with the caret where it landed', async () => {
+  await openPage(/PSAPAC-3,/, 'Fix the export timeout')
+  const field = () => issuePage().getByLabel('Summary')
+  const caret = () => field().evaluate((input: HTMLInputElement) => input.selectionStart)
+
+  // Near the left edge the caret sits before the first character.
+  await summary('Fix the export timeout').click({ position: { x: 10, y: 10 } })
+  await expect(field()).toBeFocused()
+  await expect(field()).toHaveValue('Fix the export timeout')
+  expect(await caret()).toBe(0)
+  await window.keyboard.press('Escape')
+
+  // Past the end of the text the caret sits after the last character.
+  const box = await summary('Fix the export timeout').boundingBox()
+  await summary('Fix the export timeout').click({ position: { x: (box?.width ?? 0) - 4, y: 10 } })
+  expect(await caret()).toBe('Fix the export timeout'.length)
+  await window.keyboard.press('Escape')
+
+  // In the middle it sits between characters.
+  await summary('Fix the export timeout').click({ position: { x: 60, y: 10 } })
+  const middle = await caret()
+  expect(middle).toBeGreaterThan(0)
+  expect(middle).toBeLessThan('Fix the export timeout'.length)
+})
+
+test('Enter saves a clicked summary through the optimistic edit, and Cmd+Z undoes it', async () => {
+  await openPage(/PSAPAC-3,/, 'Fix the export timeout')
+
+  await summary('Fix the export timeout').click()
+  await issuePage().getByLabel('Summary').fill('Fix the export time limit')
+  await window.keyboard.press('Enter')
+  await expect(heading('Fix the export time limit')).toBeVisible()
+  await settle(1)
+
+  await window.keyboard.press('Meta+z')
+  await expect(heading('Fix the export timeout')).toBeVisible()
+  await settle(2)
+})
+
+test('focus leaving saves the summary, Esc cancels it, and an empty one is refused', async () => {
+  await openPage(/PSAPAC-3,/, 'Fix the export timeout')
+  const field = () => issuePage().getByLabel('Summary')
+
+  // Focus leaving saves.
+  await summary('Fix the export timeout').click()
+  await field().fill('Fix the export time limit')
+  await issuePage().getByRole('heading', { name: 'Description' }).click()
+  await expect(field()).toHaveCount(0)
+  await expect(heading('Fix the export time limit')).toBeVisible()
+  await settle(1)
+
+  // Esc restores the old summary and sends nothing.
+  await summary('Fix the export time limit').click()
+  await field().fill('Never saved')
+  await window.keyboard.press('Escape')
+  await expect(heading('Fix the export time limit')).toBeVisible()
+  expect(await writes()).toBe(1)
+
+  // An empty summary is refused: the old one returns and nothing is sent.
+  await summary('Fix the export time limit').click()
+  await field().fill('   ')
+  await window.keyboard.press('Enter')
+  await expect(heading('Fix the export time limit')).toBeVisible()
+  await expect(issuePage().getByRole('alert')).toContainText('cannot be empty')
+  expect(await writes()).toBe(1)
+
+  // The next edit clears the notice.
+  await summary('Fix the export time limit').click()
+  await expect(issuePage().getByRole('alert')).toHaveCount(0)
 })
 
 test('offers Retry when the page cannot read its issue, and shows the description after it', async () => {

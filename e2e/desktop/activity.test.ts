@@ -273,7 +273,8 @@ test.describe('comments', () => {
     await window.keyboard.press('End')
     await window.keyboard.type(' and more')
     await expect(editor).toContainText('My first comment and more')
-    await heading('Kick off the engagement').click()
+    // The key line is plain text, so the click moves focus to the page without editing the summary.
+    await issuePage().getByRole('heading', { level: 1 }).click()
     await window.keyboard.press('Escape')
     await expect(issuePage()).toHaveCount(0)
     await expect.poll(blocksUnload).toBe(true)
