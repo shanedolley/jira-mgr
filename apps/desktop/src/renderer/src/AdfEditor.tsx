@@ -352,7 +352,7 @@ export function AdfEditor(props: AdfEditorProps) {
       <div hidden={hidden} className="space-y-2">
         <EditorContent
           editor={editor}
-          className={editing ? 'rounded-md border border-line bg-panel p-2' : ''}
+          className={editing ? 'rounded-md border border-field-border bg-panel p-2' : ''}
         />
         {problem !== null && (
           <p role="alert" className="text-danger">

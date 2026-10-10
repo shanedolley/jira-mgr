@@ -57,4 +57,4 @@ export const DANGER_BUTTON =
   'rounded-md border border-danger px-2 py-0.5 text-xs text-danger hover:bg-hover disabled:opacity-60'
 export const PRIMARY_BUTTON =
   'rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-ink disabled:opacity-50'
-export const FIELD = 'h-7 rounded-md border border-line bg-panel px-2 text-ink'
+export const FIELD = 'h-7 rounded-md border border-field-border bg-panel px-2 text-ink'

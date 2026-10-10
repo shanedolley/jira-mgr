@@ -213,7 +213,7 @@ export function TreeToolbar({
             onFilters(withText(filters, event.target.value))
           }}
           onKeyDown={onTextKey}
-          className="h-7 min-w-40 flex-1 rounded-md border border-line bg-panel px-2 text-xs placeholder:text-muted"
+          className="h-7 min-w-40 flex-1 rounded-md border border-field-border bg-panel px-2 text-xs placeholder:text-muted"
         />
 
         {doneProgress !== null && (

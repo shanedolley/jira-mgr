@@ -133,7 +133,7 @@ export function TimerDialog({ snapshot, to, onClose, onDone, returnFocus }: Time
             onChange={(event) => {
               setComment(event.target.value)
             }}
-            className="w-full rounded-md border border-line bg-panel px-2 py-1 text-ink"
+            className="w-full rounded-md border border-field-border bg-panel px-2 py-1 text-ink"
           />
         </label>
         {!validTime && (
