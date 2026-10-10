@@ -114,6 +114,18 @@ describe('createIssue', () => {
     })
   })
 
+  it('sends the description in the create request', async () => {
+    const { http, requests } = routedHttp(accepts)
+    const description = {
+      version: 1 as const,
+      type: 'doc' as const,
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Plan it' }] }],
+    }
+    await createBackend({ http }).createIssue({ ...NEW, description })
+
+    expect(requests[0]?.body).toMatchObject({ fields: { description } })
+  })
+
   it('moves the new issue into the chosen sprint, then reads it again', async () => {
     const { http, requests } = routedHttp(accepts)
     const created = await createBackend({ http }).createIssue({ ...NEW, sprintId: 5 })

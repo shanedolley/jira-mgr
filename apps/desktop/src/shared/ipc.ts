@@ -276,6 +276,8 @@ export interface CreateIssueArgs {
   /** Required for a Subtask, and never sent for an Epic. */
   parentKey?: string
   assignee?: string
+  /** The description the issue starts with. Left out when it holds no text. */
+  description?: AdfDoc
   priorityId?: string
   labels?: string[]
   /** A Jira duration such as `2h 30m`. */

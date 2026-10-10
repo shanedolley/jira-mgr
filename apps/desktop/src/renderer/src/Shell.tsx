@@ -927,11 +927,14 @@ export function Shell({ session }: { session: Session }) {
           onClose={() => {
             setCreating(null)
           }}
-          onCreated={(result, first, more, draft) => {
+          onCreated={(result, first, more, draft, failedFiles) => {
             created.current.set(result.key, { draft, notice: first })
             if (!more) setCreating(null)
             setPendingSelect(result.issue === null ? null : result.key)
-            if (!more) notify(first, result.issue === null ? {} : { openKey: result.key })
+            // With "Create more" the next create overwrites the line in the modal, so a file that failed to attach also takes a toast.
+            if (!more || failedFiles) {
+              notify(first, result.issue === null ? {} : { openKey: result.key })
+            }
           }}
           returnFocus={focusTree}
         />

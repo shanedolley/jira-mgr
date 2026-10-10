@@ -14,7 +14,8 @@ function recorder(send?: AttachDeps['send']) {
       }),
     start: (name) => events.push(`start ${name}`),
     finish: (name) => events.push(`finish ${name}`),
-    fail: (notice) => events.push(`fail ${notice.title}: ${notice.notes.join(' ')}`),
+    fail: (notice, name) =>
+      events.push(`fail ${notice.title}: ${notice.notes.join(' ')} (${name})`),
   }
   return { deps, events }
 }
@@ -48,7 +49,7 @@ describe('attachFiles', () => {
     await attachFiles([new File(['a'], 'a.txt'), new File(['b'], 'b.txt')], deps)
     expect(events).toEqual([
       'start a.txt',
-      'fail a.txt was not attached: Jira said no.',
+      'fail a.txt was not attached: Jira said no. (a.txt)',
       'finish a.txt',
       'start b.txt',
       'finish b.txt',
@@ -66,8 +67,8 @@ describe('attachFiles', () => {
     }
     await attachFiles([new File([], 'empty.txt'), big], deps)
     expect(events).toEqual([
-      'fail empty.txt was not attached: The file is empty.',
-      'fail big.iso was not attached: It is over the 100 MB limit.',
+      'fail empty.txt was not attached: The file is empty. (empty.txt)',
+      'fail big.iso was not attached: It is over the 100 MB limit. (big.iso)',
     ])
     expect(read).toBe(false)
   })
@@ -79,7 +80,7 @@ describe('attachFiles', () => {
     await attachFiles([folder], deps)
     expect(events).toEqual([
       'start folder',
-      'fail folder was not attached: The requested file could not be read.',
+      'fail folder was not attached: The requested file could not be read. (folder)',
       'finish folder',
     ])
   })

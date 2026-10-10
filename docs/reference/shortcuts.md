@@ -46,7 +46,8 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Where | Key | Action |
 |---|---|---|
 | Rich-text editor, comment box | `Cmd+Enter` | Save or post; `Esc` cancels the editor |
-| Create dialog | `Cmd+Enter` | Create the issue, or focus the first missing field |
+| Create dialog, summary or description | `Cmd+Enter` | Create the issue, or focus the first missing field |
+| Create dialog, description | `Esc` | Close the dialog, as it does from the summary |
 | Text filter | `Enter`, `Down` | Move to the first issue row, skipping group headers, with the query kept |
 | Text filter | `Esc` | Clear the query; when empty, return to the Tree |
 | Summary and property fields | `Enter` | Save |

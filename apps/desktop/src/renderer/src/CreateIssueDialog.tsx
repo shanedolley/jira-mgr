@@ -9,6 +9,9 @@ import {
   type CurrentUser,
   type FieldChoice,
 } from '../../shared/ipc'
+import { AdfEditor, type AdfEditorHandle } from './AdfEditor'
+import { formatSize } from './activity'
+import { attachFiles } from './attach'
 import { Avatar, withAvatars } from './Avatar'
 import { Failure, Reason } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
@@ -17,6 +20,7 @@ import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
 import {
   describeCreated,
+  descriptionOf,
   initialDraft,
   listWords,
   firstMissing,
@@ -26,7 +30,9 @@ import {
   toCreateArgs,
   typeRules,
   withType,
+  withUploadFailures,
   type CreateDraft,
+  type FailedFile,
   type Notice,
 } from './create'
 import {
@@ -43,6 +49,7 @@ import {
   type ParentMatch,
   type Person,
 } from './properties'
+import { useAttachFile } from './activityQueries'
 import { useCreateIssue, useFieldOptions, useSprints, useUsers } from './queries'
 import { useDebounced } from './useDebounced'
 import { TypeIcon } from './TypeIcon'
@@ -56,7 +63,14 @@ interface CreateIssueDialogProps {
   me: CurrentUser | undefined
   onClose: () => void
   /** Called after each create. `more` is true when the modal stays open for the next one. */
-  onCreated: (result: CreatedIssue, notice: Notice, more: boolean, draft: CreateDraft) => void
+  onCreated: (
+    result: CreatedIssue,
+    notice: Notice,
+    more: boolean,
+    draft: CreateDraft,
+    /** A chosen file did not attach, so the notice names it and must reach a toast even when `more` keeps the modal open. */
+    failedFiles: boolean,
+  ) => void
   returnFocus: () => void
 }
 
@@ -77,7 +91,10 @@ const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
 /**
  * The create modal (Q33), opened by `C`. It starts as a Story under the Epic at or above the
  * selected issue, with that Epic's Customer and Engagement, and needs a summary, a Customer and an
- * Engagement. Create keeps the modal open with "Create more", clearing only the summary. Every
+ * Engagement. It also takes a description and files: the description goes in the create request,
+ * and the files attach once the issue exists, where a failed one is named in the notice and leaves
+ * the issue in place. Create keeps the modal open with "Create more", clearing the summary, the
+ * description and the files. Every
  * picker is the page's own `Picker`, and a parent whose Customer or Engagement differs asks the
  * Q16 question first. Nothing is sent until Jira's answer is needed: the new issue joins the
  * lists from the read-back.
@@ -95,7 +112,14 @@ export function CreateIssueDialog({
   const [more, setMore] = useState(false)
   const [last, setLast] = useState<Notice | null>(null)
   const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)
+  const [files, setFiles] = useState<File[]>([])
+  const [attaching, setAttaching] = useState(false)
+  /** The description editor holds more than its one empty paragraph. */
+  const [touched, setTouched] = useState(false)
   const create = useCreateIssue()
+  const attach = useAttachFile()
+  const descriptionRef = useRef<AdfEditorHandle>(null)
+  const filePicker = useRef<HTMLInputElement>(null)
   const summaryRef = useRef<HTMLInputElement>(null)
   const parentTrigger = useRef<HTMLButtonElement>(null)
   const assigneeTrigger = useRef<HTMLButtonElement>(null)
@@ -125,7 +149,7 @@ export function CreateIssueDialog({
 
   const missing = missingFields(draft)
   const estimateBad = missingKeys(draft).includes('estimate')
-  const pending = create.isPending
+  const pending = create.isPending || attaching
   // Not `autoFocus`: the modal opens after its content mounts, and opening takes focus to the first control.
   useEffect(() => {
     summaryRef.current?.focus()
@@ -160,14 +184,36 @@ export function CreateIssueDialog({
     }
     create.mutate(args, {
       onSuccess: (result) => {
-        const notice = describeCreated(draft, result)
-        onCreated(result, notice, more, draft)
-        if (more) {
-          setLast(notice)
-          setDraft(nextDraft(draft))
-        }
+        void finish(result, draft, files)
       },
     })
+  }
+
+  /** Attaches the files to the new issue, then tells the user and either closes or clears the form. */
+  async function finish(result: CreatedIssue, sent: CreateDraft, chosen: readonly File[]) {
+    let notice = describeCreated(sent, result)
+    let failedFiles = false
+    if (chosen.length > 0) {
+      const failed: FailedFile[] = []
+      setAttaching(true)
+      await attachFiles(chosen, {
+        send: (file) => attach.mutateAsync({ key: result.key, ...file }),
+        start: () => undefined,
+        finish: () => undefined,
+        fail: ({ notes }, name) => failed.push({ name, reason: notes.join(' ') }),
+      })
+      setAttaching(false)
+      notice = withUploadFailures(notice, result.key, failed)
+      failedFiles = failed.length > 0
+    }
+    onCreated(result, notice, more, sent, failedFiles)
+    if (more) {
+      setLast(notice)
+      setDraft(nextDraft(sent))
+      setFiles([])
+      descriptionRef.current?.reset(null)
+      setTouched(false)
+    }
   }
 
   function onFormKeyDown(event: KeyboardEvent<HTMLFormElement>) {
@@ -349,6 +395,45 @@ export function CreateIssueDialog({
                 }}
                 className={`${INPUT} h-10 text-base`}
               />
+            </div>
+            {/* A contenteditable ignores `<fieldset disabled>`, so `inert` locks the editor while it sends. */}
+            <div
+              inert={pending}
+              className={`relative max-h-48 overflow-y-auto rounded-md border border-field-border bg-canvas px-2 py-1.5 focus-within:outline-2 focus-within:outline-accent [&_.ProseMirror]:min-h-16 ${pending ? 'opacity-60' : ''}`}
+            >
+              <AdfEditor
+                ref={descriptionRef}
+                embedded
+                value={null}
+                issueKey=""
+                label="Description"
+                autoFocus={false}
+                editing
+                onSave={() => undefined}
+                // Esc closes the dialog, as it does from the summary; the editor would otherwise keep the key.
+                onCancel={() => {
+                  if (!pending) onClose()
+                }}
+                onChange={(doc) => {
+                  edit({ description: descriptionOf(doc) })
+                  // Not `draft.description`: a blank line or an empty bullet shows, and sends nothing.
+                  setTouched(
+                    doc.content.length > 1 ||
+                      doc.content[0]?.type !== 'paragraph' ||
+                      (doc.content[0].content?.length ?? 0) > 0,
+                  )
+                }}
+                onEditRequest={() => undefined}
+                onUnsupported={() => undefined}
+              />
+              {!touched && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute left-2 top-1.5 text-muted"
+                >
+                  Add a description
+                </span>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap gap-2 border-y border-line px-5 py-3">
@@ -540,6 +625,49 @@ export function CreateIssueDialog({
                 className="text-xs text-danger"
               />
             )}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  filePicker.current?.click()
+                }}
+                className="h-7 rounded-full border border-field-border px-2.5 text-xs hover:bg-hover"
+              >
+                Attach files
+              </button>
+              <input
+                ref={filePicker}
+                type="file"
+                multiple
+                hidden
+                aria-label="Choose files to attach"
+                onChange={(event) => {
+                  const chosen = Array.from(event.target.files ?? [])
+                  setFiles((held) => [...held, ...chosen])
+                  // Chosen again, the same file must still raise a change.
+                  event.target.value = ''
+                }}
+              />
+              {files.map((file, index) => (
+                <span
+                  key={`${file.name}-${String(index)}`}
+                  className="flex h-7 max-w-full items-center gap-1.5 rounded-full border border-field-border pl-2.5 pr-1 text-xs"
+                >
+                  <span className="min-w-0 truncate">{file.name}</span>
+                  <span className="shrink-0 text-muted">{formatSize(file.size)}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${file.name}`}
+                    onClick={() => {
+                      setFiles((held) => held.filter((_, at) => at !== index))
+                    }}
+                    className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-hover"
+                  >
+                    <span aria-hidden>×</span>
+                  </button>
+                </span>
+              ))}
+            </div>
             <p id="create-needs" className="text-xs text-muted">
               {missing.length === 0 ? 'Ready to create.' : `Add ${listWords(missing)} to create.`}
             </p>
@@ -567,7 +695,7 @@ export function CreateIssueDialog({
                   disabled={missing.length > 0}
                   className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink disabled:opacity-50"
                 >
-                  {pending ? 'Creating' : 'Create issue'}
+                  {attaching ? 'Attaching' : pending ? 'Creating' : 'Create issue'}
                 </button>
               </div>
             </div>
