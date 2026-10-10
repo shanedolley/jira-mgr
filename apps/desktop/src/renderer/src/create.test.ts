@@ -8,6 +8,7 @@ import {
   deleteFailureNotes,
   describeCreated,
   describeLate,
+  firstMissing,
   initialDraft,
   listWords,
   missingFields,
@@ -197,6 +198,17 @@ describe('missingFields and toCreateArgs', () => {
   it('needs an estimate Jira can read', () => {
     expect(missingFields({ ...ready, estimate: 'soon' })).toEqual(['an estimate such as 2h 30m'])
     expect(missingFields({ ...ready, estimate: '2h 30m' })).toEqual([])
+  })
+
+  it('names the first missing field in form order, or none when the form is ready', () => {
+    const empty = initialDraft(null, ISSUES)
+
+    expect(firstMissing(empty)).toBe('summary')
+    expect(firstMissing({ ...empty, summary: 'x' })).toBe('customer')
+    expect(firstMissing({ ...empty, summary: 'x', customer: ready.customer })).toBe('engagement')
+    expect(firstMissing({ ...ready, type: 'Subtask', parent: null })).toBe('parent')
+    expect(firstMissing({ ...ready, estimate: 'soon' })).toBe('estimate')
+    expect(firstMissing(ready)).toBeNull()
   })
 
   it('sends the trimmed summary with the ids and only what is set', () => {

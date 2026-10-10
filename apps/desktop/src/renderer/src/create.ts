@@ -153,19 +153,33 @@ export function withType(
   }
 }
 
-/** What the form still needs before it can be sent, as phrases for "Add ...". Empty when it is ready. */
-export function missingFields(draft: CreateDraft): string[] {
+/** The form fields that can block a create, in the order the form lists them. */
+export type MissingField = 'summary' | 'customer' | 'engagement' | 'parent' | 'estimate'
+
+/** What the form still needs before it can be sent, in form order. Empty when it is ready. */
+function missing(draft: CreateDraft): { field: MissingField; phrase: string }[] {
   const rules = typeRules(draft.type)
   return [
-    ...(draft.summary.trim() === '' ? ['a summary'] : []),
-    ...(draft.customer === null ? ['a Customer'] : []),
-    ...(draft.engagement === null ? ['an Engagement'] : []),
-    ...(draft.type === 'Subtask' && draft.parent === null ? ['a parent'] : []),
+    ...(draft.summary.trim() === '' ? [{ field: 'summary' as const, phrase: 'a summary' }] : []),
+    ...(draft.customer === null ? [{ field: 'customer' as const, phrase: 'a Customer' }] : []),
+    ...(draft.engagement === null
+      ? [{ field: 'engagement' as const, phrase: 'an Engagement' }]
+      : []),
+    ...(draft.type === 'Subtask' && draft.parent === null
+      ? [{ field: 'parent' as const, phrase: 'a parent' }]
+      : []),
     ...(rules.estimates && draft.estimate.trim() !== '' && parseEstimate(draft.estimate) === null
-      ? ['an estimate such as 2h 30m']
+      ? [{ field: 'estimate' as const, phrase: 'an estimate such as 2h 30m' }]
       : []),
   ]
 }
+
+/** What the form still needs before it can be sent, as phrases for "Add ...". Empty when it is ready. */
+export const missingFields = (draft: CreateDraft): string[] => missing(draft).map((m) => m.phrase)
+
+/** The first field the form still needs, which Cmd+Enter on an unready form takes focus to. */
+export const firstMissing = (draft: CreateDraft): MissingField | null =>
+  missing(draft)[0]?.field ?? null
 
 /** The request for a ready draft. Fields the type does not have are left out. */
 export function toCreateArgs(draft: CreateDraft): CreateIssueArgs | null {

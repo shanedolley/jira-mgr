@@ -32,6 +32,22 @@ const option = (name: string | RegExp) =>
 const toast = () => window.getByRole('status').filter({ hasText: /^Created|^Deleted/ })
 const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 
+/** The create request for the form filled in below, recorded from the dialog as it was before #133. */
+const BODY_OF_EVERY_FIELD = {
+  fields: {
+    project: { key: 'PSAPAC' },
+    issuetype: { name: 'Story' },
+    summary: 'Cover every field',
+    customfield_1: { id: '1' },
+    customfield_2: { id: '7' },
+    parent: { key: 'PSAPAC-10' },
+    assignee: { accountId: 'u1' },
+    priority: { id: '2' },
+    labels: ['docs'],
+    timetracking: { originalEstimate: '2h 30m' },
+  },
+}
+
 async function open() {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
@@ -96,7 +112,7 @@ test('prefills the Customer from a Customer header, and needs an Engagement and 
 
   await expect(field('Customer', 'Beta Ltd')).toBeVisible()
   await expect(field('Parent', 'None')).toBeVisible()
-  await expect(field('Engagement', 'None')).toBeVisible()
+  await expect(field('Engagement', 'Required')).toBeVisible()
   const create = dialog().getByRole('button', { name: 'Create issue' })
   await expect(create).toBeDisabled()
   await expect(dialog()).toContainText('Add a summary and an Engagement to create.')
@@ -105,7 +121,7 @@ test('prefills the Customer from a Customer header, and needs an Engagement and 
   await expect(create).toBeDisabled()
   await expect(dialog()).toContainText('Add an Engagement to create.')
 
-  await field('Engagement', 'None').click()
+  await field('Engagement', 'Required').click()
   await option('South').click()
   await expect(create).toBeEnabled()
   await expect(dialog()).toContainText('Ready to create.')
@@ -190,6 +206,124 @@ test('creates the issue, selects its row and names the key, without reloading a 
   expect(after.searches).toEqual(before.searches)
   // One read, the create's own read-back; the new row came from it.
   expect(after.issueReads.filter((key) => key === 'PSAPAC-2000')).toHaveLength(1)
+})
+
+test('sends every field of the form to Jira in one create request, then the sprint move', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Summary').fill('Cover every field')
+  await field('Assignee', 'Unassigned').click()
+  await option(/^Me/).click()
+  await field('Priority', 'None').click()
+  await option('High').click()
+  await field('Labels', 'None').click()
+  await option('docs').click()
+  await window.keyboard.press('Escape')
+  await field('Sprint', 'Backlog').click()
+  await option(/^Sprint 6/).click()
+  await dialog().getByLabel('Original estimate').fill('2h 30m')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+
+  await settle(1)
+  await settle(2)
+  expect((await counts(app)).editBodies).toEqual([BODY_OF_EVERY_FIELD, { issues: ['PSAPAC-2000'] }])
+})
+
+test('Type is an icon beside the summary until it opens, then lists every type', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+
+  const type = field('Type', 'Story')
+  await expect(type).toHaveText('')
+  await expect(type.locator('svg').first()).toBeVisible()
+  const [typeBox, summaryBox] = await Promise.all([
+    type.boundingBox(),
+    dialog().getByLabel('Summary').boundingBox(),
+  ])
+  expect(typeBox?.x).toBeLessThan(summaryBox?.x ?? 0)
+
+  await type.click()
+  const types = window.getByRole('listbox', { name: 'Type' }).getByRole('option')
+  await expect(types).toHaveText(['Story', 'Task', 'Bug', 'Epic', 'Subtask'])
+  await option('Bug').click()
+  await expect(field('Type', 'Bug')).toHaveText('')
+})
+
+test('the other fields are chips on two lines', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+
+  const chips = dialog().locator(
+    'button[aria-haspopup=listbox]:not([aria-label^="Type:"]), button:has-text("+me"), label:has(input[aria-label="Original estimate"])',
+  )
+  await expect(chips).toHaveCount(9)
+  const tops = new Set(
+    await chips.evaluateAll((all) =>
+      all.map((chip) => Math.round(chip.getBoundingClientRect().top)),
+    ),
+  )
+  expect(tops.size).toBeLessThanOrEqual(2)
+})
+
+test('typing an issue key in the Parent field finds that issue', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+
+  await field('Parent', /^Parent:/).click()
+  await window.getByRole('combobox', { name: 'Search Parent' }).fill('PSAPAC-30')
+  await expect(window.getByRole('option')).toHaveCount(1)
+  await option(/PSAPAC-30/).click()
+  await dialog()
+    .getByRole('dialog', { name: 'Move this issue under PSAPAC-30?' })
+    .getByRole('button', { name: 'Move only' })
+    .click()
+  await expect(field('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
+})
+
+test('+me assigns the current user and shows the name in the Assignee chip', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await expect(field('Assignee', 'Unassigned')).toBeVisible()
+
+  await dialog().getByRole('button', { name: /^\+me/ }).click()
+  await expect(field('Assignee', /^Assignee: \S/)).not.toHaveAttribute(
+    'aria-label',
+    'Assignee: Unassigned',
+  )
+  await expect(dialog().getByRole('button', { name: /^\+me/ })).toHaveCount(0)
+
+  await dialog().getByLabel('Summary').fill('Mine')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { assignee: { accountId: 'u1' } } })
+})
+
+test('Cmd+Enter on an unready form focuses the first missing field and sends nothing', async () => {
+  await open()
+  await select(/^Beta Ltd, 5 issues$/)
+  await window.keyboard.press('c')
+  await expect(dialog()).toBeVisible()
+  const before = await writes()
+  const engagement = dialog().getByRole('button', { name: /^Engagement:/ })
+  const estimate = dialog().getByLabel('Original estimate')
+
+  // The summary is first, so focus leaves it for the Type button, then Cmd+Enter brings it back.
+  await dialog()
+    .getByRole('button', { name: /^Type:/ })
+    .focus()
+  await window.keyboard.press('Meta+Enter')
+  await expect(dialog().getByLabel('Summary')).toBeFocused()
+
+  await dialog().getByLabel('Summary').fill('Plan the audit')
+  await window.keyboard.press('Meta+Enter')
+  await expect(engagement).toBeFocused()
+
+  await engagement.click()
+  await option('South').click()
+  await estimate.fill('soon')
+  await window.keyboard.press('Meta+Enter')
+  await expect(estimate).toBeFocused()
+  expect(await writes()).toBe(before)
 })
 
 test('shows what the automation changed when Jira rewrites a new Task', async () => {

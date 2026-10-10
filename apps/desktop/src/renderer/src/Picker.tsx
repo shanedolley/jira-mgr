@@ -25,6 +25,21 @@ export interface PickerOption {
   disabled?: boolean
 }
 
+/**
+ * How the trigger looks. `row` fills its line, with a chevron. `chip` is a pill. `filled` is a pill
+ * tinted with the accent for a required value, and reads in `--danger` while nothing is chosen.
+ * `icon` shows only `leading` and a chevron; the name and value stay in the accessible name.
+ */
+export type PickerVariant = 'row' | 'chip' | 'filled' | 'icon'
+
+const TRIGGER: Record<PickerVariant, string> = {
+  row: 'h-8 w-full min-w-0 gap-2 rounded-md px-2 hover:bg-hover',
+  chip: 'h-7 max-w-48 min-w-0 gap-1.5 rounded-full border border-field-border px-2.5 text-xs hover:bg-hover',
+  filled:
+    'h-7 max-w-48 min-w-0 gap-1.5 rounded-full border border-accent bg-selected px-2.5 text-xs',
+  icon: 'h-10 w-12 justify-center gap-1 rounded-md border border-field-border hover:bg-hover',
+}
+
 export interface PickerProps {
   /** Names the property. The trigger reads "<label>: <value>" to a screen reader. */
   label: string
@@ -33,6 +48,7 @@ export interface PickerProps {
   /** What the trigger shows and a screen reader hears after the label. */
   valueText: string
   leading?: ReactNode
+  variant?: PickerVariant
   options: readonly PickerOption[]
   selected: readonly string[]
   /** Several options can be chosen, and choosing one leaves the list open. */
@@ -108,6 +124,7 @@ export function Picker({
   shortcut,
   valueText,
   leading,
+  variant = 'row',
   options,
   selected,
   multiple = false,
@@ -250,16 +267,22 @@ export function Picker({
           popoverRef.current?.showPopover()
         }}
         style={{ anchorName: anchorOf(uid) }}
-        className="group flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-hover disabled:opacity-60 aria-expanded:bg-hover"
+        className={`group flex items-center text-left disabled:opacity-60 aria-expanded:bg-hover ${TRIGGER[variant]}`}
       >
         {leading}
-        <span className="min-w-0 flex-1 truncate">{valueText}</span>
-        {shortcut !== undefined && !disabled && (
+        {variant !== 'icon' && (
+          <span
+            className={`min-w-0 truncate ${variant === 'row' ? 'flex-1' : ''} ${variant === 'filled' && selected.length === 0 ? 'text-danger' : ''}`}
+          >
+            {valueText}
+          </span>
+        )}
+        {variant !== 'icon' && shortcut !== undefined && !disabled && (
           <span className="hidden group-hover:contents group-focus-visible:contents">
             <Kbd aria-hidden>{shortcut}</Kbd>
           </span>
         )}
-        <Chevron />
+        {(variant === 'row' || variant === 'icon') && <Chevron />}
       </button>
       <div
         ref={popoverRef}

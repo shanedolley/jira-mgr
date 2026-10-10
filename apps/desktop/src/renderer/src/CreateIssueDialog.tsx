@@ -14,11 +14,11 @@ import { LabelDot, PriorityBars } from './Glyphs'
 import { Modal } from './Modal'
 import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
-import { Row } from './PropertyRow'
 import {
   describeCreated,
   initialDraft,
   listWords,
+  firstMissing,
   missingFields,
   nextDraft,
   toCreateArgs,
@@ -61,6 +61,14 @@ interface CreateIssueDialogProps {
 const INPUT =
   'h-8 w-full min-w-0 rounded-md border border-field-border bg-canvas px-2 placeholder:text-muted disabled:opacity-60'
 
+/** What a required chip reads while nothing is chosen. */
+const REQUIRED = 'Required'
+
+/** A chip's property name, muted before its value. */
+const ChipName = ({ children }: { children: string }) => (
+  <span className="shrink-0 text-muted">{children}</span>
+)
+
 const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
   (choices ?? []).map((c) => ({ id: c.id, label: c.name }))
 
@@ -88,6 +96,9 @@ export function CreateIssueDialog({
   const create = useCreateIssue()
   const summaryRef = useRef<HTMLInputElement>(null)
   const parentTrigger = useRef<HTMLButtonElement>(null)
+  const customerTrigger = useRef<HTMLButtonElement>(null)
+  const engagementTrigger = useRef<HTMLButtonElement>(null)
+  const estimateRef = useRef<HTMLInputElement>(null)
   const rules = typeRules(draft.type)
 
   const [parentQuery, setParentQuery] = useState('')
@@ -110,7 +121,12 @@ export function CreateIssueDialog({
   }
 
   const missing = missingFields(draft)
+  const estimateBad = missing.some((m) => m.startsWith('an estimate'))
   const pending = create.isPending
+  // Not `autoFocus`: the modal opens after its content mounts, and opening takes focus to the first control.
+  useEffect(() => {
+    summaryRef.current?.focus()
+  }, [])
   // The form is disabled while it sends, so the summary takes focus back once an answer enables it.
   useEffect(() => {
     if (create.isError || last !== null) summaryRef.current?.focus()
@@ -124,8 +140,21 @@ export function CreateIssueDialog({
 
   function submit(event?: SyntheticEvent) {
     event?.preventDefault()
+    if (pending) return
     const args = toCreateArgs(draft)
-    if (args === null || pending) return
+    if (args === null) {
+      // Cmd+Enter on an unready form: the Create button is disabled, so the key says where to go.
+      const target = {
+        summary: summaryRef,
+        customer: customerTrigger,
+        engagement: engagementTrigger,
+        parent: parentTrigger,
+        estimate: estimateRef,
+      }
+      const first = firstMissing(draft)
+      if (first !== null) target[first].current?.focus()
+      return
+    }
     create.mutate(args, {
       onSuccess: (result) => {
         const notice = describeCreated(draft, result)
@@ -270,7 +299,13 @@ export function CreateIssueDialog({
         : undefined
 
   return (
-    <Modal titleId="create-title" onClose={onClose} closable={!pending} returnFocus={returnFocus}>
+    <Modal
+      titleId="create-title"
+      onClose={onClose}
+      closable={!pending}
+      returnFocus={returnFocus}
+      className="w-[min(40rem,calc(100vw-2rem))]"
+    >
       <form
         onSubmit={submit}
         onKeyDown={onFormKeyDown}
@@ -282,26 +317,12 @@ export function CreateIssueDialog({
             <h2 id="create-title" className="text-base font-semibold">
               New issue
             </h2>
-            <input
-              ref={summaryRef}
-              autoFocus
-              type="text"
-              aria-label="Summary"
-              placeholder="Summary"
-              maxLength={255}
-              autoComplete="off"
-              value={draft.summary}
-              onChange={(event) => {
-                edit({ summary: event.target.value })
-              }}
-              className={`${INPUT} h-10 text-base`}
-            />
-          </div>
-          <div className="space-y-1 border-y border-line px-3 py-3 [&_button[aria-haspopup=listbox]]:border [&_button[aria-haspopup=listbox]]:border-field-border">
-            <Row name="Type">
+            <div className="flex gap-2">
               <Picker
                 label="Type"
+                variant="icon"
                 valueText={draft.type}
+                leading={<TypeIcon type={{ name: draft.type }} decorative />}
                 options={CREATE_TYPES.map((t) => ({
                   id: t,
                   label: t,
@@ -312,153 +333,186 @@ export function CreateIssueDialog({
                   setDraft((d) => withType(d, id as CreateType, selected, issues))
                 }}
               />
-            </Row>
+              <input
+                ref={summaryRef}
+                type="text"
+                aria-label="Summary"
+                placeholder="Summary"
+                maxLength={255}
+                autoComplete="off"
+                value={draft.summary}
+                onChange={(event) => {
+                  edit({ summary: event.target.value })
+                }}
+                className={`${INPUT} h-10 text-base`}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 border-y border-line px-5 py-3">
             {rules.parent && (
-              <Row name="Parent">
-                <Picker
-                  label="Parent"
-                  triggerRef={parentTrigger}
-                  valueText={
-                    draft.parent === null ? 'None' : `${draft.parent.key} ${draft.parent.summary}`
-                  }
-                  options={parentOptions}
-                  selected={draft.parent === null ? [] : [draft.parent.key]}
-                  searchable
-                  onQuery={setParentQuery}
-                  onSelect={chooseParent}
-                  note={
-                    parentList.total > parentList.shown.length
-                      ? `Showing ${String(parentList.shown.length)} of ${String(parentList.total)}. Keep typing to narrow.`
-                      : undefined
-                  }
-                />
-              </Row>
-            )}
-            <Row name="Customer">
               <Picker
-                label="Customer"
-                valueText={draft.customer?.name ?? 'None'}
-                options={fromChoices(customers.data)}
-                selected={draft.customer === null ? [] : [draft.customer.id]}
+                label="Parent"
+                variant="chip"
+                leading={<ChipName>Parent</ChipName>}
+                triggerRef={parentTrigger}
+                valueText={
+                  draft.parent === null ? 'None' : `${draft.parent.key} ${draft.parent.summary}`
+                }
+                options={parentOptions}
+                selected={draft.parent === null ? [] : [draft.parent.key]}
                 searchable
-                onSelect={(id) => {
-                  const picked = customers.data?.find((c) => c.id === id)
-                  if (picked !== undefined) edit({ customer: picked })
-                }}
-                onOpenChange={setCustomerOpen}
-                note={note(customers, 'Customers')}
-              />
-            </Row>
-            <Row name="Engagement">
-              <Picker
-                label="Engagement"
-                valueText={draft.engagement?.name ?? 'None'}
-                options={fromChoices(engagements.data)}
-                selected={draft.engagement === null ? [] : [draft.engagement.id]}
-                searchable
-                onSelect={(id) => {
-                  const picked = engagements.data?.find((c) => c.id === id)
-                  if (picked !== undefined) edit({ engagement: picked })
-                }}
-                onOpenChange={setEngagementOpen}
-                note={note(engagements, 'Engagements')}
-              />
-            </Row>
-            <Row name="Assignee">
-              <Picker
-                label="Assignee"
-                valueText={draft.assignee?.displayName ?? 'Unassigned'}
-                leading={<Avatar person={draft.assignee} />}
-                options={withAvatars(
-                  assigneeOptions(choices, assigneeQuery, me?.accountId),
-                  people,
-                )}
-                selected={[draft.assignee?.accountId ?? NONE]}
-                searchable
-                onQuery={setAssigneeQuery}
-                onSelect={chooseAssignee}
-                onOpenChange={setAssigneeOpen}
+                onQuery={setParentQuery}
+                onSelect={chooseParent}
                 note={
-                  found.isError
-                    ? `Could not search people. ${found.error.message}`
-                    : found.isFetching
-                      ? 'Searching'
-                      : undefined
+                  parentList.total > parentList.shown.length
+                    ? `Showing ${String(parentList.shown.length)} of ${String(parentList.total)}. Keep typing to narrow.`
+                    : undefined
                 }
               />
-            </Row>
-            <Row name="Priority">
-              <Picker
-                label="Priority"
-                valueText={draft.priority?.name ?? 'None'}
-                options={fromChoices(priorities.data).map((o) => ({
-                  ...o,
-                  leading: <PriorityBars name={o.label} />,
-                }))}
-                selected={draft.priority === null ? [] : [draft.priority.id]}
-                onSelect={(id) => {
-                  const picked = priorities.data?.find((c) => c.id === id)
-                  if (picked !== undefined) edit({ priority: picked })
-                }}
-                onOpenChange={setPriorityOpen}
-                note={note(priorities, 'priorities')}
-              />
-            </Row>
-            <Row name="Labels">
-              <Picker
-                label="Labels"
-                valueText={draft.labels.length === 0 ? 'None' : draft.labels.join(', ')}
-                options={labelOptions}
-                selected={draft.labels}
-                multiple
-                searchable
-                create={{ valid: isLabel, label: (text) => `Create "${text}"` }}
-                onSelect={toggleLabel}
-                onCreate={(text) => {
-                  if (!draft.labels.includes(text)) toggleLabel(text)
-                }}
-              />
-            </Row>
-            {rules.sprint && (
-              <Row name="Sprint">
-                <Picker
-                  label="Sprint"
-                  valueText={draft.sprint?.name ?? 'Backlog'}
-                  options={sprintOptions}
-                  selected={[draft.sprint === null ? NONE : String(draft.sprint.id)]}
-                  onSelect={chooseSprint}
-                  onOpenChange={setSprintOpen}
-                  note={note(sprints, 'sprints')}
-                  footer={
-                    <button
-                      type="button"
-                      aria-pressed={allSprints}
-                      onClick={() => {
-                        setAllSprints(!allSprints)
-                      }}
-                      className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-xs hover:bg-hover"
-                    >
-                      {allSprints ? 'Show fewer sprints' : 'Show all sprints'}
-                    </button>
-                  }
-                />
-              </Row>
             )}
+            <Picker
+              label="Customer"
+              variant="filled"
+              leading={<ChipName>Customer</ChipName>}
+              triggerRef={customerTrigger}
+              valueText={draft.customer?.name ?? REQUIRED}
+              options={fromChoices(customers.data)}
+              selected={draft.customer === null ? [] : [draft.customer.id]}
+              searchable
+              onSelect={(id) => {
+                const picked = customers.data?.find((c) => c.id === id)
+                if (picked !== undefined) edit({ customer: picked })
+              }}
+              onOpenChange={setCustomerOpen}
+              note={note(customers, 'Customers')}
+            />
+            <Picker
+              label="Engagement"
+              variant="filled"
+              leading={<ChipName>Engagement</ChipName>}
+              triggerRef={engagementTrigger}
+              valueText={draft.engagement?.name ?? REQUIRED}
+              options={fromChoices(engagements.data)}
+              selected={draft.engagement === null ? [] : [draft.engagement.id]}
+              searchable
+              onSelect={(id) => {
+                const picked = engagements.data?.find((c) => c.id === id)
+                if (picked !== undefined) edit({ engagement: picked })
+              }}
+              onOpenChange={setEngagementOpen}
+              note={note(engagements, 'Engagements')}
+            />
             {rules.estimates && (
-              <Row name="Estimate">
+              <label
+                className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs ${estimateBad ? 'border-danger' : 'border-field-border'}`}
+              >
+                <ChipName>Estimate</ChipName>
                 <input
+                  ref={estimateRef}
                   type="text"
                   aria-label="Original estimate"
                   placeholder="2h 30m"
                   autoComplete="off"
                   value={draft.estimate}
-                  aria-invalid={missing.some((m) => m.startsWith('an estimate')) || undefined}
+                  aria-invalid={estimateBad || undefined}
                   onChange={(event) => {
                     edit({ estimate: event.target.value })
                   }}
-                  className="h-7 w-full min-w-0 rounded-md border border-field-border bg-transparent px-2 hover:bg-hover focus:bg-canvas aria-invalid:border-danger"
+                  className="w-12 min-w-0 bg-transparent"
                 />
-              </Row>
+              </label>
+            )}
+            <Picker
+              label="Assignee"
+              variant="chip"
+              valueText={draft.assignee?.displayName ?? 'Unassigned'}
+              leading={
+                <>
+                  <ChipName>Assignee</ChipName>
+                  <Avatar person={draft.assignee} />
+                </>
+              }
+              options={withAvatars(assigneeOptions(choices, assigneeQuery, me?.accountId), people)}
+              selected={[draft.assignee?.accountId ?? NONE]}
+              searchable
+              onQuery={setAssigneeQuery}
+              onSelect={chooseAssignee}
+              onOpenChange={setAssigneeOpen}
+              note={
+                found.isError
+                  ? `Could not search people. ${found.error.message}`
+                  : found.isFetching
+                    ? 'Searching'
+                    : undefined
+              }
+            />
+            {meUser !== undefined && draft.assignee?.accountId !== meUser.accountId && (
+              <button
+                type="button"
+                onClick={() => {
+                  edit({ assignee: meUser })
+                }}
+                className="h-7 rounded-full px-2 text-xs text-muted hover:bg-hover"
+              >
+                +me<span className="sr-only"> assign to me</span>
+              </button>
+            )}
+            <Picker
+              label="Priority"
+              variant="chip"
+              leading={<ChipName>Priority</ChipName>}
+              valueText={draft.priority?.name ?? 'None'}
+              options={fromChoices(priorities.data).map((o) => ({
+                ...o,
+                leading: <PriorityBars name={o.label} />,
+              }))}
+              selected={draft.priority === null ? [] : [draft.priority.id]}
+              onSelect={(id) => {
+                const picked = priorities.data?.find((c) => c.id === id)
+                if (picked !== undefined) edit({ priority: picked })
+              }}
+              onOpenChange={setPriorityOpen}
+              note={note(priorities, 'priorities')}
+            />
+            <Picker
+              label="Labels"
+              variant="chip"
+              leading={<ChipName>Labels</ChipName>}
+              valueText={draft.labels.length === 0 ? 'None' : draft.labels.join(', ')}
+              options={labelOptions}
+              selected={draft.labels}
+              multiple
+              searchable
+              create={{ valid: isLabel, label: (text) => `Create "${text}"` }}
+              onSelect={toggleLabel}
+              onCreate={(text) => {
+                if (!draft.labels.includes(text)) toggleLabel(text)
+              }}
+            />
+            {rules.sprint && (
+              <Picker
+                label="Sprint"
+                variant="chip"
+                leading={<ChipName>Sprint</ChipName>}
+                valueText={draft.sprint?.name ?? 'Backlog'}
+                options={sprintOptions}
+                selected={[draft.sprint === null ? NONE : String(draft.sprint.id)]}
+                onSelect={chooseSprint}
+                onOpenChange={setSprintOpen}
+                note={note(sprints, 'sprints')}
+                footer={
+                  <button
+                    type="button"
+                    aria-pressed={allSprints}
+                    onClick={() => {
+                      setAllSprints(!allSprints)
+                    }}
+                    className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-xs hover:bg-hover"
+                  >
+                    {allSprints ? 'Show fewer sprints' : 'Show all sprints'}
+                  </button>
+                }
+              />
             )}
           </div>
           <div className="space-y-2 px-5 py-3">
