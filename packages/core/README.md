@@ -274,4 +274,4 @@ Set `JM_LIVE_KEYCHAIN=1` on macOS to run `auth.live.test.ts`, one test against t
 pnpm fixture:record -- <name> <GET|POST> <path> [json-body]
 ```
 
-`scripts/record-fixture.ts` reads `JM_JIRA_SITE`, `JM_JIRA_EMAIL` and `JM_JIRA_TOKEN` from the environment and saves the response body, pretty-printed, to `fixtures/<name>.json`. It never saves headers. It refuses a site that `parseSiteUrl` rejects before it sends the token, allows any `GET`, allows `POST` only to `/rest/api/3/search/jql`, and refuses every other write. It lives in core so it can import `src/site-url.ts`, which has no imports of its own because `node` runs the script without a bundler.
+`scripts/record-fixture.ts` reads `JM_JIRA_SITE`, `JM_JIRA_EMAIL` and `JM_JIRA_TOKEN` from the environment and saves the response body, pretty-printed, to `fixtures/<name>.json`. It never saves headers. It refuses a site that `parseSiteUrl` rejects before it sends the token, allows any `GET`, allows `POST` only to `/rest/api/3/search/jql`, and refuses every other write.

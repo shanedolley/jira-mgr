@@ -15,3 +15,10 @@ export function parseSiteUrl(value: string): string | null {
     url.hash === ''
   return ok ? url.origin : null
 }
+
+/** Whether `path` stays under `/rest/` on the site: no `..`, backslash or encoded dot. */
+export function isJiraPath(path: string): boolean {
+  // The query and fragment cannot change which endpoint is called, and a search may hold "..".
+  const pathname = path.split(/[?#]/, 1)[0] ?? ''
+  return path.startsWith('/rest/') && !/\.\.|%2e/i.test(pathname) && !pathname.includes('\\')
+}

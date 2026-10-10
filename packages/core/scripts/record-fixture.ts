@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-import { parseSiteUrl } from '../src/site-url.ts'
+import { isJiraPath, parseSiteUrl } from '../src/site-url.ts'
 
 const USAGE = 'Usage: pnpm fixture:record -- <name> <GET|POST> <path> [json-body]'
 
@@ -26,7 +26,9 @@ export async function record(
   const pathname = path.split('?')[0]
   const isRead = method === 'GET' || (method === 'POST' && pathname === '/rest/api/3/search/jql')
   if (!isRead) throw new Error(`Refusing ${method} ${path}: this script records reads only.`)
-  if (!path.startsWith('/rest/')) throw new Error('The path starts with /rest/.')
+  if (!isJiraPath(path)) {
+    throw new Error('The path starts with /rest/ and holds no "..", backslash or encoded dot.')
+  }
 
   const { JM_JIRA_SITE, JM_JIRA_EMAIL, JM_JIRA_TOKEN } = env
   if (!JM_JIRA_SITE || !JM_JIRA_EMAIL || !JM_JIRA_TOKEN) {
