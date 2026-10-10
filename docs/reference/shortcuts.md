@@ -16,6 +16,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `P` | Open Priority |
 | `E` | Edit the summary |
 | `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open page |
+| `?` | List every shortcut on this page; works from a sidebar or toolbar button too, not in a field or over a dialog |
 | `Cmd+K` | Open the search palette; it searches issues and lists no commands. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo |
 | `Esc` | Close the page, then the Peek |

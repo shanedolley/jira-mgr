@@ -1,6 +1,7 @@
 import type { Issue } from '@jira-mgr/core'
 import { useDeferredValue, useEffect, useId, useState, type KeyboardEvent } from 'react'
 
+import { Kbd } from './Kbd'
 import { Modal } from './Modal'
 import { StatusDot } from './StatusDot'
 import { searchIssues } from './search'
@@ -118,7 +119,7 @@ export function CommandPalette({ issues, onOpen, onClose, returnFocus }: Command
             onClick={() => {
               onOpen(issue.key)
             }}
-            className="flex h-8 cursor-default items-center gap-3 rounded px-3 hover:bg-hover aria-selected:bg-selected"
+            className="flex h-9 cursor-default items-center gap-3 rounded-lg px-3 hover:bg-hover aria-selected:bg-selected"
           >
             <TypeIcon type={issue.issueType} />
             <StatusDot status={issue.status} />
@@ -135,7 +136,7 @@ export function CommandPalette({ issues, onOpen, onClose, returnFocus }: Command
             ? `Showing ${String(shown.length)} of ${String(total)}. Keep typing to narrow.`
             : `${String(total)} ${total === 1 ? 'issue' : 'issues'}`}
         <span aria-hidden className="float-right">
-          Enter opens, Esc closes
+          <Kbd>Enter</Kbd> opens <Kbd>Esc</Kbd> closes
         </span>
       </p>
     </Modal>

@@ -10,7 +10,7 @@ For a key that opens one more property picker of the active issue:
 
 2. **Map the letter.** Add `['x', 'yourCommand']` to the `LETTERS` map in the same file. Pick a letter no other shortcut uses. The Tree owns `J`, `K`, the arrows, `Space` and `Enter` (`tree.ts`), and the keymap owns `C`, `T`, `S`, `A`, `L`, `P`, `E`, `/`, `Cmd+K`, `Cmd+Z` and `Esc`.
 
-3. **Advertise it on the control.** Give the picker the same letter: `shortcut="X"` on a `Picker` (see `PropertyPickers.tsx`), or `aria-keyshortcuts="X"` on a button. `Shell.tsx` finds the control by that attribute and clicks it, so the shortcut opens the picker the mouse opens and no code is duplicated. The `Picker` also sets the tooltip `Label (X)`.
+3. **Advertise it on the control.** Give the picker the same letter: `shortcut="X"` on a `Picker` (see `PropertyPickers.tsx`), or `aria-keyshortcuts="X"` on a button. `Shell.tsx` finds the control by that attribute and clicks it, so the shortcut opens the picker the mouse opens and no code is duplicated. The `Picker` also shows the letter as a keycap on hover and focus.
 
 The `default` branch of the `switch` in `Shell.tsx` runs the command, so it needs no change. From the Tree it opens the active issue's Peek first; from the issue page it uses the page's sidebar.
 
@@ -25,6 +25,10 @@ For a key that does something else, such as `C` for create:
 ## What the Keymap Guarantees
 
 `resolveKey` returns a command for a letter only when it is pressed alone: no Cmd, Ctrl or Alt, not held, not part of an IME composition, not already handled, not typed into an input, dialog, picker or editor, and only with focus inside an element marked `data-key-scope` (the Tree, the Peek and the issue page). Keep that rule. Do not add a listener of your own.
+
+## List It
+
+Add a row to the matching table in `docs/reference/shortcuts.md`. The `?` overlay draws that page, so the row shows in the overlay with no code change.
 
 ## Test
 

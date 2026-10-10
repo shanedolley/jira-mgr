@@ -9,6 +9,7 @@ import {
   type ToggleEvent,
 } from 'react'
 
+import { Kbd } from './Kbd'
 import { matches } from './properties'
 
 export interface PickerOption {
@@ -27,7 +28,7 @@ export interface PickerOption {
 export interface PickerProps {
   /** Names the property. The trigger reads "<label>: <value>" to a screen reader. */
   label: string
-  /** The single key that opens this picker from anywhere (D7), shown in the tooltip. */
+  /** The single key that opens this picker from anywhere (D7), shown as a keycap on hover and focus. */
   shortcut?: string
   /** What the trigger shows and a screen reader hears after the label. */
   valueText: string
@@ -241,7 +242,6 @@ export function Picker({
         aria-controls={popoverId}
         aria-label={`${label}: ${valueText}`}
         aria-keyshortcuts={shortcut}
-        title={shortcut === undefined ? undefined : `${label} (${shortcut})`}
         disabled={disabled}
         popoverTarget={popoverId}
         onKeyDown={(event) => {
@@ -250,10 +250,15 @@ export function Picker({
           popoverRef.current?.showPopover()
         }}
         style={{ anchorName: anchorOf(uid) }}
-        className="flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-hover disabled:opacity-60 aria-expanded:bg-hover"
+        className="group flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-hover disabled:opacity-60 aria-expanded:bg-hover"
       >
         {leading}
         <span className="min-w-0 flex-1 truncate">{valueText}</span>
+        {shortcut !== undefined && !disabled && (
+          <span className="hidden group-hover:contents group-focus-visible:contents">
+            <Kbd aria-hidden>{shortcut}</Kbd>
+          </span>
+        )}
         <Chevron />
       </button>
       <div
