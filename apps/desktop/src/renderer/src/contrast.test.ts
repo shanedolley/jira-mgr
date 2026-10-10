@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vitest'
 
-import { avatarFill } from './Avatar'
+import { avatarColor, avatarFill } from './Avatar'
 
 type Rgb = [number, number, number]
 type Theme = 'light' | 'dark'
@@ -73,6 +73,13 @@ describe('avatar initials', () => {
       ...Array.from({ length: 360 }, (_, hue) => contrast(white, hslToRgb(avatarFill(hue)))),
     )
     expect(worst).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('paint avatarColor with avatarFill, whatever hue an account id gives', () => {
+    for (const id of ['u1', 'u2', '5b10ac8d82e05b22cc7d4ef5', '712020:abc-def', 'x']) {
+      const hue = Number(/^hsl\((\d+) /.exec(avatarColor(id))?.[1])
+      expect(avatarColor(id), id).toBe(avatarFill(hue))
+    }
   })
 })
 
