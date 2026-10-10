@@ -2,7 +2,7 @@
 
 ## Start Here
 
-Measured 2026-10-10 (main 6dc74a9): `gh issue list --state open --limit 200` returns #119 and #120, both `status:in-progress`. #119 (UX review) is in progress on `docs/119-ux-review`. #120 (Linear gap analysis) is built and in review on `docs/120-linear-gaps`, and awaits Shane's picks among its 15 proposed stories, so do not file or build any of them. Shane also asked for one consolidated interactive HTML report, a Claude artifact with feedback capture, covering #119 and #120; build it after both land. Otherwise the focus is documentation: keep docs current and remove stale references. Work in this order, landing one pull request at a time:
+Measured 2026-10-10 (main a66fbd5): `gh issue list --state open --limit 200` returns #119 and #120. #120 (Linear gap analysis) is in HIL Review and merged as #121. #119 (UX review) is built on `docs/119-ux-review` with its pull request open, and goes to HIL Review. Both await Shane's picks among their proposed stories (15 from #120, 14 from #119) in one consolidated interactive report, a Claude artifact the lead is building next (its link will be added here), so do not file or build any proposed story until he answers. Otherwise the focus is documentation: keep docs current and remove stale references. Work in this order, landing one pull request at a time:
 
 1. **Check the board.** Run `gh issue list --state open`. If a new issue appears, claim it per Loop.
 2. **Keep the docs current.** Fix any stale reference you meet in the pull request that changes the code. For a docs-only pass, grep `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`, `AGENTS.md`, `docs/` and each package README for closed issues named as open and for features named as planned.
