@@ -1,6 +1,6 @@
 # 0004: Activity
 
-**Status:** in review
+**Status:** accepted
 **Owner:** @shanedolley
 **Refs:** #32
 
@@ -250,7 +250,7 @@ Comments, worklogs, links and attachments stay off D7's undo stack, as `undo.ts`
 
 ## Rollout
 
-One branch, `d5-activity`, in commits after this doc: the main-process channels, the renderer sections, and the e2e fake with its tests. Back out by reverting the pull request: nothing persists locally, and Jira holds whatever the user wrote.
+One pull request (#104), in commits after this doc: the main-process channels, the renderer sections, and the e2e fake with its tests. Back out by reverting the pull request: nothing persists locally, and Jira holds whatever the user wrote.
 
 ## Open Questions
 

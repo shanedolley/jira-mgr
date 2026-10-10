@@ -9,9 +9,9 @@ Written:
 | [`install-cli.md`](install-cli.md) | Build `jm` and link it with `npm link` |
 | [`install-desktop-app.md`](install-desktop-app.md) | Package the unsigned app, install it, open it, find its state and uninstall it |
 
-Planned, each written with the code it covers:
+These pages are not written yet; [#101](https://github.com/shanedolley/jira-mgr/issues/101) tracks them.
 
-| Guide | Task | Written in |
+| Guide | Task | Planned for |
 |---|---|---|
 | `run-tests.md` | Run each test suite and debug a failure | Core |
 | `refresh-fixtures.md` | Record PSAPAC response bodies as they are and update the MSW fake | Core |

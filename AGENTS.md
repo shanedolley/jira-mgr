@@ -14,6 +14,8 @@ Before changing an area, read its standard from [docs/standards](docs/standards/
 - Use the terms in `CONTEXT.md` in code, commands and docs.
 - Branch, commit and merge per [git workflow](docs/standards/git-workflow.md), with `Refs #12` in commits.
 - Update docs in the same pull request, per [documentation](docs/standards/documentation.md).
+- After `pnpm install` in a new worktree, check the Electron dist with `du -sh node_modules/.pnpm/electron@*/node_modules/electron/dist` (about 307 MB, with `path.txt` beside it). If the dist is missing or truncated, run `node node_modules/.pnpm/electron@*/node_modules/electron/install.js` there, or every e2e test fails to launch.
+- Run e2e on one worker with `pnpm e2e --workers=1` and read the worker count in the output. `pnpm e2e -- --workers 1` passes `--` literally and leaves Playwright on 5 workers.
 - Finish against the [definition of done](docs/standards/code-review.md#definition-of-done). Merge only on green CI and approval from a reviewer other than the builder.
 
 ## Ask First

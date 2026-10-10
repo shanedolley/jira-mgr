@@ -2,9 +2,9 @@
 
 jira-mgr is a Linear-style desktop app and an agent-friendly CLI over one Jira project. One shared TypeScript core holds the Jira client and the domain rules, and both clients call Jira directly with live fetches.
 
-Planned pages:
+These pages are not written yet; [#101](https://github.com/shanedolley/jira-mgr/issues/101) tracks them.
 
-| File | Covers | Written in |
+| File | Covers | Planned for |
 |---|---|---|
 | `system-overview.md` | Components, request paths and the monorepo layout | Core |
 | `data-model.md` | The Jira entities as core consumes them: issue types, custom fields, links, sprints | Core |
