@@ -108,6 +108,33 @@ describe('summaryMutation', () => {
     expect(read).toHaveBeenCalledOnce()
   })
 
+  it('keeps an edit made while the edit before it reads the issue back', async () => {
+    const { client, observer, request, summaries, read, answers } = setup()
+    const stale = deferred<IssueDetail>()
+    read.mockReturnValueOnce(stale.promise)
+    const first = observer.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    request.resolve(null)
+    await expect.poll(() => read.mock.calls.length).toBe(1)
+
+    // Cmd+Z lands before the first edit's read answers, and Jira has not answered the undo yet.
+    const held = deferred<null>()
+    const undo = new MutationObserver(
+      client,
+      summaryMutation(client, () => held.promise, read),
+    )
+    const undone = undo.mutate({ key: 'PSAPAC-1', summary: 'One' })
+    await expect.poll(summaries).toEqual(['One', 'Two'])
+    stale.resolve(detail(issue('PSAPAC-1', 'One, edited')))
+    await first
+    expect(summaries()).toEqual(['One', 'Two'])
+
+    answers['PSAPAC-1'] = detail(issue('PSAPAC-1', 'One'))
+    held.resolve(null)
+    await undone
+    expect(read).toHaveBeenCalledTimes(2)
+    expect(summaries()).toEqual(['One', 'Two'])
+  })
+
   it('leaves a later edit alone when an earlier one fails', async () => {
     const { client, observer, request, summaries, read } = setup()
     // Held, so the lists show what the rollback left before Jira's answer replaces it.
