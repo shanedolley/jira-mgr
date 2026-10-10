@@ -383,7 +383,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               customers.isPending ? (
                 'Loading Customers'
               ) : customers.isError ? (
-                <Reason lead="Could not load the Customers." message={customers.error.message} />
+                <Reason lead="Could not load the Customers." error={customers.error} />
               ) : undefined
             }
           />
@@ -401,10 +401,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               engagements.isPending ? (
                 'Loading Engagements'
               ) : engagements.isError ? (
-                <Reason
-                  lead="Could not load the Engagements."
-                  message={engagements.error.message}
-                />
+                <Reason lead="Could not load the Engagements." error={engagements.error} />
               ) : undefined
             }
           />
@@ -422,7 +419,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
                 sprints.isPending ? (
                   'Loading sprints'
                 ) : sprints.isError ? (
-                  <Reason lead="Could not load the sprints." message={sprints.error.message} />
+                  <Reason lead="Could not load the sprints." error={sprints.error} />
                 ) : undefined
               }
               footer={

@@ -12,7 +12,6 @@ import {
 } from './activity'
 import { useAddLink, useLinks, useRemoveLink } from './activityQueries'
 import type { Notice } from './create'
-import { plainMessage } from './Failure'
 import { BUTTON, FIELD, PRIMARY_BUTTON, QueryBody, Section } from './Section'
 
 interface LinksSectionProps {
@@ -56,9 +55,7 @@ function AddLinkForm({ issueKey, types, issues, onDone }: AddLinkFormProps) {
       await add.mutateAsync({ typeId: choice.typeId, direction: choice.direction, otherKey: key })
       onDone()
     } catch (error) {
-      setProblem(
-        `Could not add the link. ${plainMessage(error instanceof Error ? error.message : '')}`,
-      )
+      setProblem(`Could not add the link. ${error instanceof Error ? error.message : ''}`)
     }
   }
 

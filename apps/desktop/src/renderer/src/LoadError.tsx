@@ -1,5 +1,6 @@
 import type { JiraMgrError } from '@jira-mgr/core'
 
+import { detailOf } from './ipc'
 import { useLogout } from './queries'
 
 /**
@@ -46,7 +47,7 @@ export function LoadError({
       </div>
       <details className="text-xs text-muted">
         <summary className="w-fit cursor-default">Details</summary>
-        <p className="mt-1 break-words">{error.message}</p>
+        <p className="mt-1 break-words">{detailOf(error) ?? error.message}</p>
       </details>
     </div>
   )

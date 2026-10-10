@@ -297,8 +297,8 @@ export function CreateIssueDialog({
   ) =>
     query.isPending ? (
       `Loading ${what}`
-    ) : query.isError ? (
-      <Reason lead={`Could not load ${what}.`} message={query.error?.message ?? ''} />
+    ) : query.error !== null ? (
+      <Reason lead={`Could not load ${what}.`} error={query.error} />
     ) : undefined
 
   return (
@@ -448,7 +448,7 @@ export function CreateIssueDialog({
               onOpenChange={setAssigneeOpen}
               note={
                 found.isError ? (
-                  <Reason lead="Could not search people." message={found.error.message} />
+                  <Reason lead="Could not search people." error={found.error} />
                 ) : found.isFetching ? (
                   'Searching'
                 ) : undefined
@@ -536,7 +536,7 @@ export function CreateIssueDialog({
             {create.isError && (
               <Failure
                 lead="Could not create the issue."
-                message={create.error.message}
+                error={create.error}
                 className="text-xs text-danger"
               />
             )}

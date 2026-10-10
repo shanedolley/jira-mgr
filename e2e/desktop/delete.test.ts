@@ -163,6 +163,9 @@ test('puts the issue back and says why when Jira refuses the delete', async () =
   const failure = window.getByRole('alert').filter({ hasText: 'Could not delete PSAPAC-3' })
   await expect(failure).toContainText('You cannot delete this issue.')
   await expect(failure).toContainText('It is back in the list.')
+  // Jira's message names the request; the notice leaves it out.
+  await expect(failure).not.toContainText('/rest/')
+  await expect(failure).not.toContainText('DELETE')
   // A failure stays until it is dismissed.
   await failure.getByRole('button', { name: 'Dismiss' }).click()
   await expect(failure).toHaveCount(0)

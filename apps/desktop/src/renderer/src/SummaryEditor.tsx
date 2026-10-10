@@ -117,7 +117,7 @@ export function SummaryEditor({ issue, onEditingChange, onLeave, page }: Summary
       {save.isError && (
         <Failure
           lead={`Could not save the summary, so ${issue.key} shows its old one again.`}
-          message={save.error.message}
+          error={save.error}
           className="text-danger"
         />
       )}

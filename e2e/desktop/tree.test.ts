@@ -153,9 +153,11 @@ test('draws To Do, In Progress and Done as three distinct shapes', async () => {
   await expect(doing.locator('path')).toHaveCount(1)
   await expect(done.locator('circle[fill="none"]')).toHaveCount(0)
 
-  // In greyscale the three still differ: no colour carries the status.
+  // With the three status colours set to one, only shape can tell them apart.
   await window.evaluate(() => {
-    document.documentElement.style.filter = 'grayscale(1)'
+    for (const token of ['new', 'doing', 'done']) {
+      document.documentElement.style.setProperty(`--status-${token}`, 'black')
+    }
   })
   const [a, b, c] = await Promise.all([todo, doing, done].map((g) => g.screenshot()))
   expect(a?.equals(b ?? Buffer.alloc(0))).toBe(false)

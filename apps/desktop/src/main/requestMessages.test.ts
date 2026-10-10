@@ -1,0 +1,112 @@
+import { JiraMgrError } from '@jira-mgr/core'
+import { createHttpClient, requestMediaId } from '@jira-mgr/core/http'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { toIpcError } from './handlers'
+import { desktopError, desktopMessage } from './messages'
+
+const http = createHttpClient({
+  credentials: () =>
+    Promise.resolve({ siteUrl: 'https://x.atlassian.net', email: 'a@b.c', token: 't' }),
+  maxRetries: 0,
+  sleep: () => Promise.resolve(),
+})
+
+const answer = (status: number, body = '', init: ResponseInit = {}) =>
+  vi.stubGlobal('fetch', () => Promise.resolve(new Response(body, { status, ...init })))
+
+/** The error core throws for a call, with the wording http.ts gives it. */
+async function thrown(call: () => Promise<unknown>): Promise<JiraMgrError> {
+  const error = await call().then(
+    () => undefined,
+    (cause: unknown) => cause,
+  )
+  if (!(error instanceof JiraMgrError)) throw new Error('The call did not throw a JiraMgrError')
+  return error
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+describe('what the app shows of a request core names', () => {
+  const path = '/rest/api/3/issue/PSAPAC-3'
+
+  it.each(['GET', 'POST', 'PUT', 'DELETE'])(
+    'drops %s and its path from an answered failure, with or without a Jira reason',
+    async (method) => {
+      for (const body of [
+        '{"errorMessages":["Nope."]}',
+        '{"errorMessages":["Nope"]}',
+        '{"errors":{"summary":"Too long"}}',
+        '',
+      ]) {
+        answer(403, body)
+        const error = await thrown(() => http.request(method, path))
+        expect(error.message).toContain(path)
+        const shown = desktopMessage(error.message)
+        expect(shown).not.toMatch(/\/rest\/|\b(GET|POST|PUT|DELETE)\b/)
+        expect(shown).toMatch(/^Jira answered 403[:.]/)
+        expect(desktopError(error.message).detail).toBe(error.message)
+      }
+    },
+  )
+
+  it('keeps Jira reason and next step', async () => {
+    answer(404, '{"errorMessages":["Issue does not exist."]}')
+    const error = await thrown(() => http.request('GET', path))
+    expect(desktopMessage(error.message)).toBe(
+      'Jira answered 404: Issue does not exist. Check the key or id and that it exists in this project.',
+    )
+  })
+
+  it('drops the request from a network failure and a timeout', async () => {
+    vi.stubGlobal('fetch', () => Promise.reject(new TypeError('fetch failed')))
+    const unreachable = await thrown(() => http.request('PUT', path))
+    expect(unreachable.message).toContain('Cannot reach Jira for PUT')
+    expect(desktopMessage(unreachable.message)).toMatch(/^Cannot reach Jira for the request\. /)
+
+    vi.stubGlobal('fetch', () => Promise.reject(new DOMException('slow', 'TimeoutError')))
+    const slow = await thrown(() => http.request('GET', path))
+    expect(slow.message).toMatch(/^GET \/rest\/\S+ did not finish within/)
+    expect(desktopMessage(slow.message)).toMatch(/^The request did not finish within/)
+  })
+
+  it('drops the request from an unreadable answer', async () => {
+    answer(200, 'not json')
+    const notJson = await thrown(() => http.request('GET', path))
+    expect(desktopMessage(notJson.message)).toBe(
+      'Jira sent a body for the request that is not JSON.',
+    )
+
+    answer(200)
+    const content = '/rest/api/3/attachment/content/10001'
+    const noRedirect = await thrown(() => requestMediaId(http, content))
+    expect(noRedirect.message).toContain(content)
+    expect(desktopMessage(noRedirect.message)).toBe(
+      'Jira answered the request with no redirect to read.',
+    )
+
+    answer(302)
+    const odd = await thrown(() => requestMediaId(http, content))
+    expect(odd.message).toContain(content)
+    expect(desktopMessage(odd.message)).toBe(
+      'Jira sent a redirect for the request that this app cannot read.',
+    )
+  })
+
+  it('leaves a message with no request as it is, with no detail', () => {
+    expect(desktopError('Jira answered 401 to the login check.')).toEqual({
+      message: 'Jira answered 401 to the login check.',
+    })
+  })
+
+  it('crosses IPC as a plain message and the full text as detail', async () => {
+    answer(403, '{"errorMessages":["No."]}')
+    const error = await thrown(() => http.request('DELETE', '/rest/api/3/issue/PSAPAC-3'))
+    const ipc = toIpcError(error)
+    expect(ipc.code).toBe('permission_denied')
+    expect(ipc.message).not.toContain('/rest/')
+    expect(ipc.detail).toContain('DELETE /rest/api/3/issue/PSAPAC-3')
+  })
+})

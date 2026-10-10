@@ -44,7 +44,7 @@ import type {
   WorklogIdArgs,
 } from '../shared/ipc'
 import type { Backend, ProgressSender } from './backend'
-import { desktopMessage } from './messages'
+import { desktopError } from './messages'
 
 const MAX_TOKEN_BYTES = 1024
 const MAX_EMAIL_BYTES = 254
@@ -380,10 +380,10 @@ export type Handlers = {
 const INTERNAL_MESSAGE =
   'The app hit an unexpected error. Try again, and restart it if it persists.'
 
-/** Core errors keep their code and message. Anything else becomes `internal` with a fixed message. */
+/** Core errors keep their code and message, less the request they name (the full text is `detail`). Anything else becomes `internal` with a fixed message. */
 export function toIpcError(error: unknown): IpcError {
   if (error instanceof JiraMgrError) {
-    return { code: error.code, message: desktopMessage(error.message) }
+    return { code: error.code, ...desktopError(error.message) }
   }
   return { code: 'internal' satisfies ErrorCode, message: INTERNAL_MESSAGE }
 }

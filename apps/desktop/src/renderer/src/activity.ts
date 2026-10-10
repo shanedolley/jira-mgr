@@ -3,7 +3,6 @@ import { DURATION_PATTERN } from '@jira-mgr/core/issue'
 
 import type { LinkItem, LinkTypeItem, WorklogItem } from '../../shared/ipc'
 import type { Notice } from './create'
-import { plainMessage } from './Failure'
 
 /** The link types Q19 puts above the divider, in this order. Every other type follows, in Jira's order. */
 const COMMON_LINK_TYPES = ['Blocks', 'Relates', 'Duplicate', 'Causes', 'Cloners']
@@ -173,7 +172,7 @@ export const formatWhen = (iso: string): string =>
 /** The notice for a write Jira refused: what failed, then Jira's reason. It stays until dismissed. */
 export const failureNotice = (title: string, reason: string): Notice => ({
   title,
-  notes: [plainMessage(reason)],
+  notes: [reason],
   warned: true,
 })
 

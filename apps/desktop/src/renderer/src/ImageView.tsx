@@ -3,7 +3,6 @@ import { NodeViewWrapper, type ReactNodeViewProps } from '@tiptap/react'
 import { useContext, useEffect } from 'react'
 
 import { IssueKeyContext } from './editor/context'
-import { plainMessage } from './Failure'
 import { useAttachmentImage } from './queries'
 import { getUpload, releasePreview, removeUpload, retryUpload, useUpload } from './uploads'
 
@@ -85,9 +84,7 @@ function UploadingImage({
   if (upload === undefined || upload.state.status === 'failed') {
     const name = upload?.filename ?? 'the image'
     const message =
-      upload?.state.status === 'failed'
-        ? plainMessage(upload.state.message)
-        : 'The upload was lost.'
+      upload?.state.status === 'failed' ? upload.state.message : 'The upload was lost.'
     return (
       <div role="alert" className="space-y-1 rounded-md border border-danger p-2">
         <p className="text-danger">

@@ -19,7 +19,6 @@ import { Banner } from './Banner'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
 import { DeleteIssueDialog } from './DeleteIssueDialog'
-import { plainMessage } from './Failure'
 import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
@@ -442,7 +441,7 @@ export function Shell({ session }: { session: Session }) {
             setNotice({
               notice: {
                 title: `Could not start the timer on ${key}`,
-                notes: [plainMessage(failure.message)],
+                notes: [failure.message],
                 warned: true,
               },
               openKey: null,
@@ -639,6 +638,8 @@ export function Shell({ session }: { session: Session }) {
   }
 
   let body
+  // The empty-Tree panel, with its own Clear filters, shows only over the Tree.
+  let emptyPanel = false
   if (toggles === undefined) {
     body = togglesQuery.isError ? (
       <LoadError
@@ -666,6 +667,7 @@ export function Shell({ session }: { session: Session }) {
       <p className="p-4 text-muted">Loading your account</p>
     )
   } else {
+    emptyPanel = shown === 0
     body = (
       <IssueTree
         rows={rows}
@@ -778,7 +780,7 @@ export function Shell({ session }: { session: Session }) {
             onEnterTree={enterTree}
             inputRef={filterRef}
             doneProgress={doneLoading ? `Loading Done issues: ${String(doneCount)}` : null}
-            showClear={shown > 0}
+            showClear={!emptyPanel}
           />
         )}
         {setToggles.isError && (
