@@ -1,5 +1,7 @@
 import { JiraMgrError } from '@jira-mgr/core'
+import { listComments } from '@jira-mgr/core/extras'
 import { createHttpClient, requestMediaId } from '@jira-mgr/core/http'
+import { listSprints } from '@jira-mgr/core/sprints'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { toIpcError } from './handlers'
@@ -93,6 +95,20 @@ describe('what the app shows of a request core names', () => {
     expect(desktopMessage(odd.message)).toBe(
       'Jira sent a redirect for the request that this app cannot read.',
     )
+  })
+
+  it('drops the bare path from a paged listing Jira answered with the wrong shape', async () => {
+    answer(200, '{"unexpected":true}')
+    for (const [name, call] of [
+      ['comments', () => listComments(http, 'PSAPAC-3')],
+      ['sprints', () => listSprints(http, 7)],
+    ] as const) {
+      const error = await thrown(call)
+      expect(error.message, name).toMatch(/^Jira sent an unexpected response for \/rest\/\S+\.$/)
+      const ipc = toIpcError(error)
+      expect(ipc.message, name).toBe('Jira sent an unexpected response for the request.')
+      expect(ipc.detail, name).toBe(error.message)
+    }
   })
 
   it('leaves a message with no request as it is, with no detail', () => {

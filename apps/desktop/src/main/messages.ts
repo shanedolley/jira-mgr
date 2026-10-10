@@ -15,8 +15,13 @@ const REWRITES: readonly [RegExp, string][] = [
   ],
 ]
 
-/** A request as core words it: "GET /rest/api/3/issue/PSAPAC-2", with the "to" of "answered 500 to" before it. */
-const REQUEST = /(?:(?: to)? )?(?:GET|POST|PUT|DELETE|PATCH|HEAD) \/\S*?(?=[:.]?(?:\s|$))/g
+/**
+ * A request as core words it: "GET /rest/api/3/issue/PSAPAC-2", or the bare path in "an
+ * unexpected response for /rest/api/3/field", with the "to" of "answered 500 to" before it.
+ * Core refuses any path outside /rest/, so the path anchors the match.
+ */
+const REQUEST =
+  /(?:(?: to)? )?(?:(?:GET|POST|PUT|DELETE|PATCH|HEAD) )?\/rest\/\S*?(?=[:.]?(?:\s|$))/g
 
 /** Core's wording with the CLI's `jm` sentences put in the app's words. */
 const rewritten = (message: string): string =>
