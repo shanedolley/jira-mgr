@@ -571,6 +571,16 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   setDescription: (key: string, description: unknown) => void
   /** Makes Jira store every saved description with a `localId` on each paragraph, as it may. */
   normaliseDescriptions: () => void
+  /** Replaces a comment's body as if someone else edited it: no hold and no count. */
+  setComment: (key: string, id: number, body: unknown) => void
+  /** Removes a comment as if someone else deleted it: no hold and no count. */
+  removeComment: (key: string, id: number) => void
+  /** Adds a worklog by the signed-in user, with this comment document, before a test opens the page. */
+  addWorklog: (key: string, comment: unknown) => void
+  /** Holds each comment and link list read from now on, until `releaseReads`. */
+  holdReads: () => void
+  /** Answers every held list read, and stops holding. */
+  releaseReads: () => void
   /** Makes the stand-in save dialog answer "cancelled" the next time it opens. */
   cancelNextDownload: () => void
   /** Reads and clears the cancel request. The e2e entry's save dialog calls it. */
@@ -707,6 +717,12 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   let failNextDone = false
   let failNextRead = false
   let refuseNext = false
+  let readsHeld = false
+  const heldReads: (() => void)[] = []
+  /** Waits while `holdReads` is on, so a test sees the page before a refetch lands. */
+  const holdRead = async () => {
+    if (readsHeld) await new Promise<void>((resolve) => heldReads.push(resolve))
+  }
   // Each applied write moves `updated` on, so a read always shows the later copy.
   let clock = 0
   let created = 0
@@ -1118,6 +1134,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const shownComment = (c: Comment) => ({ ...c, id: String(c.id) })
       const found = list.find((c) => String(c.id) === commentCollection[2])
       if (method === 'GET' && commentCollection[2] === undefined) {
+        await holdRead()
         return json({ total: list.length, comments: list.map(shownComment) })
       }
       if (method === 'POST' && commentCollection[2] === undefined) {
@@ -1301,6 +1318,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     if (method === 'GET' && one !== null && url.searchParams.get('fields') === 'issuelinks') {
       const target = find(one[1] ?? '')
       if (target === undefined) return missing('Issue')
+      await holdRead()
       // Seen from `target`: the link where it blocks lists the other as `outwardIssue`.
       const seen = (key: string) => {
         const other = find(key)
@@ -1395,6 +1413,40 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     normaliseDescriptions: () => {
       normalise = true
+    },
+    setComment: (key, id, body) => {
+      const found = comments.get(key)?.find((c) => c.id === id)
+      if (found === undefined) return
+      found.body = body
+      found.updated = new Date(Date.UTC(2026, 9, 3, 1, 0, ++clock)).toISOString()
+    },
+    removeComment: (key, id) => {
+      comments.set(
+        key,
+        (comments.get(key) ?? []).filter((c) => c.id !== id),
+      )
+    },
+    addWorklog: (key, comment) => {
+      const when = new Date(Date.UTC(2026, 9, 3, 2, 0, ++clock)).toISOString()
+      worklogs.set(key, [
+        ...(worklogs.get(key) ?? []),
+        {
+          id: FIRST_WORKLOG + 500 + worklogIds++,
+          author: ME,
+          seconds: 3600,
+          started: when,
+          comment,
+          created: when,
+          updated: when,
+        },
+      ])
+    },
+    holdReads: () => {
+      readsHeld = true
+    },
+    releaseReads: () => {
+      readsHeld = false
+      for (const release of heldReads.splice(0)) release()
     },
     cancelNextDownload: () => {
       cancelDownload = true

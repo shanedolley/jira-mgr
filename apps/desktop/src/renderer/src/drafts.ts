@@ -65,6 +65,45 @@ export function dropDraftsOf(issueKey: string): void {
   if (dropped) changed()
 }
 
+/**
+ * Moves a comment's draft into the comment box's draft, for a comment that no longer exists. A
+ * box that already holds a draft is left alone. Returns whether the draft moved.
+ */
+export function moveCommentDraftToBox(issueKey: string, commentId: string): boolean {
+  const from = commentDraftKey(issueKey, commentId)
+  const to = newCommentDraftKey(issueKey)
+  const draft = drafts.get(from)
+  if (draft === undefined || drafts.has(to)) return false
+  drafts.set(to, { doc: draft.doc, base: null })
+  drafts.delete(from)
+  changed()
+  return true
+}
+
+/** The ids of the issue's comments that hold a draft now, for `dropOrphanedCommentDrafts`. */
+export const commentDraftIds = (issueKey: string): string[] =>
+  [...drafts.keys()]
+    .filter((key) => key.startsWith(`${issueKey}#`) && key !== newCommentDraftKey(issueKey))
+    .map((key) => key.slice(issueKey.length + 1))
+
+/**
+ * Forgets the draft of each comment in `checked` that a list read did not find (`liveIds`). A
+ * comment deleted in Jira never mounts again, so its draft would linger. `checked` is what
+ * `commentDraftIds` listed before the read began: a draft made while the read ran is left alone.
+ */
+export function dropOrphanedCommentDrafts(
+  issueKey: string,
+  checked: readonly string[],
+  liveIds: readonly string[],
+): void {
+  const live = new Set(liveIds)
+  let dropped = false
+  for (const id of checked) {
+    if (!live.has(id)) dropped = drafts.delete(commentDraftKey(issueKey, id)) || dropped
+  }
+  if (dropped) changed()
+}
+
 /** How many drafts hold unsaved text: descriptions and comments. */
 export const draftCount = (): number => drafts.size
 

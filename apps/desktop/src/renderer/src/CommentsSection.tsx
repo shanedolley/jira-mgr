@@ -1,3 +1,4 @@
+import { JiraMgrError } from '@jira-mgr/core'
 import type { AdfDoc } from '@jira-mgr/core/adf'
 import { useRef, useState, type KeyboardEvent } from 'react'
 
@@ -7,7 +8,15 @@ import { useAddComment, useComments, useDeleteComment, useEditComment } from './
 import { AdfEditor, type AdfEditorHandle } from './AdfEditor'
 import type { Notice } from './create'
 import { DiscardDialog } from './DiscardDialog'
-import { commentDraftKey, dropDraft, getDraft, newCommentDraftKey, putDraft } from './drafts'
+import {
+  commentDraftKey,
+  dropDraft,
+  getDraft,
+  moveCommentDraftToBox,
+  newCommentDraftKey,
+  putDraft,
+} from './drafts'
+import { conflictOf } from './queries'
 import { BUTTON, DANGER_BUTTON, QueryBody, Section } from './Section'
 
 interface CommentsSectionProps {
@@ -24,16 +33,22 @@ const reasonOf = (error: unknown) => (error instanceof Error ? error.message : S
 type Phase = 'read' | 'edit' | 'saving'
 
 interface CommentRowProps extends Omit<CommentsSectionProps, 'me'> {
+  /** The comment box took this row's draft, so it must show it. */
+  onDraftMoved: () => void
   comment: CommentItem
   /** Only the author edits or deletes a comment (Q34). */
   mine: boolean
 }
 
-function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowProps) {
+function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }: CommentRowProps) {
   // An edit left unsaved when the page was left comes back open, as the description's does.
   const draftKey = commentDraftKey(issueKey, comment.id)
   const [restored] = useState(() => getDraft(draftKey))
   const [phase, setPhase] = useState<Phase>(restored === undefined ? 'read' : 'edit')
+  // The comment as the edit began, which Jira's must still match when the edit is saved.
+  const [base, setBase] = useState<AdfDoc>(restored?.base ?? comment.body)
+  // Jira's comment, when it changed since the edit began.
+  const [conflict, setConflict] = useState<AdfDoc | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [unsupported, setUnsupported] = useState(false)
   const [discarding, setDiscarding] = useState(false)
@@ -48,21 +63,42 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
     dropDraft(draftKey)
     setPhase('read')
     setProblem(null)
+    setConflict(null)
     onLeave()
   }
 
-  async function save(doc: AdfDoc | null) {
+  async function save(doc: AdfDoc | null, against: AdfDoc = base) {
     if (doc === null) {
       setProblem('A comment cannot be empty.')
       return
     }
     setPhase('saving')
     setProblem(null)
+    setConflict(null)
     try {
-      await edit.mutateAsync({ commentId: comment.id, body: doc })
+      await edit.mutateAsync({ commentId: comment.id, body: doc, base: against })
     } catch (error) {
       // The text stays in the editor, so nothing typed is lost.
-      setProblem(`Could not save the comment, so Jira still holds the old one. ${reasonOf(error)}`)
+      const clash = conflictOf(error)
+      if (clash?.current != null) setConflict(clash.current)
+      else {
+        // A comment gone from Jira leaves the list on the next read, and its row with it, so the
+        // text moves to the comment box unless that holds text already.
+        const gone = error instanceof JiraMgrError && error.code === 'not_found'
+        const moved = gone && moveCommentDraftToBox(issueKey, comment.id)
+        if (moved) onDraftMoved()
+        let where = ''
+        if (gone) {
+          where = moved
+            ? ' Your text is in the new comment box.'
+            : ' Your text is still here, but the comment box already holds text, so copy it out before this page refreshes.'
+        }
+        setProblem(
+          gone
+            ? `Could not save the comment. ${reasonOf(error)}${where}`
+            : `Could not save the comment, so Jira still holds the old one. ${reasonOf(error)}`,
+        )
+      }
       setPhase('edit')
       return
     }
@@ -78,6 +114,24 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
   function discard() {
     setDiscarding(false)
     editor.current?.reset(comment.body)
+    dirty.current = false
+    leave()
+  }
+
+  /** Sends the draft over Jira's current comment, which the user chose to overwrite. */
+  function saveMine(current: AdfDoc) {
+    try {
+      const mine = editor.current?.adf() ?? null
+      setBase(current)
+      void save(mine, current)
+    } catch (error) {
+      setProblem(reasonOf(error))
+    }
+  }
+
+  /** Shows Jira's comment and drops the draft. */
+  function discardMine(current: AdfDoc) {
+    editor.current?.reset(current)
     dirty.current = false
     leave()
   }
@@ -123,7 +177,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
           onCancel={cancel}
           onChange={(doc, isDirty) => {
             dirty.current = isDirty
-            if (isDirty) putDraft(draftKey, { doc, base: comment.body })
+            if (isDirty) putDraft(draftKey, { doc, base })
             else dropDraft(draftKey)
           }}
           onEditRequest={() => undefined}
@@ -137,6 +191,31 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
           Saving
         </p>
       )}
+      {conflict !== null && (
+        <div role="alert" className="space-y-2 rounded-md border border-danger p-3">
+          <p>This comment changed in Jira while you edited.</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                saveMine(conflict)
+              }}
+              className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink"
+            >
+              Save mine anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                discardMine(conflict)
+              }}
+              className={BUTTON}
+            >
+              Discard mine
+            </button>
+          </div>
+        </div>
+      )}
       {problem !== null && (
         <p role="alert" className="text-danger">
           {problem}
@@ -149,6 +228,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
               type="button"
               onClick={() => {
                 setProblem(null)
+                setBase(comment.body)
                 setPhase('edit')
               }}
               className={BUTTON}
@@ -312,6 +392,8 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
 /** The Activity section: the issue's comments, oldest first, and the box that adds one. */
 export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSectionProps) {
   const comments = useComments(issueKey)
+  // Changing the box's key mounts it again, so it reads the draft a comment row moved into it.
+  const [boxVersion, setBoxVersion] = useState(0)
   return (
     <Section title="Activity">
       <QueryBody query={comments} loading="Loading comments">
@@ -328,13 +410,16 @@ export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSec
                   mine={me !== undefined && comment.author?.accountId === me.accountId}
                   onLeave={onLeave}
                   onNotice={onNotice}
+                  onDraftMoved={() => {
+                    setBoxVersion((version) => version + 1)
+                  }}
                 />
               ))}
             </ul>
           )
         }
       </QueryBody>
-      <CommentBox issueKey={issueKey} onLeave={onLeave} />
+      <CommentBox key={boxVersion} issueKey={issueKey} onLeave={onLeave} />
     </Section>
   )
 }
