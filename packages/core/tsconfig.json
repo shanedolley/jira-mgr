@@ -1,4 +1,5 @@
 {
   "extends": "@jira-mgr/config-ts/node.json",
-  "include": ["src", "test", "vitest.config.ts"]
+  "compilerOptions": { "allowImportingTsExtensions": true },
+  "include": ["scripts", "src", "test", "vitest.config.ts"]
 }

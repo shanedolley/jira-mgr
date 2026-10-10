@@ -29,7 +29,7 @@ Re-record a PSAPAC response when Jira's shape changes, then point the tests at i
    pnpm fixture:record -- createmeta-story GET /rest/api/3/issue/createmeta/PSAPAC/issuetypes/11502
    ```
 
-   The script writes `packages/core/fixtures/<name>.json`, pretty-printed, and prints the path. It saves the body only, never a header. It allows any `GET`, and `POST` only to `/rest/api/3/search/jql`. It refuses every other write and any path outside `/rest/` (`scripts/record-fixture.ts`).
+   The script writes `packages/core/fixtures/<name>.json`, pretty-printed, and prints the path. It saves the body only, never a header. It allows any `GET`, and `POST` only to `/rest/api/3/search/jql`. It refuses every other write, any path outside `/rest/` and any `JM_JIRA_SITE` that is not `https://<name>.atlassian.net`, before it sends the token (`packages/core/scripts/record-fixture.ts`).
 
 3. Unset the three variables.
 

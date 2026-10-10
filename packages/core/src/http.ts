@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { getCredentials, parseSiteUrl } from './auth.js'
 import { JiraMgrError, type ErrorCode } from './errors.js'
+import { isJiraPath } from './site-url.js'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 const MAX_RETRIES = 3
@@ -187,9 +188,7 @@ const defaultDebug = (line: string) => {
 
 /** Only `/rest/...` on the site is allowed, so a caller cannot steer the token to another URL. */
 function assertJiraPath(path: string): void {
-  // The query and fragment cannot change which endpoint is called, and a search may hold "..".
-  const pathname = path.split(/[?#]/, 1)[0] ?? ''
-  if (!path.startsWith('/rest/') || /\.\.|%2e/i.test(pathname) || pathname.includes('\\')) {
+  if (!isJiraPath(path)) {
     throw new JiraMgrError(
       'validation_failed',
       'A Jira request path must start with /rest/ and hold no "..", backslash or encoded dot.',

@@ -267,3 +267,11 @@ pnpm --filter @jira-mgr/core test
 Vitest runs `<file>.test.ts` beside the source. `pnpm test:live` sets `JM_LIVE_JIRA=1`, the opt-in for tests that read the live PSAPAC Jira. Tests never write to Jira. Integration tests run against an MSW fake fed by the recorded PSAPAC responses in `fixtures/`, served through `test/msw.ts`, which the CLI imports as `@jira-mgr/core/test/msw`, with `@jira-mgr/core/test/setup` as its shared Vitest setup file.
 
 Set `JM_LIVE_KEYCHAIN=1` on macOS to run `auth.live.test.ts`, one test against the real `security` binary, using a throwaway service name it deletes afterwards.
+
+## Record a Fixture
+
+```
+pnpm fixture:record -- <name> <GET|POST> <path> [json-body]
+```
+
+`scripts/record-fixture.ts` reads `JM_JIRA_SITE`, `JM_JIRA_EMAIL` and `JM_JIRA_TOKEN` from the environment and saves the response body, pretty-printed, to `fixtures/<name>.json`. It never saves headers. It refuses a site that `parseSiteUrl` rejects before it sends the token, allows any `GET`, allows `POST` only to `/rest/api/3/search/jql`, and refuses every other write.

@@ -8,7 +8,7 @@ Three milestones, built in order: Core, CLI, Desktop. Each item becomes one GitH
 
 | Id | Item | Done when | Needs |
 |---|---|---|---|
-| C1 | Test harness | MSW installed; `scripts/record-fixture.ts` saves response bodies (never headers) to `packages/core/fixtures/`; a first recorded PSAPAC search and createmeta load in a test | - |
+| C1 | Test harness | MSW installed; `packages/core/scripts/record-fixture.ts` saves response bodies (never headers) to `packages/core/fixtures/`; a first recorded PSAPAC search and createmeta load in a test | - |
 | C2 | State files | Paths under `~/Library/Application Support/jira-mgr/`; `settings.json`, `views.json`, `timer.json`, `fields.json` read and written with validation at load; a corrupt file yields a `validation_failed` error naming it | - |
 | C3 | Credentials | Keychain read and write through `/usr/bin/security`, writes over `security -i` stdin ([ADR-0003](../adr/0003-token-in-own-keychain-item.md)); login verifies against `/rest/api/3/myself`; logout removes the item | C2 |
 | C4 | HTTP client | Basic auth, JSON and multipart, `429` with `Retry-After` honoured, HTTP status mapped to `JiraMgrError` codes, `JM_DEBUG` logging with the auth header redacted | C1, C3 |
