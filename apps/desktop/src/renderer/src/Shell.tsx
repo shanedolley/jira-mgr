@@ -14,7 +14,14 @@ import {
 } from 'react'
 import { flushSync } from 'react-dom'
 
-import type { DeleteIssueArgs, SavedView, Session, TimerSnapshot, Toggles } from '../../shared/ipc'
+import type {
+  CreateType,
+  DeleteIssueArgs,
+  SavedView,
+  Session,
+  TimerSnapshot,
+  Toggles,
+} from '../../shared/ipc'
 import { issueUrl } from '../../shared/links'
 import { Banner } from './Banner'
 import { copyText } from './clipboard'
@@ -52,6 +59,7 @@ import {
   type FilterField,
 } from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
+import type { ActionId } from './paletteActions'
 import { assignMeOutcome, assigneePatch } from './properties'
 import { attemptWith } from './PropertyPickers'
 import {
@@ -202,8 +210,11 @@ export function Shell({ session }: { session: Session }) {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   // The issue whose full page is open. The Tree stays mounted under it, so its scroll survives.
   const [pageKey, setPageKey] = useState<string | null>(null)
-  // The create modal, opened by `C` or the New issue button, with the selection it started from.
-  const [creating, setCreating] = useState<ReturnType<typeof createContext> | null>(null)
+  // The create modal, opened by `C` or the New issue button, with the selection it started from
+  // and, from the palette's Create sub-issue, the type it starts as.
+  const [creating, setCreating] = useState<
+    (ReturnType<typeof createContext> & { type?: CreateType }) | null
+  >(null)
   // The issue whose delete modal is open, held whole: the lists may not hold it (a Done parent
   // opened from a page before Done loads) or may drop it while the modal is open.
   const [deleting, setDeleting] = useState<Issue | null>(null)
@@ -417,14 +428,13 @@ export function Shell({ session }: { session: Session }) {
   }
 
   /**
-   * Opens one property of `key`: from the Tree, that issue's Peek (opened if need be, since the
-   * Peek holds the same pickers as the page and leaves the list in view); from a page, the page's
-   * own sidebar. The shortcut clicks the control that advertises its key with `aria-keyshortcuts`,
-   * so it is the picker the mouse opens and no code is duplicated. The click does not move focus,
-   * so when the picker closes the browser hands focus back to where the key was pressed: a pick
-   * made from the Tree lets `S`, an arrow, Enter and then `J` flow without the mouse.
+   * Clicks a control of `key`: from the Tree, in that issue's Peek (opened if need be, since the
+   * Peek holds the same pickers as the page and leaves the list in view); from a page, in the
+   * page's own sidebar. The click does not move focus, so when the picker closes the browser hands
+   * focus back to where the key was pressed: a pick made from the Tree lets `S`, an arrow, Enter
+   * and then `J` flow without the mouse.
    */
-  function openProperty(command: PropertyCommand, key: string) {
+  function clickControl(selector: string, key: string) {
     if (pageKey === null) {
       // The Peek must show this issue before its control can be found.
       flushSync(() => {
@@ -433,7 +443,15 @@ export function Shell({ session }: { session: Session }) {
       })
     }
     const surface = pageKey === null ? peekRef.current : pageRef.current
-    surface?.querySelector<HTMLElement>(`[aria-keyshortcuts="${PROPERTY_KEYS[command]}"]`)?.click()
+    surface?.querySelector<HTMLElement>(selector)?.click()
+  }
+
+  /**
+   * Opens one property of `key`. The shortcut clicks the control that advertises its key with
+   * `aria-keyshortcuts`, so it is the picker the mouse opens and no code is duplicated.
+   */
+  function openProperty(command: PropertyCommand, key: string) {
+    clickControl(`[aria-keyshortcuts="${PROPERTY_KEYS[command]}"]`, key)
   }
 
   /**
@@ -524,6 +542,48 @@ export function Shell({ session }: { session: Session }) {
         ? { title: `Copied ${noun} of ${key}`, notes: [], warned: false }
         : { title: `Could not copy ${noun} of ${key}`, notes: [], warned: true },
     )
+  }
+
+  /**
+   * A palette action on `issue`. The palette closes first, so its dialog is gone before a picker
+   * opens or a create modal takes focus; each action then runs the code its key or picker runs.
+   */
+  function runAction(id: ActionId, issue: Issue) {
+    flushSync(() => {
+      setSearching(false)
+    })
+    const { key } = issue
+    switch (id) {
+      case 'assignee':
+      case 'status':
+      case 'priority':
+      case 'labels':
+        openProperty(id, key)
+        break
+      case 'sprint':
+        // Only the issue page has a Sprint picker, so the Tree and the Peek open the page first.
+        if (pageKey === null)
+          flushSync(() => {
+            openFromPalette(key)
+          })
+        pageRef.current?.querySelector<HTMLElement>('[aria-label^="Sprint:"]')?.click()
+        break
+      case 'assignMe':
+        assignToMe(key)
+        break
+      case 'copyKey':
+        copyIssue(key, 'key')
+        break
+      case 'copyLink':
+        copyIssue(key, 'link')
+        break
+      case 'openInJira':
+        window.open(issueUrl(session.siteUrl, key), '_blank', 'noopener,noreferrer')
+        break
+      case 'subIssue':
+        if (canCreate) setCreating({ selected: issue, group: null, type: 'Subtask' })
+        break
+    }
   }
 
   /** The sidebar's Stop button: the stop dialog for whatever timer runs. */
@@ -922,6 +982,7 @@ export function Shell({ session }: { session: Session }) {
         <CreateIssueDialog
           selected={creating.selected}
           group={creating.group}
+          type={creating.type}
           issues={issues}
           me={meQuery.data}
           onClose={() => {
@@ -967,7 +1028,13 @@ export function Shell({ session }: { session: Session }) {
       {searching && (
         <CommandPalette
           issues={issues}
+          context={issues.find((i) => i.key === (pageKey ?? activeKey)) ?? null}
           onOpen={openFromPalette}
+          onAction={runAction}
+          onView={(view) => {
+            setSearching(false)
+            applyView(view)
+          }}
           onClose={() => {
             setSearching(false)
           }}

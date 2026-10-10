@@ -77,6 +77,13 @@ const ISSUES = [
 const byKey = (key: string) => ISSUES.find((i) => i.key === key) ?? null
 
 describe('initialDraft', () => {
+  it('starts a Subtask under the selected Story, with its Customer and Engagement', () => {
+    const draft = initialDraft(byKey('P-2'), ISSUES, null, 'Subtask')
+    expect(draft).toMatchObject({ type: 'Subtask', parent: { key: 'P-2' }, description: null })
+    expect(draft.customer).toEqual({ id: '1', name: 'Acme' })
+    expect(draft.engagement).toEqual({ id: '7', name: 'North' })
+  })
+
   it('starts a Story under a selected Epic, with the Epic Customer and Engagement', () => {
     const draft = initialDraft(byKey('P-1'), ISSUES)
 

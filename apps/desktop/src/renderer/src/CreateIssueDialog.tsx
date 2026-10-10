@@ -59,6 +59,8 @@ interface CreateIssueDialogProps {
   selected: Issue | null
   /** The Customer header `C` was pressed on, when no issue is selected. */
   group: CustomerOption | null
+  /** The type the form starts as. A Story when absent. */
+  type?: CreateType
   issues: readonly Issue[]
   me: CurrentUser | undefined
   onClose: () => void
@@ -102,13 +104,14 @@ const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
 export function CreateIssueDialog({
   selected,
   group,
+  type,
   issues,
   me,
   onClose,
   onCreated,
   returnFocus,
 }: CreateIssueDialogProps) {
-  const [draft, setDraft] = useState<CreateDraft>(() => initialDraft(selected, issues, group))
+  const [draft, setDraft] = useState<CreateDraft>(() => initialDraft(selected, issues, group, type))
   const [more, setMore] = useState(false)
   const [last, setLast] = useState<Notice | null>(null)
   const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)

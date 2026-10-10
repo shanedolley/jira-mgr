@@ -82,6 +82,12 @@ const LETTERS = new Map<string, Command>([
   ['u', 'copyLink'],
 ])
 
+/** The key a command answers to as a keycap, such as `S`, or `undefined` for a command without one. */
+export function keyOf(command: string): string | undefined {
+  for (const [letter, name] of LETTERS) if (name === command) return letter.toUpperCase()
+  return undefined
+}
+
 /**
  * What a keystroke asks for, or `null` when it is not ours. A letter is a command only alone: not
  * with Cmd, Ctrl or Alt, not held down, not part of an IME composition, not already handled, not
