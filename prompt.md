@@ -2,7 +2,7 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (1 open issue, one page), `gh pr list --state open` (none open) and `gh api repos/shanedolley/jira-mgr/issues/115/dependencies/blocked_by` (empty). The focus is documentation: keep docs current and remove stale references. A docs sweep on 2026-10-10 fixed the README status and the desktop README overview; the avatar docs already match #116. Work in this order, landing one pull request at a time:
+Measured 2026-10-10 after #117 merged (main 45c6628, CI run 38041437279 succeeded) from `gh issue list --state open --limit 200` (1 open issue, one page), `gh pr list --state open` (none open) and `gh api repos/shanedolley/jira-mgr/issues/115/dependencies/blocked_by` (empty). The focus is documentation: keep docs current and remove stale references. A docs sweep on 2026-10-10 fixed the README status and the desktop README overview; the avatar docs already match #116. Work in this order, landing one pull request at a time:
 
 1. **Keep the docs current.** Fix any stale reference you meet in the pull request that changes the code. For a docs-only pass, grep `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`, `AGENTS.md`, `docs/` and each package README for closed issues named as open and for features named as planned.
 2. **No unblocked story remains.** Every issue except #115 is closed, and #115 waits on Shane. Start by checking what he closed: `gh issue list --state open` and `gh issue list --label status:hil-review`. If a new issue appears, claim it per Loop.
