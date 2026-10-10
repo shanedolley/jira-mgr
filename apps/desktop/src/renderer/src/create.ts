@@ -153,10 +153,19 @@ export function withType(
   }
 }
 
-/** The form fields that can block a create, in the order the form lists them. */
+/** The form fields that can block a create. */
 export type MissingField = 'summary' | 'customer' | 'engagement' | 'parent' | 'estimate'
 
-/** What the form still needs before it can be sent, in form order. Empty when it is ready. */
+/** The order the form shows them in, which Cmd+Enter follows: a parent fills Customer and Engagement. */
+const FORM_ORDER: readonly MissingField[] = [
+  'summary',
+  'parent',
+  'customer',
+  'engagement',
+  'estimate',
+]
+
+/** What the form still needs before it can be sent, in the order "Add ..." lists it. Empty when it is ready. */
 function missing(draft: CreateDraft): { field: MissingField; phrase: string }[] {
   const rules = typeRules(draft.type)
   return [
@@ -177,9 +186,15 @@ function missing(draft: CreateDraft): { field: MissingField; phrase: string }[] 
 /** What the form still needs before it can be sent, as phrases for "Add ...". Empty when it is ready. */
 export const missingFields = (draft: CreateDraft): string[] => missing(draft).map((m) => m.phrase)
 
+/** The fields the form still needs, in form order. */
+export const missingKeys = (draft: CreateDraft): MissingField[] => {
+  const needed = missing(draft).map((m) => m.field)
+  return FORM_ORDER.filter((field) => needed.includes(field))
+}
+
 /** The first field the form still needs, which Cmd+Enter on an unready form takes focus to. */
 export const firstMissing = (draft: CreateDraft): MissingField | null =>
-  missing(draft)[0]?.field ?? null
+  missingKeys(draft)[0] ?? null
 
 /** The request for a ready draft. Fields the type does not have are left out. */
 export function toCreateArgs(draft: CreateDraft): CreateIssueArgs | null {

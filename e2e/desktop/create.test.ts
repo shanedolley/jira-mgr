@@ -285,12 +285,14 @@ test('+me assigns the current user and shows the name in the Assignee chip', asy
   await openCreate(/PSAPAC-2,/)
   await expect(field('Assignee', 'Unassigned')).toBeVisible()
 
-  await dialog().getByRole('button', { name: /^\+me/ }).click()
+  await dialog().getByRole('button', { name: 'Assign to me' }).click()
   await expect(field('Assignee', /^Assignee: \S/)).not.toHaveAttribute(
     'aria-label',
     'Assignee: Unassigned',
   )
-  await expect(dialog().getByRole('button', { name: /^\+me/ })).toHaveCount(0)
+  await expect(dialog().getByRole('button', { name: 'Assign to me' })).toHaveCount(0)
+  // The +me button is gone, so focus moves to the chip it filled instead of falling to the page.
+  await expect(field('Assignee', /^Assignee: \S/)).toBeFocused()
 
   await dialog().getByLabel('Summary').fill('Mine')
   await dialog().getByRole('button', { name: 'Create issue' }).click()
@@ -324,6 +326,30 @@ test('Cmd+Enter on an unready form focuses the first missing field and sends not
   await window.keyboard.press('Meta+Enter')
   await expect(estimate).toBeFocused()
   expect(await writes()).toBe(before)
+})
+
+test('a Subtask with no parent shows Parent as Required, and Cmd+Enter goes to it before Engagement', async () => {
+  await open()
+  await select(/^Beta Ltd, 5 issues$/)
+  await window.keyboard.press('c')
+  await expect(dialog()).toBeVisible()
+  await field('Type', 'Story').click()
+  await option('Subtask').click()
+  await expect(field('Parent', 'Required')).toBeVisible()
+  await expect(field('Engagement', 'Required')).toBeVisible()
+
+  await dialog().getByLabel('Summary').fill('Needs a home')
+  await window.keyboard.press('Meta+Enter')
+  await expect(field('Parent', 'Required')).toBeFocused()
+})
+
+test('a long estimate is not clipped in its chip', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  const estimate = dialog().getByLabel('Original estimate')
+  await estimate.fill('1w 2d 3h 30m')
+
+  expect(await estimate.evaluate((input) => input.scrollWidth <= input.clientWidth)).toBe(true)
 })
 
 test('shows what the automation changed when Jira rewrites a new Task', async () => {

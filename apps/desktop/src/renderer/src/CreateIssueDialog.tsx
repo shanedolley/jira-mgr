@@ -19,6 +19,7 @@ import {
   initialDraft,
   listWords,
   firstMissing,
+  missingKeys,
   missingFields,
   nextDraft,
   toCreateArgs,
@@ -96,6 +97,7 @@ export function CreateIssueDialog({
   const create = useCreateIssue()
   const summaryRef = useRef<HTMLInputElement>(null)
   const parentTrigger = useRef<HTMLButtonElement>(null)
+  const assigneeTrigger = useRef<HTMLButtonElement>(null)
   const customerTrigger = useRef<HTMLButtonElement>(null)
   const engagementTrigger = useRef<HTMLButtonElement>(null)
   const estimateRef = useRef<HTMLInputElement>(null)
@@ -121,7 +123,7 @@ export function CreateIssueDialog({
   }
 
   const missing = missingFields(draft)
-  const estimateBad = missing.some((m) => m.startsWith('an estimate'))
+  const estimateBad = missingKeys(draft).includes('estimate')
   const pending = create.isPending
   // Not `autoFocus`: the modal opens after its content mounts, and opening takes focus to the first control.
   useEffect(() => {
@@ -352,11 +354,15 @@ export function CreateIssueDialog({
             {rules.parent && (
               <Picker
                 label="Parent"
-                variant="chip"
+                variant={draft.type === 'Subtask' ? 'filled' : 'chip'}
                 leading={<ChipName>Parent</ChipName>}
                 triggerRef={parentTrigger}
                 valueText={
-                  draft.parent === null ? 'None' : `${draft.parent.key} ${draft.parent.summary}`
+                  draft.parent === null
+                    ? draft.type === 'Subtask'
+                      ? REQUIRED
+                      : 'None'
+                    : `${draft.parent.key} ${draft.parent.summary}`
                 }
                 options={parentOptions}
                 selected={draft.parent === null ? [] : [draft.parent.key]}
@@ -404,7 +410,7 @@ export function CreateIssueDialog({
             />
             {rules.estimates && (
               <label
-                className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs ${estimateBad ? 'border-danger' : 'border-field-border'}`}
+                className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${estimateBad ? 'border-danger' : 'border-field-border'}`}
               >
                 <ChipName>Estimate</ChipName>
                 <input
@@ -418,13 +424,14 @@ export function CreateIssueDialog({
                   onChange={(event) => {
                     edit({ estimate: event.target.value })
                   }}
-                  className="w-12 min-w-0 bg-transparent"
+                  className="field-sizing-content min-w-12 max-w-40 bg-transparent focus-visible:outline-none"
                 />
               </label>
             )}
             <Picker
               label="Assignee"
               variant="chip"
+              triggerRef={assigneeTrigger}
               valueText={draft.assignee?.displayName ?? 'Unassigned'}
               leading={
                 <>
@@ -449,12 +456,15 @@ export function CreateIssueDialog({
             {meUser !== undefined && draft.assignee?.accountId !== meUser.accountId && (
               <button
                 type="button"
+                aria-label="Assign to me"
                 onClick={() => {
                   edit({ assignee: meUser })
+                  // This button leaves the page once the assignee is me, so focus moves first.
+                  assigneeTrigger.current?.focus()
                 }}
                 className="h-7 rounded-full px-2 text-xs text-muted hover:bg-hover"
               >
-                +me<span className="sr-only"> assign to me</span>
+                +me
               </button>
             )}
             <Picker

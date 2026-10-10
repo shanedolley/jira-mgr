@@ -9,6 +9,7 @@ import {
   describeCreated,
   describeLate,
   firstMissing,
+  missingKeys,
   initialDraft,
   listWords,
   missingFields,
@@ -209,6 +210,14 @@ describe('missingFields and toCreateArgs', () => {
     expect(firstMissing({ ...ready, type: 'Subtask', parent: null })).toBe('parent')
     expect(firstMissing({ ...ready, estimate: 'soon' })).toBe('estimate')
     expect(firstMissing(ready)).toBeNull()
+  })
+
+  it('follows the form for the first missing field: a parent before Customer and Engagement', () => {
+    const subtask = { ...initialDraft(null, ISSUES), type: 'Subtask' as const, summary: 'x' }
+
+    expect(missingFields(subtask)).toEqual(['a Customer', 'an Engagement', 'a parent'])
+    expect(firstMissing(subtask)).toBe('parent')
+    expect(missingKeys(subtask)).toEqual(['parent', 'customer', 'engagement'])
   })
 
   it('sends the trimmed summary with the ids and only what is set', () => {
