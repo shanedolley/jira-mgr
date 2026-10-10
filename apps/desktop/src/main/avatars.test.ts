@@ -171,7 +171,7 @@ describe('createAvatarFetcher', () => {
     await expect(fetcher.get(CDN)).rejects.toThrow('no body')
   })
 
-  it('does not follow a redirect, even one that carries an image', async () => {
+  it('refuses a redirect from an atl-paas.net host, even one that carries an image', async () => {
     const { fetcher, calls } = setup(
       () =>
         new Response(PNG, {
@@ -182,6 +182,21 @@ describe('createAvatarFetcher', () => {
     await expect(fetcher.get(CDN)).rejects.toThrow('answered 302')
     expect(calls).toHaveLength(1)
     expect(calls[0]?.init.redirect).toBe('manual')
+  })
+
+  it('refuses a redirect from an atl-paas.net host to a Gravatar proxy', async () => {
+    const { fetcher, calls } = setup(
+      () =>
+        new Response(null, {
+          status: 302,
+          headers: {
+            location:
+              'https://i0.wp.com/avatar-management--avatars.us-west-2.prod.public.atl-paas.net/initials/AB-1.png',
+          },
+        }),
+    )
+    await expect(fetcher.get(CDN)).rejects.toThrow('answered 302')
+    expect(calls).toHaveLength(1)
   })
 
   describe('Gravatar redirect', () => {
@@ -200,10 +215,20 @@ describe('createAvatarFetcher', () => {
       expect(calls.map((c) => c.url)).toEqual([GRAVATAR, to])
     })
 
-    it('resolves a relative Location against the target', async () => {
-      const { fetcher, calls } = setup((url) => (url.pathname === '/x' ? image() : redirect('/x')))
-      await expect(fetcher.get(GRAVATAR)).resolves.toBeDefined()
-      expect(calls.map((c) => c.url)).toEqual([GRAVATAR, 'https://secure.gravatar.com/x'])
+    it('refuses a relative Location, which stays on Gravatar', async () => {
+      const { fetcher, calls } = setup(() => redirect('/x'))
+      await expect(fetcher.get(GRAVATAR)).rejects.toThrow('answered 302')
+      expect(calls).toHaveLength(1)
+    })
+
+    it('shares one timeout signal across both requests', async () => {
+      const timeout = vi.spyOn(AbortSignal, 'timeout')
+      const { fetcher, calls } = setup((url) =>
+        url.host === 'secure.gravatar.com' ? redirect(WP) : image(),
+      )
+      await fetcher.get(GRAVATAR)
+      expect(timeout).toHaveBeenCalledTimes(1)
+      expect(calls[1]?.init.signal).toBe(calls[0]?.init.signal)
     })
 
     it('sends no Authorization on either request', async () => {
@@ -225,6 +250,13 @@ describe('createAvatarFetcher', () => {
       'http://i0.wp.com/a.png',
       'https://u:p@i0.wp.com/a.png',
       'https://i0.wp.com:8443/a.png',
+      'https://i0.wp.com/evil.example.test/a.png',
+      'https://i0.wp.com/evilatl-paas.net/a.png',
+      'https://i0.wp.com/atl-paas.net/a.png',
+      'https://i0.wp.com/x.atl-paas.net.evil.test/a.png',
+      'https://i0.wp.com/',
+      'https://avatars.example.atl-paas.net/a.png',
+      'https://secure.gravatar.com/a.png',
       'https://localhost/a.png',
     ])('refuses a redirect to %s without a second request', async (to) => {
       const { fetcher, calls } = setup(() => redirect(to))

@@ -14,17 +14,23 @@ const AVATAR_HOSTS = [
   (url: URL) => url.port === '' && url.hostname === 'secure.gravatar.com',
 ]
 
-/** Gravatar answers 302 to these WordPress image hosts. They are reached only by that one redirect. */
+/** Gravatar answers 302 to these WordPress image hosts, the only redirect main follows. */
 const REDIRECT_HOSTS = new Set(['i0.wp.com', 'i1.wp.com', 'i2.wp.com'])
+/** The WordPress host proxies the image at the first path segment; only Atlassian's avatar CDN passes. */
+const PROXIED_HOST = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.atl-paas\.net$/
 
-/** Where an avatar host may send one redirect: https, no userinfo, no port, an avatar or WordPress image host. */
+/**
+ * Where Gravatar may send its one redirect: https, no userinfo, no port, a WordPress image host
+ * proxying an `*.atl-paas.net` image. Any other host, or a renderer-chosen `d=` image, is refused.
+ */
 function redirectTarget(response: Response, from: URL): URL | null {
   const location = response.headers.get('location')
-  if (location === null || !URL.canParse(location, from)) return null
+  if (from.hostname !== 'secure.gravatar.com' || location === null) return null
+  if (!URL.canParse(location, from)) return null
   const next = new URL(location, from)
   const plain = next.protocol === 'https:' && next.username === '' && next.password === ''
-  const allowed = REDIRECT_HOSTS.has(next.hostname) || AVATAR_HOSTS.some((host) => host(next))
-  return plain && next.port === '' && allowed ? next : null
+  const proxied = PROXIED_HOST.test(next.pathname.split('/')[1] ?? '')
+  return plain && next.port === '' && REDIRECT_HOSTS.has(next.hostname) && proxied ? next : null
 }
 
 const refuse = (message: string) => new JiraMgrError('not_found', message)
@@ -66,9 +72,9 @@ export interface AvatarFetcher {
 /**
  * Fetches profile images for the renderer. Https only. Jira credentials go to the Jira site's own
  * host and to no other. A redirect from the site host is never followed, so it cannot bounce its
- * credentials elsewhere. A host fetched without credentials may redirect once, to an avatar host or
- * `i0.wp.com`, `i1.wp.com` or `i2.wp.com`, which is how Gravatar serves its initials image; that
- * second request carries no credentials and a further redirect is refused. Each URL is fetched
+ * credentials elsewhere. Gravatar may redirect once, to `i0.wp.com`, `i1.wp.com` or `i2.wp.com`
+ * proxying an `*.atl-paas.net` image, which is how it serves the initials image; that second
+ * request carries no credentials, shares the first one's timeout, and a further redirect is refused. Each URL is fetched
  * once while cached, a miss included; a refused URL is never fetched.
  */
 export function createAvatarFetcher(deps: {
@@ -97,11 +103,12 @@ export function createAvatarFetcher(deps: {
     }
     let bytes: Uint8Array
     try {
-      const request = (to: URL) =>
-        send(to, { headers, redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS) })
+      // One signal for both requests, so the timeout bounds the whole fetch.
+      const signal = AbortSignal.timeout(TIMEOUT_MS)
+      const request = (to: URL) => send(to, { headers, redirect: 'manual', signal })
       let response = await request(target)
-      // One redirect, and only from a host fetched without credentials. A refused redirect is a
-      // host answer, so it caches as a miss like any other.
+      // One redirect, and only from Gravatar, which is fetched without credentials. A refused
+      // redirect is a host answer, so it caches as a miss like any other.
       if (response.status >= 300 && response.status < 400 && headers.Authorization === undefined) {
         const next = redirectTarget(response, target)
         if (next !== null) {
