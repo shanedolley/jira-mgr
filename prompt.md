@@ -2,11 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (7 open issues, one page), `gh pr list --state open` (only #99, this update) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. D5 activity (#32) is on `main` (#104) and closed: Shane passed both live checks on 2026-10-10. Work in this order, landing one pull request at a time:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (5 open issues, one page), `gh pr list --state open` (only #99, this update) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. D5 activity (#32) is on `main` (#104) and closed: Shane passed both live checks on 2026-10-10. Work in this order, landing one pull request at a time:
 
-1. **D9 timer (#36)**, **D11 click-to-edit summary (#83)** and **D5 follow-ups (#102)**, none blocked. All three touch the issue page, so build them one at a time, or rebase each onto `main` after the one before merges. Build each in a worktree of its own from the current `main`.
-2. **Planned docs pages (#101)**, no blockers.
-3. **Waiting on Shane** (he signs off issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #85 (D12 icons), #86 (D13 profile images) and #96 (ordered edits, fixed by #100).
+1. **D9 timer (#36)**, **D11 click-to-edit summary (#83)** and **D5 follow-ups (#102)**, none blocked; #36 and #83 carry `status:in-progress` (2026-10-10), so check `gh issue list --label status:in-progress` and the issue comments before you claim one. All three touch the issue page, so build them one at a time, or rebase each onto `main` after the one before merges. Build each in a worktree of its own from the current `main`.
+2. **Planned docs pages (#101)**, no blockers; it carries `status:in-progress` too.
+3. **Waiting on Shane** (he signs off issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #96 (ordered edits, fixed by #100).
 
 Rebase each pull request onto `main` after the one before it merges, since a green run from before the rebase proves nothing (see Traps in the handover). Run e2e with `pnpm e2e --workers=1`, and never in several worktrees at once.
 
