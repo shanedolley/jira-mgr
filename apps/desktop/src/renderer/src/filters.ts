@@ -106,6 +106,18 @@ export interface FilterChip {
   text: string
 }
 
+/** The names in a sentence: "A", "A and B", "A, B and C". */
+export const sentence = (names: string[]): string =>
+  names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names.at(-1) ?? ''}`
+
+/** What the empty Tree names as its cause: `No issues match "zzzzqq" with Type: Bug`. */
+export function noMatchTitle(filters: ViewFilters, choices: Record<FilterField, Choice[]>): string {
+  const text = (filters.text ?? '').trim()
+  const chips = sentence(filterChips(filters, choices).map((chip) => chip.text))
+  if (text === '') return chips === '' ? 'No issues match' : `No issues match ${chips}`
+  return chips === '' ? `No issues match “${text}”` : `No issues match “${text}” with ${chips}`
+}
+
 /** One chip per filtered field, naming the choices by their labels. */
 export function filterChips(
   filters: ViewFilters,

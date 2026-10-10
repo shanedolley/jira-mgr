@@ -98,7 +98,7 @@ export function AttachmentsSection({
             Uploading {name}
           </p>
         ))}
-        <QueryBody query={attachments} loading="Loading attachments">
+        <QueryBody query={attachments} loading="Loading attachments" what="the attachments">
           {(list) =>
             list.length === 0 ? (
               uploading.length === 0 && <p className="text-muted">No attachments</p>

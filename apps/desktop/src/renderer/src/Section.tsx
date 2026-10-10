@@ -30,15 +30,18 @@ interface QueryBodyProps<T> {
   query: UseQueryResult<T>
   /** Shown while the first read runs: "Loading comments". */
   loading: string
+  /** What the error names after "Could not load": "the comments". */
+  what: string
   children: (data: T) => ReactNode
 }
 
 /** The data when it is there, the error with Retry when the first read failed, else the loading text. */
-export function QueryBody<T>({ query, loading, children }: QueryBodyProps<T>) {
+export function QueryBody<T>({ query, loading, what, children }: QueryBodyProps<T>) {
   if (query.data !== undefined) return <>{children(query.data)}</>
   if (query.isError) {
     return (
       <LoadError
+        what={what}
         error={query.error}
         onRetry={() => {
           void query.refetch()

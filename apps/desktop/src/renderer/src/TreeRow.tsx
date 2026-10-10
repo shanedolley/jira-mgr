@@ -106,7 +106,7 @@ function Content({ row, timing }: { row: Row; timing: boolean }) {
               className="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-4"
             >
               <span aria-hidden className="size-1.5 rounded-full bg-status-doing" />
-              Customer
+              Customer differs
             </span>
           )}
           {timing && <TimerClock issueKey={issue.key} className="shrink-0" />}

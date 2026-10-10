@@ -43,6 +43,8 @@ interface TreeToolbarProps {
   inputRef: RefObject<HTMLInputElement | null>
   /** Shown beside the controls while Done issues load for the first time. */
   doneProgress: string | null
+  /** False while the empty Tree offers its own "Clear filters", so one button clears. */
+  showClear: boolean
 }
 
 /** Always laid out, so a toggle keeps its width; `invisible` while the toggle is off. */
@@ -144,6 +146,7 @@ export function TreeToolbar({
   onEnterTree,
   inputRef,
   doneProgress,
+  showClear,
 }: TreeToolbarProps) {
   const chips = filterChips(filters, choices)
 
@@ -304,7 +307,7 @@ export function TreeToolbar({
         )}
       </div>
 
-      {(chips.length > 0 || hasFilters(filters)) && (
+      {(chips.length > 0 || (showClear && hasFilters(filters))) && (
         <ul aria-label="Active filters" className="flex flex-wrap items-center gap-2">
           {chips.map((chip) => (
             <li
@@ -335,18 +338,20 @@ export function TreeToolbar({
               </button>
             </li>
           ))}
-          <li>
-            <button
-              type="button"
-              onClick={() => {
-                onFilters({})
-                onActed()
-              }}
-              className="h-6 rounded px-1.5 text-xs text-muted hover:bg-hover hover:text-ink"
-            >
-              Clear
-            </button>
-          </li>
+          {showClear && (
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  onFilters({})
+                  onActed()
+                }}
+                className="h-6 rounded px-1.5 text-xs text-muted hover:bg-hover hover:text-ink"
+              >
+                Clear
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </div>

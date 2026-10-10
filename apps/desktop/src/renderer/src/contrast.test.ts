@@ -106,6 +106,17 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
     }
   })
 
+  it('keeps the status glyphs at 3:1 on every row background', () => {
+    for (const glyph of ['status-new', 'status-doing', 'status-done']) {
+      for (const surface of ['canvas', 'panel', 'hover', 'selected']) {
+        expect(
+          contrast(token(glyph, theme), token(surface, theme)),
+          `${glyph} on ${surface}`,
+        ).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
   it('keeps field borders at 3:1 on canvas and panel', () => {
     for (const surface of ['canvas', 'panel']) {
       expect(

@@ -319,7 +319,7 @@ export function WorklogsSection({ issueKey, me, onNotice }: WorklogsSectionProps
           }}
         />
       )}
-      <QueryBody query={worklogs} loading="Loading worklogs">
+      <QueryBody query={worklogs} loading="Loading worklogs" what="the worklogs">
         {(list) =>
           list.length === 0 ? (
             !adding && <p className="text-muted">No work logged</p>

@@ -122,7 +122,7 @@ test("marks a Story whose Customer differs from its Epic's", async () => {
   await open()
 
   const flagged = item(/PSAPAC-31,/)
-  await expect(flagged).toContainText('Customer')
+  await expect(flagged).toContainText('Customer differs')
   await expect(flagged).toHaveAttribute('aria-label', /Customer differs from Epic/)
   await expect(flagged.getByTitle("Customer: Acme. Epic's Customer: Beta Ltd.")).toBeVisible()
   await expect(item(/PSAPAC-32,/)).not.toHaveAttribute('aria-label', /differs/)
@@ -130,6 +130,37 @@ test("marks a Story whose Customer differs from its Epic's", async () => {
   // The Peek names both in full.
   await flagged.click()
   await expect(peek()).toContainText("Epic's Customer: Beta Ltd.")
+})
+
+test('draws To Do, In Progress and Done as three distinct shapes', async () => {
+  await openWithDone()
+  await toggle('Hide done').click()
+  await expect(item(/PSAPAC-22,/)).toBeVisible()
+
+  const glyph = (row: RegExp) => item(row).locator('[data-glyph=status]')
+  const todo = glyph(/PSAPAC-10,/)
+  const doing = glyph(/PSAPAC-4,/)
+  const done = glyph(/PSAPAC-22,/)
+  await expect(todo).toHaveAttribute('aria-label', 'To Do')
+  await expect(doing).toHaveAttribute('aria-label', 'In Progress')
+  await expect(done).toHaveAttribute('aria-label', 'Done')
+
+  // An empty ring, a ring with its right half filled, a solid circle with a check.
+  await expect(todo).toHaveAttribute('data-shape', 'ring')
+  await expect(doing).toHaveAttribute('data-shape', 'half')
+  await expect(done).toHaveAttribute('data-shape', 'check')
+  await expect(todo.locator('path')).toHaveCount(0)
+  await expect(doing.locator('path')).toHaveCount(1)
+  await expect(done.locator('circle[fill="none"]')).toHaveCount(0)
+
+  // In greyscale the three still differ: no colour carries the status.
+  await window.evaluate(() => {
+    document.documentElement.style.filter = 'grayscale(1)'
+  })
+  const [a, b, c] = await Promise.all([todo, doing, done].map((g) => g.screenshot()))
+  expect(a?.equals(b ?? Buffer.alloc(0))).toBe(false)
+  expect(b?.equals(c ?? Buffer.alloc(0))).toBe(false)
+  expect(a?.equals(c ?? Buffer.alloc(0))).toBe(false)
 })
 
 test('collapses and expands groups by click, by arrow keys and with Collapse all', async () => {
@@ -401,13 +432,32 @@ test('shows No issues match with Clear filters when nothing matches', async () =
 
   await window.getByLabel('Filter by key or summary').fill('zzzz-no-such-issue')
 
-  await expect(window.getByText('No issues match')).toBeVisible()
-  await expect(window.getByText('Hide done and Hide empty Customers are on.')).toBeVisible()
+  await expect(window.getByText('No issues match “zzzz-no-such-issue”')).toBeVisible()
+  await expect(window.getByText('Hide done and Hide empty Customers are also on.')).toBeVisible()
+  // One button clears: the chip row's own Clear steps aside.
+  await expect(window.getByRole('button', { name: 'Clear', exact: true })).toHaveCount(0)
   await window.getByRole('button', { name: 'Clear filters' }).click()
   await expect(window.getByText('No issues match')).toHaveCount(0)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   await expect(window.getByLabel('Filter by key or summary')).toHaveValue('')
   await expect(tree()).toBeFocused()
+})
+
+test('names the text and the chips that match nothing', async () => {
+  await open()
+  await window.getByRole('button', { name: 'Filter', exact: true }).click()
+  await window.getByText('Status', { exact: true }).click()
+  await window.getByRole('checkbox', { name: 'In Progress' }).check()
+  await window.keyboard.press('Escape')
+  await window.getByLabel('Filter by key or summary').fill('zzzzqq')
+
+  await expect(window.getByText('No issues match “zzzzqq” with Status: In Progress')).toBeVisible()
+  await expect(window.getByText('Hide done and Hide empty Customers are also on.')).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Clear filters' })).toHaveCount(1)
+
+  await window.getByRole('button', { name: 'Clear filters' }).click()
+  await expect(window.getByRole('list', { name: 'Active filters' })).toHaveCount(0)
+  await expect(item(/PSAPAC-10,/)).toBeVisible()
 })
 
 test('keeps the Tree and offers Retry when the Done load fails', async () => {
@@ -416,8 +466,7 @@ test('keeps the Tree and offers Retry when the Done load fails', async () => {
   await releaseDone(app)
 
   const banner = window.getByRole('alert')
-  await expect(banner).toContainText('Could not load Done issues')
-  await expect(banner).toContainText('chips are unavailable')
+  await expect(banner).toContainText('Could not load Done issues. Done counts are hidden.')
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   await expect(item('2 done', true)).toHaveCount(0)
 
@@ -534,7 +583,7 @@ test('shows No issues match for a filter that matches nothing, with empty Custom
 
   // An empty Customer header must not stand in for the empty state.
   await expect(window.getByText('No issues match')).toBeVisible()
-  await expect(window.getByText('Hide done is on.')).toBeVisible()
+  await expect(window.getByText('Hide done is also on.')).toBeVisible()
   await window.getByRole('button', { name: 'Clear filters' }).click()
   await expect(window.getByText('No issues match')).toHaveCount(0)
   await expect(item(/PSAPAC-10,/)).toBeVisible()

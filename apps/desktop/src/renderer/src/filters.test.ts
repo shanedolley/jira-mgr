@@ -1,7 +1,15 @@
 import type { Issue } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
-import { clearField, filterChips, filterChoices, hasFilters, toggleChoice } from './filters'
+import {
+  clearField,
+  filterChips,
+  filterChoices,
+  hasFilters,
+  noMatchTitle,
+  sentence,
+  toggleChoice,
+} from './filters'
 
 function issue(key: string, extra: Partial<Issue> = {}): Issue {
   return {
@@ -109,5 +117,37 @@ describe('filterChips', () => {
       { field: 'status', text: 'Status: To Do, In Progress' },
     ])
     expect(filterChips({ text: 'only text' }, choices)).toEqual([])
+  })
+})
+
+describe('noMatchTitle', () => {
+  const choices = filterChoices([
+    issue('P-1', { issueType: { id: '2', name: 'Bug', subtask: false, hierarchyLevel: 0 } }),
+  ])
+
+  it('names the text and the chips that caused the empty Tree', () => {
+    expect(noMatchTitle({ text: 'zzzzqq', type: ['Bug'] }, choices)).toBe(
+      'No issues match “zzzzqq” with Type: Bug',
+    )
+  })
+
+  it('names the text alone, or the chips alone', () => {
+    expect(noMatchTitle({ text: ' zzzzqq ' }, choices)).toBe('No issues match “zzzzqq”')
+    expect(noMatchTitle({ type: ['Bug'], status: ['To Do'] }, choices)).toBe(
+      'No issues match Status: To Do and Type: Bug',
+    )
+  })
+
+  it('says only "No issues match" when no filter is set', () => {
+    expect(noMatchTitle({ text: '  ' }, choices)).toBe('No issues match')
+  })
+})
+
+describe('sentence', () => {
+  it('joins names with commas and a final "and"', () => {
+    expect(sentence([])).toBe('')
+    expect(sentence(['A'])).toBe('A')
+    expect(sentence(['A', 'B'])).toBe('A and B')
+    expect(sentence(['A', 'B', 'C'])).toBe('A, B and C')
   })
 })

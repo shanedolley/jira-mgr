@@ -39,7 +39,14 @@ import {
   type CreateDraft,
   type Notice,
 } from './create'
-import { filterChoices, hasFilters } from './filters'
+import {
+  filterChoices,
+  hasFilters,
+  noMatchTitle,
+  sentence,
+  type Choice,
+  type FilterField,
+} from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
 import {
   useCustomers,
@@ -85,34 +92,47 @@ function useSettledMessage(message: string): string {
   return settled
 }
 
-const sentence = (names: string[]) =>
-  names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names.at(-1) ?? ''}`
-
 /** The empty Tree area. It sits over the Tree, which stays mounted. */
 function NoMatch({
   toggles,
-  filtered,
+  filters,
+  choices,
   onClear,
 }: {
   toggles: Toggles
-  filtered: boolean
+  filters: ViewFilters
+  choices: Record<FilterField, Choice[]>
   onClear: () => void
 }) {
   const on = activeToggleNames(toggles)
+  const filtered = hasFilters(filters)
   return (
     <div className="absolute inset-0 grid place-items-center bg-canvas p-6 text-center">
-      <div className="space-y-2">
-        <p className="font-medium">No issues match</p>
+      <div className="flex flex-col items-center gap-2">
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          className="size-6 text-muted"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-4-4M8.5 11h5" />
+        </svg>
+        <p className="text-[15px] font-semibold">{noMatchTitle(filters, choices)}</p>
         {on.length > 0 && (
           <p className="text-muted">
-            {sentence(on)} {on.length === 1 ? 'is' : 'are'} on.
+            {sentence(on)} {on.length === 1 ? 'is' : 'are'}
+            {filtered ? ' also' : ''} on.
           </p>
         )}
         {filtered && (
           <button
             type="button"
             onClick={onClear}
-            className="rounded-md border border-line px-3 py-1 hover:bg-hover"
+            className="mt-1 rounded-md bg-accent px-3 py-1 font-medium text-accent-ink"
           >
             Clear filters
           </button>
@@ -620,7 +640,11 @@ export function Shell({ session }: { session: Session }) {
   let body
   if (toggles === undefined) {
     body = togglesQuery.isError ? (
-      <LoadError error={togglesQuery.error} onRetry={() => void togglesQuery.refetch()} />
+      <LoadError
+        what="your settings"
+        error={togglesQuery.error}
+        onRetry={() => void togglesQuery.refetch()}
+      />
     ) : (
       <p role="status" className="p-4 text-muted">
         Loading settings
@@ -628,7 +652,7 @@ export function Shell({ session }: { session: Session }) {
     )
   } else if (unresolved.data === undefined) {
     body = unresolved.isError ? (
-      <LoadError error={unresolved.error} onRetry={() => void unresolved.refetch()} />
+      <LoadError what="issues" error={unresolved.error} onRetry={() => void unresolved.refetch()} />
     ) : (
       <p className="p-4 text-muted">
         Loading issues<span aria-hidden>: {unresolvedCount}</span>
@@ -636,7 +660,7 @@ export function Shell({ session }: { session: Session }) {
     )
   } else if (needsMe && accountId === undefined) {
     body = meQuery.isError ? (
-      <LoadError error={meQuery.error} onRetry={() => void meQuery.refetch()} />
+      <LoadError what="your account" error={meQuery.error} onRetry={() => void meQuery.refetch()} />
     ) : (
       <p className="p-4 text-muted">Loading your account</p>
     )
@@ -654,7 +678,8 @@ export function Shell({ session }: { session: Session }) {
           shown > 0 ? null : (
             <NoMatch
               toggles={toggles}
-              filtered={hasFilters(filters)}
+              filters={filters}
+              choices={choices}
               onClear={() => {
                 setFilters({})
                 focusTree()
@@ -752,6 +777,7 @@ export function Shell({ session }: { session: Session }) {
             onEnterTree={enterTree}
             inputRef={filterRef}
             doneProgress={doneLoading ? `Loading Done issues: ${String(doneCount)}` : null}
+            showClear={shown > 0}
           />
         )}
         {setToggles.isError && (
@@ -761,9 +787,7 @@ export function Shell({ session }: { session: Session }) {
         )}
         {refreshFailed && <Banner onRetry={retryAll}>Could not refresh.</Banner>}
         {doneFailed && (
-          <Banner onRetry={retryAll}>
-            {'Could not load Done issues, so the "N done" chips are unavailable.'}
-          </Banner>
+          <Banner onRetry={retryAll}>Could not load Done issues. Done counts are hidden.</Banner>
         )}
         {customersFailed && (
           <Banner onRetry={() => void customersQuery.refetch()}>

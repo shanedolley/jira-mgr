@@ -103,7 +103,7 @@ function PageBody({
           <section aria-label="Description" className="space-y-1">
             <h2 className={SECTION_HEADING}>Description</h2>
             {detailError !== null ? (
-              <LoadError error={detailError} onRetry={onRetry} />
+              <LoadError what="the description" error={detailError} onRetry={onRetry} />
             ) : detail === undefined ? (
               <p className="text-muted">Loading description</p>
             ) : (
@@ -293,7 +293,11 @@ export function IssuePage({
         {issue === undefined ? (
           <div className="col-span-2">
             {detail.isError ? (
-              <LoadError error={detail.error} onRetry={() => void detail.refetch()} />
+              <LoadError
+                what="this issue"
+                error={detail.error}
+                onRetry={() => void detail.refetch()}
+              />
             ) : (
               <p role="status" className="p-6 text-muted">
                 Loading {issueKey}

@@ -814,7 +814,14 @@ test('offers Retry when the page cannot read its issue, and shows the descriptio
 
   // The summary and properties come from the loaded lists, so the page still shows.
   await expect(heading('Kick off the engagement')).toBeVisible()
-  await expect(issuePage().getByRole('alert')).toContainText('The fake failed this read')
+  const alert = issuePage().getByRole('alert')
+  await expect(alert).toContainText(
+    'Could not load the description. Retry, or check your connection.',
+  )
+  // Jira's message, which names the request, stays behind Details.
+  await expect(alert.getByText('The fake failed this read')).toBeHidden()
+  await alert.getByText('Details', { exact: true }).click()
+  await expect(alert.getByText('The fake failed this read')).toBeVisible()
   await expect(issuePage().getByText('Loading description')).toHaveCount(0)
 
   await issuePage().getByRole('button', { name: 'Retry' }).click()
