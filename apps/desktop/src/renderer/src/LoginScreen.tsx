@@ -27,7 +27,7 @@ function Field({ label, name, value, onChange, type = 'text', placeholder }: Fie
         onChange={(event) => {
           onChange(event.target.value)
         }}
-        className="w-full rounded-md border border-line bg-panel px-2.5 py-1.5 placeholder:text-muted/70"
+        className="w-full rounded-md border border-field-border bg-panel px-2.5 py-1.5 placeholder:text-muted"
       />
     </label>
   )

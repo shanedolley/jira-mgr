@@ -268,7 +268,7 @@ export function Picker({
               onQuery?.(event.target.value)
             }}
             onKeyDown={onKeyDown}
-            className="mb-1 h-8 w-full rounded-md border border-line bg-canvas px-2 placeholder:text-muted"
+            className="mb-1 h-8 w-full rounded-md border border-field-border bg-canvas px-2 placeholder:text-muted"
           />
         )}
         <div

@@ -17,11 +17,16 @@ export function initials(name: string): string {
     .join('')
 }
 
+/** The fill for a hue. At 30% lightness white initials hold 4.5:1 across all 360 hues. */
+export function avatarFill(hue: number): string {
+  return `hsl(${String(hue)} 45% 30%)`
+}
+
 /** A hue from the account id, so one person keeps one colour everywhere. */
 export function avatarColor(accountId: string): string {
   let hash = 0
   for (const char of accountId) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
-  return `hsl(${String(hash % 360)} 45% 38%)`
+  return avatarFill(hash % 360)
 }
 
 /**
@@ -68,7 +73,7 @@ export function Avatar({ person }: { person: AvatarPerson | null }) {
       aria-hidden
       data-avatar="initials"
       style={{ backgroundColor: avatarColor(person.accountId) }}
-      className="grid size-5 shrink-0 place-items-center rounded-full text-[10px] text-white"
+      className="grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-medium text-white"
     >
       {initials(person.displayName)}
     </span>

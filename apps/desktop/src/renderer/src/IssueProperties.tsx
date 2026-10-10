@@ -47,7 +47,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const FIELD =
-  'h-7 w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 hover:bg-hover focus:bg-canvas disabled:opacity-60'
+  'h-7 w-full min-w-0 rounded-md border border-field-border bg-transparent px-2 hover:bg-hover focus:bg-canvas disabled:opacity-60'
 
 interface TextFieldProps {
   label: string
@@ -126,7 +126,7 @@ function TextField({
         }}
         onKeyDown={onKeyDown}
         {...(type === 'number' ? { min: 0, step: 0.25 } : {})}
-        className={`${FIELD} ${invalid ? 'border-danger' : ''}`}
+        className={`${FIELD} aria-invalid:border-danger`}
       />
       {invalid && hint !== undefined && <p className="px-2 text-xs text-danger">{hint}</p>}
     </>

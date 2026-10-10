@@ -58,7 +58,7 @@ interface CreateIssueDialogProps {
 }
 
 const INPUT =
-  'h-8 w-full min-w-0 rounded-md border border-line bg-canvas px-2 placeholder:text-muted disabled:opacity-60'
+  'h-8 w-full min-w-0 rounded-md border border-field-border bg-canvas px-2 placeholder:text-muted disabled:opacity-60'
 
 const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
   (choices ?? []).map((c) => ({ id: c.id, label: c.name }))
@@ -296,7 +296,7 @@ export function CreateIssueDialog({
               className={`${INPUT} h-10 text-base`}
             />
           </div>
-          <div className="space-y-1 border-y border-line px-3 py-3 [&_button[aria-haspopup=listbox]]:border [&_button[aria-haspopup=listbox]]:border-line">
+          <div className="space-y-1 border-y border-line px-3 py-3 [&_button[aria-haspopup=listbox]]:border [&_button[aria-haspopup=listbox]]:border-field-border">
             <Row name="Type">
               <Picker
                 label="Type"
@@ -448,7 +448,7 @@ export function CreateIssueDialog({
                   onChange={(event) => {
                     edit({ estimate: event.target.value })
                   }}
-                  className="h-7 w-full min-w-0 rounded-md border border-line bg-transparent px-2 hover:bg-hover focus:bg-canvas aria-invalid:border-danger"
+                  className="h-7 w-full min-w-0 rounded-md border border-field-border bg-transparent px-2 hover:bg-hover focus:bg-canvas aria-invalid:border-danger"
                 />
               </Row>
             )}

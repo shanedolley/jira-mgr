@@ -87,7 +87,7 @@ export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditor
         onBlur={() => {
           end(true, false)
         }}
-        className="-mx-2 w-[calc(100%+1rem)] rounded-md border border-line bg-panel px-2 py-0.5 text-base font-semibold leading-snug"
+        className="-mx-2 w-[calc(100%+1rem)] rounded-md border border-field-border bg-panel px-2 py-0.5 text-base font-semibold leading-snug"
       />
     )
   }
