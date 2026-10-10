@@ -21,7 +21,7 @@
     "jm": "node scripts/jm.ts",
     "package": "pnpm --filter @jira-mgr/desktop build && node scripts/package.ts",
     "docs:reference": "pnpm --filter @jira-mgr/cli build && node scripts/gen-reference.ts",
-    "fixture:record": "node scripts/record-fixture.ts"
+    "fixture:record": "node packages/core/scripts/record-fixture.ts"
   },
   "devDependencies": {
     "@jira-mgr/config-lint": "workspace:*",

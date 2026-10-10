@@ -5,8 +5,11 @@ import { z } from 'zod'
 import { JiraMgrError } from './errors.js'
 import { resolveFields } from './fields.js'
 import { createHttpClient } from './http.js'
+import { parseSiteUrl } from './site-url.js'
 import { readSettings, writeFields, writeSettings } from './state.js'
 import { currentUser, parseResponse, type CurrentUser } from './validate.js'
+
+export { parseSiteUrl }
 
 const SECURITY = '/usr/bin/security'
 const KEYCHAIN_SERVICE = 'jira-mgr'
@@ -146,22 +149,6 @@ export function createKeychain(options: { run?: SecurityRunner; service?: string
       )
     },
   }
-}
-
-/** The origin of an `https://<name>.atlassian.net` site URL, or `null` for anything else. */
-export function parseSiteUrl(value: string): string | null {
-  if (!URL.canParse(value)) return null
-  const url = new URL(value)
-  const ok =
-    url.protocol === 'https:' &&
-    /^[a-z0-9-]+\.atlassian\.net$/i.test(url.hostname) &&
-    url.port === '' &&
-    url.username === '' &&
-    url.password === '' &&
-    url.pathname === '/' &&
-    url.search === '' &&
-    url.hash === ''
-  return ok ? url.origin : null
 }
 
 const loginSchema = z.object({
