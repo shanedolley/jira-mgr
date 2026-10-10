@@ -4,7 +4,7 @@ Source: `apps/desktop/src/renderer/src/keymap.ts` for global keys and `tree.ts` 
 
 ## Global
 
-A letter acts only when pressed alone, not held, and not typed into a field, picker, dialog or editor.
+A letter acts only when pressed alone, not held, not typed into a field, picker, dialog or editor, and only with focus in the Tree, the Peek or the issue page. `T` on a sidebar button does nothing.
 
 | Key | Action |
 |---|---|
@@ -15,6 +15,7 @@ A letter acts only when pressed alone, not held, and not typed into a field, pic
 | `L` | Open Labels |
 | `P` | Open Priority |
 | `E` | Edit the summary |
+| `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open page |
 | `Cmd+K` | Open the search palette; it searches issues and lists no commands. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo |
 | `Esc` | Close the page, then the Peek |
@@ -41,6 +42,8 @@ A letter acts only when pressed alone, not held, and not typed into a field, pic
 |---|---|---|
 | Rich-text editor, comment box | `Cmd+Enter` | Save or post; `Esc` cancels the editor |
 | Create dialog | `Cmd+Enter` | Create the issue |
+| Text filter | `Enter`, `Down` | Move to the first issue row, skipping group headers, with the query kept |
+| Text filter | `Esc` | Clear the query; when empty, return to the Tree |
 | Summary and property fields | `Enter` | Save |
 | Summary and property fields | `Esc` | Cancel the edit |
 | Saved views list | `Up`, `Down` | Move between views |
@@ -53,3 +56,7 @@ A letter acts only when pressed alone, not held, and not typed into a field, pic
 | Palette | `Enter`, `Esc` | Open the issue page, or close |
 
 Ctrl stands in for Cmd off the Mac.
+
+## Tab
+
+The first Tab stop is a "Skip to issues" link, hidden until it has focus. `Enter` on it moves focus to the Tree.

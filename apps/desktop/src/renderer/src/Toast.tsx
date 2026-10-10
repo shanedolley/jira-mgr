@@ -11,14 +11,17 @@ interface ToastProps {
   onOpen?: () => void
   /** Undoes the edit the notice reports; the same as Cmd+Z. */
   onUndo?: () => void
+  /** The notice's time ran out. Focus stays where the user has it. */
   onDismiss: () => void
+  /** The Dismiss button was clicked, so focus has nowhere to go but the body. */
+  onDismissClick: () => void
 }
 
 /**
  * A notice in the corner: what just happened and anything Jira did differently. A failure is an
  * alert and stays; the rest is a status and goes after a while. After a field edit it offers Undo.
  */
-export function Toast({ notice, onOpen, onUndo, onDismiss }: ToastProps) {
+export function Toast({ notice, onOpen, onUndo, onDismiss, onDismissClick }: ToastProps) {
   useEffect(() => {
     if (notice.warned) return
     const timer = setTimeout(onDismiss, LINGER_MS)
@@ -63,7 +66,7 @@ export function Toast({ notice, onOpen, onUndo, onDismiss }: ToastProps) {
         )}
         <button
           type="button"
-          onClick={onDismiss}
+          onClick={onDismissClick}
           className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
         >
           Dismiss

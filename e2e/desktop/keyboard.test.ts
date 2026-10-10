@@ -489,3 +489,157 @@ test('a refused undo shows the value as it was, says why, and is not retried', a
   await expect(notice('Nothing to undo')).toBeVisible()
   expect(await writes()).toBe(before + 2)
 })
+
+const filter = () => window.getByRole('textbox', { name: 'Filter by key or summary' })
+const skipLink = () => window.getByRole('link', { name: 'Skip to issues' })
+
+test('/ focuses the filter, and Enter lands on the first issue row with the query kept', async () => {
+  await open()
+  await expect(tree()).toBeFocused()
+
+  await window.keyboard.press('/')
+  await expect(filter()).toBeFocused()
+  await window.keyboard.type('runbook')
+  await expect(filter()).toHaveValue('runbook')
+  await expect(item(/PSAPAC-11,/)).toBeVisible()
+
+  await window.keyboard.press('Enter')
+  await expect(tree()).toBeFocused()
+  await expect(filter()).toHaveValue('runbook')
+  // The first row is the Customer header; the active row is the first issue under it, the Epic.
+  await expect(tree().getByRole('treeitem').first()).toHaveAttribute('data-active', 'false')
+  await expect(tree().locator('[data-active="true"]')).toHaveAccessibleName(/^PSAPAC-10,/)
+  expect(await writes()).toBe(0)
+
+  // The active row is an issue, so a letter acts on it.
+  await window.keyboard.press('s')
+  await expect(peek()).toBeVisible()
+  await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
+})
+
+test('ArrowDown in the filter also moves to the first issue row, and a typed / stays in the field', async () => {
+  await open()
+  await window.keyboard.press('/')
+  await window.keyboard.type('a/b')
+  await expect(filter()).toHaveValue('a/b')
+  await filter().fill('PSAPAC')
+
+  await window.keyboard.press('ArrowDown')
+  await expect(tree()).toBeFocused()
+  await expect(filter()).toHaveValue('PSAPAC')
+  await expect(tree().getByRole('treeitem').first()).toHaveAttribute('data-active', 'false')
+  await expect(tree().locator('[data-active="true"]')).toHaveAccessibleName(/^PSAPAC-\d+,/)
+})
+
+test('/ selects the text already in the filter, and does nothing with a modifier', async () => {
+  await open()
+  await window.keyboard.press('/')
+  await window.keyboard.type('old')
+  await window.keyboard.press('Enter')
+  await expect(tree()).toBeFocused()
+
+  await window.keyboard.press('Meta+/')
+  await expect(tree()).toBeFocused()
+  await window.keyboard.press('/')
+  await expect(filter()).toBeFocused()
+  await window.keyboard.type('new')
+  await expect(filter()).toHaveValue('new')
+})
+
+test('letters do nothing on a sidebar button, and still act in the Tree', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  const logout = window.getByRole('button', { name: 'Log out' })
+  await logout.focus()
+  await expect(logout).toBeFocused()
+
+  for (const letter of ['t', 'c', 's']) await window.keyboard.press(letter)
+  await expect(notice(/Started the timer/)).toHaveCount(0)
+  await expect(window.getByRole('dialog')).toHaveCount(0)
+  await expect(peek()).toHaveCount(0)
+  await expect(logout).toBeFocused()
+
+  await tree().focus()
+  await window.keyboard.press('t')
+  await expect(notice('Started the timer on PSAPAC-2')).toBeVisible()
+})
+
+test('letters do nothing on a toolbar button either', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  const toggle = window.getByRole('button', { name: 'Hide done' })
+  await toggle.focus()
+  await window.keyboard.press('c')
+  await expect(window.getByRole('dialog')).toHaveCount(0)
+})
+
+test('the first Tab stop is Skip to issues, which shows on focus and moves focus to the Tree', async () => {
+  await open()
+  await window.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  })
+  await window.keyboard.press('Tab')
+  await expect(skipLink()).toBeFocused()
+  const box = await skipLink().boundingBox()
+  expect(box).not.toBeNull()
+  expect(box?.y).toBeGreaterThanOrEqual(0)
+  expect(box?.x).toBeGreaterThanOrEqual(0)
+
+  await window.keyboard.press('Enter')
+  await expect(tree()).toBeFocused()
+})
+
+test('an empty Tree still shows focus, painted over the No issues match panel', async () => {
+  await open()
+  await filter().fill('zzzzzz')
+  await expect(window.getByText('No issues match')).toBeVisible()
+  const wrapper = tree().locator('xpath=..')
+  const box = await wrapper.boundingBox()
+  expect(box).not.toBeNull()
+  // A strip along the top edge, where the 2px ring sits.
+  const clip = { x: box?.x ?? 0, y: box?.y ?? 0, width: box?.width ?? 0, height: 4 }
+  const unfocused = await window.screenshot({ clip })
+
+  await window.keyboard.press('Enter')
+  await expect(tree()).toBeFocused()
+  const focused = await window.screenshot({ clip })
+  // The strip is plain canvas until the ring is painted over the panel.
+  expect(focused.equals(unfocused)).toBe(false)
+})
+
+test('Dismiss on a toast hands focus back, so a letter works again', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  await window.keyboard.press('t')
+  await expect(notice('Started the timer on PSAPAC-2')).toBeVisible()
+
+  await window.getByRole('button', { name: 'Dismiss' }).click()
+  await expect(notice('Started the timer on PSAPAC-2')).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await window.keyboard.press('c')
+  await expect(window.getByRole('dialog', { name: 'New issue' })).toBeVisible()
+})
+
+/** Slows the renderer, so the Tree's deferred rows lag the text the filter holds. */
+async function throttle(rate: number) {
+  const session = await window.context().newCDPSession(window)
+  await session.send('Emulation.setCPUThrottlingRate', { rate })
+}
+
+for (const key of ['Enter', 'ArrowDown']) {
+  test(`${key} in a filter whose Tree is still catching up lands on the first issue row`, async () => {
+    await open()
+    await window.keyboard.press('/')
+    await window.keyboard.type('a/b')
+    await expect(window.getByText('No issues match')).toBeVisible()
+    await throttle(20)
+    await filter().fill('PSAPAC')
+
+    await window.keyboard.press(key)
+    await expect(tree()).toBeFocused()
+    await expect(filter()).toHaveValue('PSAPAC')
+    await expect(item(/PSAPAC-10,/)).toBeVisible()
+    await expect(tree().getByRole('treeitem').first()).toHaveAttribute('data-active', 'false')
+    await expect(tree().locator('[data-active="true"]')).toHaveAccessibleName(/^PSAPAC-\d+,/)
+  })
+}

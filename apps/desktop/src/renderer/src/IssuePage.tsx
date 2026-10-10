@@ -235,6 +235,7 @@ export function IssuePage({
       <section
         ref={pageRef}
         tabIndex={-1}
+        data-key-scope
         aria-label="Issue page"
         onKeyDown={onKeyDown}
         onDrop={onDrop}

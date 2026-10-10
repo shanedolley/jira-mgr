@@ -138,6 +138,8 @@ export function Shell({ session }: { session: Session }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set())
   const [peekOpen, setPeekOpen] = useState(false)
+  // Enter in the filter asked for the first issue row, which waits for the deferred rows.
+  const [enterPending, setEnterPending] = useState(false)
   const [lastIssueKey, setLastIssueKey] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   // The issue whose full page is open. The Tree stays mounted under it, so its scroll survives.
@@ -168,6 +170,7 @@ export function Shell({ session }: { session: Session }) {
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
+  const filterRef = useRef<HTMLInputElement>(null)
 
   const customersQuery = useCustomers(toggles?.hideEmptyCustomers === false)
   const customersFailed = customersQuery.isError && customersQuery.data === undefined
@@ -232,6 +235,7 @@ export function Shell({ session }: { session: Session }) {
   )
 
   function apply(next: MoveResult) {
+    setEnterPending(false)
     setTrack((t) => ({ ...t, activeId: next.activeId }))
     setCollapsed(next.collapsed)
     setRevealed(next.revealed)
@@ -246,6 +250,22 @@ export function Shell({ session }: { session: Session }) {
 
   function focusTree() {
     treeRef.current?.focus()
+  }
+
+  /**
+   * Enter or Down in the filter: the first issue row becomes active, skipping group headers, and
+   * takes focus. With no issue row the first row does. The query stays. The rows follow the
+   * filters a render late (`useDeferredValue`), so the choice waits until they match the query.
+   */
+  function enterTree() {
+    setEnterPending(true)
+    focusTree()
+  }
+
+  if (enterPending && filters === deferredFilters) {
+    setEnterPending(false)
+    const first = rows.find((r) => r.kind === 'issue') ?? rows[0]
+    if (first !== undefined) apply({ ...state, activeId: first.id, openPage: false })
   }
 
   /** Collapse all and Expand all are the Shift+Arrow keys, so the menu and the keys agree. */
@@ -445,6 +465,15 @@ export function Shell({ session }: { session: Session }) {
         event.preventDefault()
         openCreate()
         return
+      case 'filter': {
+        // The list is inert under an open page, so the field cannot take focus there.
+        const field = filterRef.current
+        if (field === null || pageOpen) return
+        event.preventDefault()
+        field.focus()
+        field.select()
+        return
+      }
       case 'timer': {
         const key = pageKey ?? activeKey
         if (key === null || !treeReady) return
@@ -633,6 +662,16 @@ export function Shell({ session }: { session: Session }) {
     <div
       className={`relative grid h-full grid-rows-[minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
     >
+      <a
+        href="#issue-list"
+        onClick={(event) => {
+          event.preventDefault()
+          restoreFocus()
+        }}
+        className="app-no-drag absolute left-24 top-1.5 z-50 -translate-y-12 rounded-md border border-line bg-panel px-3 py-1 text-ink focus:translate-y-0"
+      >
+        Skip to issues
+      </a>
       <Sidebar
         session={session}
         count={unresolved.data?.length}
@@ -641,6 +680,7 @@ export function Shell({ session }: { session: Session }) {
         onStopTimer={stopFromSidebar}
       />
       <section
+        id="issue-list"
         aria-label="Issue list"
         inert={pageOpen}
         className="col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
@@ -694,6 +734,8 @@ export function Shell({ session }: { session: Session }) {
               groupsKey('ArrowRight')
             }}
             onActed={focusTree}
+            onEnterTree={enterTree}
+            inputRef={filterRef}
             doneProgress={doneLoading ? `Loading Done issues: ${String(doneCount)}` : null}
           />
         )}
@@ -834,6 +876,10 @@ export function Shell({ session }: { session: Session }) {
                 }
           }
           onDismiss={dismissNotice}
+          onDismissClick={() => {
+            dismissNotice()
+            restoreFocus()
+          }}
         />
       )}
     </div>
