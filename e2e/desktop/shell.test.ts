@@ -68,8 +68,8 @@ test('updates a summary before Jira answers, and restores it when Jira refuses',
   expect((await counts(app)).applied).toBe(0)
   await releaseEdit(app)
   await expect.poll(async () => (await counts(app)).applied).toBe(1)
-  // Only the edited issue is read again; no list reloads.
-  await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-4'])
+  // Only the edited issue is read again; no list reloads. The first read is the Peek's description.
+  await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-4', 'PSAPAC-4'])
   expect((await counts(app)).searches.unresolved).toBe(searched)
 
   await detail.getByRole('button', { name: 'Migrate the reports' }).click()

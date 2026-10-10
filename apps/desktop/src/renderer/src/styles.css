@@ -223,3 +223,8 @@ input {
 .adf-editor .ProseMirror-selectednode {
   outline: 2px solid var(--accent);
 }
+
+/* An empty date field hides the browser's "mm/dd/yyyy", so its own "Set start date" shows instead. */
+.date-empty:not(:focus)::-webkit-datetime-edit {
+  color: transparent;
+}

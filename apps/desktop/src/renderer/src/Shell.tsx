@@ -731,6 +731,7 @@ export function Shell({ session }: { session: Session }) {
           onClose={closePeek}
           onOpenPage={setPageKey}
           onDelete={setDeleting}
+          onTimer={pressTimer}
           onEditingChange={(editing) => {
             setEditingKey(editing ? lastIssueKey : null)
           }}
