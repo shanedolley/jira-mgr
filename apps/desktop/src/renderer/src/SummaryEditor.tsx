@@ -10,6 +10,20 @@ export interface SummaryEditorProps {
   onLeave: () => void
 }
 
+/**
+ * What a key does in the summary field. Enter or Esc pressed while an IME composes belongs to the
+ * IME, which Chromium reports as `isComposing` (the `keyCode` 229 check is Safari's and is
+ * deprecated).
+ */
+export function summaryKeyAction(event: {
+  key: string
+  isComposing: boolean
+}): 'save' | 'cancel' | null {
+  if (event.isComposing) return null
+  if (event.key === 'Enter') return 'save'
+  return event.key === 'Escape' ? 'cancel' : null
+}
+
 /** The summary as a heading whose text is a button; a click, or `E`, swaps it for a field in place. */
 export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditorProps) {
   const [editing, setEditing] = useState(false)
@@ -64,8 +78,11 @@ export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditor
           setDraft(event.target.value)
         }}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') end(true, true)
-          else if (event.key === 'Escape') end(false, true)
+          const action = summaryKeyAction({
+            key: event.key,
+            isComposing: event.nativeEvent.isComposing,
+          })
+          if (action !== null) end(action === 'save', true)
         }}
         onBlur={() => {
           end(true, false)
@@ -80,6 +97,7 @@ export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditor
         <button
           type="button"
           aria-keyshortcuts="E"
+          aria-description="Edit summary"
           title="Edit summary (E)"
           onClick={start}
           className="-mx-2 w-[calc(100%+1rem)] cursor-text rounded-md border border-transparent px-2 py-0.5 text-left hover:bg-hover"
