@@ -17,7 +17,17 @@ export const PROPERTY_KEYS = {
 export type PropertyCommand = keyof typeof PROPERTY_KEYS
 
 export type Command =
-  PropertyCommand | 'create' | 'timer' | 'filter' | 'help' | 'palette' | 'undo' | 'escape'
+  | PropertyCommand
+  | 'assignMe'
+  | 'copyKey'
+  | 'copyLink'
+  | 'create'
+  | 'timer'
+  | 'filter'
+  | 'help'
+  | 'palette'
+  | 'undo'
+  | 'escape'
 
 export interface KeyEvent {
   key: string
@@ -67,6 +77,9 @@ const LETTERS = new Map<string, Command>([
   ['l', 'labels'],
   ['p', 'priority'],
   ['e', 'edit'],
+  ['i', 'assignMe'],
+  ['y', 'copyKey'],
+  ['u', 'copyLink'],
 ])
 
 /**
