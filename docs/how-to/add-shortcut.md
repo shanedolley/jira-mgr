@@ -1,6 +1,6 @@
 # Add a Shortcut
 
-A global shortcut is one letter in the keymap, handled in one `switch` in the Shell. The keymap decides whether a keystroke is a command, so every guard (text fields, dialogs, modifiers) sits in one place. The Cmd+K palette searches issues only and lists no commands, so a shortcut needs no palette entry.
+A global shortcut is one letter in the keymap, handled in one `switch` in the Shell. The keymap decides whether a keystroke is a command, so every guard (text fields, dialogs, modifiers) sits in one place. The Cmd+K palette searches issues, loaded and in Jira text, and lists no commands, so a shortcut needs no palette entry.
 
 ## Open a Property
 
@@ -8,7 +8,7 @@ For a key that opens one more property picker of the active issue:
 
 1. **Name the key.** Add an entry to `PROPERTY_KEYS` in `apps/desktop/src/renderer/src/keymap.ts`. Its name joins the `Command` type.
 
-2. **Map the letter.** Add `['x', 'yourCommand']` to the `LETTERS` map in the same file. Pick a letter no other shortcut uses. The Tree owns `J`, `K`, the arrows, `Space` and `Enter` (`tree.ts`), and the keymap owns `C`, `T`, `S`, `A`, `L`, `P`, `E`, `/`, `Cmd+K`, `Cmd+Z` and `Esc`.
+2. **Map the letter.** Add `['x', 'yourCommand']` to the `LETTERS` map in the same file. Pick a letter no other shortcut uses. The Tree owns `J`, `K`, the arrows, `Space` and `Enter` (`tree.ts`), and the keymap owns `C`, `T`, `S`, `A`, `L`, `P`, `E`, `I`, `Y`, `U`, `/`, `?`, `Cmd+K`, `Cmd+Z` and `Esc`.
 
 3. **Advertise it on the control.** Give the picker the same letter: `shortcut="X"` on a `Picker` (see `PropertyPickers.tsx`), or `aria-keyshortcuts="X"` on a button. `Shell.tsx` finds the control by that attribute and clicks it, so the shortcut opens the picker the mouse opens and no code is duplicated. The `Picker` also shows the letter as a keycap on hover and focus.
 
@@ -32,5 +32,5 @@ Add a row to the matching table in `docs/reference/shortcuts.md`. The `?` overla
 
 ## Test
 
-- Add the letter to the table in `keymap.test.ts` (`map C, T, S, A, L, P and E, in either case`) and to the Cmd and Ctrl loop beside it.
+- Add the letter to the table in `keymap.test.ts` (`map C, T, S, A, L, P, E, I, Y and U, in either case`) and to the Cmd and Ctrl loop beside it.
 - Add an end-to-end case in `e2e/desktop/keyboard.test.ts`, which presses real keys against the fake Jira ([run the tests](run-tests.md)).
