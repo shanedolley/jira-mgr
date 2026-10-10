@@ -28,7 +28,7 @@ import {
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
 import { assertTypeChangeAllowed, type IssueDetail } from '@jira-mgr/core/issue'
 import { getFieldOptions, getProfile, searchAssignableUsers } from '@jira-mgr/core/lookups'
-import { getIssue, searchIssuePages } from '@jira-mgr/core/search'
+import { getIssue, searchIssuePages, searchText } from '@jira-mgr/core/search'
 import { findBoard, listSprints, moveToBacklog, moveToSprint } from '@jira-mgr/core/sprints'
 import {
   assertInProject,
@@ -93,6 +93,7 @@ import type {
   LoginArgs,
   RemoveLinkArgs,
   RenameViewArgs,
+  SearchTextArgs,
   SessionState,
   SetDescriptionArgs,
   SetDescriptionResult,
@@ -138,6 +139,11 @@ export interface Backend {
   logout(): Promise<SessionState>
   /** One phase of the project's issues, or `null` when a newer load of the phase or a logout aborted it. */
   listIssues(args: ListIssuesArgs, progress: ProgressSender): Promise<Issue[] | null>
+  /**
+   * Issues whose summary, description or comments hold the text, from Jira's `text ~`. A newer
+   * search aborts the one in flight, which returns `null`, as does a logout.
+   */
+  searchText(args: SearchTextArgs): Promise<Issue[] | null>
   setSummary(args: SetSummaryArgs): Promise<void>
   /** One issue with its description and subtasks, read afresh. */
   getIssue(args: KeyArgs): Promise<IssueDetail>
@@ -298,6 +304,8 @@ export function createBackend(deps: BackendDeps = {}): Backend {
 
   /** The load running for each phase. A newer load of a phase, and a logout, abort it. */
   const loads = new Map<IssuePhase, AbortController>()
+  /** The text search in flight. The palette types one query at a time, so a new search aborts it. */
+  let textSearch: AbortController | undefined
   /** Settings writes in call order, so a second toggle press never reads settings from before the first. */
   let toggleWrites: Promise<unknown> = Promise.resolve()
   /**
@@ -341,6 +349,22 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     }
   }
 
+  async function searchTextAborting({ query }: SearchTextArgs): Promise<Issue[] | null> {
+    textSearch?.abort()
+    const controller = new AbortController()
+    textSearch = controller
+    try {
+      const issues = await searchText(http, query, { signal: controller.signal })
+      return controller.signal.aborted ? null : issues
+    } catch (error) {
+      // An aborted search is not a failure: nobody reads its result.
+      if (controller.signal.aborted) return null
+      throw error
+    } finally {
+      if (textSearch === controller) textSearch = undefined
+    }
+  }
+
   return {
     getSession,
     async login(args) {
@@ -352,6 +376,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       // No page may be fetched with a token that is going away.
       for (const controller of loads.values()) controller.abort()
       loads.clear()
+      textSearch?.abort()
       media.clear()
       clearLateReads()
       await logout({ keychain })
@@ -359,6 +384,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       return getSession()
     },
     listIssues,
+    searchText: searchTextAborting,
     async setSummary({ key, summary }) {
       // The same guard the CLI applies: this app manages the settings project only.
       await assertInProject(key)

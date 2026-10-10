@@ -1,6 +1,7 @@
 import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
 import { adfDocSchema, type AdfDoc } from '@jira-mgr/core/adf'
 import { DURATION_PATTERN, SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
+import { TEXT_QUERY_MAX } from '@jira-mgr/core/search'
 import { z } from 'zod'
 
 import { ATTACHMENT_LIMIT_BYTES, CREATE_TYPES, IMAGE_LIMIT_BYTES, IMAGE_TYPES } from '../shared/ipc'
@@ -33,6 +34,7 @@ import type {
   RemoveLinkArgs,
   RenameViewArgs,
   ResultOf,
+  SearchTextArgs,
   SetDescriptionArgs,
   SetSprintArgs,
   SetStatusArgs,
@@ -273,6 +275,11 @@ const listIssuesArgs: z.ZodType<ListIssuesArgs> = z.strictObject({
   loadId: z.number().int().nonnegative(),
 })
 
+/** Shape and size only. Core trims the text and refuses it when blank. */
+const searchTextArgs: z.ZodType<SearchTextArgs> = z.strictObject({
+  query: z.string().max(TEXT_QUERY_MAX),
+})
+
 const togglesArgs: z.ZodType<Toggles> = z.strictObject({
   hideDone: z.boolean(),
   assigneeMe: z.boolean(),
@@ -330,6 +337,7 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'session:login': loginArgs,
   'session:logout': z.undefined(),
   'issues:list': listIssuesArgs,
+  'issues:searchText': searchTextArgs,
   'issues:setSummary': setSummaryArgs,
   'issues:get': keyArgs,
   'issues:edit': editIssueArgs,
@@ -452,6 +460,7 @@ export function createHandlers(
     'session:login': handle('session:login', (args) => backend.login(args)),
     'session:logout': handle('session:logout', () => backend.logout()),
     'issues:list': handle('issues:list', (args, progress) => backend.listIssues(args, progress)),
+    'issues:searchText': handle('issues:searchText', (args) => backend.searchText(args)),
     'issues:setSummary': handle('issues:setSummary', async (args) => {
       await backend.setSummary(args)
       return null

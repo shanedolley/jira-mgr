@@ -1,7 +1,7 @@
 import type { Issue } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
-import { searchIssues } from './search'
+import { searchIssues, textMatches } from './search'
 
 function issue(key: string, summary: string, extra: Partial<Issue> = {}): Issue {
   return {
@@ -67,5 +67,30 @@ describe('searchIssues', () => {
 
   it('finds nothing in an empty list', () => {
     expect(searchIssues([], 'x')).toEqual({ shown: [], total: 0 })
+  })
+})
+
+describe('textMatches', () => {
+  const found = [
+    issue('PSAPAC-7', 'Fix PSAPAC-12 follow up'),
+    issue('PSAPAC-99', 'Only in a comment'),
+  ]
+
+  it('keeps Jira order and leaves out what the palette already lists', () => {
+    const shown = searchIssues(ISSUES, 'psapac-12').shown
+    expect(textMatches(shown, found).map((i) => i.key)).toEqual(['PSAPAC-99'])
+  })
+
+  it('keeps a loaded issue that only its description matched', () => {
+    const shown = searchIssues(ISSUES, 'loader').shown
+    expect(shown.map((i) => i.key)).toEqual(['PSAPAC-12'])
+    expect(textMatches(shown, [issue('PSAPAC-120', 'Export timeout')]).map((i) => i.key)).toEqual([
+      'PSAPAC-120',
+    ])
+  })
+
+  it('is empty when Jira found nothing new', () => {
+    expect(textMatches(ISSUES, found)).toEqual([found[1]])
+    expect(textMatches(ISSUES, [])).toEqual([])
   })
 })

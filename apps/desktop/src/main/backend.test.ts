@@ -160,6 +160,101 @@ function progressRecorder() {
   return { progress, sent }
 }
 
+/** Holds each text search until the test releases the newest or its signal aborts, and records the JQL. */
+function textSearchHttp() {
+  const requests: { jql: string; signal: AbortSignal | undefined }[] = []
+  const waiting: (() => void)[] = []
+  const http: HttpClient = {
+    request(_method, _path, options) {
+      const { jql } = options?.body as { jql: string }
+      requests.push({ jql, signal: options?.signal })
+      return new Promise((resolve, reject) => {
+        options?.signal?.addEventListener('abort', () => {
+          reject(options.signal?.reason as Error)
+        })
+        waiting.push(() => {
+          resolve({ issues: [rawIssue(requests.length)], isLast: true })
+        })
+      })
+    },
+  }
+  return { http, requests, release: () => waiting.pop()?.() }
+}
+
+describe('searchText', () => {
+  it('searches the project text and returns the issues', async () => {
+    await logIn()
+    const { http, requests, release } = textSearchHttp()
+    const search = createBackend({ http }).searchText({ query: 'runbook' })
+    await expect.poll(() => requests.length).toBe(1)
+    release()
+    expect((await search)?.map((i) => i.key)).toEqual(['PSAPAC-1'])
+    expect(requests[0]?.jql).toContain('text ~ "runbook"')
+  })
+
+  it('a second search aborts the first, which returns null, and the second still answers', async () => {
+    await logIn()
+    const { http, requests, release } = textSearchHttp()
+    const backend = createBackend({ http })
+    const first = backend.searchText({ query: 'one' })
+    await expect.poll(() => requests.length).toBe(1)
+    const second = backend.searchText({ query: 'two' })
+
+    await expect(first).resolves.toBeNull()
+    expect(requests[0]?.signal?.aborted).toBe(true)
+    await expect.poll(() => requests.length).toBe(2)
+    expect(requests[1]?.signal?.aborted).toBe(false)
+    release()
+    expect((await second)?.length).toBe(1)
+  })
+
+  it('returns null for a search that Jira answers after a newer one aborted it', async () => {
+    await logIn()
+    const answers: (() => void)[] = []
+    // Ignores the signal, so the first answer still arrives after the abort.
+    const http: HttpClient = {
+      request: () =>
+        new Promise((resolve) => {
+          answers.push(() => {
+            resolve({ issues: [rawIssue(answers.length)], isLast: true })
+          })
+        }),
+    }
+    const backend = createBackend({ http })
+    const first = backend.searchText({ query: 'one' })
+    await expect.poll(() => answers.length).toBe(1)
+    const second = backend.searchText({ query: 'two' })
+    await expect.poll(() => answers.length).toBe(2)
+
+    answers[0]?.()
+    await expect(first).resolves.toBeNull()
+    answers[1]?.()
+    expect((await second)?.length).toBe(1)
+  })
+
+  it('logout aborts the search in flight', async () => {
+    await logIn()
+    const { http, requests } = textSearchHttp()
+    const backend = createBackend({ http, keychain: fakeKeychain().keychain })
+    const search = backend.searchText({ query: 'one' })
+    await expect.poll(() => requests.length).toBe(1)
+
+    await backend.logout()
+    await expect(search).resolves.toBeNull()
+    expect(requests[0]?.signal?.aborted).toBe(true)
+  })
+
+  it('passes a failure that is not an abort on', async () => {
+    await logIn()
+    const http: HttpClient = {
+      request: () => Promise.reject(new JiraMgrError('jira_error', 'Jira is down.')),
+    }
+    await expect(createBackend({ http }).searchText({ query: 'x' })).rejects.toMatchObject({
+      code: 'jira_error',
+    })
+  })
+})
+
 describe('listIssues', () => {
   it('loads one phase and reports progress per page with its load id', async () => {
     await logIn()

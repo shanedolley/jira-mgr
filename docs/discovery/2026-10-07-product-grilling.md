@@ -29,6 +29,7 @@ A Linear-style Electron app and an agent-friendly CLI (`jm`) for one Jira projec
 ## Linear Behaviour
 
 - Cmd+K palette, which also searches loaded issues by key and summary (Q5, Q37).
+  - Note, 2026-10-11: Q37 picked option a, loaded issues only. #147 (gap story 12) reverses that and builds what option b in `product-grilling/round-4.md` describes: full-text search of descriptions and comments through Jira's `text ~`. The palette also searches descriptions and comments through Jira's `text ~`, in a "Search text in Jira" group below the loaded matches. The loaded ranking by key and summary is unchanged.
 - Single-key shortcuts: `C` create, `S` status, `A` assignee, `L` labels, `P` priority, `E` edit, `J`/`K` navigate, `Esc` back (Q5).
 - Issue detail as a full page with a properties sidebar; space-bar peek; filter bar for assignee, status, label, type and sprint; dark and light themes (Q5).
 - Saved views: you create, rename and delete them, stored as local JSON that the CLI also reads. "My issues" and "Current sprint" ship as starters (Q30).
