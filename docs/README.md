@@ -4,8 +4,8 @@ Docs follow [Diataxis](https://diataxis.fr/): each page is one kind (tutorial, h
 
 | Folder | Kind | Holds |
 |---|---|---|
-| [Tutorials](tutorials/README.md) | Tutorial | Learning by doing: the first run of the app and the CLI (planned) |
-| [How-to](how-to/README.md) | How-to | Task recipes: install the CLI and the app; more planned |
+| [Tutorials](tutorials/README.md) | Tutorial | Learning by doing: the first run of the CLI and an agent session |
+| [How-to](how-to/README.md) | How-to | Task recipes: install, test and develop; add a command or a shortcut |
 | [Reference](reference/README.md) | Reference | CLI commands, the core API, error codes, configuration |
 | [Architecture](architecture/README.md) | Explanation | How the system fits together, and why |
 | [ADRs](adr/README.md) | Decision | Architecture decision records, superseded rather than edited |

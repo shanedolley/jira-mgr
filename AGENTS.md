@@ -60,5 +60,5 @@ Root `package.json` scripts are the source of truth.
 | `pnpm test` | Runs the Vitest suites against the MSW fake |
 | `pnpm test:live` | Runs the read-only PSAPAC tests. Needs `JM_LIVE_JIRA=1` and a stored token |
 | `pnpm e2e` | Runs the Playwright Electron tests in `e2e/` |
-| `pnpm jm -- <args>` | Runs the built CLI |
+| `pnpm -s jm -- <args>` | Runs the built CLI |
 | `pnpm docs:reference` | Builds the CLI and regenerates `docs/reference/cli.md` and `errors.md` |

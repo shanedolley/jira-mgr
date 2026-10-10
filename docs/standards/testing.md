@@ -26,7 +26,7 @@ Jira holds the data and the rules, so `core` tests run against a fake Jira.
 
 - A live test runs only when `JM_LIVE_JIRA=1` is set, and only through `pnpm test:live`. Without the variable it skips.
 - A live test reads PSAPAC with the stored token. It never writes: no create, edit, transition, comment, worklog, attachment or delete.
-- A live test checks that the recorded fixtures still match what Jira returns.
+- The Jira live test (`extras.live.test.ts`) pins the media ids that PSAPAC attachments resolve to. `auth.live.test.ts` runs the real `security` binary under `JM_LIVE_KEYCHAIN=1`, not `JM_LIVE_JIRA`, and makes no Jira call.
 
 ## Rules
 

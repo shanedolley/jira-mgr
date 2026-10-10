@@ -19,7 +19,7 @@ pnpm install
 pnpm dev          # desktop app in development
 pnpm build
 pnpm test
-pnpm jm -- --help # the built CLI
+pnpm -s jm -- --help # the built CLI
 ```
 
 [AGENTS.md](AGENTS.md) lists every root script.
