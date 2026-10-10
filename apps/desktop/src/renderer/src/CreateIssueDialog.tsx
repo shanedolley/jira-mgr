@@ -306,7 +306,7 @@ export function CreateIssueDialog({
       onClose={onClose}
       closable={!pending}
       returnFocus={returnFocus}
-      className="w-[min(40rem,calc(100vw-2rem))]"
+      className="w-[min(42rem,calc(100vw-2rem))]"
     >
       <form
         onSubmit={submit}

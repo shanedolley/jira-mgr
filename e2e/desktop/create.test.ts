@@ -249,20 +249,34 @@ test('Type is an icon beside the summary until it opens, then lists every type',
   await expect(field('Type', 'Bug')).toHaveText('')
 })
 
-test('the other fields are chips on two lines', async () => {
-  await open()
-  await openCreate(/PSAPAC-2,/)
-
+/** The distinct rows the chips sit on, with the page set in `font` when one is given. */
+async function chipRows(font?: string) {
+  if (font !== undefined) {
+    await window.addStyleTag({ content: `* { font-family: ${font} !important }` })
+  }
   const chips = dialog().locator(
     'button[aria-haspopup=listbox]:not([aria-label^="Type:"]), button:has-text("+me"), label:has(input[aria-label="Original estimate"])',
   )
   await expect(chips).toHaveCount(9)
-  const tops = new Set(
-    await chips.evaluateAll((all) =>
-      all.map((chip) => Math.round(chip.getBoundingClientRect().top)),
-    ),
+  const tops = await chips.evaluateAll((all) =>
+    all.map((chip) => Math.round(chip.getBoundingClientRect().top)),
   )
-  expect(tops.size).toBeLessThanOrEqual(2)
+  return new Set(tops).size
+}
+
+test('the other fields are chips on two lines', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+
+  expect(await chipRows()).toBeLessThanOrEqual(2)
+})
+
+// Linux CI sets the system font in a face wider than macOS's, and wrapped to three rows (PR #163).
+test('the chips stay on two lines in a wide font', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+
+  expect(await chipRows('Verdana, "DejaVu Sans", sans-serif')).toBeLessThanOrEqual(2)
 })
 
 test('typing an issue key in the Parent field finds that issue', async () => {
