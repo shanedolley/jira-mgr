@@ -44,11 +44,40 @@ async function dragEnter(target: Locator) {
   }, Object.values(TEXT_FILE))
 }
 
-test.describe('scrim and shadow', () => {
-  /** The alpha of a computed colour, in either of the notations Chromium prints. */
-  const alpha = (colour: string) => Number(/(?:\/|,)\s*([\d.]+)\s*\)/.exec(colour)?.[1] ?? 1)
+/** The alpha of a computed colour, in either of the notations Chromium prints. */
+const alpha = (colour: string) => Number(/(?:\/|,)\s*([\d.]+)\s*\)/.exec(colour)?.[1] ?? 1)
 
-  test('the light scrim and shadow differ from the dark ones, and the light scrim dims less', async () => {
+interface Surface {
+  scrim: string
+  shadow: string
+}
+
+/** Below this effective opacity, text under a drop label does not read. */
+const LEGIBLE = 0.05
+
+/** Reads a dialog's scrim and shadow under each colour scheme, and checks light dims less than dark. */
+async function expectLightScrimLighter(read: () => Promise<Surface>) {
+  await window.emulateMedia({ colorScheme: 'light' })
+  const light = await read()
+  await window.emulateMedia({ colorScheme: 'dark' })
+  const dark = await read()
+
+  expect(alpha(light.scrim)).toBeGreaterThan(0)
+  expect(alpha(light.scrim)).toBeLessThan(alpha(dark.scrim))
+  expect(light.shadow).not.toBe(dark.shadow)
+}
+
+async function openPage(row: RegExp, title: string) {
+  await logIn(window)
+  await expect(item(/PSAPAC-10,/)).toBeVisible()
+  await expect(window.getByText('Loading Done issues:')).toBeVisible()
+  await item(row).click()
+  await window.keyboard.press('Enter')
+  await expect(issuePage().getByRole('heading', { name: title })).toBeVisible()
+}
+
+test.describe('scrim and shadow', () => {
+  test('the light scrim and shadow of the create modal differ from the dark ones, and the light scrim dims less', async () => {
     await logIn(window)
     await expect(item(/PSAPAC-10,/)).toBeVisible()
     await expect(window.getByText('Loading Done issues:')).toBeVisible()
@@ -58,19 +87,50 @@ test.describe('scrim and shadow', () => {
     await window.keyboard.press('c')
     await expect(window.getByRole('dialog')).toBeVisible()
 
-    const read = () =>
+    await expectLightScrimLighter(() =>
       window.locator('dialog[open]').evaluate((element) => ({
         scrim: getComputedStyle(element, '::backdrop').backgroundColor,
         shadow: getComputedStyle(element).boxShadow,
-      }))
-    await window.emulateMedia({ colorScheme: 'light' })
-    const light = await read()
-    await window.emulateMedia({ colorScheme: 'dark' })
-    const dark = await read()
+      })),
+    )
+  })
 
-    expect(alpha(light.scrim)).toBeGreaterThan(0)
-    expect(alpha(light.scrim)).toBeLessThan(alpha(dark.scrim))
-    expect(light.shadow).not.toBe(dark.shadow)
+  test('the discard dialog takes the same theme-aware scrim and shadow', async () => {
+    await openPage(/PSAPAC-1,/, 'Kick off the engagement')
+    const activity = issuePage().getByRole('region', { name: 'Activity' })
+    await activity.getByRole('button', { name: 'Edit comment' }).click()
+    await expect(activity.getByRole('textbox', { name: 'Comment by Test User' })).toBeFocused()
+    await window.keyboard.type('!')
+    await window.keyboard.press('Escape')
+    await expect(window.getByRole('alertdialog')).toBeVisible()
+
+    // Its scrim is the dialog's parent, a fixed layer, not a ::backdrop.
+    await expectLightScrimLighter(() =>
+      window.getByRole('alertdialog').evaluate((element) => ({
+        scrim: getComputedStyle(element.parentElement as Element).backgroundColor,
+        shadow: getComputedStyle(element).boxShadow,
+      })),
+    )
+  })
+
+  test('the parent prompt takes the same theme-aware scrim and shadow', async () => {
+    await openPage(/PSAPAC-1,/, 'Kick off the engagement')
+    await issuePage()
+      .getByRole('complementary', { name: 'Properties' })
+      .getByRole('button', { name: /^Parent: PSAPAC-10/ })
+      .click()
+    await window.getByRole('combobox', { name: 'Search Parent' }).fill('Reporting')
+    await window.getByRole('option', { name: /PSAPAC-30/ }).click()
+    await expect(
+      window.getByRole('dialog', { name: 'Move PSAPAC-1 under PSAPAC-30?' }),
+    ).toBeVisible()
+
+    await expectLightScrimLighter(() =>
+      window.locator('dialog[open]').evaluate((element) => ({
+        scrim: getComputedStyle(element, '::backdrop').backgroundColor,
+        shadow: getComputedStyle(element).boxShadow,
+      })),
+    )
   })
 })
 
@@ -92,8 +152,6 @@ test.describe('drop zone', () => {
     // A label cannot clear every line of text under a zone, so what counts is how much of that
     // text shows through: the zone's content fades and the label's surface covers the rest.
     const collisions = await window.evaluate(() => {
-      const LEGIBLE = 0.05
-      const alphaOf = (colour: string) => Number(/\/\s*([\d.]+)\s*\)/.exec(colour)?.[1] ?? 1)
       return [...document.querySelectorAll<HTMLElement>('[data-drop-zone]')].map((zone) => {
         const label = zone.dataset.dropZone ?? ''
         const labelElement = [...zone.querySelectorAll<HTMLElement>('*')].find((element) =>
@@ -108,7 +166,6 @@ test.describe('drop zone', () => {
         const range = document.createRange()
         range.selectNodeContents(text as Node)
         const labelBox = range.getBoundingClientRect()
-        const cover = alphaOf(getComputedStyle(labelElement).backgroundColor)
 
         const leaves = [...zone.querySelectorAll<HTMLElement>('*')].filter(
           (element) =>
@@ -117,7 +174,7 @@ test.describe('drop zone', () => {
               (node) => node.nodeType !== Node.TEXT_NODE || !node.nodeValue?.trim(),
             ),
         )
-        const legible = leaves.filter((element) => {
+        const overlapping = leaves.flatMap((element) => {
           const box = element.getBoundingClientRect()
           const overlaps =
             box.left < labelBox.right &&
@@ -132,15 +189,23 @@ test.describe('drop zone', () => {
           ) {
             opacity *= Number(getComputedStyle(node).opacity)
           }
-          return overlaps && opacity * (1 - cover) >= LEGIBLE
+          return overlaps ? [{ text: element.textContent, opacity }] : []
         })
-        return { zone: label, leaves: leaves.length, legible: legible.map((e) => e.textContent) }
+        return {
+          zone: label,
+          leaves: leaves.length,
+          cover: getComputedStyle(labelElement).backgroundColor,
+          overlapping,
+        }
       })
     })
 
     expect(collisions).toHaveLength(2)
-    for (const { zone, leaves, legible } of collisions) {
+    for (const { zone, leaves, cover, overlapping } of collisions) {
       expect(leaves, `${zone} holds text`).toBeGreaterThan(0)
+      const legible = overlapping
+        .filter(({ opacity }) => opacity * (1 - alpha(cover)) >= LEGIBLE)
+        .map(({ text }) => text)
       expect(legible, `${zone} has legible text under its label`).toEqual([])
     }
   })
