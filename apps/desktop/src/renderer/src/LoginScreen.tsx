@@ -52,14 +52,22 @@ export function LoginScreen({ prefill }: { prefill: Partial<Session> }) {
   }
 
   return (
-    <main className="grid h-full place-items-center p-8">
+    <main className="grid h-full place-items-center bg-canvas p-8">
       <div className="app-drag fixed inset-x-0 top-0 h-10" />
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4">
+      <form onSubmit={submit} className="w-full max-w-[25rem] space-y-4">
         <header>
+          <div className="mb-5 flex items-center gap-2.5">
+            <span
+              data-login-mark
+              aria-hidden="true"
+              className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold tracking-tight text-accent-ink"
+            >
+              jm
+            </span>
+            <span className="text-[15px] font-semibold">jira-mgr</span>
+          </div>
           <h1 className="text-xl font-semibold tracking-tight">Log in to Jira</h1>
-          <p className="mt-1 text-muted">
-            The token is kept in your macOS Keychain, in an item of its own.
-          </p>
+          <p className="mt-1 text-muted">The token stays in your macOS Keychain.</p>
         </header>
         <Field
           label="Site URL"
