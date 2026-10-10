@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
 import {
   counts,
@@ -836,4 +836,69 @@ test('applying a saved view from the sidebar closes the page and returns to the 
   await expect(window.getByRole('list', { name: 'Active filters' })).toContainText(
     'Sprint: Current sprint',
   )
+})
+
+/** The computed style of the element, as the browser lays it out. */
+const styleOf = (locator: Locator) =>
+  locator.evaluate((el) => {
+    const s = getComputedStyle(el)
+    return {
+      fontSize: s.fontSize,
+      fontWeight: s.fontWeight,
+      lineHeight: s.lineHeight,
+      textTransform: s.textTransform,
+      borderTopWidth: s.borderTopWidth,
+      borderTopStyle: s.borderTopStyle,
+      borderTopColor: s.borderTopColor,
+      maxWidth: s.maxWidth,
+    }
+  })
+
+test('sets the page type scale: a 24/600/32 title over 14/22 body, in a 40rem column', async () => {
+  await openPage(/PSAPAC-1,/, 'Kick off the engagement')
+  const body = issuePage().getByText('Agree the scope with the sponsor.')
+  await expect(body).toBeVisible()
+
+  const title = await styleOf(heading('Kick off the engagement'))
+  expect(title).toMatchObject({ fontSize: '24px', fontWeight: '600', lineHeight: '32px' })
+  const text = await styleOf(body)
+  expect(text).toMatchObject({ fontSize: '14px', lineHeight: '22px' })
+  expect(parseFloat(title.fontSize) / parseFloat(text.fontSize)).toBeGreaterThanOrEqual(1.5)
+
+  // The window may be narrower than the column, so the cap is the thing to check.
+  const column = issuePage().locator('article > div')
+  expect((await styleOf(column)).maxWidth).toBe('640px')
+  expect((await column.boundingBox())?.width).toBeLessThanOrEqual(640)
+})
+
+test('heads each page section in 13/600 sentence case, with a 1px rule above all but the first', async () => {
+  await openPage(/PSAPAC-1,/, 'Kick off the engagement')
+  const name = (title: string) => issuePage().getByRole('heading', { name: title, exact: true })
+  await expect(name('Attachments')).toBeVisible()
+
+  for (const title of ['Description', 'Links', 'Worklogs', 'Activity', 'Attachments']) {
+    const style = await styleOf(name(title))
+    expect(style, title).toMatchObject({
+      fontSize: '13px',
+      fontWeight: '600',
+      textTransform: 'none',
+    })
+  }
+
+  const section = (title: string) => issuePage().getByRole('region', { name: title, exact: true })
+  expect(await styleOf(section('Description')), 'Description').toMatchObject({
+    borderTopWidth: '0px',
+  })
+  for (const title of ['Links', 'Worklogs', 'Activity', 'Attachments']) {
+    const style = await styleOf(section(title))
+    expect(style, title).toMatchObject({ borderTopWidth: '1px', borderTopStyle: 'solid' })
+    expect(style.borderTopColor, title).not.toBe('rgba(0, 0, 0, 0)')
+  }
+})
+
+test('starts the description by y=140 in the page', async () => {
+  await openPage(/PSAPAC-1,/, 'Kick off the engagement')
+  const description = issuePage().getByRole('region', { name: 'Description', exact: true })
+  await expect(description).toBeVisible()
+  expect((await description.boundingBox())?.y).toBeLessThanOrEqual(140)
 })

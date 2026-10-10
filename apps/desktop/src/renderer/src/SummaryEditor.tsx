@@ -8,6 +8,8 @@ export interface SummaryEditorProps {
   onEditingChange: (editing: boolean) => void
   /** The edit ended, so the editor's controls are gone: the caller puts focus somewhere that still works. */
   onLeave: () => void
+  /** The issue page's title scale, 24/600/32, where the Peek keeps 16/600. */
+  page?: boolean
 }
 
 /**
@@ -25,7 +27,8 @@ export function summaryKeyAction(event: {
 }
 
 /** The summary as a heading whose text is a button; a click, or `E`, swaps it for a field in place. */
-export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditorProps) {
+export function SummaryEditor({ issue, onEditingChange, onLeave, page }: SummaryEditorProps) {
+  const scale = page === true ? 'text-2xl leading-8 tracking-[-0.16px]' : 'text-base leading-snug'
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(issue.summary)
   const [refused, setRefused] = useState(false)
@@ -87,13 +90,13 @@ export function SummaryEditor({ issue, onEditingChange, onLeave }: SummaryEditor
         onBlur={() => {
           end(true, false)
         }}
-        className="-mx-2 w-[calc(100%+1rem)] rounded-md border border-field-border bg-panel px-2 py-0.5 text-base font-semibold leading-snug"
+        className={`-mx-2 w-[calc(100%+1rem)] rounded-md border border-field-border bg-panel px-2 py-0.5 font-semibold ${scale}`}
       />
     )
   }
   return (
     <div className="space-y-2">
-      <h2 className="text-base font-semibold leading-snug">
+      <h2 className={`font-semibold ${scale}`}>
         <button
           type="button"
           aria-keyshortcuts="E"

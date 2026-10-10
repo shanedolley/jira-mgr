@@ -15,6 +15,7 @@ import { FileDragContext, useFileDrag } from './fileDrag'
 import { IssueProperties } from './IssueProperties'
 import { LinksSection } from './LinksSection'
 import { LoadError } from './LoadError'
+import { SECTION_HEADING } from './Section'
 import { StatusDot } from './StatusDot'
 import { SummaryEditor } from './SummaryEditor'
 import { pressOf } from './timer'
@@ -75,15 +76,16 @@ function PageBody({
   const worklogs = propertyRules(issue.issueType).estimates
   return (
     <>
-      <article className="min-h-0 space-y-6 overflow-y-auto px-8 py-6">
-        <div className="max-w-3xl space-y-6">
-          <div className="space-y-2">
+      <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px]">
+        <div className="max-w-[40rem] space-y-8">
+          {/* Closer to the description than the sections are to each other, so it starts by y=140. */}
+          <div className="mb-6 space-y-1">
             <h1 className="flex items-center gap-2 font-mono text-xs text-muted">
               <TypeIcon type={issue.issueType} />
               <StatusDot status={issue.status} />
               {issue.key}
             </h1>
-            <SummaryEditor issue={issue} onEditingChange={() => undefined} onLeave={onLeave} />
+            <SummaryEditor issue={issue} onEditingChange={() => undefined} onLeave={onLeave} page />
           </div>
           {mismatch !== null && (
             <CustomerMismatch
@@ -99,9 +101,7 @@ function PageBody({
             </p>
           )}
           <section aria-label="Description" className="space-y-1">
-            <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">
-              Description
-            </h2>
+            <h2 className={SECTION_HEADING}>Description</h2>
             {detailError !== null ? (
               <LoadError error={detailError} onRetry={onRetry} />
             ) : detail === undefined ? (
@@ -118,9 +118,7 @@ function PageBody({
           </section>
           {detail !== undefined && detail.subtasks.length > 0 && (
             <section aria-label="Subtasks" className="space-y-1">
-              <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">
-                Subtasks
-              </h2>
+              <h2 className={SECTION_HEADING}>Subtasks</h2>
               <ul className="divide-y divide-line rounded-md border border-line">
                 {detail.subtasks.map((subtask) => (
                   <li key={subtask.key}>
