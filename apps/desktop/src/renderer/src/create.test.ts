@@ -8,6 +8,8 @@ import {
   deleteFailureNotes,
   describeCreated,
   describeLate,
+  firstMissing,
+  missingKeys,
   initialDraft,
   listWords,
   missingFields,
@@ -197,6 +199,25 @@ describe('missingFields and toCreateArgs', () => {
   it('needs an estimate Jira can read', () => {
     expect(missingFields({ ...ready, estimate: 'soon' })).toEqual(['an estimate such as 2h 30m'])
     expect(missingFields({ ...ready, estimate: '2h 30m' })).toEqual([])
+  })
+
+  it('names the first missing field in form order, or none when the form is ready', () => {
+    const empty = initialDraft(null, ISSUES)
+
+    expect(firstMissing(empty)).toBe('summary')
+    expect(firstMissing({ ...empty, summary: 'x' })).toBe('customer')
+    expect(firstMissing({ ...empty, summary: 'x', customer: ready.customer })).toBe('engagement')
+    expect(firstMissing({ ...ready, type: 'Subtask', parent: null })).toBe('parent')
+    expect(firstMissing({ ...ready, estimate: 'soon' })).toBe('estimate')
+    expect(firstMissing(ready)).toBeNull()
+  })
+
+  it('follows the form for the first missing field: a parent before Customer and Engagement', () => {
+    const subtask = { ...initialDraft(null, ISSUES), type: 'Subtask' as const, summary: 'x' }
+
+    expect(missingFields(subtask)).toEqual(['a Customer', 'an Engagement', 'a parent'])
+    expect(firstMissing(subtask)).toBe('parent')
+    expect(missingKeys(subtask)).toEqual(['parent', 'customer', 'engagement'])
   })
 
   it('sends the trimmed summary with the ids and only what is set', () => {

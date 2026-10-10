@@ -93,6 +93,10 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
     }
   })
 
+  it('keeps the Required text (--danger) at 4.5:1 on the tinted chip (--selected)', () => {
+    expect(contrast(token('danger', theme), token('selected', theme))).toBeGreaterThanOrEqual(4.5)
+  })
+
   it('keeps the grey type icon (--type-rest) at 3:1 on every row background', () => {
     for (const surface of ['canvas', 'panel', 'hover', 'selected']) {
       expect(
