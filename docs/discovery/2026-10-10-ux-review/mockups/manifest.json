@@ -1,0 +1,334 @@
+[
+ {
+  "id": "01",
+  "title": "Issue page type scale and section headings",
+  "findings": [
+   "V1",
+   "V2"
+  ],
+  "before": "01-page-type-scale-before.png",
+  "after": [
+   {
+    "option": "A",
+    "file": "01-page-type-scale-after-optA.png",
+    "caption": "Title only: 24/600/32, letter-spacing -0.16px, key line 13px sans. Body stays 13/19.5."
+   },
+   {
+    "option": "B (recommended)",
+    "file": "01-page-type-scale-after-optB.png",
+    "caption": "Title 24/600/32, body 14/22, column 40rem, section headings 13/600 ink sentence case, 1px rule above Links/Worklogs/Activity/Attachments, 32px gaps."
+   },
+   {
+    "option": "C",
+    "file": "01-page-type-scale-after-optC.png",
+    "caption": "Full Linear scale: body 15/24 weight 450, section headings 15/600, same rules and gaps."
+   }
+  ],
+  "css": {
+   "optA": "\narticle h2.text-base { font-size:24px; line-height:32px; letter-spacing:-0.16px; font-weight:600; }\narticle h2.text-base > button { padding-top:2px; padding-bottom:2px; }\narticle h1 { font: 450 13px/20px system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; }\n",
+   "optB": "\narticle h2.text-base { font-size:24px; line-height:32px; letter-spacing:-0.16px; font-weight:600; }\narticle h2.text-base > button { padding-top:2px; padding-bottom:2px; }\narticle h1 { font: 450 13px/20px system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; }\n\narticle { font-size:14px; line-height:22px; }\narticle > div.max-w-3xl { max-width:40rem; }\n\narticle > div.max-w-3xl { display:flex; flex-direction:column; gap:32px; }\narticle > div.max-w-3xl > * { margin:0 !important; }\narticle section > div.flex > h2, article section[aria-label=Description] > h2 { font-size:13px; line-height:20px; font-weight:600; text-transform:none; letter-spacing:0; color:var(--ink); }\narticle section[aria-label=Links], article section[aria-label=Worklogs], article section[aria-label=Activity], article div[data-drop-zone=\"Attach file to issue\"] { border-top:1px solid var(--line); padding-top:16px; }\n",
+   "optC": "\narticle h2.text-base { font-size:24px; line-height:32px; letter-spacing:-0.16px; font-weight:600; }\narticle h2.text-base > button { padding-top:2px; padding-bottom:2px; }\narticle h1 { font: 450 13px/20px system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; }\n\narticle { font-size:15px; line-height:24px; font-weight:450; }\narticle > div.max-w-3xl { max-width:40rem; }\narticle > div.max-w-3xl { display:flex; flex-direction:column; gap:32px; }\narticle > div.max-w-3xl > * { margin:0 !important; }\narticle section > div.flex > h2, article section[aria-label=Description] > h2 { font-size:15px; line-height:24px; font-weight:600; text-transform:none; letter-spacing:0; color:var(--ink); }\narticle section[aria-label=Links], article section[aria-label=Worklogs], article section[aria-label=Activity], article div[data-drop-zone=\"Attach file to issue\"] { border-top:1px solid var(--line); padding-top:16px; }\n"
+  },
+  "domTweaks": "none",
+  "notes": "Shown on PSAPAC-1 (rich description, links, comments) at 1440x900 dark. Property group headings (h3 in the sidebar) intentionally left 11px uppercase. Option C heading size is 15 per V2 option B. Description/section headings were shared between V1 and V2, so one set of images covers both."
+ },
+ {
+  "id": "02",
+  "title": "Button chrome: section plus buttons and ghost row actions",
+  "findings": [
+   "V3",
+   "I11"
+  ],
+  "before": "02-button-chrome-before.png",
+  "after": [
+   {
+    "option": "recommended",
+    "file": "02-button-chrome-after.png",
+    "caption": "Add link/worklog/attach become a 24px \"+\" at the section heading; Remove becomes a ghost x; comment Edit/Delete are ghost 12px text revealed on hover (first comment hovered), Delete turns red only on hover; link rows lose their box (36px); Clear removed; Comment 28px."
+   }
+  ],
+  "css": "\narticle section > div.flex > button.ml-auto { font-size:0; width:24px; height:24px; padding:0; border:0; background:transparent; color:var(--muted); display:inline-grid; place-items:center; border-radius:6px; }\narticle section > div.flex > button.ml-auto::after { content:'+'; font-size:18px; line-height:1; }\narticle section > div.flex > button.ml-auto:hover { background:var(--hover); color:var(--ink); }\narticle section[aria-label=Description] button.rounded-md { height:24px; border:0; padding:0 8px; color:var(--muted); }\narticle section[aria-label=Description] button.rounded-md:hover { background:var(--hover); color:var(--ink); }\n/* links list */\narticle section[aria-label=Links] ul { border:0; border-radius:0; }\narticle section[aria-label=Links] ul > li { border-top-width:0 !important; height:36px; border-radius:6px; padding-left:8px; padding-right:8px; }\narticle section[aria-label=Links] ul > li:hover, article section[aria-label=Links] ul > li[data-force] { background:var(--hover); }\n/* row actions: ghost, shown on hover or focus */\narticle section[aria-label=Links] li > button[aria-label^=Remove] { font-size:0; width:24px; height:24px; padding:0; border:0; background:transparent; color:var(--muted); display:inline-grid; place-items:center; opacity:0; border-radius:6px; }\narticle section[aria-label=Links] li > button[aria-label^=Remove]::after { content:'\\00d7'; font-size:16px; line-height:1; }\narticle section[aria-label=Links] li:hover > button[aria-label^=Remove], article section[aria-label=Links] li[data-force] > button[aria-label^=Remove], article section[aria-label=Links] li:focus-within > button[aria-label^=Remove] { opacity:1; }\narticle section[aria-label=Links] li > button[aria-label^=Remove]:hover { color:var(--danger); background:var(--hover); }\narticle section[aria-label=Activity] li > div.flex.gap-2 { opacity:0; height:24px; }\narticle section[aria-label=Activity] li:hover > div.flex.gap-2, article section[aria-label=Activity] li:focus-within > div.flex.gap-2 { opacity:1; }\narticle section[aria-label=Activity] li > div.flex.gap-2 > button { border:0; background:transparent; height:24px; padding:0 8px; font-size:12px; color:var(--muted); }\narticle section[aria-label=Activity] li > div.flex.gap-2 > button:hover { background:var(--hover); color:var(--ink); }\narticle section[aria-label=Activity] li > div.flex.gap-2 > button:last-child:hover { color:var(--danger); }\n/* comment composer: one primary at 28px, no Clear */\narticle section[aria-label=Activity] button[title^=Clear] { display:none; }\narticle section[aria-label=Activity] button[title^=Comment] { height:28px; padding:0 12px; border-radius:6px; }\n\narticle section[aria-label=Attachments] button.rounded-md, article div[data-drop-zone] li button { border:0; background:transparent; height:24px; color:var(--muted); }\narticle section[aria-label=Activity] li[data-force] > div.flex.gap-2 { opacity:1; }",
+  "domTweaks": "data-force attribute on the first Links li so its ghost x shows while the mouse hovers a comment (stands in for :hover); before shot has the same hover.",
+  "notes": "Before shot taken scrolled 250px with the first comment hovered. Edit description is shown as a ghost button. Three-tier system: primary accent fill, secondary outlined 28px (not shown on this page), ghost 24px."
+ },
+ {
+  "id": "03",
+  "title": "Tree rows: heights and row anatomy",
+  "findings": [
+   "V4",
+   "V5"
+  ],
+  "before": "03-tree-rows-before.png",
+  "after": [
+   {
+    "option": "A (recommended)",
+    "file": "03-tree-rows-after-optA.png",
+    "caption": "Rows 32px, group headers 36px with an 8px gap above (recommended)."
+   },
+   {
+    "option": "B",
+    "file": "03-tree-rows-after-optB.png",
+    "caption": "Rows 36px, headers 36px."
+   },
+   {
+    "option": "C",
+    "file": "03-tree-rows-after-optC.png",
+    "caption": "Rows 44px (Linear): about 17 rows per screen instead of 24."
+   },
+   {
+    "option": "A + row anatomy",
+    "file": "03-tree-rows-after-optA-anatomy.png",
+    "caption": "Option A heights plus title weight 500, key in sans 12/450 tabular-nums (min 5.5rem), type word removed."
+   }
+  ],
+  "css": {
+   "anatomy": "\n[role=treeitem] span.font-mono { font-family: system-ui, -apple-system, sans-serif; font-size:12px; font-weight:450; font-variant-numeric: tabular-nums; width:auto; min-width:5.5rem; }\n[role=treeitem] span.min-w-0.flex-1.truncate { font-weight:500; }\n[role=treeitem] span.hidden.w-14 { display:none !important; }\n"
+  },
+  "domTweaks": "relayout(): rewrites each treeitem inline top/height (rows are absolutely positioned) with rowH/headH/gap: A {32,36,8}, B {36,36,0}, C {44,44,0}; customer header = level-1 row with a direct .font-semibold span. Undone via window.__undo.",
+  "notes": "Priority glyph and Updated date from V5 were not prototyped (no data wired to the Tree row; would need a source change). The spec width w-[5.5rem] min-w-fit is approximated with min-width:5.5rem; width:auto. Tree blurred so no focus ring shows."
+ },
+ {
+  "id": "04",
+  "title": "Type and status colour",
+  "findings": [
+   "V6",
+   "V7",
+   "A4"
+  ],
+  "before": "04-type-status-before.png",
+  "beforeLight": "04-type-status-before-light.png",
+  "after": [
+   {
+    "option": "dark",
+    "file": "04-type-status-after.png",
+    "caption": "Type icons muted (Bug keeps red); To Do ring, In Progress half-pie, Done solid with canvas check."
+   },
+   {
+    "option": "light",
+    "file": "04-type-status-after-light.png",
+    "caption": "Light: same, with --status-doing darkened to oklch(0.58 0.15 75) (4.19:1)."
+   }
+  ],
+  "css": "svg[role=img][viewBox=\"0 0 16 16\"]:not([aria-label=Bug]) { color: var(--muted) !important; }:root[data-theme=light] { --status-doing: oklch(0.58 0.15 75); }",
+  "domTweaks": "glyphs(): every StatusDot svg gets a half-pie path (In Progress) or a canvas-coloured check path (Done), chosen by stroke colour.",
+  "notes": "Hide done toggled off so Done rows show. Option B (chroma 0.06) not shown."
+ },
+ {
+  "id": "05",
+  "title": "Focus and selection",
+  "findings": [
+   "V8",
+   "A5"
+  ],
+  "before": "05-focus-selection-before.png",
+  "beforeLight": "05-focus-selection-before-light.png",
+  "after": [
+   {
+    "option": "dark",
+    "file": "05-focus-selection-after.png",
+    "caption": "Focused row PSAPAC-3: soft fill + 1px edge. Peek-selected row PSAPAC-4: --selected fill, 1px edge and 2px accent left bar. Rows inset 8px with 8px radius; accent ring only on the Tree container; sidebar Issues gets the same 2px bar."
+   },
+   {
+    "option": "light",
+    "file": "05-focus-selection-after-light.png",
+    "caption": "Same in light. Light values were chosen by me (focus fill oklch(0.94 0.012 275), edge oklch(0.84 0.03 275); selected edge oklch(0.8 0.06 275)); the finding only gave dark values."
+   }
+  ],
+  "css": "\n[role=treeitem] { left:8px !important; right:8px !important; border-radius:8px !important; }\n[role=tree]:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; border-radius:0; }\n.group:focus [role=treeitem][data-active=true] { background: light-dark(oklch(0.94 0.012 275), oklch(0.26 0.02 275)) !important; box-shadow: inset 0 0 0 1px light-dark(oklch(0.84 0.03 275), oklch(0.34 0.05 275)) !important; }\n[role=treeitem][aria-selected=true] { background: var(--selected) !important; box-shadow: inset 0 0 0 1px light-dark(oklch(0.8 0.06 275), oklch(0.38 0.07 275)), inset 2px 0 0 var(--accent) !important; }\nnav [aria-current] { box-shadow: inset 2px 0 0 var(--accent); }\n",
+  "domTweaks": "data-active moved from PSAPAC-4 to PSAPAC-3 on the DOM so focus and Peek-selected show on different rows with the Tree focused (before and after both use this).",
+  "notes": "Header rows (customer bands) are also inset 8px/8px radius per the finding."
+ },
+ {
+  "id": "06",
+  "title": "Properties sidebar, Peek",
+  "findings": [
+   "V10",
+   "V11",
+   "I6",
+   "A1",
+   "I5"
+  ],
+  "before": "06-properties-peek-before.png",
+  "after": [
+   {
+    "option": "recommended",
+    "file": "06-properties-peek-after.png",
+    "caption": "Uniform 32px rows, editable rows grouped first with an 8px gap before read-only rows, 1px rule under the title block, 12px chevrons, muted None, values 13/500, S/A/P/L keycap on the hovered row (Priority forced to show it)."
+   }
+  ],
+  "css": "\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) :is(dl > div, section > div.grid) { height:32px; min-height:32px; padding-block:0; align-items:center; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) :is(dt, section > div.grid > span) { color:var(--muted); font-size:13px; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) :is(dd, button[aria-haspopup=listbox]) { font-weight:500; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) button[aria-haspopup=listbox] > span { flex:1 1 auto; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) button[aria-haspopup=listbox]::after { content:''; width:12px; height:12px; flex:none; margin-left:8px; background:var(--muted); -webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E\") center/12px no-repeat; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) button[aria-haspopup=listbox]:hover, :is(aside[aria-label=Peek],aside[aria-label=Properties]) button[data-force] { background:var(--hover); }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) kbd.kh { opacity:0; margin-left:8px; font:500 11px/16px ui-monospace,'SF Mono',Menlo,monospace; min-width:18px; height:18px; padding:0 4px; text-align:center; border:1px solid var(--line); border-radius:4px; background:var(--hover); color:var(--muted); }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) button:hover > kbd.kh, :is(aside[aria-label=Peek],aside[aria-label=Properties]) button[data-force] > kbd.kh, :is(aside[aria-label=Peek],aside[aria-label=Properties]) button:focus-visible > kbd.kh, :is(aside[aria-label=Peek],aside[aria-label=Properties]) button[aria-expanded=true] > kbd.kh { opacity:1; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) input:not([type=checkbox]) { border:1px solid light-dark(oklch(0.64 0.012 275), oklch(0.52 0.012 275)); border-radius:6px; height:28px; padding-inline:8px; background:transparent; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) input::placeholder { color:var(--muted); opacity:1; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) input.act { padding-left:28px; background-repeat:no-repeat; background-position:8px center; background-size:14px; }\naside[aria-label=Peek] dl { display:flex; flex-direction:column; border-top:1px solid var(--line); padding-top:8px; margin-top:4px; }\naside[aria-label=Peek] dl > div:nth-child(1) { order:1 } aside[aria-label=Peek] dl > div:nth-child(3) { order:2 }\naside[aria-label=Peek] dl > div:nth-child(4) { order:3 } aside[aria-label=Peek] dl > div:nth-child(5) { order:4 }\naside[aria-label=Peek] dl > div:nth-child(2) { order:5; margin-top:8px } aside[aria-label=Peek] dl > div:nth-child(n+6) { order:6 }\n",
+  "domTweaks": "tweak(): muted-None colouring, kbd.kh keycaps appended to the S/A/P/L buttons, data-force on the Priority button to stand in for hover. Reordering is done in CSS (flex order on the dl).",
+  "notes": "Clip is the Peek aside (416px). Keycap letters come from aria-keyshortcuts. Type/Customer/Engagement/Updated stay read-only without hover pill (editable vs read-only now differs by chevron). I did not add per-property 16px icons (no icon set agreed); chevrons carry the affordance."
+ },
+ {
+  "id": "06b",
+  "title": "Properties sidebar, issue page",
+  "findings": [
+   "V10",
+   "V11",
+   "I6",
+   "A1",
+   "I5"
+  ],
+  "before": "06-properties-page-before.png",
+  "after": [
+   {
+    "option": "recommended",
+    "file": "06-properties-page-after.png",
+    "caption": "Same rules on the page sidebar plus: Set start date / Set due date / Set estimate as muted actions with 16px icons (native date widget replaced by text input), Time left hidden until an estimate exists, text fields get a 3:1 --field-border (dark oklch(0.52 0.012 275), light oklch(0.64 0.012 275))."
+   }
+  ],
+  "css": "\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) :is(dl > div, section > div.grid) { height:32px; min-height:32px; padding-block:0; align-items:center; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) :is(dt, section > div.grid > span) { color:var(--muted); font-size:13px; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) :is(dd, button[aria-haspopup=listbox]) { font-weight:500; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) button[aria-haspopup=listbox] > span { flex:1 1 auto; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) button[aria-haspopup=listbox]::after { content:''; width:12px; height:12px; flex:none; margin-left:8px; background:var(--muted); -webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E\") center/12px no-repeat; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) button[aria-haspopup=listbox]:hover, :is(aside[aria-label=Peek],aside[aria-label=Properties]) button[data-force] { background:var(--hover); }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) kbd.kh { opacity:0; margin-left:8px; font:500 11px/16px ui-monospace,'SF Mono',Menlo,monospace; min-width:18px; height:18px; padding:0 4px; text-align:center; border:1px solid var(--line); border-radius:4px; background:var(--hover); color:var(--muted); }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) button:hover > kbd.kh, :is(aside[aria-label=Peek],aside[aria-label=Properties]) button[data-force] > kbd.kh, :is(aside[aria-label=Peek],aside[aria-label=Properties]) button:focus-visible > kbd.kh, :is(aside[aria-label=Peek],aside[aria-label=Properties]) button[aria-expanded=true] > kbd.kh { opacity:1; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) input:not([type=checkbox]) { border:1px solid light-dark(oklch(0.64 0.012 275), oklch(0.52 0.012 275)); border-radius:6px; height:28px; padding-inline:8px; background:transparent; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) input::placeholder { color:var(--muted); opacity:1; }\n:is(aside[aria-label=Peek],aside[aria-label=Properties]) input.act { padding-left:28px; background-repeat:no-repeat; background-position:8px center; background-size:14px; }\naside[aria-label=Peek] dl { display:flex; flex-direction:column; border-top:1px solid var(--line); padding-top:8px; margin-top:4px; }\naside[aria-label=Peek] dl > div:nth-child(1) { order:1 } aside[aria-label=Peek] dl > div:nth-child(3) { order:2 }\naside[aria-label=Peek] dl > div:nth-child(4) { order:3 } aside[aria-label=Peek] dl > div:nth-child(5) { order:4 }\naside[aria-label=Peek] dl > div:nth-child(2) { order:5; margin-top:8px } aside[aria-label=Peek] dl > div:nth-child(n+6) { order:6 }\n",
+  "domTweaks": "Same tweak(); additionally type=text on the empty date inputs, placeholder text swaps, Time left row display:none.",
+  "notes": "Clip is the 336px properties aside. Date inputs lose their native picker in this mock; the real change would show formatted text and open a popover on focus."
+ },
+ {
+  "id": "07",
+  "title": "Create dialog",
+  "findings": [
+   "V12",
+   "I12"
+  ],
+  "before": "07-create-dialog-before.png",
+  "after": [
+   {
+    "option": "A",
+    "file": "07-create-dialog-after-optA.png",
+    "caption": "Symmetric 20px padding on the field block, labels align with the title, \"Required\" on Engagement and in the Summary placeholder."
+   },
+   {
+    "option": "B",
+    "file": "07-create-dialog-after-optB.png",
+    "caption": "Chip strip: nine rows become two wrapped lines of pill chips (label + value); required Customer/Engagement are accent-tinted filled chips, Engagement carries \"Required\"."
+   }
+  ],
+  "css": {
+   "optA": "\ndialog form > fieldset > div:nth-child(2) { padding-left:20px !important; padding-right:20px !important; }\ndialog form > fieldset > div:nth-child(2) .grid > span[aria-hidden] { padding-left:0 !important; }\ndialog .req { margin-left:auto; margin-right:4px; font-size:11px; font-weight:500; color:var(--danger); }\n",
+   "optB": "\ndialog form > fieldset > div:nth-child(2) { display:flex !important; flex-wrap:wrap; gap:8px !important; padding:12px 20px !important; }\ndialog form > fieldset > div:nth-child(2) > div.grid { display:inline-flex !important; align-items:center; gap:6px !important; height:28px; padding:0 10px; border:1px solid light-dark(oklch(0.64 0.012 275), oklch(0.52 0.012 275)); border-radius:999px; }\ndialog form > fieldset > div:nth-child(2) > div.grid > span[aria-hidden] { padding:0 !important; font-size:12px; }\ndialog form > fieldset > div:nth-child(2) > div.grid > div { width:auto; }\ndialog form > fieldset > div:nth-child(2) button[aria-haspopup=listbox] { border:0 !important; height:26px; padding:0 !important; width:auto !important; background:transparent !important; max-width:12rem; }\ndialog form > fieldset > div:nth-child(2) input { height:26px; width:4.5rem; border:0 !important; padding:0 !important; }\ndialog form > fieldset > div:nth-child(2) > div.grid[data-req] { background:color-mix(in oklch, var(--accent) 16%, transparent); border-color:color-mix(in oklch, var(--accent) 55%, transparent); }\ndialog .req { font-size:11px; font-weight:500; color:var(--danger); margin-left:6px; }\n"
+  },
+  "domTweaks": "reqTweak(): appends a Required span to the Engagement button and changes the Summary placeholder. chipTweak(): data-req on Customer/Engagement chips plus the same Required span.",
+  "notes": "Dialog opened from the Beta Ltd header so Customer is prefilled. Option B lost roughly 190px as the finding predicts but chip labels and values are visually tight; the picker chevrons are gone in this mock (a real chip would need them). Clipped to the dialog plus 24px."
+ },
+ {
+  "id": "08",
+  "title": "Toast, success",
+  "findings": [
+   "V14",
+   "I10",
+   "I1"
+  ],
+  "before": "08-toast-before.png",
+  "after": [
+   {
+    "option": "recommended",
+    "file": "08-toast-after.png",
+    "caption": "The real \"priority changed\" toast restyled: one 40px row, auto width (max 28rem), 16px icon, 13px/500 message, ghost Undo, 24px close, anchored left:248px bottom:16px at the Tree edge. Notes are hidden in the compact state."
+   }
+  ],
+  "css": "\ndiv.fixed.z-50[role=status], div.fixed.z-50[role=alert] { left:248px !important; right:auto !important; bottom:16px !important; translate:none !important; transform:none !important; width:auto !important; max-width:28rem; height:40px; display:flex !important; align-items:center; gap:8px; padding:0 8px 0 12px !important; border-radius:8px !important; }\ndiv.fixed.z-50 > * { margin:0 !important; }\ndiv.fixed.z-50::before { content:''; width:16px; height:16px; flex:none; background:var(--muted); -webkit-mask:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D%22m3.5%208.5%203%203%206-7%22%2F%3E%3C%2Fsvg%3E\") center/16px no-repeat; }\ndiv.fixed.z-50[role=alert]::before { background:var(--danger); -webkit-mask:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D%22M8%202.5%2014.5%2013.5h-13Z%22%2F%3E%3Cpath%20d%3D%22M8%206.5v3M8%2011.6v.1%22%2F%3E%3C%2Fsvg%3E\") center/16px no-repeat; }\ndiv.fixed.z-50 > p { font-size:13px; white-space:nowrap; font-weight:500; }\ndiv.fixed.z-50 > ul { display:none; }\ndiv.fixed.z-50[role=alert] > ul > li { overflow:hidden; text-overflow:ellipsis; }\ndiv.fixed.z-50[role=alert] > ul { display:block; min-width:0; flex:1 1 auto; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }\ndiv.fixed.z-50 > div.flex { padding:0 !important; gap:2px !important; margin-left:4px !important; }\ndiv.fixed.z-50 > div.flex > button { border:0 !important; background:transparent; height:24px; padding:0 8px; font-size:12px; color:var(--accent); font-weight:500; }\ndiv.fixed.z-50 > div.flex > button:hover { background:var(--hover); }\ndiv.fixed.z-50 > div.flex > button:last-child { font-size:0; width:24px; padding:0; color:var(--muted); }\ndiv.fixed.z-50 > div.flex > button:last-child::after { content:'\\00d7'; font-size:16px; line-height:1; }\n",
+  "domTweaks": "none",
+  "notes": "Anchored left:248px (sidebar 232 + 16). The Peek was closed with Esc, so it sits over the Tree only. Not shown: stacking the last two toasts, and the undo/created variants (created uses the check icon, \"Undid\" would use an undo glyph)."
+ },
+ {
+  "id": "08b",
+  "title": "Toast, refused edit",
+  "findings": [
+   "V14",
+   "I10",
+   "I1"
+  ],
+  "before": "08-toast-refused-before.png",
+  "after": [
+   {
+    "option": "recommended",
+    "file": "08-toast-refused-after.png",
+    "caption": "Refusal reported as a sticky alert toast: warning icon in --danger, \"Priority not changed\", Jira reason on one muted line, Retry and close. The inline paragraph under the Peek is hidden and the reverted Priority row is flashed."
+   }
+  ],
+  "css": "\ndiv.fixed.z-50[role=status], div.fixed.z-50[role=alert] { left:248px !important; right:auto !important; bottom:16px !important; translate:none !important; transform:none !important; width:auto !important; max-width:28rem; height:40px; display:flex !important; align-items:center; gap:8px; padding:0 8px 0 12px !important; border-radius:8px !important; }\ndiv.fixed.z-50 > * { margin:0 !important; }\ndiv.fixed.z-50::before { content:''; width:16px; height:16px; flex:none; background:var(--muted); -webkit-mask:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D%22m3.5%208.5%203%203%206-7%22%2F%3E%3C%2Fsvg%3E\") center/16px no-repeat; }\ndiv.fixed.z-50[role=alert]::before { background:var(--danger); -webkit-mask:url(\"data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D%22M8%202.5%2014.5%2013.5h-13Z%22%2F%3E%3Cpath%20d%3D%22M8%206.5v3M8%2011.6v.1%22%2F%3E%3C%2Fsvg%3E\") center/16px no-repeat; }\ndiv.fixed.z-50 > p { font-size:13px; white-space:nowrap; font-weight:500; }\ndiv.fixed.z-50 > ul { display:none; }\ndiv.fixed.z-50[role=alert] > ul > li { overflow:hidden; text-overflow:ellipsis; }\ndiv.fixed.z-50[role=alert] > ul { display:block; min-width:0; flex:1 1 auto; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }\ndiv.fixed.z-50 > div.flex { padding:0 !important; gap:2px !important; margin-left:4px !important; }\ndiv.fixed.z-50 > div.flex > button { border:0 !important; background:transparent; height:24px; padding:0 8px; font-size:12px; color:var(--accent); font-weight:500; }\ndiv.fixed.z-50 > div.flex > button:hover { background:var(--hover); }\ndiv.fixed.z-50 > div.flex > button:last-child { font-size:0; width:24px; padding:0; color:var(--muted); }\ndiv.fixed.z-50 > div.flex > button:last-child::after { content:'\\00d7'; font-size:16px; line-height:1; }\n\naside[aria-label=Peek] p[role=alert] { display:none; }\naside[aria-label=Peek] button[data-flash] { background:var(--hover); box-shadow: inset 0 0 0 1px var(--line); }\n",
+  "domTweaks": "refTweak(): the toast element is injected by hand (the app shows no toast for a refused property edit today), plus data-flash on the Priority button.",
+  "notes": "The reason copy \"not allowed for this issue type\" is illustrative; the fake answers with a generic 400. Real implementation sends the refusal through the existing Toast with warned: true. The 1s flash is shown as a still highlight."
+ },
+ {
+  "id": "09",
+  "title": "Narrow layout at 1024x700",
+  "findings": [
+   "V19",
+   "A3"
+  ],
+  "before": "09-narrow-1024-before.png",
+  "after": [
+   {
+    "option": "A (recommended)",
+    "file": "09-narrow-1024-after-optA.png",
+    "caption": "Sidebar collapsed to a 48px icon rail; the Peek is a 360px floating card (right 8px, 12px radius, 0 4px 40px shadow) over the Tree; the Tree gets the full width so titles and the toolbar fit on one row."
+   }
+  ],
+  "css": "\ndiv:has(> nav[aria-label=Main]) { grid-template-columns:48px minmax(0,1fr) !important; }\nnav[aria-label=Main] { overflow:hidden; }\nnav[aria-label=Main] > :not(.rail) { display:none !important; }\n.rail { display:flex; flex-direction:column; align-items:center; gap:8px; padding:48px 0 12px; height:100%; }\n.rail .mono { width:28px; height:28px; border-radius:8px; background:var(--accent); color:var(--accent-ink); display:grid; place-items:center; font-weight:600; }\n.rail .ib { width:32px; height:32px; border-radius:8px; display:grid; place-items:center; color:var(--muted); }\n.rail .ib.on { background:var(--selected); color:var(--ink); box-shadow: inset 2px 0 0 var(--accent); }\n.rail .sp { flex:1; }\naside[aria-label=Peek] { position:fixed !important; top:8px; right:8px; width:360px; height:auto !important; max-height:calc(100vh - 16px); border:1px solid var(--line) !important; border-radius:12px; box-shadow:0 4px 40px oklch(0 0 0 / 0.35); z-index:30; }\n",
+  "domTweaks": "narrowTweak(): builds the rail (monogram, Issues, New view, theme icons) inside the nav; the real nav content is hidden with CSS.",
+  "notes": "Options B (always overlay) and C (320px column) not rendered. The card sits on top of the rightmost columns of the Tree (the Epic/Story word and avatars) because the Tree is not shrunk; a scrim or right padding on the Tree would be a decision for the implementer. A720 drawer/scrim from the a11y finding is not shown."
+ },
+ {
+  "id": "10",
+  "title": "Pending edit",
+  "findings": [
+   "I2"
+  ],
+  "before": "10-pending-edit-before.png",
+  "after": [
+   {
+    "option": "recommended",
+    "file": "10-pending-edit-after.png",
+    "caption": "Priority changed to Low while the fake holds the write: value at 60% opacity with a 12px spinner at the row end."
+   }
+  ],
+  "css": "\n@keyframes spin { to { transform: rotate(360deg) } }\nbutton[data-pending] > span { opacity:.6; }\nbutton[data-pending]::after { content:''; width:12px; height:12px; flex:none; margin-left:8px; border-radius:50%; border:1.5px solid var(--line); border-top-color:var(--muted); animation:spin .8s linear infinite; }\n",
+  "domTweaks": "data-pending attribute on the Priority button; write held by the fake (releaseEdit never called).",
+  "notes": "Spinner is a CSS border animation, a still frame here."
+ },
+ {
+  "id": "11",
+  "title": "Empty state",
+  "findings": [
+   "V20",
+   "I3"
+  ],
+  "before": "11-empty-state-before.png",
+  "after": [
+   {
+    "option": "recommended",
+    "file": "11-empty-state-after.png",
+    "caption": "Icon, 15/600 title naming the real causes (text \"zzzzqq\" and Type: Bug), toggles on a muted second line, one primary Clear filters button; the chip-row \"Clear\" link is hidden."
+   }
+  ],
+  "css": "\n.empty-icon { width:32px; height:32px; margin:0 auto 4px; background:var(--muted); -webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='m16 16 4 4M9 11h4'/%3E%3C/svg%3E\") center/32px no-repeat; }\ndiv.absolute.inset-0.bg-canvas p.font-medium { font-size:15px; font-weight:600; }\ndiv.absolute.inset-0.bg-canvas div.space-y-2 > button { background:var(--accent); color:var(--accent-ink); border:0; height:28px; padding:0 12px; font-weight:500; margin-top:8px; }\nul[aria-label=\"Active filters\"] button:not([aria-label^=Remove]) { display:none; }\n",
+  "domTweaks": "emptyTweak(): prepends an icon div and rewrites the two text lines.",
+  "notes": "Title text is typed in by the mock; the real component should build it from the active text query and chips. The chip-row link was hidden with CSS rather than relabelled."
+ },
+ {
+  "id": "12",
+  "title": "Login",
+  "findings": [
+   "V22",
+   "A1",
+   "A2"
+  ],
+  "before": "12-login-before.png",
+  "beforeLight": "12-login-before-light.png",
+  "after": [
+   {
+    "option": "dark",
+    "file": "12-login-after.png",
+    "caption": "Field borders oklch(0.52 0.012 275) (about 3.3:1), placeholders in --muted at full opacity, 32px mark with the name, canvas background, 400px form, shorter Keychain hint."
+   },
+   {
+    "option": "light",
+    "file": "12-login-after-light.png",
+    "caption": "Light: border oklch(0.64 0.012 275) (about 3.2:1), same changes."
+   }
+  ],
+  "css": "\nmain { background:var(--canvas); }\nmain form { max-width:25rem; }\nmain input { border:1px solid light-dark(oklch(0.64 0.012 275), oklch(0.52 0.012 275)) !important; }\nmain input::placeholder { color:var(--muted) !important; opacity:1 !important; }\n.brand { display:flex; align-items:center; gap:10px; margin-bottom:20px; }\n.brand .mark { width:32px; height:32px; border-radius:8px; background:var(--accent); color:var(--accent-ink); display:grid; place-items:center; font-weight:700; font-size:14px; letter-spacing:-0.02em; }\n.brand .name { font-size:15px; font-weight:600; }\n",
+  "domTweaks": "tw(): prepends the mark and name, rewrites the hint line.",
+  "notes": "The mark is a placeholder \"jm\" tile, not a designed logo. main background forced to --canvas. The border is accent-free so focus ring stays distinguishable."
+ }
+]
