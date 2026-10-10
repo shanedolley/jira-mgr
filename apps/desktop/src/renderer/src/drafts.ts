@@ -65,15 +65,26 @@ export function dropDraftsOf(issueKey: string): void {
   if (dropped) changed()
 }
 
+/** The ids of the issue's comments that hold a draft now, for `dropOrphanedCommentDrafts`. */
+export const commentDraftIds = (issueKey: string): string[] =>
+  [...drafts.keys()]
+    .filter((key) => key.startsWith(`${issueKey}#`) && key !== newCommentDraftKey(issueKey))
+    .map((key) => key.slice(issueKey.length + 1))
+
 /**
- * Forgets the drafts of the issue's comments that are not in `liveIds`, the comments a list read
- * still found. A comment deleted in Jira never mounts again, so its draft would linger.
+ * Forgets the draft of each comment in `checked` that a list read did not find (`liveIds`). A
+ * comment deleted in Jira never mounts again, so its draft would linger. `checked` is what
+ * `commentDraftIds` listed before the read began: a draft made while the read ran is left alone.
  */
-export function dropOrphanedCommentDrafts(issueKey: string, liveIds: readonly string[]): void {
-  const live = new Set([...liveIds, 'new'].map((id) => commentDraftKey(issueKey, id)))
+export function dropOrphanedCommentDrafts(
+  issueKey: string,
+  checked: readonly string[],
+  liveIds: readonly string[],
+): void {
+  const live = new Set(liveIds)
   let dropped = false
-  for (const key of [...drafts.keys()]) {
-    if (key.startsWith(`${issueKey}#`) && !live.has(key)) dropped = drafts.delete(key) || dropped
+  for (const id of checked) {
+    if (!live.has(id)) dropped = drafts.delete(commentDraftKey(issueKey, id)) || dropped
   }
   if (dropped) changed()
 }

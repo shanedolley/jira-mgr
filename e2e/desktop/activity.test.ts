@@ -398,6 +398,23 @@ test.describe('comments', () => {
     await expect.poll(blocksUnload).toBe(false)
   })
 
+  test('keeps the typed text and says why when the comment was deleted in Jira before the save', async () => {
+    await openStory()
+    await section('Activity').getByRole('button', { name: 'Edit comment' }).click()
+    const editor = section('Activity').getByRole('textbox', { name: 'Comment by Test User' })
+    await expect(editor).toBeFocused()
+    await window.keyboard.press('End')
+    await window.keyboard.type(' again')
+    await removeComment(app, 'PSAPAC-1', 7900)
+    await section('Activity').getByRole('button', { name: 'Save' }).click()
+
+    await expect(section('Activity').getByRole('alert')).toContainText(
+      'The comment was deleted in Jira, so it cannot be saved.',
+    )
+    await expect(editor).toContainText('My first comment again')
+    expect(await writes()).toBe(0)
+  })
+
   test('deletes a comment at once and sends the delete after the confirmation', async () => {
     await openStory()
     await section('Activity').getByRole('button', { name: 'Delete comment' }).click()

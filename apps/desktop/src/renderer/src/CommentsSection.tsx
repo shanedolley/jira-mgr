@@ -1,3 +1,4 @@
+import { JiraMgrError } from '@jira-mgr/core'
 import type { AdfDoc } from '@jira-mgr/core/adf'
 import { useRef, useState, type KeyboardEvent } from 'react'
 
@@ -72,8 +73,12 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
       const clash = conflictOf(error)
       if (clash?.current != null) setConflict(clash.current)
       else {
+        // A comment gone from Jira has no old version, and the text stays in the editor.
+        const gone = error instanceof JiraMgrError && error.code === 'not_found'
         setProblem(
-          `Could not save the comment, so Jira still holds the old one. ${reasonOf(error)}`,
+          gone
+            ? `Could not save the comment. ${reasonOf(error)} Your text is still here.`
+            : `Could not save the comment, so Jira still holds the old one. ${reasonOf(error)}`,
         )
       }
       setPhase('edit')

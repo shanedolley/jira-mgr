@@ -119,6 +119,25 @@ describe('comment drafts and the comment list', () => {
   })
 })
 
+describe('comment drafts made while a list read runs', () => {
+  it('keeps the draft of a comment added after the read began', async () => {
+    clearDrafts()
+    putDraft(commentDraftKey('PSAPAC-1', '7'), draft(text('old')))
+    // The read answers without comment 9, which the user adds and starts editing meanwhile.
+    calls.mockReset()
+    calls.mockImplementation(() => {
+      putDraft(commentDraftKey('PSAPAC-1', '9'), draft(text('old')))
+      return Promise.resolve([comment('8', 'old')])
+    })
+
+    await new QueryClient().query(commentsQuery('PSAPAC-1'))
+
+    expect(getDraft(commentDraftKey('PSAPAC-1', '7'))).toBeUndefined()
+    expect(getDraft(commentDraftKey('PSAPAC-1', '9'))).toBeDefined()
+    clearDrafts()
+  })
+})
+
 describe('editCommentMutation', () => {
   const edit = (client: QueryClient, base: ReturnType<typeof text>) =>
     new MutationObserver(client, editCommentMutation(client, 'PSAPAC-1')).mutate({
@@ -144,9 +163,29 @@ describe('editCommentMutation', () => {
     expect(wrote()).toBe(true)
   })
 
-  it('leaves a comment missing from the read to Jira to refuse', async () => {
+  it('refuses a comment deleted in Jira without touching the list or the draft', async () => {
+    clearDrafts()
+    putDraft(commentDraftKey('PSAPAC-1', '7'), draft(text('old')))
+    const client = new QueryClient()
+    client.setQueryData(commentsKey('PSAPAC-1'), [comment('7', 'old')])
     jiraHolds([comment('8', 'other')])
-    await edit(new QueryClient(), text('old'))
-    expect(wrote()).toBe(true)
+
+    await expect(edit(client, text('old'))).rejects.toMatchObject({ code: 'not_found' })
+
+    expect(wrote()).toBe(false)
+    // The row must stay mounted, so its text stays: the list still holds the comment.
+    expect(client.getQueryData<CommentItem[]>(commentsKey('PSAPAC-1'))).toEqual([
+      comment('7', 'old'),
+    ])
+    expect(getDraft(commentDraftKey('PSAPAC-1', '7'))).toBeDefined()
+    clearDrafts()
+  })
+
+  it('reads Jira afresh each time, even with a read already in flight', async () => {
+    const client = new QueryClient()
+    jiraHolds([comment('7', 'old')])
+    await Promise.all([edit(client, text('old')), edit(client, text('old'))])
+    const lists = calls.mock.calls.filter(([channel]) => channel === 'comments:list')
+    expect(lists).toHaveLength(2)
   })
 })

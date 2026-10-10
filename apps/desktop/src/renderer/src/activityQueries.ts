@@ -10,7 +10,7 @@ import {
 } from '@tanstack/react-query'
 
 import type { AddAttachmentArgs, CommentItem, LinksResult, WorklogItem } from '../../shared/ipc'
-import { dropOrphanedCommentDrafts } from './drafts'
+import { commentDraftIds, dropOrphanedCommentDrafts } from './drafts'
 import { call } from './ipc'
 import { applyFreshIssue, issueDetailKey } from './optimistic'
 import {
@@ -25,9 +25,11 @@ import {
 export const commentsQuery = (key: string) => ({
   queryKey: commentsKey(key),
   queryFn: async () => {
+    const drafted = commentDraftIds(key)
     const list = await call('comments:list', { key })
     dropOrphanedCommentDrafts(
       key,
+      drafted,
       list.map((comment) => comment.id),
     )
     return list
@@ -122,19 +124,24 @@ export interface EditCommentInput {
 }
 
 /**
- * Reads the comments again and refuses with a conflict, as a description save does, when the
- * comment no longer matches `base`. A comment gone from the read is left to Jira to refuse.
+ * Reads the comments again and refuses, as a description save does, when the comment no longer
+ * matches `base` (a conflict that carries Jira's comment) or is gone. The read goes straight to
+ * Jira and leaves the list alone, apart from the one comment it found changed, so the row stays
+ * mounted and keeps the text being saved.
  */
 export async function assertCommentUnchanged(
   client: QueryClient,
   key: string,
   { commentId, base }: Pick<EditCommentInput, 'commentId' | 'base'>,
 ): Promise<void> {
-  const list = await client.query({ ...commentsQuery(key), staleTime: 0 })
-  const current = list.find((comment) => comment.id === commentId)?.body
-  if (current === undefined || sameAdf(current, base)) return
+  const fresh = (await call('comments:list', { key })).find((comment) => comment.id === commentId)
+  if (fresh === undefined) {
+    throw new JiraMgrError('not_found', 'The comment was deleted in Jira, so it cannot be saved.')
+  }
+  if (sameAdf(fresh.body, base)) return
+  upsert(client, commentsKey(key), fresh)
   throw new JiraMgrError('validation_failed', 'The comment changed in Jira while you edited.', {
-    details: { conflict: true, current } satisfies DescriptionConflict,
+    details: { conflict: true, current: fresh.body } satisfies DescriptionConflict,
   })
 }
 

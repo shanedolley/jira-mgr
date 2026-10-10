@@ -6,6 +6,7 @@ import {
   draftCount,
   dropDraft,
   dropDraftsOf,
+  commentDraftIds,
   dropOrphanedCommentDrafts,
   getDraft,
   hasDraftsOf,
@@ -78,12 +79,12 @@ describe('dropOrphanedCommentDrafts', () => {
     const listener = vi.fn()
     const stop = subscribeDrafts(listener)
 
-    dropOrphanedCommentDrafts('PSAPAC-1', ['8'])
+    dropOrphanedCommentDrafts('PSAPAC-1', commentDraftIds('PSAPAC-1'), ['8'])
 
     expect(draftCount()).toBe(4)
     expect(getDraft(commentDraftKey('PSAPAC-1', '7'))).toBeUndefined()
     expect(listener).toHaveBeenCalledTimes(1)
-    dropOrphanedCommentDrafts('PSAPAC-1', ['8'])
+    dropOrphanedCommentDrafts('PSAPAC-1', ['7'], ['8'])
     expect(listener).toHaveBeenCalledTimes(1)
     stop()
   })
