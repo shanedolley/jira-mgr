@@ -10,6 +10,7 @@ import {
   dropOrphanedCommentDrafts,
   getDraft,
   hasDraftsOf,
+  moveCommentDraftToBox,
   newCommentDraftKey,
   putDraft,
   subscribeDrafts,
@@ -87,5 +88,33 @@ describe('dropOrphanedCommentDrafts', () => {
     dropOrphanedCommentDrafts('PSAPAC-1', ['7'], ['8'])
     expect(listener).toHaveBeenCalledTimes(1)
     stop()
+  })
+})
+
+describe('moveCommentDraftToBox', () => {
+  const mine = { doc, base: null }
+
+  it("moves a comment's draft to the comment box", () => {
+    putDraft(commentDraftKey('PSAPAC-1', '7'), {
+      doc,
+      base: { version: 1, type: 'doc', content: [] },
+    })
+    expect(moveCommentDraftToBox('PSAPAC-1', '7')).toBe(true)
+    expect(getDraft(commentDraftKey('PSAPAC-1', '7'))).toBeUndefined()
+    expect(getDraft(newCommentDraftKey('PSAPAC-1'))).toEqual(mine)
+  })
+
+  it('leaves both drafts alone when the box holds one already', () => {
+    putDraft(commentDraftKey('PSAPAC-1', '7'), mine)
+    const boxed = { doc: { ...doc, content: [] }, base: null }
+    putDraft(newCommentDraftKey('PSAPAC-1'), boxed)
+    expect(moveCommentDraftToBox('PSAPAC-1', '7')).toBe(false)
+    expect(getDraft(commentDraftKey('PSAPAC-1', '7'))).toEqual(mine)
+    expect(getDraft(newCommentDraftKey('PSAPAC-1'))).toEqual(boxed)
+  })
+
+  it('moves nothing for a comment with no draft', () => {
+    expect(moveCommentDraftToBox('PSAPAC-1', '7')).toBe(false)
+    expect(draftCount()).toBe(0)
   })
 })

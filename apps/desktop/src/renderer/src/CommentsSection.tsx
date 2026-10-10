@@ -8,7 +8,14 @@ import { useAddComment, useComments, useDeleteComment, useEditComment } from './
 import { AdfEditor, type AdfEditorHandle } from './AdfEditor'
 import type { Notice } from './create'
 import { DiscardDialog } from './DiscardDialog'
-import { commentDraftKey, dropDraft, getDraft, newCommentDraftKey, putDraft } from './drafts'
+import {
+  commentDraftKey,
+  dropDraft,
+  getDraft,
+  moveCommentDraftToBox,
+  newCommentDraftKey,
+  putDraft,
+} from './drafts'
 import { conflictOf } from './queries'
 import { BUTTON, DANGER_BUTTON, QueryBody, Section } from './Section'
 
@@ -26,12 +33,14 @@ const reasonOf = (error: unknown) => (error instanceof Error ? error.message : S
 type Phase = 'read' | 'edit' | 'saving'
 
 interface CommentRowProps extends Omit<CommentsSectionProps, 'me'> {
+  /** The comment box took this row's draft, so it must show it. */
+  onDraftMoved: () => void
   comment: CommentItem
   /** Only the author edits or deletes a comment (Q34). */
   mine: boolean
 }
 
-function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowProps) {
+function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }: CommentRowProps) {
   // An edit left unsaved when the page was left comes back open, as the description's does.
   const draftKey = commentDraftKey(issueKey, comment.id)
   const [restored] = useState(() => getDraft(draftKey))
@@ -73,11 +82,20 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
       const clash = conflictOf(error)
       if (clash?.current != null) setConflict(clash.current)
       else {
-        // A comment gone from Jira has no old version, and the text stays in the editor.
+        // A comment gone from Jira leaves the list on the next read, and its row with it, so the
+        // text moves to the comment box unless that holds text already.
         const gone = error instanceof JiraMgrError && error.code === 'not_found'
+        const moved = gone && moveCommentDraftToBox(issueKey, comment.id)
+        if (moved) onDraftMoved()
+        let where = ''
+        if (gone) {
+          where = moved
+            ? ' Your text is in the new comment box.'
+            : ' Your text is still here, but the comment box already holds text, so copy it out before this page refreshes.'
+        }
         setProblem(
           gone
-            ? `Could not save the comment. ${reasonOf(error)} Your text is still here.`
+            ? `Could not save the comment. ${reasonOf(error)}${where}`
             : `Could not save the comment, so Jira still holds the old one. ${reasonOf(error)}`,
         )
       }
@@ -374,6 +392,8 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
 /** The Activity section: the issue's comments, oldest first, and the box that adds one. */
 export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSectionProps) {
   const comments = useComments(issueKey)
+  // Changing the box's key mounts it again, so it reads the draft a comment row moved into it.
+  const [boxVersion, setBoxVersion] = useState(0)
   return (
     <Section title="Activity">
       <QueryBody query={comments} loading="Loading comments">
@@ -390,13 +410,16 @@ export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSec
                   mine={me !== undefined && comment.author?.accountId === me.accountId}
                   onLeave={onLeave}
                   onNotice={onNotice}
+                  onDraftMoved={() => {
+                    setBoxVersion((version) => version + 1)
+                  }}
                 />
               ))}
             </ul>
           )
         }
       </QueryBody>
-      <CommentBox issueKey={issueKey} onLeave={onLeave} />
+      <CommentBox key={boxVersion} issueKey={issueKey} onLeave={onLeave} />
     </Section>
   )
 }

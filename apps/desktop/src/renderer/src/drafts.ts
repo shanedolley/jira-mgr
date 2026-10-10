@@ -65,6 +65,21 @@ export function dropDraftsOf(issueKey: string): void {
   if (dropped) changed()
 }
 
+/**
+ * Moves a comment's draft into the comment box's draft, for a comment that no longer exists. A
+ * box that already holds a draft is left alone. Returns whether the draft moved.
+ */
+export function moveCommentDraftToBox(issueKey: string, commentId: string): boolean {
+  const from = commentDraftKey(issueKey, commentId)
+  const to = newCommentDraftKey(issueKey)
+  const draft = drafts.get(from)
+  if (draft === undefined || drafts.has(to)) return false
+  drafts.set(to, { doc: draft.doc, base: null })
+  drafts.delete(from)
+  changed()
+  return true
+}
+
 /** The ids of the issue's comments that hold a draft now, for `dropOrphanedCommentDrafts`. */
 export const commentDraftIds = (issueKey: string): string[] =>
   [...drafts.keys()]

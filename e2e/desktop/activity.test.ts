@@ -398,7 +398,7 @@ test.describe('comments', () => {
     await expect.poll(blocksUnload).toBe(false)
   })
 
-  test('keeps the typed text and says why when the comment was deleted in Jira before the save', async () => {
+  test('moves the typed text to the comment box when the comment was deleted in Jira before the save', async () => {
     await openStory()
     await section('Activity').getByRole('button', { name: 'Edit comment' }).click()
     const editor = section('Activity').getByRole('textbox', { name: 'Comment by Test User' })
@@ -409,10 +409,46 @@ test.describe('comments', () => {
     await section('Activity').getByRole('button', { name: 'Save' }).click()
 
     await expect(section('Activity').getByRole('alert')).toContainText(
-      'The comment was deleted in Jira, so it cannot be saved.',
+      'The comment was deleted in Jira, so it cannot be saved. Your text is in the new comment box.',
+    )
+    const box = section('Activity').getByRole('textbox', { name: 'New comment' })
+    await expect(box).toContainText('My first comment again')
+    expect(await writes()).toBe(0)
+
+    // The next window focus reads the comments again: the row goes, and the text stays in the box.
+    await app.evaluate(({ BrowserWindow }) => {
+      const [first] = BrowserWindow.getAllWindows()
+      first?.emit('blur')
+      first?.emit('focus')
+    })
+    await expect(section('Activity').getByText('My first comment', { exact: true })).toHaveCount(0)
+    await expect(editor).toHaveCount(0)
+    await expect(box).toContainText('My first comment again')
+    await expect(
+      section('Activity').getByRole('button', { name: 'Comment', exact: true }),
+    ).toBeEnabled()
+    await expect.poll(blocksUnload).toBe(true)
+  })
+
+  test('keeps the text in the row, and says so, when the comment box holds text already', async () => {
+    await openStory()
+    await section('Activity').getByRole('textbox', { name: 'New comment' }).click()
+    await window.keyboard.type('Already here')
+    await section('Activity').getByRole('button', { name: 'Edit comment' }).click()
+    const editor = section('Activity').getByRole('textbox', { name: 'Comment by Test User' })
+    await expect(editor).toBeFocused()
+    await window.keyboard.press('End')
+    await window.keyboard.type(' again')
+    await removeComment(app, 'PSAPAC-1', 7900)
+    await section('Activity').getByRole('button', { name: 'Save' }).click()
+
+    await expect(section('Activity').getByRole('alert')).toContainText(
+      'the comment box already holds text',
     )
     await expect(editor).toContainText('My first comment again')
-    expect(await writes()).toBe(0)
+    await expect(section('Activity').getByRole('textbox', { name: 'New comment' })).toContainText(
+      'Already here',
+    )
   })
 
   test('deletes a comment at once and sends the delete after the confirmation', async () => {
