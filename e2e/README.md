@@ -2,9 +2,9 @@
 
 Playwright tests that cross package boundaries. Unit and integration tests sit beside the code they test.
 
-| Suite      | Drives                                                                                                                                                                                                                                                            |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `desktop/` | The built desktop app, through Playwright's Electron driver, on a fake Jira and a fake Keychain: `shell.test.ts`, `tree.test.ts`, `page.test.ts`, `create.test.ts`, `delete.test.ts`, `keyboard.test.ts`, `editor.test.ts`, `avatars.test.ts`, `activity.test.ts` |
+| Suite      | Drives                                                                                                                                                                                                                                                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `desktop/` | The built desktop app, through Playwright's Electron driver, on a fake Jira and a fake Keychain: `shell.test.ts`, `tree.test.ts`, `page.test.ts`, `create.test.ts`, `delete.test.ts`, `keyboard.test.ts`, `editor.test.ts`, `avatars.test.ts`, `activity.test.ts`, `views.test.ts`, `lateRead.test.ts`, `package.test.ts` |
 
 ## Run
 
