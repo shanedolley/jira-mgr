@@ -35,11 +35,20 @@ import {
   createView,
   deleteView,
   readSettings,
+  readTimer,
   readViews,
   renameView,
   writeSettings,
   type SavedView,
 } from '@jira-mgr/core/state'
+import {
+  startTimer as startCoreTimer,
+  stopAndLog,
+  stopTimer as stopCoreTimer,
+  switchAndLog,
+  type TimerOptions,
+} from '@jira-mgr/core/timer'
+import { assertTimeable } from '@jira-mgr/core/timer-calc'
 import {
   createIssue,
   deleteIssue,
@@ -91,7 +100,12 @@ import type {
   SetStatusArgs,
   SetSummaryArgs,
   SprintOption,
+  StartTimerArgs,
   StatusOption,
+  StopTimerArgs,
+  SwitchTimerArgs,
+  TimerOutcome,
+  TimerSnapshot,
   Toggles,
   UserOption,
   WorklogIdArgs,
@@ -183,6 +197,14 @@ export interface Backend {
   createView(args: CreateViewArgs): Promise<SavedView>
   renameView(args: RenameViewArgs): Promise<SavedView>
   deleteView(args: DeleteViewArgs): Promise<void>
+  /** The shared timer file and the timer settings, as `jm timer status` reads them. */
+  getTimer(): Promise<TimerSnapshot>
+  /** Starts a timer on a timeable issue, or resumes the one already running on it. Another running timer is refused. */
+  startTimer(args: StartTimerArgs): Promise<TimerOutcome>
+  /** Core's `stopAndLog`, or `stopTimer` with `discard`. A long or midnight-crossing timer needs `confirm` or `timeSpent`. */
+  stopTimer(args: StopTimerArgs): Promise<TimerOutcome>
+  /** Core's `switchAndLog`, or with `discard` a start that drops the running timer's time. */
+  switchTimer(args: SwitchTimerArgs): Promise<TimerOutcome>
   /** Cancels the pending second reads. The app calls it on quit. */
   dispose(): void
 }
@@ -191,7 +213,7 @@ export interface BackendDeps {
   /** Tests inject a fake Keychain. Production uses core's `/usr/bin/security` one. */
   keychain?: Keychain
   http?: HttpClient
-  /** Tests inject a clock for the media index's 30 second windows. */
+  /** Tests inject a clock for the media index's 30 second windows and the timer's start and stop times. */
   now?: () => number
   /** Tests and the e2e entry shorten the wait before a created issue is read again. */
   lateReadMs?: number
@@ -238,6 +260,19 @@ export function createBackend(deps: BackendDeps = {}): Backend {
   }
 
   const media = createMediaIndex(http, deps.now)
+
+  const timerOptions: TimerOptions = { now: () => new Date(deps.now?.() ?? Date.now()) }
+  async function timerSnapshot(): Promise<TimerSnapshot> {
+    const [timer, settings] = await Promise.all([readTimer(), readSettings()])
+    return { timer, settings: settings.timer }
+  }
+  /** The issue to time, read from Jira for its type. The app manages the settings project only. */
+  async function timeableIssue(key: string) {
+    await assertInProject(key)
+    const issue = await getIssue(http, key)
+    assertTimeable(issue)
+    return issue
+  }
 
   /** The second reads waiting to fire, one per created issue. Logout and quit clear them. */
   const lateReads = new Set<NodeJS.Timeout>()
@@ -594,6 +629,42 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       inViewOrder(() => createView(name, { filters, toggles })),
     renameView: ({ id, name }) => inViewOrder(() => renameView(id, name)),
     deleteView: ({ id }) => inViewOrder(() => deleteView(id)),
+    getTimer: timerSnapshot,
+    async startTimer({ key }) {
+      await startCoreTimer(await timeableIssue(key), timerOptions)
+      return { snapshot: await timerSnapshot(), stopped: null, logged: null }
+    },
+    async stopTimer({ discard, ...args }) {
+      await assertInProject(args.expectRunning)
+      let stopped: TimerOutcome['stopped'] = null
+      let logged: TimerOutcome['logged'] = null
+      if (discard === true) {
+        stopped = await stopCoreTimer({ ...timerOptions, expectRunning: args.expectRunning })
+      } else {
+        const result = await stopAndLog(http, { ...timerOptions, ...args })
+        stopped = result?.draft ?? null
+        logged = result?.worklog ?? null
+      }
+      return { snapshot: await timerSnapshot(), stopped, logged }
+    },
+    async switchTimer({ key, discard, ...args }) {
+      await assertInProject(args.expectRunning)
+      const issue = await timeableIssue(key)
+      if (discard === true) {
+        const { stopped } = await startCoreTimer(issue, {
+          ...timerOptions,
+          switch: true,
+          expectRunning: args.expectRunning,
+        })
+        return { snapshot: await timerSnapshot(), stopped, logged: null }
+      }
+      const result = await switchAndLog(http, issue, { ...timerOptions, ...args })
+      return {
+        snapshot: await timerSnapshot(),
+        stopped: result.stopped,
+        logged: result.logged?.worklog ?? null,
+      }
+    },
     dispose: clearLateReads,
   }
 }

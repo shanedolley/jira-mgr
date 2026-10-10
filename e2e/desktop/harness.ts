@@ -31,6 +31,8 @@ export interface Counts {
   avatarFetches: { url: string; authorized: boolean }[]
   /** The default file name each stand-in save dialog offered, in order. */
   downloads: string[]
+  /** Every timer reminder the app raised, in order. */
+  notifications: { title: string; body: string }[]
 }
 
 interface FakeJira {

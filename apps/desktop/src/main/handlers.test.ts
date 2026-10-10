@@ -24,6 +24,17 @@ function progressRecorder() {
 }
 const noProgress = progressRecorder().progress
 
+const TIMER_SETTINGS = {
+  rounding: '5m',
+  reminderThresholdHours: 8,
+  reminderIntervalMinutes: 60,
+} as const
+const OUTCOME = {
+  snapshot: { timer: null, settings: TIMER_SETTINGS },
+  stopped: null,
+  logged: null,
+}
+
 function fakeBackend(overrides: Partial<Backend> = {}) {
   const calls: { method: string; args: unknown[] }[] = []
   const record =
@@ -75,6 +86,10 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     createView: record('createView', VIEW),
     renameView: record('renameView', VIEW),
     deleteView: record('deleteView', undefined),
+    getTimer: record('getTimer', { timer: null, settings: TIMER_SETTINGS }),
+    startTimer: record('startTimer', OUTCOME),
+    stopTimer: record('stopTimer', OUTCOME),
+    switchTimer: record('switchTimer', OUTCOME),
     dispose: () => undefined,
     ...overrides,
   }
@@ -751,5 +766,56 @@ describe('activity', () => {
       noProgress,
     )
     expect(result.ok).toBe(true)
+  })
+})
+
+describe('timer', () => {
+  const BODY = {
+    version: 1,
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello' }] }],
+  }
+
+  it.each([
+    ['timer:get', 'an argument', { key: 'PSAPAC-12' }],
+    ['timer:start', 'a key of another shape', { key: 'x' }],
+    ['timer:start', 'an unknown field', { key: 'PSAPAC-12', switch: true }],
+    ['timer:stop', 'no key to expect', { discard: true }],
+    [
+      'timer:stop',
+      'a duration that is not one',
+      { expectRunning: 'PSAPAC-12', timeSpent: 'a while' },
+    ],
+    ['timer:stop', 'a null comment', { expectRunning: 'PSAPAC-12', comment: null }],
+    [
+      'timer:stop',
+      'a confirm that is not a boolean',
+      { expectRunning: 'PSAPAC-12', confirm: 'yes' },
+    ],
+    ['timer:switch', 'no target', { expectRunning: 'PSAPAC-12' }],
+    ['timer:switch', 'no key to expect', { key: 'PSAPAC-13' }],
+  ] as const)('%s refuses %s', async (channel, _name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)[channel](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes each valid request to its backend method', async () => {
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    const stop = { expectRunning: 'PSAPAC-12', timeSpent: '1h 30m', comment: BODY, confirm: true }
+    const requests = [
+      ['timer:get', 'getTimer', undefined],
+      ['timer:start', 'startTimer', { key: 'PSAPAC-12' }],
+      ['timer:stop', 'stopTimer', stop],
+      ['timer:stop', 'stopTimer', { expectRunning: 'PSAPAC-12', discard: true }],
+      ['timer:switch', 'switchTimer', { ...stop, key: 'PSAPAC-13' }],
+    ] as const
+    for (const [channel, method, args] of requests) {
+      const result = await handlers[channel](args, noProgress)
+      expect(result.ok, channel).toBe(true)
+      expect(calls.at(-1), channel).toEqual({ method, args: args === undefined ? [] : [args] })
+    }
   })
 })

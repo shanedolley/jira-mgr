@@ -21,9 +21,10 @@ const inside = (selector: string): KeyTarget => ({
 const nowhere: KeyTarget = { closest: () => null }
 
 describe('the letter shortcuts', () => {
-  it('map C, S, A, L, P and E, in either case', () => {
+  it('map C, T, S, A, L, P and E, in either case', () => {
     const expected = {
       c: 'create',
+      t: 'timer',
       s: 'status',
       a: 'assignee',
       l: 'labels',
@@ -54,7 +55,7 @@ describe('the letter shortcuts', () => {
   })
 
   it('are never Cmd or Ctrl with a letter', () => {
-    for (const letter of ['c', 's', 'a', 'l', 'p', 'e']) {
+    for (const letter of ['c', 't', 's', 'a', 'l', 'p', 'e']) {
       expect(resolveKey(key(letter, { metaKey: true }), nowhere)).toBeNull()
       expect(resolveKey(key(letter, { ctrlKey: true }), nowhere)).toBeNull()
     }

@@ -16,7 +16,7 @@ export const PROPERTY_KEYS = {
 
 export type PropertyCommand = keyof typeof PROPERTY_KEYS
 
-export type Command = PropertyCommand | 'create' | 'palette' | 'undo' | 'escape'
+export type Command = PropertyCommand | 'create' | 'timer' | 'palette' | 'undo' | 'escape'
 
 export interface KeyEvent {
   key: string
@@ -54,6 +54,7 @@ export function keepsLetters(target: KeyTarget | null): boolean {
 
 const LETTERS = new Map<string, Command>([
   ['c', 'create'],
+  ['t', 'timer'],
   ['s', 'status'],
   ['a', 'assignee'],
   ['l', 'labels'],

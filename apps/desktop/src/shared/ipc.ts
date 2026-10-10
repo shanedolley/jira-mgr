@@ -4,6 +4,7 @@ import type { Attachment, IssueComment, IssueLink, LinkType, Worklog } from '@ji
 import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
 import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
 import type { SavedView } from '@jira-mgr/core/state'
+import type { RunningTimer, TimerSettings, WorklogDraft } from '@jira-mgr/core/timer-calc'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
 /** The site, project and account a login stored. The token never appears here. */
@@ -210,6 +211,43 @@ export interface DownloadAttachmentArgs {
 /** The user chose a place and the file was written there, or cancelled the dialog. */
 export type DownloadResult = { saved: true; filename: string } | { saved: false }
 
+/** The shared `timer.json` and the settings that shape the worklog a stop logs. `timer` is `null` when none runs. */
+export interface TimerSnapshot {
+  timer: RunningTimer | null
+  settings: TimerSettings
+}
+
+export interface StartTimerArgs {
+  key: string
+}
+
+/** How a dialog ends a timer. `expectRunning` is the issue the user was shown. */
+export interface StopTimerArgs {
+  expectRunning: string
+  /** A Jira duration the user chose instead of the rounded elapsed time. */
+  timeSpent?: string
+  comment?: AdfDoc
+  /** The user saw the long-timer warning and accepts the time. */
+  confirm?: boolean
+  /** Drop the time instead of logging it. */
+  discard?: boolean
+}
+
+/** Stops `expectRunning` as `StopTimerArgs` says, then starts the timer on `key`. */
+export interface SwitchTimerArgs extends StopTimerArgs {
+  key: string
+}
+
+/** What a start, stop or switch did. */
+export interface TimerOutcome {
+  /** The timer file afterwards. */
+  snapshot: TimerSnapshot
+  /** The timer that ended, or `null` when none ran. */
+  stopped: WorklogDraft | null
+  /** The worklog the stopped timer became, or `null` when it was discarded or none ran. */
+  logged: WorklogItem | null
+}
+
 export interface EditIssueArgs {
   key: string
   changes: IssueChanges
@@ -383,6 +421,14 @@ export interface IpcContract {
   'views:create': { args: CreateViewArgs; result: SavedView }
   'views:rename': { args: RenameViewArgs; result: SavedView }
   'views:delete': { args: DeleteViewArgs; result: null }
+  /** The shared timer file, which `jm timer` also writes. */
+  'timer:get': { args: undefined; result: TimerSnapshot }
+  /** Starts a timer on a Task, Bug, Story or Subtask. Another running timer is refused: switch instead. */
+  'timer:start': { args: StartTimerArgs; result: TimerOutcome }
+  /** Logs the running timer as a worklog, or drops it with `discard`. */
+  'timer:stop': { args: StopTimerArgs; result: TimerOutcome }
+  /** Logs or drops the running timer, then starts one on `key`. */
+  'timer:switch': { args: SwitchTimerArgs; result: TimerOutcome }
 }
 
 export type Channel = keyof IpcContract
@@ -431,6 +477,10 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'views:create': true,
   'views:rename': true,
   'views:delete': true,
+  'timer:get': true,
+  'timer:start': true,
+  'timer:stop': true,
+  'timer:switch': true,
 }
 
 /** Every channel, for code that builds one function per channel. The table fails to compile when one is missing. */

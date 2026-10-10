@@ -4,19 +4,28 @@ import type { Session } from '../../shared/ipc'
 import { DiscardDialog } from './DiscardDialog'
 import { Avatar } from './Avatar'
 import { ThemeToggle } from './ThemeToggle'
+import { TimerClock } from './TimerClock'
 import { draftCount, subscribeDrafts } from './drafts'
 import { useLogout, useMe } from './queries'
+import { useTimer } from './timerQueries'
 
 export function Sidebar({
   session,
   count,
   views,
+  onOpenIssue,
+  onStopTimer,
 }: {
   session: Session
   count: number | undefined
   /** The saved views section, which sits under the main links. */
   views?: ReactNode
+  /** Opens the page of the issue the timer runs on. */
+  onOpenIssue: (key: string) => void
+  /** Opens the stop dialog. */
+  onStopTimer: () => void
 }) {
+  const timer = useTimer().data?.timer ?? null
   const logout = useLogout()
   const unsaved = useSyncExternalStore(subscribeDrafts, draftCount)
   const [confirming, setConfirming] = useState(false)
@@ -48,6 +57,32 @@ export function Sidebar({
         </li>
       </ul>
       <div className="min-h-0 flex-1 overflow-y-auto">{views}</div>
+      {timer !== null && (
+        <section aria-label="Timer" className="space-y-1.5 border-t border-line p-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">Timer</h2>
+            <TimerClock />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onOpenIssue(timer.issueKey)
+              }}
+              className="min-w-0 truncate font-mono text-xs hover:text-accent"
+            >
+              {timer.issueKey}
+            </button>
+            <button
+              type="button"
+              onClick={onStopTimer}
+              className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+            >
+              Stop
+            </button>
+          </div>
+        </section>
+      )}
       <div className="space-y-2 border-t border-line p-3">
         <ThemeToggle />
         <div className="flex items-center gap-2">

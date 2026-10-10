@@ -1,5 +1,6 @@
 import type { Issue } from '@jira-mgr/core'
 import { buildHierarchy } from '@jira-mgr/core/hierarchy'
+import { assertTimeable, type RunningTimer } from '@jira-mgr/core/timer-calc'
 import { applyViewToggles, issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -13,7 +14,7 @@ import {
 } from 'react'
 import { flushSync } from 'react-dom'
 
-import type { DeleteIssueArgs, SavedView, Session, Toggles } from '../../shared/ipc'
+import type { DeleteIssueArgs, SavedView, Session, TimerSnapshot, Toggles } from '../../shared/ipc'
 import { Banner } from './Banner'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
@@ -23,7 +24,10 @@ import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { LoadError } from './LoadError'
 import { Sidebar } from './Sidebar'
+import { TimerDialog } from './TimerDialog'
 import { Toast } from './Toast'
+import { pressOf } from './timer'
+import { useStartTimer, useTimer } from './timerQueries'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
 import {
@@ -145,6 +149,13 @@ export function Shell({ session }: { session: Session }) {
   const [deleting, setDeleting] = useState<Issue | null>(null)
   // The Cmd+K palette (D7).
   const [searching, setSearching] = useState(false)
+  // The stop dialog, or with `to` the switch dialog, over the timer file as it was when `T` opened it.
+  const [timing, setTiming] = useState<{
+    snapshot: TimerSnapshot & { timer: RunningTimer }
+    to: Issue | null
+  } | null>(null)
+  const timerQuery = useTimer()
+  const startTimer = useStartTimer()
   // `undoable` puts an Undo button on a field edit's toast.
   const [notice, setNotice] = useState<{
     notice: Notice
@@ -293,7 +304,7 @@ export function Shell({ session }: { session: Session }) {
   // A pinned edit whose issue is gone has no editor left, so it must not hold the Peek.
   if (editingKey !== null && peekedIssue === undefined) setEditingKey(null)
 
-  const canCreate = treeReady && creating === null && deleting === null
+  const canCreate = treeReady && creating === null && deleting === null && timing === null
 
   function openCreate() {
     if (!canCreate) return
@@ -337,6 +348,78 @@ export function Shell({ session }: { session: Session }) {
     surface?.querySelector<HTMLElement>(`[aria-keyshortcuts="${PROPERTY_KEYS[command]}"]`)?.click()
   }
 
+  /**
+   * `T` on `key`: starts the timer when none runs; otherwise opens the stop dialog (it runs here)
+   * or the switch dialog (it runs elsewhere). An Epic has no timer (Q56).
+   */
+  function pressTimer(key: string) {
+    const snapshot = timerQuery.data
+    const issue = issues.find((i) => i.key === key)
+    if (snapshot === undefined || !canCreate) return
+    if (issue === undefined) {
+      setNotice({
+        notice: {
+          title: `Cannot time ${key}`,
+          notes: [
+            'It is not in the loaded issues. Wait for the list to finish loading, or open it in Jira.',
+          ],
+          warned: true,
+        },
+        openKey: null,
+      })
+      return
+    }
+    try {
+      assertTimeable(issue)
+    } catch (error) {
+      setNotice({
+        notice: {
+          title: error instanceof Error ? error.message : String(error),
+          notes: [],
+          warned: true,
+        },
+        openKey: null,
+      })
+      return
+    }
+    const { timer } = snapshot
+    if (timer === null) {
+      startTimer.mutate(
+        { key },
+        {
+          onSuccess: () => {
+            setNotice({
+              notice: { title: `Started the timer on ${key}`, notes: [], warned: false },
+              openKey: null,
+            })
+          },
+          onError: (failure) => {
+            setNotice({
+              notice: {
+                title: `Could not start the timer on ${key}`,
+                notes: [failure.message],
+                warned: true,
+              },
+              openKey: null,
+            })
+          },
+        },
+      )
+      return
+    }
+    setTiming({
+      snapshot: { ...snapshot, timer },
+      to: pressOf(timer, key) === 'switch' ? issue : null,
+    })
+  }
+
+  /** The sidebar's Stop button: the stop dialog for whatever timer runs. */
+  function stopFromSidebar() {
+    const snapshot = timerQuery.data
+    if (snapshot?.timer == null || !canCreate) return
+    setTiming({ snapshot: { ...snapshot, timer: snapshot.timer }, to: null })
+  }
+
   const undo = useUndo((reported) => {
     setNotice({ notice: reported, openKey: null })
   })
@@ -362,6 +445,13 @@ export function Shell({ session }: { session: Session }) {
         event.preventDefault()
         openCreate()
         return
+      case 'timer': {
+        const key = pageKey ?? activeKey
+        if (key === null || !treeReady) return
+        event.preventDefault()
+        pressTimer(key)
+        return
+      }
       case 'escape':
         // Focus is on a button, the sidebar or the body, not in the Tree or on the page. The page
         // covers the Peek, so it leaves first; a second Esc closes the Peek.
@@ -375,7 +465,8 @@ export function Shell({ session }: { session: Session }) {
         return
       default: {
         const key = pageKey ?? activeKey
-        if (key === null || !treeReady || creating !== null || deleting !== null) return
+        if (key === null || !treeReady || creating !== null || deleting !== null || timing !== null)
+          return
         event.preventDefault()
         openProperty(command, key)
       }
@@ -518,6 +609,7 @@ export function Shell({ session }: { session: Session }) {
         rows={rows}
         state={state}
         peekedKey={peekOpen ? peekedKey : null}
+        timerKey={timerQuery.data?.timer?.issueKey ?? null}
         expandable={expandable}
         onChange={apply}
         treeRef={treeRef}
@@ -545,6 +637,8 @@ export function Shell({ session }: { session: Session }) {
         session={session}
         count={unresolved.data?.length}
         views={<ViewsList filters={filters} toggles={toggles} onApply={applyView} />}
+        onOpenIssue={setPageKey}
+        onStopTimer={stopFromSidebar}
       />
       <section
         aria-label="Issue list"
@@ -661,6 +755,7 @@ export function Shell({ session }: { session: Session }) {
             onNotice={(reported) => {
               setNotice({ notice: reported, openKey: null })
             }}
+            onTimer={pressTimer}
           />
         </div>
       )}
@@ -692,6 +787,20 @@ export function Shell({ session }: { session: Session }) {
           }}
           onConfirm={confirmDelete}
           returnFocus={focusTree}
+        />
+      )}
+      {timing !== null && (
+        <TimerDialog
+          snapshot={timing.snapshot}
+          to={timing.to}
+          onClose={() => {
+            setTiming(null)
+          }}
+          onDone={(reported) => {
+            setTiming(null)
+            setNotice({ notice: reported, openKey: null })
+          }}
+          returnFocus={restoreFocus}
         />
       )}
       {searching && (
