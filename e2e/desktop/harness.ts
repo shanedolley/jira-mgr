@@ -31,6 +31,8 @@ export interface Counts {
   avatarFetches: { url: string; authorized: boolean }[]
   /** The default file name each stand-in save dialog offered, in order. */
   downloads: string[]
+  /** Every `text ~` search, in order of arrival, with whether the app aborted it. */
+  textSearches: { query: string; aborted: boolean }[]
   /** Every timer reminder the app raised, in order. */
   notifications: { title: string; body: string }[]
 }
@@ -44,6 +46,8 @@ interface FakeJira {
   failDone: () => void
   failRead: () => void
   failTransitions: () => void
+  holdTextSearch: () => void
+  releaseTextSearch: () => void
   dropIssue: (key: string) => void
   refuseNextEdit: () => void
   moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
@@ -137,6 +141,18 @@ export const failRead = (app: ElectronApplication) =>
 export const failTransitions = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failTransitions()
+  })
+
+/** Holds each text search in the fake Jira until `releaseTextSearch`, or until the app aborts it. */
+export const holdTextSearch = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.holdTextSearch()
+  })
+
+/** Answers the held text searches and stops holding. */
+export const releaseTextSearch = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.releaseTextSearch()
   })
 
 /** Makes the fake Jira answer 400 to the next issue edit. */

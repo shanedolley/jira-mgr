@@ -43,6 +43,11 @@ export interface IssuesProgress {
   loaded: number
 }
 
+/** The text the palette sends Jira's `text ~` search. */
+export interface SearchTextArgs {
+  query: string
+}
+
 /** The three toggles `settings.json` remembers (Q28). */
 export type Toggles = Pick<HierarchyOptions, 'hideDone' | 'assigneeMe' | 'hideEmptyCustomers'>
 
@@ -372,6 +377,8 @@ export interface IpcContract {
   'session:logout': { args: undefined; result: SessionState }
   /** `null` when a newer load of the same phase, or a logout, aborted this one. */
   'issues:list': { args: ListIssuesArgs; result: Issue[] | null }
+  /** Project issues whose text fields hold `query`. `null` when a newer search, or a logout, aborted this one. */
+  'issues:searchText': { args: SearchTextArgs; result: Issue[] | null }
   'issues:setSummary': { args: SetSummaryArgs; result: null }
   /** One issue with its description and subtasks, read afresh. */
   'issues:get': { args: KeyArgs; result: IssueDetail }
@@ -440,6 +447,7 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'session:login': true,
   'session:logout': true,
   'issues:list': true,
+  'issues:searchText': true,
   'issues:setSummary': true,
   'issues:get': true,
   'issues:edit': true,

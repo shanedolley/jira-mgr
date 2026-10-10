@@ -8,7 +8,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { JIRA_SITE, loadFixture, server } from '../test/msw.js'
 import { JiraMgrError } from './errors.js'
 import { createHttpClient } from './http.js'
-import { getIssue, searchIssuePages, searchIssues, type SearchPage } from './search.js'
+import {
+  getIssue,
+  searchIssuePages,
+  searchIssues,
+  searchText,
+  TEXT_QUERY_MAX,
+  TEXT_SEARCH_LIMIT,
+  type SearchPage,
+} from './search.js'
 import { writeFields, writeSettings } from './state.js'
 
 const IDS = {
@@ -396,5 +404,57 @@ describe('getIssue', () => {
     const recorded = loadFixture('issue-psapac-3066') as { fields: Record<string, unknown> }
     serveIssue({ ...recorded, fields: { ...recorded.fields, description: 'plain text' } })
     expect((await failure(getIssue(client, 'PSAPAC-3066'))).code).toBe('jira_error')
+  })
+})
+
+describe('searchText', () => {
+  it('scopes `text ~` to the project, asks for one page and maps the issues', async () => {
+    const requests = serveRaw({ issues: recorded('search-unresolved-1').issues, isLast: true })
+    const issues = await searchText(client, 'rollout plan')
+
+    expect(requests).toHaveLength(1)
+    expect(requests[0]).toMatchObject({
+      jql: 'project = "PSAPAC" AND text ~ "rollout plan" ORDER BY updated DESC',
+      maxResults: TEXT_SEARCH_LIMIT,
+    })
+    expect(requests[0]?.nextPageToken).toBeUndefined()
+    expect(requests[0]?.fields).toContain(IDS.customer)
+    expect(issues.map((i) => i.key)).toContain('PSAPAC-3117')
+  })
+
+  it.each([
+    [
+      'a quote and a backslash',
+      String.raw`say "hi" \ now`,
+      String.raw`text ~ "say \\\"hi\\\" \\\\ now"`,
+    ],
+    ['Lucene operators', 'a+b*c?', String.raw`text ~ "a\\+b\\*c\\?"`],
+    ['a JQL clause', '" OR project = X', String.raw`text ~ "\\\" OR project = X"`],
+  ])('escapes %s, so the text cannot change the query', async (_name, input, clause) => {
+    const requests = serveRaw({ issues: [], isLast: true })
+    await searchText(client, input)
+    expect(requests[0]?.jql).toBe(`project = "PSAPAC" AND ${clause} ORDER BY updated DESC`)
+  })
+
+  it.each([
+    ['empty', ''],
+    ['blank', '   '],
+    ['over-long', 'x'.repeat(TEXT_QUERY_MAX + 1)],
+  ])('refuses %s text before any request', async (_name, input) => {
+    const requests = serveRaw({ issues: [], isLast: true })
+    expect((await failure(searchText(client, input))).code).toBe('validation_failed')
+    expect(requests).toEqual([])
+  })
+
+  it('passes the abort signal to the request', async () => {
+    serveRaw({ issues: [], isLast: true })
+    const controller = new AbortController()
+    controller.abort()
+    await expect(searchText(client, 'late', { signal: controller.signal })).rejects.toThrow()
+  })
+
+  it('throws jira_error when Jira sends an unexpected response', async () => {
+    serveRaw({ nothing: true })
+    expect((await failure(searchText(client, 'x'))).code).toBe('jira_error')
   })
 })

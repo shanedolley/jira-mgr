@@ -32,6 +32,14 @@ export interface SearchPage {
   loaded: number
 }
 
+/** The most results one text search returns. */
+export const TEXT_SEARCH_LIMIT = 20
+
+/** The longest text one search takes. */
+export const TEXT_QUERY_MAX = 200
+
+const textQuery = z.string().trim().min(1, 'Enter text to search for.').max(TEXT_QUERY_MAX)
+
 const quote = (text: string) => `"${text.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
 
 /** Only the fields `Issue` needs, with the resolved custom field ids. */
@@ -118,6 +126,41 @@ export async function searchIssues(
   const issues: Issue[] = []
   for await (const page of searchIssuePages(http, options)) issues.push(...page.issues)
   return issues
+}
+
+/**
+ * The JQL string for `text ~`. Jira hands the text to Lucene, which reads `*`, `~`, `:` and the
+ * like as operators, so each is escaped first and the query matches the words as typed. The JQL
+ * quoting then doubles those backslashes.
+ */
+const luceneLiteral = (text: string) => text.replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, '\\$&')
+
+/**
+ * Issues in the project whose summary, description, comments or other text fields hold `text`,
+ * most recently updated first, at most `TEXT_SEARCH_LIMIT`. One request, no paging. Throws
+ * `validation_failed` for empty or over-long text before anything is sent. Aborting `signal`
+ * rejects the request.
+ */
+export async function searchText(
+  http: HttpClient,
+  text: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<Issue[]> {
+  const query = parseInput(textQuery, text, 'search text')
+  const settings = await readSettings()
+  if (settings.projectKey === undefined) {
+    throw new JiraMgrError('permission_denied', 'No project is set. Run `jm auth login`.')
+  }
+  const ids = await getFieldIds()
+  const raw = await http.request('POST', '/rest/api/3/search/jql', {
+    body: {
+      jql: `project = ${quote(settings.projectKey)} AND text ~ ${quote(luceneLiteral(query))} ORDER BY updated DESC`,
+      fields: requestedFields(ids),
+      maxResults: TEXT_SEARCH_LIMIT,
+    },
+    signal: options.signal,
+  })
+  return parseResponse(z.object({ issues: z.array(issueSchema(ids)) }), raw, 'search').issues
 }
 
 export type { IssueDetail }

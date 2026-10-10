@@ -67,7 +67,7 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 
 ## Issue Search
 
-`@jira-mgr/core/search` exports `searchIssuePages`, `searchIssues` and `getIssue`. The `Issue` type, the `IssueDetail` type and the zod schema live in `@jira-mgr/core/issue`, which imports nothing from `node:`. The main entry re-exports the `Issue` type, so a renderer imports it from `@jira-mgr/core`. `/issue` also holds the pure rules every client applies to an issue:
+`@jira-mgr/core/search` exports `searchIssuePages`, `searchIssues`, `searchText` and `getIssue`. The `Issue` type, the `IssueDetail` type and the zod schema live in `@jira-mgr/core/issue`, which imports nothing from `node:`. The main entry re-exports the `Issue` type, so a renderer imports it from `@jira-mgr/core`. `/issue` also holds the pure rules every client applies to an issue:
 
 - `propertyRules(issueType)` takes the issue's `{ name, subtask }` and says what the type shows: `sprint` for every type but an Epic or a Subtask (Q20), `estimates` and `parent` for every type but an Epic, and `typeChange` for a Story, Task or Bug (Q23). Time remaining (h) is under `estimates`, so it shows on a Task, Bug and Subtask as well as a Story: live edits accepted it on a Subtask, and Jira has the last word on the rest.
 - `parentCandidates(issue, issues)` lists the issues `issue` may take as parent: Epics for a Story, Task or Bug, a Story, Task or Bug for a Subtask, nothing for an Epic.
@@ -79,6 +79,7 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 - Two phases run in order: `unresolved` (`statusCategory != Done`), then `done`. Each orders by `key DESC`. The key never changes, so an edit made mid-load cannot move an issue across a page boundary as `updated` would.
 - `loaded` counts issues across both phases. Jira sends no total, so there is no percentage.
 - `searchIssues(http, options)` collects every issue in load order.
+- `searchText(http, text, { signal })` runs `project = <key> AND text ~ "<text>" ORDER BY updated DESC` once and returns at most 20 issues, so it matches the summary, description, comments and other text fields. It trims the text and refuses blank text or text over 200 characters with `validation_failed` before any request. It escapes Lucene operators (`+ - * ? ~ : "` and the like), so the text matches as typed, and quotes the JQL string, so the text cannot add a clause. Jira matches whole words, not word parts.
 - `getIssue(http, key, { signal })` reads one issue with the same fields plus `description` (an ADF document, or `null`) and `subtasks` (`{ key, summary, status }`, the status as its name). An unknown key throws `not_found`.
 - `signal` goes to the HTTP client, so aborting stops the paging and rejects with the signal's reason.
 - An issue that fails the schema, or a page that is not last but sends no token or repeats one, throws `jira_error`.

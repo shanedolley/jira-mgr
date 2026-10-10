@@ -49,6 +49,7 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     login: record('login', loggedOut),
     logout: record('logout', loggedOut),
     listIssues: record('listIssues', []),
+    searchText: record('searchText', []),
     setSummary: record('setSummary', undefined),
     getIssue: record('getIssue', {} as never),
     editIssue: record('editIssue', undefined),
@@ -229,6 +230,9 @@ describe('issue edits', () => {
     ['issues:setSprint', { key: 'PSAPAC-1', sprintId: 1.5 }],
     ['sprints:list', {}],
     ['users:search', { query: 'x'.repeat(201) }],
+    ['issues:searchText', { query: 'x'.repeat(201) }],
+    ['issues:searchText', { query: 'a', extra: 1 }],
+    ['issues:searchText', {}],
     ['fields:options', { field: 'status' }],
   ] as const)('refuses %s with bad arguments %j', async (channel, raw) => {
     const { backend, calls } = fakeBackend()
@@ -322,6 +326,29 @@ describe('issues:delete', () => {
     const result = await createHandlers(backend)['issues:delete'](args, noProgress)
     expect(result).toMatchObject({ ok: true })
     expect(calls).toEqual([{ method: 'deleteIssue', args: [args] }])
+  })
+})
+
+describe('issues:searchText', () => {
+  it('passes the query to the backend and its issues back', async () => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['issues:searchText'](
+      { query: 'runbook' },
+      noProgress,
+    )
+    expect(result).toEqual({ ok: true, data: [] })
+    expect(calls).toEqual([{ method: 'searchText', args: [{ query: 'runbook' }] }])
+  })
+
+  it('maps core refusing blank text to validation_failed', async () => {
+    const { backend } = fakeBackend({
+      searchText: () => Promise.reject(new JiraMgrError('validation_failed', 'Enter text.')),
+    })
+    const result = await createHandlers(backend, () => undefined)['issues:searchText'](
+      { query: '  ' },
+      noProgress,
+    )
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
   })
 })
 

@@ -44,3 +44,13 @@ export function searchIssues(
   )
   return { shown: ranked.slice(0, limit).map((r) => r.issue), total: ranked.length }
 }
+
+/**
+ * The issues Jira's text search found that the palette has not already listed. The loaded matches
+ * keep their ranking and come first; these follow in Jira's order. A loaded issue whose
+ * description or comment holds the text is not in `shown`, so it appears here.
+ */
+export function textMatches(shown: readonly Issue[], found: readonly Issue[]): Issue[] {
+  const listed = new Set(shown.map((i) => i.key))
+  return found.filter((i) => !listed.has(i.key))
+}

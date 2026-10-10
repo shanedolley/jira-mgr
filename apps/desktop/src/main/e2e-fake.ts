@@ -126,6 +126,8 @@ export interface FakeJiraCounts {
   avatarFetches: { url: string; authorized: boolean }[]
   /** The default file name each stand-in save dialog offered, in order. */
   downloads: string[]
+  /** Every `text ~` search, in order of arrival, with whether the app aborted it. */
+  textSearches: { query: string; aborted: boolean }[]
   /** Every timer reminder, as the e2e entry's stand-in for a native notification saw it. */
   notifications: { title: string; body: string }[]
 }
@@ -536,6 +538,20 @@ function issue(seed: Seed): RawIssue {
   }
 }
 
+/** The `text ~ "..."` clause of core's text search, its quoted string captured. */
+const TEXT_CLAUSE = /text ~ "((?:[^"\\]|\\.)*)"/
+
+/** Undoes JQL quoting and then Lucene escaping, which core applies one after the other. */
+const unescapeJql = (quoted: string) => quoted.replace(/\\(.)/g, '$1').replace(/\\(.)/g, '$1')
+
+/** The text nodes of an ADF document, joined by spaces. */
+function adfText(node: unknown): string {
+  if (typeof node !== 'object' || node === null) return ''
+  const { text, content } = node as { text?: unknown; content?: unknown }
+  const own = typeof text === 'string' ? text : ''
+  return Array.isArray(content) ? [own, ...content.map(adfText)].join(' ') : own
+}
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
@@ -559,6 +575,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failRead: () => void
   /** Makes the next read of an issue's transitions answer 500. */
   failTransitions: () => void
+  /** Holds each `text ~` search until `releaseTextSearch` or until the app aborts it. */
+  holdTextSearch: () => void
+  /** Answers the held text searches and stops holding. */
+  releaseTextSearch: () => void
   /** Makes the next issue edit answer 400, whatever it holds, so a test can watch an undo refused. */
   refuseNextEdit: () => void
   /** Removes an issue as if someone else deleted it: no hold and no count, so the next refetch loses it. */
@@ -625,6 +645,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     quitPrompts: 0,
     avatarFetches: [],
     downloads: [],
+    textSearches: [],
     notifications: [],
   }
   // Attachments by issue key. PSAPAC-1 starts with the image its description embeds.
@@ -720,6 +741,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   let failNextRead = false
   let failNextTransitions = false
   let refuseNext = false
+  let textHeld = false
+  const heldText: (() => void)[] = []
   let readsHeld = false
   const heldReads: (() => void)[] = []
   /** Waits while `holdReads` is on, so a test sees the page before a refetch lands. */
@@ -882,6 +905,40 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     }
     if (method === 'POST' && path === '/rest/api/3/search/jql') {
       const search = body() as { jql: string; maxResults: number; nextPageToken?: string }
+      const textClause = TEXT_CLAUSE.exec(search.jql)
+      if (textClause !== null) {
+        const entry = { query: unescapeJql(textClause[1] ?? ''), aborted: false }
+        counts.textSearches.push(entry)
+        const signal = init?.signal ?? undefined
+        signal?.addEventListener('abort', () => {
+          entry.aborted = true
+        })
+        if (textHeld) {
+          await new Promise<void>((resolve, reject) => {
+            heldText.push(resolve)
+            signal?.addEventListener('abort', () => {
+              reject(signal.reason as Error)
+            })
+          })
+        }
+        const words = entry.query
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((w) => w !== '')
+        const found = issues
+          .filter((i) => {
+            const haystack = [
+              i.fields.summary,
+              adfText(i.fields.description),
+              ...(comments.get(i.key) ?? []).map((c) => adfText(c.body)),
+            ]
+              .join(' ')
+              .toLowerCase()
+            return words.every((w) => haystack.includes(w))
+          })
+          .sort((a, b) => Date.parse(b.fields.updated) - Date.parse(a.fields.updated))
+        return json({ issues: found.slice(0, search.maxResults), isLast: true })
+      }
       // "!= Done" holds "= Done" as a substring, so test it first.
       const phase = search.jql.includes('statusCategory != Done') ? 'unresolved' : 'done'
       if (phase === 'done' && !unresolvedComplete) counts.doneEarly++
@@ -1395,6 +1452,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failTransitions: () => {
       failNextTransitions = true
+    },
+    holdTextSearch: () => {
+      textHeld = true
+    },
+    releaseTextSearch: () => {
+      textHeld = false
+      for (const release of heldText.splice(0)) release()
     },
     refuseNextEdit: () => {
       refuseNext = true
