@@ -226,6 +226,32 @@ test('Retry refuses to overwrite a later edit of the same field', async () => {
   await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: High')
 })
 
+test('Retry refuses to overwrite an edit that was queued behind the refused one', async () => {
+  await open()
+  await refuseNextEdit(app)
+  await pickPriority(/PSAPAC-4,/, 'Low')
+  await expect.poll(writes).toBe(1)
+  // High waits for Jira to answer Low, since edits of one issue go out one at a time.
+  await peekPicker('Priority').click()
+  await option('High').click()
+  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: High')
+  await releaseEdit(app)
+  const alert = notices(window).getByRole('alert')
+  await expect(alert).toContainText('Priority not changed.')
+  await expect.poll(writes).toBe(2)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(1)
+  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: High')
+
+  // By now the cache shows High, which is not what Low's edit found, so Retry must not send Low.
+  await alert.getByRole('button', { name: 'Retry' }).click()
+  await expect(notices(window).getByRole('alert')).toContainText(
+    'Did not retry the Priority of PSAPAC-4',
+  )
+  expect(await writes()).toBe(2)
+  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: High')
+})
+
 test('Undo stays reachable on the last two toasts, each undoing its own edit', async () => {
   await open()
   await pickPriority(/PSAPAC-4,/, 'Low')

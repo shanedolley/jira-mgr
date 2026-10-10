@@ -34,9 +34,9 @@ import { useDebounced } from './useDebounced'
  * Sends an edit of issue `key` that changes the fields of `patch`. A refusal, which has shown the
  * old value again, goes to the toast with Retry and flashes the issue's row and those fields'
  * rows. It does so even when the control that sent the edit has gone, such as a Peek that moved
- * on to another issue. Retry sends the edit again only while the fields still show the value the
- * refusal put back; a later edit of one of them, from anywhere, would be overwritten, so it
- * refuses instead.
+ * on to another issue. Retry sends the edit again only while the fields still show what they
+ * showed before this edit was sent; a later edit of one of them, from anywhere, would be
+ * overwritten, so it refuses instead.
  */
 export function attemptWith(
   notify: Notify,
@@ -46,18 +46,19 @@ export function attemptWith(
   patch: Partial<Issue>,
   send: () => Promise<unknown>,
 ): void {
+  // Taken before the edit is sent. At refusal time the cache may already show a newer edit of
+  // the same fields that was queued behind this one.
+  const before = current(client, key)
+  const fields = Object.keys(patch)
   send().then(undefined, (failure: unknown) => {
-    const fields = Object.keys(patch)
-    // The refusal has put the old value back, so this is what Retry's edit would replace.
-    const shown = current(client, key)
     notify(refusedNotice(what, failure), {
       flash: { key, fields },
       retry: () => {
         const now = current(client, key)
         const changed =
-          shown === undefined || now === undefined
+          before === undefined || now === undefined
             ? ''
-            : changedFields(pick(shown, fields), pick(now, fields))
+            : changedFields(pick(before, fields), pick(now, fields))
         if (changed === '') {
           attemptWith(notify, client, key, what, patch, send)
           return
@@ -72,9 +73,9 @@ export function attemptWith(
   })
 }
 
-/** The fields of `issue` that `fields` names, which is all `changedSince` compares. */
+/** The values of `fields` on `issue`. A field the issue lacks is listed as `undefined`, so it still compares. */
 const pick = (issue: Issue, fields: readonly string[]): Partial<Issue> =>
-  Object.fromEntries(Object.entries(issue).filter(([field]) => fields.includes(field)))
+  Object.fromEntries(fields.map((field) => [field, issue[field as keyof Issue]]))
 
 /** `attemptWith` for a control that sits inside the Shell's notice context. */
 export function useAttempt(key: string) {
