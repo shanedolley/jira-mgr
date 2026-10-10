@@ -59,7 +59,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Pickers without a search field | `Home`, `End` | First or last option; in a searchable picker they move the caret |
 | Pickers | `Enter` | Choose the highlighted option |
 | Status and Priority pickers | `1` to `9` | Choose the numbered option; the keycap on each option shows its number |
-| Palette | `Up`, `Down` | Move the highlight |
-| Palette | `Enter`, `Esc` | Run the highlighted row (an action, a view, or open an issue's page), or close |
+| Palette | `Up`, `Down` | Move the highlight; it starts on the first issue, and `Up` reaches the actions and views above it |
+| Palette | `Enter`, `Esc` | Open the highlighted row (an issue's page, or run an action or view), or close; the first issue is highlighted by default |
 
 Ctrl stands in for Cmd off the Mac.

@@ -5,7 +5,10 @@ import type { SavedView } from '../../shared/ipc'
 import { fitsParent } from './create'
 import { keyOf } from './keymap'
 
-/** What the palette can do to the issue in context. The first seven share a name with their key's command. */
+/**
+ * What the palette can do to the issue in context. Every id but `sprint`, `subIssue` and
+ * `openInJira` is also the name of a command in `keymap.ts`, which is how its key shows.
+ */
 export type ActionId =
   | 'assignee'
   | 'assignMe'
@@ -68,7 +71,15 @@ export function matchingActions(issue: Issue | null, query: string): ActionRow[]
   }))
 }
 
-/** The saved views whose "Go to view" label fits `query`. */
+/** The saved views whose name fits `query`. The "Go to view" lead-in is not searched. */
 export function matchingViews(views: readonly SavedView[], query: string): SavedView[] {
-  return views.filter((v) => labelMatches(`Go to view ${v.name}`, query))
+  return views.filter((v) => labelMatches(v.name, query))
+}
+
+/**
+ * The row Enter takes before the user moves: the first issue when any is listed, so Enter opens
+ * an issue as it did before the palette had actions, else the first action or view.
+ */
+export function defaultRow<T>(lead: readonly T[], issues: readonly T[]): T | undefined {
+  return issues[0] ?? lead[0]
 }

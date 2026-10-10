@@ -2,7 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
 import type { SavedView } from '../../shared/ipc'
-import { matchingActions, matchingViews } from './paletteActions'
+import { defaultRow, matchingActions, matchingViews } from './paletteActions'
 
 const TYPES = {
   Epic: { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 },
@@ -73,10 +73,23 @@ describe('matchingViews', () => {
     { id: 'b', name: 'My issues' },
   ] as SavedView[]
 
-  it('matches the label "Go to view <name>"', () => {
+  it('matches the name, not the "Go to view" lead-in', () => {
     expect(matchingViews(views, '').map((v) => v.id)).toEqual(['a', 'b'])
-    expect(matchingViews(views, 'view').map((v) => v.id)).toEqual(['a', 'b'])
+    expect(matchingViews(views, 'view')).toEqual([])
+    expect(matchingViews(views, 'go to')).toEqual([])
     expect(matchingViews(views, 'sprint').map((v) => v.id)).toEqual(['a'])
     expect(matchingViews(views, 'runbook')).toEqual([])
+  })
+})
+
+describe('defaultRow', () => {
+  it('takes the first issue when any is listed, so Enter opens an issue', () => {
+    expect(defaultRow(['action', 'view'], ['issue 1', 'issue 2'])).toBe('issue 1')
+    expect(defaultRow([], ['issue 1'])).toBe('issue 1')
+  })
+
+  it('takes the first action or view only when no issue is listed', () => {
+    expect(defaultRow(['action', 'view'], [])).toBe('action')
+    expect(defaultRow<string>([], [])).toBeUndefined()
   })
 })

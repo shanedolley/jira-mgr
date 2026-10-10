@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
 import { SITE, counts, launch, logIn, notices, releaseEdit } from './harness.js'
 
@@ -30,6 +30,11 @@ const search = () => palette().getByRole('combobox')
 const actions = () => palette().getByRole('group', { name: 'Actions' })
 const action = (name: string) => actions().getByRole('option', { name, exact: true })
 const option = (name: string | RegExp) => window.getByRole('option', { name })
+/** The issue rows: every option that names a key. Action and view rows name none. */
+const issueRows = () =>
+  palette()
+    .getByRole('option')
+    .filter({ hasText: /PSAPAC-\d+/ })
 const dialog = () => window.getByRole('dialog', { name: 'New issue' })
 const peekPicker = (label: string) => peek().getByRole('button', { name: new RegExp(`^${label}:`) })
 
@@ -49,11 +54,28 @@ async function select(row: RegExp) {
   await expect(tree()).toBeFocused()
 }
 
-/** Opens the palette and runs the action named `name` from the field, as the keyboard would. */
+/** Moves the highlight to `row` with the arrow keys, from wherever it stands. */
+async function reach(row: Locator) {
+  await expect(row).toBeVisible()
+  const options = palette().getByRole('option')
+  const id = await row.getAttribute('id')
+  for (let step = 0; step < 40; step++) {
+    const at = await options.evaluateAll((all) =>
+      all.findIndex((o) => o.getAttribute('aria-selected') === 'true'),
+    )
+    const to = await options.evaluateAll((all, wanted) => all.findIndex((o) => o.id === wanted), id)
+    if (at === to) return
+    await window.keyboard.press(at < to ? 'ArrowDown' : 'ArrowUp')
+  }
+  throw new Error('the arrow keys never reached the row')
+}
+
+/** Opens the palette, finds the action named `name`, reaches it with the arrow keys and runs it. */
 async function run(name: string) {
   await window.keyboard.press('Meta+k')
   await expect(palette()).toBeVisible()
   await search().fill(name)
+  await reach(action(name))
   await expect(action(name)).toHaveAttribute('aria-selected', 'true')
   await window.keyboard.press('Enter')
   await expect(palette()).toHaveCount(0)
@@ -62,6 +84,10 @@ async function run(name: string) {
 const writes = async () => (await counts(app)).edits
 const lastBody = async () => (await counts(app)).editBodies.at(-1)
 const clipboardText = () => app.evaluate(({ clipboard }) => clipboard.readText())
+const clearClipboard = () =>
+  app.evaluate(({ clipboard }) => {
+    clipboard.clear()
+  })
 
 /** Waits for the write to arrive, then lets the fake Jira answer it. */
 async function settle(expected: number) {
@@ -100,8 +126,9 @@ test('Cmd+K names the issue in context as a chip and lists its actions with thei
     else await expect(keycap).toHaveText(key)
   }
   expect((await action('Assign').boundingBox())?.height).toBe(36)
-  // The first action is highlighted, so Enter runs it.
-  await expect(action('Assign')).toHaveAttribute('aria-selected', 'true')
+  // The first issue is highlighted, not the first action, so Enter still opens an issue.
+  await expect(issueRows().first()).toHaveAttribute('aria-selected', 'true')
+  await expect(action('Assign')).toHaveAttribute('aria-selected', 'false')
 
   // Saved views follow the actions.
   await expect(palette().getByRole('option', { name: 'Go to view My issues' })).toBeVisible()
@@ -138,6 +165,8 @@ test('Change status and Change priority open the Peek pickers, whose picks write
   await run('Change status')
   await expect(peek()).toBeVisible()
   await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
+  // The options load when the picker opens; keys sent before they land do nothing.
+  await expect(option('To Do')).toBeVisible()
   await window.keyboard.press('ArrowUp')
   await window.keyboard.press('Enter')
   await expect(peekPicker('Status')).toHaveAccessibleName('Status: To Do')
@@ -147,6 +176,7 @@ test('Change status and Change priority open the Peek pickers, whose picks write
 
   await run('Change priority')
   await expect(window.getByRole('listbox', { name: 'Priority' })).toBeFocused()
+  await expect(option('Low')).toBeVisible()
   await window.keyboard.press('ArrowDown')
   await window.keyboard.press('Enter')
   await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Low')
@@ -226,6 +256,7 @@ test('Go to view applies the saved view, as a click in the sidebar does', async 
   await open()
   await window.keyboard.press('Meta+k')
   await search().fill('my issues')
+  await reach(palette().getByRole('option', { name: 'Go to view My issues' }))
   await window.keyboard.press('Enter')
   await expect(palette()).toHaveCount(0)
   await expect(window.getByRole('button', { name: 'Assignee: me', exact: true })).toHaveAttribute(
@@ -261,4 +292,72 @@ test('searching still finds issues beside the actions, and Enter opens the top i
   await expect(option(/PSAPAC-11/)).toContainText('Draft the runbook')
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('heading', { name: 'Draft the runbook' })).toBeVisible()
+})
+
+/** Waits for the issue rows to follow the field: the list lags it a render, so every row must hold `text`. */
+const listed = (text: string) =>
+  expect
+    .poll(async () => {
+      const rows = await issueRows().allInnerTexts()
+      return rows.length > 0 && rows.every((row) => row.toLowerCase().includes(text))
+    })
+    .toBe(true)
+
+/** The first issue row's summary, which Enter should open. */
+const firstIssueSummary = async () =>
+  (await issueRows().first().locator('span.truncate').innerText()).trim()
+
+test('Enter opens the first issue, not an action or view whose label shares the typed word', async () => {
+  await open()
+  await select(/PSAPAC-4,/)
+  await window.keyboard.press('Meta+k')
+
+  // "view" is in "Review the data model" and in no action; "li" is in "Copy link" and in issues.
+  await search().fill('view')
+  await listed('view')
+  await expect(issueRows().first()).toContainText('Review the data model')
+  await window.keyboard.press('Enter')
+  await expect(issuePage().getByRole('heading', { name: 'Review the data model' })).toBeVisible()
+  await window.keyboard.press('Escape')
+
+  await window.keyboard.press('Meta+k')
+  await search().fill('li')
+  await listed('li')
+  await expect(action('Copy link')).toBeVisible()
+  await expect(issueRows().first()).toHaveAttribute('aria-selected', 'true')
+  const summary = await firstIssueSummary()
+  await window.keyboard.press('Enter')
+  await expect(issuePage().getByRole('heading', { name: summary })).toBeVisible()
+  expect((await counts(app)).edits).toBe(0)
+})
+
+test('with no issue in context and an empty field, Enter opens the first issue, not a view', async () => {
+  await open()
+  await window.keyboard.press('Meta+k')
+  await expect(palette().getByRole('option', { name: 'Go to view My issues' })).toBeVisible()
+  await expect(issueRows().first()).toHaveAttribute('aria-selected', 'true')
+  const summary = await firstIssueSummary()
+  await window.keyboard.press('Enter')
+  await expect(issuePage().getByRole('heading', { name: summary })).toBeVisible()
+  await expect(window.getByRole('button', { name: 'Assignee: me', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  )
+})
+
+test('an arrow key moves from the first issue up to an action, and Enter runs it', async () => {
+  await open()
+  await select(/PSAPAC-4,/)
+  await clearClipboard()
+  await window.keyboard.press('Meta+k')
+  await search().fill('li')
+  await listed('li')
+  await expect(issueRows().first()).toHaveAttribute('aria-selected', 'true')
+
+  await window.keyboard.press('ArrowUp')
+  await expect(action('Copy link')).toHaveAttribute('aria-selected', 'true')
+  await window.keyboard.press('Enter')
+  await expect(palette()).toHaveCount(0)
+  await expect(notices(window).getByText('Copied the link of PSAPAC-4')).toBeVisible()
+  await expect.poll(clipboardText).toBe(`${SITE}/browse/PSAPAC-4`)
 })

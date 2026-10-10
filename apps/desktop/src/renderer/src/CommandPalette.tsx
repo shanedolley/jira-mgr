@@ -4,7 +4,13 @@ import { useDeferredValue, useEffect, useId, useState, type KeyboardEvent } from
 import type { SavedView } from '../../shared/ipc'
 import { Kbd } from './Kbd'
 import { Modal } from './Modal'
-import { matchingActions, matchingViews, type ActionId, type ActionRow } from './paletteActions'
+import {
+  defaultRow,
+  matchingActions,
+  matchingViews,
+  type ActionId,
+  type ActionRow,
+} from './paletteActions'
 import { StatusDot } from './StatusDot'
 import { searchIssues, textMatches } from './search'
 import { useTextSearch, type TextSearch } from './textSearch'
@@ -100,19 +106,21 @@ export function CommandPalette({
   // Labels are few, so they follow the field itself rather than the deferred value.
   const { actions: actionRows, views: viewRows } = leadRows(context, views, query)
   const lead: Row[] = [...actionRows, ...viewRows]
-  const rows: Row[] = [...lead, ...shown.map(issueRow), ...found.map(issueRow)]
+  const issueRows = [...shown.map(issueRow), ...found.map(issueRow)]
+  const rows: Row[] = [...lead, ...issueRows]
 
-  const activeIndex = Math.max(
-    0,
-    rows.findIndex((row) => row.rid === activeRid),
-  )
-  const active = rows[activeIndex]
+  // Until an arrow key moves it, the highlight is on the first issue, not the first action.
+  const moved = rows.findIndex((row) => row.rid === activeRid)
+  const active = moved >= 0 ? rows[moved] : defaultRow<Row>(lead, issueRows)
+  const activeIndex = active === undefined ? 0 : rows.indexOf(active)
 
   const activeId = active === undefined ? undefined : optionId(active.rid)
+  // Only a move scrolls, so the list opens on the actions, above the highlighted first issue.
+  const scrolls = activeRid !== null
   useEffect(() => {
-    if (activeId !== undefined)
+    if (scrolls && activeId !== undefined)
       document.getElementById(activeId)?.scrollIntoView({ block: 'nearest' })
-  }, [activeId])
+  }, [scrolls, activeId])
 
   function move(step: number) {
     const next = rows[Math.min(rows.length - 1, Math.max(0, activeIndex + step))]
@@ -146,11 +154,13 @@ export function CommandPalette({
       case 'Enter':
         event.preventDefault()
         if (!event.nativeEvent.isComposing) {
-          // The list lags the field while it is deferred, so Enter reads the current query's top result.
+          // The issue list lags the field while it is deferred, so Enter reads the current query's
+          // top issue, unless an arrow key already chose an action or view, which follow the field.
+          const chosen = lead.find((row) => row.rid === activeRid)
           const target =
             deferred === query
               ? active
-              : [...lead, ...searchIssues(issues, query).shown.map(issueRow)][0]
+              : (chosen ?? defaultRow<Row>(lead, searchIssues(issues, query).shown.map(issueRow)))
           if (target !== undefined) choose(target)
         }
         break
