@@ -1,6 +1,6 @@
 # Contributing
 
-1. Clone [shanedolley/jira-mgr](https://github.com/shanedolley/jira-mgr), use Node 24 (`nvm use`), and run `pnpm install`. The CLI exists; [Install the CLI](docs/how-to/install-cli.md) builds it, and `docs/tutorials/getting-started.md` is planned.
+1. Clone [shanedolley/jira-mgr](https://github.com/shanedolley/jira-mgr), use Node 24 (`nvm use`), and run `pnpm install`. The CLI exists; [Install the CLI](docs/how-to/install-cli.md) builds it, and [Getting Started](docs/tutorials/getting-started.md) walks through a first login.
 2. Branch from `main` as `<type>/<issue>-<slug>`.
 3. Make one small change, with its tests and docs, following the [standards](docs/standards/README.md) and the terms in [CONTEXT.md](CONTEXT.md).
 4. Run `pnpm format:check`, `pnpm lint`, `pnpm typecheck` and `pnpm test`. Run `pnpm e2e` when the change touches the CLI or the app.

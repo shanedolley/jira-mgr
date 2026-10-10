@@ -8,7 +8,7 @@ Each page is one [Diataxis](https://diataxis.fr/) kind. Split a page that mixes 
 |---|---|
 | A lesson for a newcomer | `docs/tutorials/` |
 | A recipe for one task | `docs/how-to/` |
-| Facts to look up: commands, core API, errors, config | `docs/reference/` |
+| Facts to look up: commands, errors, config, shortcuts | `docs/reference/` |
 | How the system fits together, and why | `docs/architecture/` |
 | A decision and the options weighed | `docs/adr/` |
 | A design for a large feature, before it is built | `docs/design/` |
@@ -25,7 +25,7 @@ Each page is one [Diataxis](https://diataxis.fr/) kind. Split a page that mixes 
 - Update docs in the same pull request as the change they describe.
 - `.github/CODEOWNERS` names every doc's owner, who reviews changes to it and keeps it current.
 - Accepted ADRs are never edited. A new ADR supersedes an old one.
-- Generated reference (CLI commands, core API) is regenerated, never edited by hand.
+- Generated reference (CLI commands, error codes) is regenerated, never edited by hand.
 - Name files in `kebab-case`. Prefix discovery records with their date: `2026-10-07-product-grilling.md`.
 - Start new runbooks, design docs and discovery records from `docs/templates/`.
 - Every folder's `README.md` indexes what it holds. Add a line there when you add a file.

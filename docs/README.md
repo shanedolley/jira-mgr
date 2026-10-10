@@ -6,7 +6,7 @@ Docs follow [Diataxis](https://diataxis.fr/): each page is one kind (tutorial, h
 |---|---|---|
 | [Tutorials](tutorials/README.md) | Tutorial | Learning by doing: the first run of the CLI and an agent session |
 | [How-to](how-to/README.md) | How-to | Task recipes: install, test and develop; add a command or a shortcut |
-| [Reference](reference/README.md) | Reference | CLI commands, the core API, error codes, configuration |
+| [Reference](reference/README.md) | Reference | CLI commands, error codes, configuration, shortcuts |
 | [Architecture](architecture/README.md) | Explanation | How the system fits together, and why |
 | [ADRs](adr/README.md) | Decision | Architecture decision records, superseded rather than edited |
 | [Design](design/README.md) | Design | Numbered design docs, written before a large feature is built |
