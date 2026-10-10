@@ -222,9 +222,33 @@ export function toCreateArgs(draft: CreateDraft): CreateIssueArgs | null {
   }
 }
 
+/** The nodes that hold nothing of their own, so a document of only these says something only through its text. */
+const CONTAINERS = new Set([
+  'doc',
+  'paragraph',
+  'heading',
+  'blockquote',
+  'bulletList',
+  'orderedList',
+  'listItem',
+  'codeBlock',
+  'hardBreak',
+  'text',
+])
+
 /**
- * The description editor's document as ADF, or `null` while it holds no text: a document of empty
- * paragraphs, which Enter alone makes, is not a description.
+ * True when `node` holds a text with a visible character, or any node outside `CONTAINERS` (a
+ * rule, a mention, media, a read-only block), which stays content whatever it holds.
+ */
+function hasContent(node: { type: string; text?: string; content?: readonly unknown[] }): boolean {
+  if (!CONTAINERS.has(node.type)) return true
+  if (node.text !== undefined && node.text.trim() !== '') return true
+  return (node.content ?? []).some((child) => hasContent(child as typeof node))
+}
+
+/**
+ * The description editor's document as ADF, or `null` while it says nothing: Enter, Shift+Enter,
+ * spaces, an empty heading or an empty list item leave no visible text, so they are not a description.
  */
 export function descriptionOf(doc: EditorDoc): AdfDoc | null {
   let adf: AdfDoc | null
@@ -234,9 +258,7 @@ export function descriptionOf(doc: EditorDoc): AdfDoc | null {
     // Only an image still uploading makes it throw, and the create dialog's editor takes no images.
     return null
   }
-  const empty = (block: { type: string; content?: unknown[] }) =>
-    block.type === 'paragraph' && (block.content ?? []).length === 0
-  return adf === null || adf.content.every(empty) ? null : adf
+  return adf === null || !hasContent(adf) ? null : adf
 }
 
 /** After "Create more": the same form with no summary or description for the next issue. */

@@ -50,7 +50,6 @@ import {
   type Person,
 } from './properties'
 import { useAttachFile } from './activityQueries'
-import { useNotify } from './notify'
 import { useCreateIssue, useFieldOptions, useSprints, useUsers } from './queries'
 import { useDebounced } from './useDebounced'
 import { TypeIcon } from './TypeIcon'
@@ -64,7 +63,14 @@ interface CreateIssueDialogProps {
   me: CurrentUser | undefined
   onClose: () => void
   /** Called after each create. `more` is true when the modal stays open for the next one. */
-  onCreated: (result: CreatedIssue, notice: Notice, more: boolean, draft: CreateDraft) => void
+  onCreated: (
+    result: CreatedIssue,
+    notice: Notice,
+    more: boolean,
+    draft: CreateDraft,
+    /** A chosen file did not attach, so the notice names it and must reach a toast even when `more` keeps the modal open. */
+    failedFiles: boolean,
+  ) => void
   returnFocus: () => void
 }
 
@@ -108,9 +114,10 @@ export function CreateIssueDialog({
   const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)
   const [files, setFiles] = useState<File[]>([])
   const [attaching, setAttaching] = useState(false)
+  /** The description editor holds more than its one empty paragraph. */
+  const [touched, setTouched] = useState(false)
   const create = useCreateIssue()
   const attach = useAttachFile()
-  const notify = useNotify()
   const descriptionRef = useRef<AdfEditorHandle>(null)
   const filePicker = useRef<HTMLInputElement>(null)
   const summaryRef = useRef<HTMLInputElement>(null)
@@ -185,6 +192,7 @@ export function CreateIssueDialog({
   /** Attaches the files to the new issue, then tells the user and either closes or clears the form. */
   async function finish(result: CreatedIssue, sent: CreateDraft, chosen: readonly File[]) {
     let notice = describeCreated(sent, result)
+    let failedFiles = false
     if (chosen.length > 0) {
       const failed: FailedFile[] = []
       setAttaching(true)
@@ -196,15 +204,15 @@ export function CreateIssueDialog({
       })
       setAttaching(false)
       notice = withUploadFailures(notice, result.key, failed)
-      // The next create overwrites the line in the dialog, so a failed file also takes the toast.
-      if (more && failed.length > 0) notify(notice, { openKey: result.key })
+      failedFiles = failed.length > 0
     }
-    onCreated(result, notice, more, sent)
+    onCreated(result, notice, more, sent, failedFiles)
     if (more) {
       setLast(notice)
       setDraft(nextDraft(sent))
       setFiles([])
       descriptionRef.current?.reset(null)
+      setTouched(false)
     }
   }
 
@@ -388,7 +396,11 @@ export function CreateIssueDialog({
                 className={`${INPUT} h-10 text-base`}
               />
             </div>
-            <div className="relative max-h-48 overflow-y-auto rounded-md border border-field-border bg-canvas px-2 py-1.5 focus-within:outline-2 focus-within:outline-accent [&_.ProseMirror]:min-h-16">
+            {/* A contenteditable ignores `<fieldset disabled>`, so `inert` locks the editor while it sends. */}
+            <div
+              inert={pending}
+              className={`relative max-h-48 overflow-y-auto rounded-md border border-field-border bg-canvas px-2 py-1.5 focus-within:outline-2 focus-within:outline-accent [&_.ProseMirror]:min-h-16 ${pending ? 'opacity-60' : ''}`}
+            >
               <AdfEditor
                 ref={descriptionRef}
                 embedded
@@ -404,11 +416,17 @@ export function CreateIssueDialog({
                 }}
                 onChange={(doc) => {
                   edit({ description: descriptionOf(doc) })
+                  // Not `draft.description`: a blank line or an empty bullet shows, and sends nothing.
+                  setTouched(
+                    doc.content.length > 1 ||
+                      doc.content[0]?.type !== 'paragraph' ||
+                      (doc.content[0].content?.length ?? 0) > 0,
+                  )
                 }}
                 onEditRequest={() => undefined}
                 onUnsupported={() => undefined}
               />
-              {draft.description === null && (
+              {!touched && (
                 <span
                   aria-hidden
                   className="pointer-events-none absolute left-2 top-1.5 text-muted"

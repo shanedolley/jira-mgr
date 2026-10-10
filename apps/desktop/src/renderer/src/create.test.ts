@@ -289,6 +289,32 @@ describe('descriptionOf', () => {
     expect(descriptionOf(doc(paragraph(), paragraph()))).toBeNull()
   })
 
+  const text = (value: string): EditorNode => ({ type: 'text', text: value })
+  const node = (type: string, ...content: EditorNode[]): EditorNode => ({ type, content })
+
+  it.each([
+    ['spaces', doc(node('paragraph', text('   ')))],
+    ['a lone line break', doc(node('paragraph', { type: 'hardBreak' }))],
+    ['an empty heading', doc({ type: 'heading', attrs: { level: 2 } })],
+    ['an empty bullet item', doc(node('bulletList', node('listItem', node('paragraph'))))],
+    ['an empty code block', doc({ type: 'codeBlock' })],
+    ['an empty quote', doc(node('blockquote', node('paragraph')))],
+  ])('is null for %s', (_name, empty) => {
+    expect(descriptionOf(empty)).toBeNull()
+  })
+
+  it.each([
+    ['text with a character', doc(node('paragraph', text(' a ')))],
+    [
+      'text in a list item',
+      doc(node('bulletList', node('listItem', node('paragraph', text('a'))))),
+    ],
+    ['a rule', doc({ type: 'horizontalRule' })],
+    ['a read-only inline node', doc(node('paragraph', { type: 'adfInline', attrs: { node: {} } }))],
+  ])('keeps %s', (_name, held) => {
+    expect(descriptionOf(held)).not.toBeNull()
+  })
+
   it('is the ADF once there is text', () => {
     expect(descriptionOf(doc(paragraph(), paragraph('Plan it')))).toEqual({
       version: 1,

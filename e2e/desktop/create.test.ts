@@ -6,6 +6,7 @@ import { expect, test, type ElectronApplication, type Page } from '@playwright/t
 
 import {
   counts,
+  failRead,
   failUpload,
   launch,
   logIn,
@@ -852,6 +853,49 @@ test('a failed upload still reaches a toast when Create more keeps the dialog op
     'Could not attach broken.txt to PSAPAC-2000.',
   )
   await expect(toast()).toContainText('Could not attach broken.txt to PSAPAC-2000.')
+  await expect(toast().getByRole('button', { name: 'Open' })).toHaveCount(1)
+})
+
+test('a failed upload toast has no Open button when the new issue could not be read back', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Create more').check()
+  await dialog().getByLabel('Summary').fill('Not read back')
+  await picker().setInputFiles([file('broken.txt')])
+  await failRead(app)
+  await failUpload(app)
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+
+  await expect(toast()).toContainText('Created PSAPAC-2000')
+  await expect(toast()).toContainText('Could not attach broken.txt to PSAPAC-2000.')
+  await expect(toast().getByRole('button', { name: 'Open' })).toHaveCount(0)
+})
+
+test('the description is locked while the create is in flight', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await fillDescribed('Locked while sending')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await expect.poll(writes).toBe(1)
+
+  await expect(description().locator('xpath=ancestor::*[@inert]')).toHaveCount(1)
+  await releaseEdit(app)
+  await expect(dialog()).toHaveCount(0)
+})
+
+test('a description of blanks is not sent, and the placeholder hides once anything is typed', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Summary').fill('Only blanks')
+  await description().click()
+  await window.keyboard.type('   ')
+  await window.keyboard.press('Shift+Enter')
+  await expect(dialog().getByText('Add a description')).toHaveCount(0)
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+
+  expect((await lastBody()).fields).not.toHaveProperty('description')
 })
 
 // Linux CI sets a wider system font (PR #163); the new rows must not push the dialog sideways.
@@ -864,8 +908,10 @@ test('the description and long file names fit the dialog in a wide font', async 
   await dialog().getByLabel('Summary').fill('Fits')
   await description().click()
   await window.keyboard.type('word '.repeat(60))
+  // The unbreakable name cannot wrap, so only `truncate` keeps its chip inside the dialog.
   const names = [
     'a-very-long-file-name-for-the-quarterly-engagement-report-final.pdf',
+    `${'x'.repeat(80)}.pdf`,
     'b.txt',
     'c.txt',
   ]
