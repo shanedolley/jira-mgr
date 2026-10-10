@@ -358,8 +358,12 @@ test('Cmd+Z undoes the status, newest edit first, and the toast offers Undo', as
   expect(await lastBody()).toEqual({ fields: { priority: { id: '3' } } })
   await expect(notice('Undid PSAPAC-4: priority back to Medium')).toBeVisible()
   // The undo's own toast offers no Undo, since Cmd+Z walks on. The status toast still does.
-  await expect(notices(window).getByRole('listitem').filter({ hasText: 'Undid' })).toBeVisible()
-  await expect(undoButton()).toHaveCount(1)
+  const listItems = notices(window).getByRole('listitem')
+  const undid = listItems.filter({ hasText: 'Undid' })
+  await expect(undid).toBeVisible()
+  await expect(undid.getByRole('button', { name: 'Undo' })).toHaveCount(0)
+  const status = listItems.filter({ hasText: 'status changed to To Do' })
+  await expect(status.getByRole('button', { name: 'Undo' })).toHaveCount(1)
 
   // Then the status, moved back by the old status's transition.
   await window.keyboard.press('Meta+z')

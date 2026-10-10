@@ -10,8 +10,8 @@ export interface NoticeOptions {
   entry?: UndoEntry
   /** Puts a Retry button on the toast. It sends the failed edit again. */
   retry?: () => void
-  /** The issue whose Tree row flashes, so the eye finds the value that came back. */
-  flash?: string
+  /** The issue whose Tree row, and the rows of these fields in the Peek and on the page, flash. */
+  flash?: { key: string; fields: readonly string[] }
 }
 
 /** Shows a notice in the corner of the window. */

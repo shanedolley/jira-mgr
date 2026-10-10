@@ -292,11 +292,13 @@ function identity(field: keyof IssueDetail, issue: Fields): unknown {
  * The fields the edit set that the issue no longer shows, because Jira or someone else changed
  * them since. An undo that finds any refuses, rather than overwrite a change it never saw.
  */
-export function changedSince(entry: UndoEntry, current: Fields): string {
+export const changedSince = (entry: UndoEntry, current: Fields): string =>
+  changedFields(entry.after, current)
+
+/** The fields of `shown` that `current` no longer shows, in words. A Retry asks the same of the value a refusal put back. */
+export function changedFields(shown: Fields, current: Fields): string {
   return nameFields(
-    fieldsOf(entry.after).filter(
-      (field) => identity(field, entry.after) !== identity(field, current),
-    ),
+    fieldsOf(shown).filter((field) => identity(field, shown) !== identity(field, current)),
   )
 }
 

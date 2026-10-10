@@ -1,12 +1,15 @@
 import type { Issue } from '@jira-mgr/core'
 import { STATUS_ORDER } from '@jira-mgr/core/hierarchy'
+import type { QueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
 import { Reason } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
-import { useNotify } from './notify'
+import { useNotify, type Notify } from './notify'
+import { current } from './optimistic'
 import { Picker, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
 import {
@@ -23,25 +26,62 @@ import {
   statusPatch,
   type Person,
 } from './properties'
+import { changedFields } from './undo'
 import { useEditIssue, useFieldOptions, useSetStatus, useTransitions, useUsers } from './queries'
 import { useDebounced } from './useDebounced'
 
 /**
- * Sends an edit of issue `key`. A refusal, which has shown the old value again, goes to the toast
- * with Retry and flashes the issue's row. It does so even when the control that sent the edit has
- * gone, such as a Peek that moved on to another issue.
+ * Sends an edit of issue `key` that changes the fields of `patch`. A refusal, which has shown the
+ * old value again, goes to the toast with Retry and flashes the issue's row and those fields'
+ * rows. It does so even when the control that sent the edit has gone, such as a Peek that moved
+ * on to another issue. Retry sends the edit again only while the fields still show the value the
+ * refusal put back; a later edit of one of them, from anywhere, would be overwritten, so it
+ * refuses instead.
  */
+export function attemptWith(
+  notify: Notify,
+  client: QueryClient,
+  key: string,
+  what: string,
+  patch: Partial<Issue>,
+  send: () => Promise<unknown>,
+): void {
+  send().then(undefined, (failure: unknown) => {
+    const fields = Object.keys(patch)
+    // The refusal has put the old value back, so this is what Retry's edit would replace.
+    const shown = current(client, key)
+    notify(refusedNotice(what, failure), {
+      flash: { key, fields },
+      retry: () => {
+        const now = current(client, key)
+        const changed =
+          shown === undefined || now === undefined
+            ? ''
+            : changedFields(pick(shown, fields), pick(now, fields))
+        if (changed === '') {
+          attemptWith(notify, client, key, what, patch, send)
+          return
+        }
+        notify({
+          title: `Did not retry the ${what} of ${key}`,
+          notes: [`Its ${changed} changed since, and the retry would overwrite that.`],
+          warned: true,
+        })
+      },
+    })
+  })
+}
+
+/** The fields of `issue` that `fields` names, which is all `changedSince` compares. */
+const pick = (issue: Issue, fields: readonly string[]): Partial<Issue> =>
+  Object.fromEntries(Object.entries(issue).filter(([field]) => fields.includes(field)))
+
+/** `attemptWith` for a control that sits inside the Shell's notice context. */
 export function useAttempt(key: string) {
   const notify = useNotify()
-  return function attempt(what: string, send: () => Promise<unknown>): void {
-    send().then(undefined, (failure: unknown) => {
-      notify(refusedNotice(what, failure), {
-        flash: key,
-        retry: () => {
-          attempt(what, send)
-        },
-      })
-    })
+  const client = useQueryClient()
+  return (what: string, patch: Partial<Issue>, send: () => Promise<unknown>): void => {
+    attemptWith(notify, client, key, what, patch, send)
   }
 }
 
@@ -50,7 +90,7 @@ export function useIssueChange(issue: Issue) {
   const edit = useEditIssue()
   const attempt = useAttempt(issue.key)
   return (what: string, changes: IssueChanges, patch: Partial<Issue>) => {
-    attempt(what, () => edit.mutateAsync({ key: issue.key, changes, patch }))
+    attempt(what, patch, () => edit.mutateAsync({ key: issue.key, changes, patch }))
   }
 }
 
@@ -90,9 +130,8 @@ export function StatusPicker({ issue }: PickerProps) {
   function choose(id: string) {
     const option = transitions.data?.find((o) => o.id === id)
     if (option === undefined || id === issue.status.id) return
-    attempt('Status', () =>
-      setStatus.mutateAsync({ key: issue.key, statusId: id, patch: statusPatch(issue, option) }),
-    )
+    const patch = statusPatch(issue, option)
+    attempt('Status', patch, () => setStatus.mutateAsync({ key: issue.key, statusId: id, patch }))
   }
 
   return (

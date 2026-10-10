@@ -12,8 +12,9 @@ const warning = (title: string, notes: string[]): Notice => ({ title, notes, war
 
 /**
  * Cmd+Z and the toast's Undo button (Q38). It takes the newest edit off the session's stack, or
- * the one a toast offers when that is an older one, and writes the old value back through the same mutation as the edit, so the Tree and the Peek show
- * it at once and a refusal from Jira rolls it back. It reports to `report`, never throws.
+ * the one a toast offers when that is an older one, and writes the old value back through the
+ * same mutation as the edit, so the Tree and the Peek show it at once and a refusal from Jira
+ * rolls it back. It reports to `report`, never throws.
  *
  * An edit is refused, and dropped from the stack, when the issue no longer shows what the edit
  * set (Jira or someone else changed it since), when the issue has left the caches, or when core

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, notices, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, refuseNextEdit, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -59,14 +59,20 @@ async function throttle(rate: number) {
   await session.send('Emulation.setCPUThrottlingRate', { rate })
 }
 
-/** Records the ids of the elements that gain `data-flash`, which the 1s flash is made of. */
+/**
+ * Records what gains `data-flash`, which the 1s flash is made of: a Tree row by its id, and a
+ * property row as "peek:<field>" or "page:<field>".
+ */
 async function watchFlash() {
   await window.evaluate(() => {
     const seen: string[] = []
     ;(window as unknown as { flashed: string[] }).flashed = seen
     new MutationObserver((changes) => {
       for (const { target } of changes) {
-        if (target instanceof Element && target.hasAttribute('data-flash')) seen.push(target.id)
+        if (!(target instanceof Element) || !target.hasAttribute('data-flash')) continue
+        const field = target.getAttribute('data-field')
+        if (field === null) seen.push(target.id)
+        else seen.push(`${target.closest('[aria-label="Properties"]') ? 'page' : 'peek'}:${field}`)
       }
     }).observe(document.body, { attributes: true, attributeFilter: ['data-flash'], subtree: true })
   })
@@ -97,6 +103,7 @@ for (const rate of [1, 10]) {
       // The old inline message under the properties is gone.
       await expect(peek().getByRole('alert')).toHaveCount(0)
       expect(await flashed()).toContain('tree-row-i:PSAPAC-3')
+      expect(await flashed()).toContain('peek:priority')
     })
 
     test('a pending priority edit shows at 60% opacity with a spinner, and settles to full', async () => {
@@ -142,6 +149,22 @@ test('the page shows a pending edit the same way', async () => {
   await expect(props().locator('[data-pending]')).toHaveCount(0)
 })
 
+test('on the page the refused property row flashes too', async () => {
+  await open()
+  await item(/PSAPAC-3,/).click()
+  await window.keyboard.press('Enter')
+  await expect(issuePage()).toBeVisible()
+  await watchFlash()
+  await props()
+    .getByRole('button', { name: /^Priority:/ })
+    .click()
+  await option('Highest').click()
+  await expect.poll(writes).toBe(1)
+  await releaseEdit(app)
+  await expect(notices(window).getByRole('alert')).toBeVisible()
+  expect(await flashed()).toContain('page:priority')
+})
+
 test('the row flash is a 1s animation on the Tree row', async () => {
   await open()
   const animation = await item(/PSAPAC-3,/).evaluate((row) => {
@@ -170,6 +193,37 @@ test('a refusal still shows when the Peek has moved on to another issue, and Ret
   await releaseEdit(app)
   await expect(alert).toContainText('Priority not changed. Jira refused it:')
   await expect(toasts()).toHaveCount(1)
+})
+
+test('Retry refuses to overwrite a later edit of the same field', async () => {
+  await open()
+  await refuseNextEdit(app)
+  await pickPriority(/PSAPAC-4,/, 'Low')
+  await expect.poll(writes).toBe(1)
+  await releaseEdit(app)
+  const alert = notices(window).getByRole('alert')
+  await expect(alert).toContainText('Priority not changed.')
+  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Medium')
+
+  // A later edit of the same field goes through, so Retry's Low would silently replace it.
+  await peekPicker('Priority').click()
+  await option('High').click()
+  await expect.poll(writes).toBe(2)
+  await releaseEdit(app)
+  // The refused edit applied nothing, so this is the first write the fake applied.
+  await expect.poll(async () => (await counts(app)).applied).toBe(1)
+  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: High')
+
+  await alert.getByRole('button', { name: 'Retry' }).click()
+  const warning = notices(window).getByRole('alert')
+  await expect(warning).toContainText('Did not retry the Priority of PSAPAC-4')
+  await expect(warning).toContainText(
+    'Its priority changed since, and the retry would overwrite that.',
+  )
+  await expect(warning.getByRole('button', { name: 'Retry' })).toHaveCount(0)
+  // Nothing was sent, and the later edit stands.
+  expect(await writes()).toBe(2)
+  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: High')
 })
 
 test('Undo stays reachable on the last two toasts, each undoing its own edit', async () => {

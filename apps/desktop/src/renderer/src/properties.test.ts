@@ -285,6 +285,21 @@ describe('refusedNotice', () => {
     )
   })
 
+  it('words a 5xx, or an answer with no reason, as a fault and keeps the next step', () => {
+    expect(refusedNotice('Priority', new Error('Jira answered 500.')).title).toBe(
+      'Priority not changed. Jira answered 500 and did not apply it.',
+    )
+    expect(refusedNotice('Priority', new Error('Jira answered 502.')).title).toBe(
+      'Priority not changed. Jira answered 502 and did not apply it.',
+    )
+    expect(refusedNotice('Priority', new Error('Jira answered 503. Try again later.')).title).toBe(
+      'Priority not changed. Jira answered 503 and did not apply it. Try again later.',
+    )
+    expect(refusedNotice('Priority', new Error('Jira answered 500: Boom.')).title).toBe(
+      'Priority not changed. Jira answered 500 and did not apply it. Boom.',
+    )
+  })
+
   it('does not say Jira refused a failure that Jira never answered', () => {
     expect(refusedNotice('Sprint', new Error('Could not reach Jira.')).title).toBe(
       'Sprint not changed. Could not reach Jira.',

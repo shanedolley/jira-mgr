@@ -21,10 +21,13 @@ function Property({
   name,
   readOnly = false,
   first = false,
+  field,
   pending = false,
   children,
 }: {
   name: string
+  /** The issue field it edits, so the row can flash when Jira refuses the edit. */
+  field?: string
   readOnly?: boolean
   /** An edit of it waits on Jira: the value shows dimmed with a spinner (`styles.css`). */
   pending?: boolean
@@ -34,6 +37,7 @@ function Property({
 }) {
   return (
     <div
+      data-field={field}
       className={`grid h-8 grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-1 ${first ? 'mt-2' : ''}`}
     >
       <dt className="truncate px-2 text-muted">{name}</dt>
@@ -180,17 +184,17 @@ function PeekIssue({
       </div>
       <SummaryEditor issue={issue} onEditingChange={onEditingChange} onLeave={onLeave} />
       <PeekDescription issueKey={issue.key} />
-      <dl>
-        <Property name="Status" pending={pending.has('status')}>
+      <dl data-issue={issue.key}>
+        <Property name="Status" field="status" pending={pending.has('status')}>
           <StatusPicker issue={issue} />
         </Property>
-        <Property name="Assignee" pending={pending.has('assignee')}>
+        <Property name="Assignee" field="assignee" pending={pending.has('assignee')}>
           <AssigneePicker issue={issue} issues={issues} me={me} />
         </Property>
-        <Property name="Priority" pending={pending.has('priority')}>
+        <Property name="Priority" field="priority" pending={pending.has('priority')}>
           <PriorityPicker issue={issue} />
         </Property>
-        <Property name="Labels" pending={pending.has('labels')}>
+        <Property name="Labels" field="labels" pending={pending.has('labels')}>
           <LabelsPicker issue={issue} issues={issues} />
         </Property>
         <Property name="Type" readOnly first>

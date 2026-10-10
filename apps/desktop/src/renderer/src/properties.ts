@@ -231,19 +231,28 @@ export const sprintPatch = (issue: Issue, sprint: SprintOption | null): Partial<
 })
 
 /** Jira's answer as main words it: "Jira answered 400: <reason>", or "Jira answered 403. <next step>". */
-const ANSWER = /^Jira answered \d{3}(?::\s*|\.\s*)/
+const ANSWER = /^Jira answered (\d{3})(?::\s*|\.\s*|$)/
 
 /**
  * The toast for an edit that failed, which has shown the old value again: "Priority not changed.
- * Jira refused it: <reason>." Main has dropped the request from the message already. A failure
- * that is not an answer from Jira, such as a lost connection, says so in its own words.
+ * Jira refused it: <reason>." Main has dropped the request from the message already. A 5xx, or an
+ * answer with no reason, is Jira's fault and not a refusal: "Jira answered 500 and did not apply
+ * it." keeps whatever next step follows. A failure that is not an answer from Jira, such as a lost
+ * connection, says so in its own words.
  */
 export function refusedNotice(what: string, failure: unknown): Notice {
   const message = failure instanceof Error ? failure.message : String(failure)
   const answer = ANSWER.exec(message)
-  const reason = answer === null ? message : `Jira refused it: ${message.slice(answer[0].length)}`
+  const status = answer?.[1]
+  const rest = answer === null ? message : message.slice(answer[0].length)
+  const said =
+    status === undefined
+      ? rest
+      : Number(status) >= 500 || rest === ''
+        ? `Jira answered ${status} and did not apply it. ${rest}`.trim()
+        : `Jira refused it: ${rest}`
   return {
-    title: `${what} not changed. ${/[.!?]$/.test(reason) ? reason : `${reason}.`}`,
+    title: `${what} not changed. ${/[.!?]$/.test(said) ? said : `${said}.`}`,
     notes: [],
     warned: true,
   }

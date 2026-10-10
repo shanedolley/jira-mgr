@@ -150,21 +150,32 @@ function NoMatch({
   )
 }
 
-/** Flashes the Tree row of `key`, if it is on screen: the row whose refused edit came back. */
-function flashRow(key: string) {
-  const row = document.getElementById(rowDomId(`i:${key}`))
-  if (row === null) return
-  row.removeAttribute('data-flash')
-  // Reading the layout restarts the animation when the row is flashed again within the second.
-  row.getBoundingClientRect()
-  row.setAttribute('data-flash', '')
-  row.addEventListener(
+/** Restarts the 1s flash on `element`. */
+function flash(element: Element) {
+  element.removeAttribute('data-flash')
+  // Reading the layout restarts the animation when the element is flashed again within the second.
+  element.getBoundingClientRect()
+  element.setAttribute('data-flash', '')
+  element.addEventListener(
     'animationend',
     () => {
-      row.removeAttribute('data-flash')
+      element.removeAttribute('data-flash')
     },
     { once: true },
   )
+}
+
+/**
+ * Flashes the rows of an edit Jira refused: the issue's Tree row, if it is on screen, and the row
+ * of each field in the Peek or on the page, if they show that issue.
+ */
+function flashRows(key: string, fields: readonly string[]) {
+  const row = document.getElementById(rowDomId(`i:${key}`))
+  if (row !== null) flash(row)
+  for (const field of fields) {
+    const selector = `[data-issue="${CSS.escape(key)}"] [data-field="${CSS.escape(field)}"]`
+    for (const property of document.querySelectorAll(selector)) flash(property)
+  }
 }
 
 /**
@@ -217,7 +228,7 @@ export function Shell({ session }: { session: Session }) {
     setToasts((held) => pushToast(held, { id, notice, openKey, entry, retry }))
     // A refusal is an alert and announces itself; the rest go to the one live region below.
     if (!notice.warned) setHeard(spoken(notice))
-    if (flash !== undefined) flashRow(flash)
+    if (flash !== undefined) flashRows(flash.key, flash.fields)
   }, [])
   // A created issue to make active once its row exists.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)

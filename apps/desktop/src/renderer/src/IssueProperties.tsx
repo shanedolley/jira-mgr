@@ -255,12 +255,9 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
     const target = id === NONE ? null : sprintList.find((s) => String(s.id) === id)
     if (target === undefined) return
     if ((sprint === null ? NONE : String(sprint.id)) === id) return
-    attempt('Sprint', () =>
-      setSprint.mutateAsync({
-        key: issue.key,
-        sprintId: target?.id ?? null,
-        patch: sprintPatch(issue, target),
-      }),
+    const patch = sprintPatch(issue, target)
+    attempt('Sprint', patch, () =>
+      setSprint.mutateAsync({ key: issue.key, sprintId: target?.id ?? null, patch }),
     )
   }
 
@@ -314,26 +311,27 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
   return (
     <aside
       aria-label="Properties"
+      data-issue={issue.key}
       className="min-h-0 overflow-y-auto border-l border-line bg-panel px-3"
     >
       <Group title="Status">
-        <Row name="Status" pending={pending.has('status')}>
+        <Row name="Status" field="status" pending={pending.has('status')}>
           <StatusPicker issue={issue} />
         </Row>
-        <Row name="Assignee" pending={pending.has('assignee')}>
+        <Row name="Assignee" field="assignee" pending={pending.has('assignee')}>
           <AssigneePicker issue={issue} issues={issues} me={me} />
         </Row>
-        <Row name="Priority" pending={pending.has('priority')}>
+        <Row name="Priority" field="priority" pending={pending.has('priority')}>
           <PriorityPicker issue={issue} />
         </Row>
-        <Row name="Labels" pending={pending.has('labels')}>
+        <Row name="Labels" field="labels" pending={pending.has('labels')}>
           <LabelsPicker issue={issue} issues={issues} />
         </Row>
       </Group>
 
       <Group title="Details">
         {rules.typeChange && (
-          <Row name="Type" pending={pending.has('issueType')}>
+          <Row name="Type" field="issueType" pending={pending.has('issueType')}>
             <Picker
               label="Type"
               valueText={issue.issueType.name}
@@ -348,7 +346,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
           </Row>
         )}
         {rules.parent && (
-          <Row name="Parent" pending={pending.has('parentKey')}>
+          <Row name="Parent" field="parentKey" pending={pending.has('parentKey')}>
             <Picker
               label="Parent"
               triggerRef={parentTrigger}
@@ -370,7 +368,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             />
           </Row>
         )}
-        <Row name="Customer" pending={pending.has('customer')}>
+        <Row name="Customer" field="customer" pending={pending.has('customer')}>
           <Picker
             label="Customer"
             valueText={issue.customer?.value ?? 'None'}
@@ -388,7 +386,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             }
           />
         </Row>
-        <Row name="Engagement" pending={pending.has('engagement')}>
+        <Row name="Engagement" field="engagement" pending={pending.has('engagement')}>
           <Picker
             label="Engagement"
             valueText={issue.engagement?.value ?? 'None'}
@@ -407,7 +405,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
           />
         </Row>
         {rules.sprint && (
-          <Row name="Sprint" pending={pending.has('sprints')}>
+          <Row name="Sprint" field="sprints" pending={pending.has('sprints')}>
             <Picker
               label="Sprint"
               valueText={sprint?.name ?? 'Backlog'}
@@ -447,7 +445,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
       </Group>
 
       <Group title="Dates and time">
-        <Row name="Start date" pending={pending.has('startDate')}>
+        <Row name="Start date" field="startDate" pending={pending.has('startDate')}>
           <TextField
             key={issue.startDate ?? ''}
             label="Start date"
@@ -465,7 +463,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             }}
           />
         </Row>
-        <Row name="Due date" pending={pending.has('dueDate')}>
+        <Row name="Due date" field="dueDate" pending={pending.has('dueDate')}>
           <TextField
             key={issue.dueDate ?? ''}
             label="Due date"
@@ -485,7 +483,11 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
         </Row>
         {rules.estimates && (
           <>
-            <Row name="Estimate" pending={pending.has('originalEstimateSeconds')}>
+            <Row
+              name="Estimate"
+              field="originalEstimateSeconds"
+              pending={pending.has('originalEstimateSeconds')}
+            >
               <TextField
                 label="Original estimate"
                 value={originalEstimate}
@@ -505,7 +507,11 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               />
             </Row>
             {hasEstimate && (
-              <Row name="Time left (h)" pending={pending.has('timeRemainingHours')}>
+              <Row
+                name="Time left (h)"
+                field="timeRemainingHours"
+                pending={pending.has('timeRemainingHours')}
+              >
                 <TextField
                   clock
                   label="Time remaining (h)"

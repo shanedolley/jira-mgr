@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   UNDO_DEPTH,
   UndoStack,
+  changedFields,
   changedSince,
   describeEdit,
   describeUndo,
@@ -204,6 +205,15 @@ describe('changedSince', () => {
   it('compares labels as a set', () => {
     expect(changedSince(entry({ labels: ['a', 'b'] }), { labels: ['b', 'a'] })).toBe('')
     expect(changedSince(entry({ labels: ['a'] }), { labels: ['a', 'c'] })).toBe('labels')
+  })
+})
+
+describe('changedFields', () => {
+  it('names the fields of what was shown that the issue no longer shows', () => {
+    const low = { id: '4', name: 'Low' }
+    const high = { id: '2', name: 'High' }
+    expect(changedFields({ priority: low }, { priority: low })).toBe('')
+    expect(changedFields({ priority: low }, { priority: high })).toBe('priority')
   })
 })
 
