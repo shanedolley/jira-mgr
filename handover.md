@@ -57,7 +57,7 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 ## Open Pull Requests
 
-Checked 2026-10-10 with `gh pr list --state open` and `git ls-remote --heads origin`: no pull request is open and the only remote branch is `main` (678b4c3). Merged this session: #107 (9b58fcf, docs pages), #109 (56e9e5d, timer), #108 (1177695, summary), #110 (6b06fa0, recorder check), #111 (4e9d4b2, D5 follow-ups) #112 (60e4e11, reference pages) and #114 (678b4c3, the optimistic-edit race fix). The only worktree is the main tree. No Dependabot branches remain.
+Checked 2026-10-10 with `gh pr list --state open` and `git ls-remote --heads origin`: no pull request is open and the only remote branch is `main` (678b4c3). Merged this session: #107 (9b58fcf, docs pages), #109 (56e9e5d, timer), #108 (1177695, summary), #110 (6b06fa0, recorder check), #111 (4e9d4b2, D5 follow-ups), #112 (60e4e11, reference pages) and #114 (678b4c3, the optimistic-edit race fix). The only worktree is the main tree. No Dependabot branches remain.
 
 ## What Runs
 
@@ -76,7 +76,7 @@ All from the repository root, under Node 24 (see Traps).
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last merge on `main`: PR #114 (678b4c3, desktop fix); the CI run on 4e9d4b2 (38021598559) passed, the run on 60e4e11 (38022846069) failed on `page.test.ts:721` (see Traps), and the run on 678b4c3 (38025383042) was in progress when checked (2026-10-10). The last app feature is PR #109 (56e9e5d, timer). For the current head run, use `gh run list --workflow ci.yml --branch main --limit 1`.
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last merge on `main`: PR #114 (678b4c3, desktop fix); the CI run on 4e9d4b2 (38021598559) passed, the run on 60e4e11 (38022846069) failed on `page.test.ts:721` (see Traps), and the run on 678b4c3 (38025383042) succeeded (checked 2026-10-10). The last app feature is PR #109 (56e9e5d, timer). For the current head run, use `gh run list --workflow ci.yml --branch main --limit 1`.
 
 ## Environments
 
