@@ -2,15 +2,13 @@
 
 jira-mgr is a Linear-style desktop app and an agent-friendly CLI over one Jira project. One shared TypeScript core holds the Jira client and the domain rules, and both clients call Jira directly with live fetches.
 
-These pages are not written yet; [#101](https://github.com/shanedolley/jira-mgr/issues/101) tracks them.
-
-| File | Covers | Planned for |
-|---|---|---|
-| `system-overview.md` | Components, request paths and the monorepo layout | Core |
-| `data-model.md` | The Jira entities as core consumes them: issue types, custom fields, links, sprints | Core |
-| `clients.md` | Core, the CLI and the desktop app: what each owns | CLI |
-| `auth-and-keychain.md` | Login, the Keychain item, field resolution and the settings file | Core |
-| `documents-and-editor.md` | The TipTap editor and the ADF round trip | Desktop |
+| Page | Covers |
+|---|---|
+| [`system-overview.md`](system-overview.md) | Components, request paths for the CLI and the app, loading and shared state |
+| [`data-model.md`](data-model.md) | The Jira entities as core consumes them: issue types, custom fields, links, sprints |
+| [`clients.md`](clients.md) | Core, the CLI and the desktop app: what each owns |
+| [`auth-and-keychain.md`](auth-and-keychain.md) | Login, the Keychain item, field resolution and the settings file |
+| [`documents-and-editor.md`](documents-and-editor.md) | The TipTap editor and the ADF round trip |
 
 Decisions sit in [docs/adr](../adr/README.md), and the grilling that produced them sits in [docs/discovery](../discovery/README.md). Each file here links the ADRs it rests on. Domain terms live in [CONTEXT.md](../../CONTEXT.md).
 
