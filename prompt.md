@@ -2,12 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (9 open issues, one page), `gh pr list --state open` (only #99, this update) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep it current, and remove every stale reference (branch names that are gone, features listed as planned that exist, wrong counts, dead links) in the pull request that changes the code. D5 activity (#32) is on `main` (#104). Work in this order, landing one pull request at a time:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (7 open issues, one page), `gh pr list --state open` (only #99, this update) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. D5 activity (#32) is on `main` (#104) and closed: Shane passed both live checks on 2026-10-10. Work in this order, landing one pull request at a time:
 
-1. **D11 click-to-edit summary (#83)**, no blockers. It touches `IssuePage` and `SummaryEditor.tsx`; build it in a worktree of its own from the current `main`.
+1. **D9 timer (#36)**, **D11 click-to-edit summary (#83)** and **D5 follow-ups (#102)**, none blocked. All three touch the issue page, so build them one at a time, or rebase each onto `main` after the one before merges. Build each in a worktree of its own from the current `main`.
 2. **Planned docs pages (#101)**, no blockers.
-3. **D9 timer (#36)** and **D5 follow-ups (#102)**: GitHub still lists #32 as their open blocker (`blocked_by`, 2026-10-10), so they stay blocked until Shane signs off #32, though its code is merged. The HIL blockers trap in the handover lets you build on merged code meanwhile; ask Shane or the orchestrator before you start one.
-4. **Waiting on Shane** (he signs off issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #32 (D5), #84 (late-automation toast), #85 (D12 icons), #86 (D13 profile images) and #96 (ordered edits, fixed by #100). The two D5 live checks need him present: an image embedded in a comment rendering in live Jira, and the real native save dialog.
+3. **Waiting on Shane** (he signs off issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #85 (D12 icons), #86 (D13 profile images) and #96 (ordered edits, fixed by #100).
 
 Rebase each pull request onto `main` after the one before it merges, since a green run from before the rebase proves nothing (see Traps in the handover). Run e2e with `pnpm e2e --workers=1`, and never in several worktrees at once.
 

@@ -9,6 +9,6 @@ Name each `NNNN-short-title.md`, numbered in order, and start from [the template
 | [0001](0001-cli-command-schema.md) | CLI command schema | Accepted |
 | [0002](0002-issue-tree.md) | Issue tree | Accepted |
 | [0003](0003-editor.md) | Editor | Accepted |
-| [0004](0004-activity.md) | Activity | In review |
+| [0004](0004-activity.md) | Activity | Accepted |
 
 See also the [Linear UI reference](linear/README.md): screenshots and measured tokens for the target look.
