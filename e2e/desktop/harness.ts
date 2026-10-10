@@ -97,6 +97,9 @@ export async function readState<T>(stateDir: string, file: string): Promise<T | 
   }
 }
 
+/** The toasts on screen, newest last. Each is one list item; a refusal's item holds an alert. */
+export const notices = (window: Page) => window.getByRole('list', { name: 'Notices' })
+
 export const counts = (app: ElectronApplication) =>
   app.evaluate(() => (globalThis as unknown as WithFake).__fakeJira.counts)
 

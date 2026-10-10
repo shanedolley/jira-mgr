@@ -6,6 +6,7 @@ import {
   MutationObserver,
   queryOptions,
   useMutation,
+  useMutationState,
   useQuery,
   useQueryClient,
   type MutationOptions,
@@ -38,6 +39,7 @@ import {
   isEditing,
   issueMutation,
   issuesKey,
+  pendingFields,
   summaryMutation,
   unresolvedKey,
 } from './optimistic'
@@ -363,6 +365,18 @@ export function useSetSprint() {
       recorder(client, sprintEntry),
     ),
   )
+}
+
+/**
+ * The fields of an issue whose edit waits on Jira, from the moment it is picked until the answer
+ * and the re-read that follows have landed. The row of each shows dimmed with a spinner.
+ */
+export function usePendingFields(key: string): ReadonlySet<string> {
+  const edits = useMutationState({
+    filters: { status: 'pending' },
+    select: (mutation) => pendingFields(key, mutation.state.variables),
+  })
+  return new Set(edits.flat())
 }
 
 /** Creates an issue and puts the read-back into the lists. Not optimistic: the key is Jira's to give. */

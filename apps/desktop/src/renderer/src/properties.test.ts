@@ -14,6 +14,7 @@ import {
   parentMatch,
   projectLabels,
   recentAssignees,
+  refusedNotice,
   shownSprints,
   sprintPatch,
   statusPatch,
@@ -259,5 +260,50 @@ describe('assignMeOutcome', () => {
   it("takes an unassigned issue and another person's", () => {
     expect(assignMeOutcome(issue('A-1', { assignee: null }), me)).toBe('assign')
     expect(assignMeOutcome(issue('A-1', { assignee: person('u2') }), me)).toBe('assign')
+  })
+})
+
+describe('refusedNotice', () => {
+  it("names the property and gives Jira's reason, with no request", () => {
+    const notice = refusedNotice(
+      'Priority',
+      new Error('Jira answered 400: priority: Not allowed for this issue.'),
+    )
+    expect(notice).toEqual({
+      title: 'Priority not changed. Jira refused it: priority: Not allowed for this issue.',
+      notes: [],
+      warned: true,
+    })
+  })
+
+  it("keeps Jira's next step when it gave no reason, and ends a sentence", () => {
+    expect(refusedNotice('Status', new Error('Jira answered 403. Ask a Jira admin.')).title).toBe(
+      'Status not changed. Jira refused it: Ask a Jira admin.',
+    )
+    expect(refusedNotice('Labels', new Error('Jira answered 400: no spaces')).title).toBe(
+      'Labels not changed. Jira refused it: no spaces.',
+    )
+  })
+
+  it('words a 5xx, or an answer with no reason, as a fault and keeps the next step', () => {
+    expect(refusedNotice('Priority', new Error('Jira answered 500.')).title).toBe(
+      'Priority not changed. Jira answered 500 and did not apply it.',
+    )
+    expect(refusedNotice('Priority', new Error('Jira answered 502.')).title).toBe(
+      'Priority not changed. Jira answered 502 and did not apply it.',
+    )
+    expect(refusedNotice('Priority', new Error('Jira answered 503. Try again later.')).title).toBe(
+      'Priority not changed. Jira answered 503 and did not apply it. Try again later.',
+    )
+    expect(refusedNotice('Priority', new Error('Jira answered 500: Boom.')).title).toBe(
+      'Priority not changed. Jira answered 500 and did not apply it. Boom.',
+    )
+  })
+
+  it('does not say Jira refused a failure that Jira never answered', () => {
+    expect(refusedNotice('Sprint', new Error('Could not reach Jira.')).title).toBe(
+      'Sprint not changed. Could not reach Jira.',
+    )
+    expect(refusedNotice('Sprint', 'odd').title).toBe('Sprint not changed. odd.')
   })
 })

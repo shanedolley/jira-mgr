@@ -11,9 +11,10 @@ const plain = (title: string, notes: string[] = []): Notice => ({ title, notes, 
 const warning = (title: string, notes: string[]): Notice => ({ title, notes, warned: true })
 
 /**
- * Cmd+Z and the toast's Undo button (Q38). It takes the newest edit off the session's stack and
- * writes the old value back through the same mutation as the edit, so the Tree and the Peek show
- * it at once and a refusal from Jira rolls it back. It reports to `report`, never throws.
+ * Cmd+Z and the toast's Undo button (Q38). It takes the newest edit off the session's stack, or
+ * the one a toast offers when that is an older one, and writes the old value back through the
+ * same mutation as the edit, so the Tree and the Peek show it at once and a refusal from Jira
+ * rolls it back. It reports to `report`, never throws.
  *
  * An edit is refused, and dropped from the stack, when the issue no longer shows what the edit
  * set (Jira or someone else changed it since), when the issue has left the caches, or when core
@@ -56,11 +57,12 @@ export function useUndo(report: (notice: Notice) => void) {
     }
   }
 
-  return function undo(): void {
-    const entry = undoStack(client).pop()
+  /** Returns the edit it took off the stack, so the caller can drop the toasts that offered it. */
+  return function undo(offered?: UndoEntry): UndoEntry | undefined {
+    const entry = offered === undefined ? undoStack(client).pop() : undoStack(client).take(offered)
     if (entry === undefined) {
       report(plain('Nothing to undo'))
-      return
+      return undefined
     }
     if (entry.reversal === null) {
       report(
@@ -68,7 +70,7 @@ export function useUndo(report: (notice: Notice) => void) {
           'Jira has no way to put the old value back, so change it by hand.',
         ]),
       )
-      return
+      return entry
     }
     // The description lives only on the page's own read; every other field on the lists.
     const now =
@@ -81,7 +83,7 @@ export function useUndo(report: (notice: Notice) => void) {
           `${entry.key} is no longer loaded.`,
         ]),
       )
-      return
+      return entry
     }
     const changed = changedSince(entry, now)
     if (changed !== '') {
@@ -90,7 +92,7 @@ export function useUndo(report: (notice: Notice) => void) {
           `Its ${changed} changed since, and the undo would overwrite that.`,
         ]),
       )
-      return
+      return entry
     }
     send(entry).then(
       () => {
@@ -105,5 +107,6 @@ export function useUndo(report: (notice: Notice) => void) {
         )
       },
     )
+    return entry
   }
 }

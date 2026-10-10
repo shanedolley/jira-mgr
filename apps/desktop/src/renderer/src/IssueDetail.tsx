@@ -6,7 +6,8 @@ import type { CurrentUser } from '../../shared/ipc'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
 import { blockText } from './editor/readOnly'
 import { AssigneePicker, LabelsPicker, PriorityPicker, StatusPicker } from './PropertyPickers'
-import { useIssueDetail } from './queries'
+import { useIssueDetail, usePendingFields } from './queries'
+import { Spinner } from './Spinner'
 import { SummaryEditor } from './SummaryEditor'
 import { pressOf } from './timer'
 import { useTimer } from './timerQueries'
@@ -20,20 +21,34 @@ function Property({
   name,
   readOnly = false,
   first = false,
+  field,
+  pending = false,
   children,
 }: {
   name: string
+  /** The issue field it edits, so the row can flash when Jira refuses the edit. */
+  field?: string
   readOnly?: boolean
+  /** An edit of it waits on Jira: the value shows dimmed with a spinner (`styles.css`). */
+  pending?: boolean
   /** The first read-only row: the gap that sets it apart from the editable ones. */
   first?: boolean
   children: ReactNode
 }) {
   return (
     <div
+      data-field={field}
       className={`grid h-8 grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-1 ${first ? 'mt-2' : ''}`}
     >
       <dt className="truncate px-2 text-muted">{name}</dt>
-      <dd className={`min-w-0 truncate ${readOnly ? 'px-2' : ''}`}>{children}</dd>
+      <dd
+        aria-busy={pending || undefined}
+        data-pending={pending || undefined}
+        className={`min-w-0 truncate ${readOnly ? 'px-2' : ''}`}
+      >
+        {children}
+        {pending && <Spinner />}
+      </dd>
     </div>
   )
 }
@@ -142,7 +157,7 @@ function PeekIssue({
 }) {
   const fix = useMatchCustomer(issue)
   const timer = useTimer().data?.timer ?? null
-  const [error, setError] = useState<string | null>(null)
+  const pending = usePendingFields(issue.key)
   return (
     <div className="space-y-5 px-5 pb-6">
       <div className="space-y-1">
@@ -169,18 +184,18 @@ function PeekIssue({
       </div>
       <SummaryEditor issue={issue} onEditingChange={onEditingChange} onLeave={onLeave} />
       <PeekDescription issueKey={issue.key} />
-      <dl>
-        <Property name="Status">
-          <StatusPicker issue={issue} report={setError} />
+      <dl data-issue={issue.key}>
+        <Property name="Status" field="status" pending={pending.has('status')}>
+          <StatusPicker issue={issue} />
         </Property>
-        <Property name="Assignee">
-          <AssigneePicker issue={issue} issues={issues} me={me} report={setError} />
+        <Property name="Assignee" field="assignee" pending={pending.has('assignee')}>
+          <AssigneePicker issue={issue} issues={issues} me={me} />
         </Property>
-        <Property name="Priority">
-          <PriorityPicker issue={issue} report={setError} />
+        <Property name="Priority" field="priority" pending={pending.has('priority')}>
+          <PriorityPicker issue={issue} />
         </Property>
-        <Property name="Labels">
-          <LabelsPicker issue={issue} issues={issues} report={setError} />
+        <Property name="Labels" field="labels" pending={pending.has('labels')}>
+          <LabelsPicker issue={issue} issues={issues} />
         </Property>
         <Property name="Type" readOnly first>
           {issue.issueType.name}
@@ -195,11 +210,6 @@ function PeekIssue({
           {new Date(issue.updated).toLocaleDateString()}
         </Property>
       </dl>
-      {error !== null && (
-        <p role="alert" className="text-xs text-danger">
-          {error}
-        </p>
-      )}
       {mismatch !== null && (
         <CustomerMismatch
           mismatch={mismatch}

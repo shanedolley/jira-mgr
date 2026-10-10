@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -18,7 +18,10 @@ test.afterEach(async () => {
 const tree = () => window.getByRole('tree', { name: 'Issues' })
 const item = (name: RegExp) => tree().getByRole('treeitem', { name })
 const dialog = () => window.getByRole('dialog', { name: 'New issue' })
-const toast = () => window.getByRole('status').filter({ hasText: /^Created|^Jira changed/ })
+const toast = (lead: 'Created' | 'Jira changed') =>
+  notices(window)
+    .getByRole('listitem')
+    .filter({ hasText: new RegExp(`^${lead}`) })
 
 /** Opens the app on a fake whose automation lands `automationMs` after a create, read again after `readMs`. */
 async function start(env: Record<string, string>) {
@@ -48,16 +51,18 @@ test('a second read names what the automation changed after the create returned'
   await createTask('Book the workshop')
 
   // The create's own read-back came first and saw none of it.
-  await expect(toast()).toContainText('Created PSAPAC-2000: Book the workshop')
-  await expect(toast()).not.toContainText('Customer is')
+  await expect(toast('Created')).toContainText('Created PSAPAC-2000: Book the workshop')
+  await expect(toast('Created')).not.toContainText('Customer is')
   // It still sits under PSAPAC-10, in a group of seven.
   await expect(item(/PSAPAC-2000,/)).toHaveAttribute('aria-setsize', '7')
 
-  await expect(toast()).toContainText('Jira changed PSAPAC-2000 after it was created')
-  await expect(toast()).toContainText('Customer is Collibra (Internal team) (you chose Acme).')
-  await expect(toast()).toContainText('Parent is PSAPAC-50 (you chose PSAPAC-10).')
-  await expect(toast()).toContainText('Sprint is Sprint 5 (you chose none).')
-  await expect(toast()).toContainText('Jira added the label PSAPAC.')
+  await expect(toast('Jira changed')).toContainText('Jira changed PSAPAC-2000 after it was created')
+  await expect(toast('Jira changed')).toContainText(
+    'Customer is Collibra (Internal team) (you chose Acme).',
+  )
+  await expect(toast('Jira changed')).toContainText('Parent is PSAPAC-50 (you chose PSAPAC-10).')
+  await expect(toast('Jira changed')).toContainText('Sprint is Sprint 5 (you chose none).')
+  await expect(toast('Jira changed')).toContainText('Jira added the label PSAPAC.')
   // The Tree moved the row to where Jira put it: under the internal Epic, in a group of two.
   await expect(item(/PSAPAC-2000,/)).toHaveAttribute('aria-setsize', '2')
   expect((await counts(app)).issueReads.filter((key) => key === 'PSAPAC-2000')).toHaveLength(2)
@@ -68,11 +73,11 @@ test('no second toast when the second read finds nothing new', async () => {
   await createTask('Book the workshop')
 
   // The fake applied its automation before the first read, so that toast named everything.
-  await expect(toast()).toContainText('Created PSAPAC-2000: Book the workshop')
-  await expect(toast()).toContainText('Jira added the label PSAPAC.')
+  await expect(toast('Created')).toContainText('Created PSAPAC-2000: Book the workshop')
+  await expect(toast('Created')).toContainText('Jira added the label PSAPAC.')
   await expect
     .poll(async () => (await counts(app)).issueReads.filter((key) => key === 'PSAPAC-2000').length)
     .toBe(2)
-  await expect(toast()).toContainText('Created PSAPAC-2000: Book the workshop')
-  await expect(toast()).not.toContainText('Jira changed')
+  await expect(toast('Created')).toContainText('Created PSAPAC-2000: Book the workshop')
+  await expect(toast('Jira changed')).toHaveCount(0)
 })

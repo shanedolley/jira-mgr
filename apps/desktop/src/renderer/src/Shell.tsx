@@ -30,8 +30,10 @@ import { ShortcutHelp } from './ShortcutHelp'
 import { Sidebar } from './Sidebar'
 import { TimerDialog } from './TimerDialog'
 import { Toast } from './Toast'
+import { pushToast, spoken, type ToastItem } from './toasts'
 import { pressOf } from './timer'
 import { useStartTimer, useTimer } from './timerQueries'
+import { rowDomId } from './TreeRow'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
 import {
@@ -51,7 +53,7 @@ import {
 } from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
 import { assignMeOutcome, assigneePatch } from './properties'
-import { refusal } from './PropertyPickers'
+import { attemptWith } from './PropertyPickers'
 import {
   useCustomers,
   useDeleteIssue,
@@ -63,8 +65,9 @@ import {
   useToggles,
   useUnresolvedIssues,
 } from './queries'
+import { NotifyContext, type Notify } from './notify'
 import { applyUnaskedRead } from './optimistic'
-import { describeEdit, undoStack } from './undo'
+import { describeEdit, undoStack, type UndoEntry } from './undo'
 import { useUndo } from './useUndo'
 import {
   ancestorIds,
@@ -147,6 +150,34 @@ function NoMatch({
   )
 }
 
+/** Restarts the 1s flash on `element`. */
+function flash(element: Element) {
+  element.removeAttribute('data-flash')
+  // Reading the layout restarts the animation when the element is flashed again within the second.
+  element.getBoundingClientRect()
+  element.setAttribute('data-flash', '')
+  element.addEventListener(
+    'animationend',
+    () => {
+      element.removeAttribute('data-flash')
+    },
+    { once: true },
+  )
+}
+
+/**
+ * Flashes the rows of an edit Jira refused: the issue's Tree row, if it is on screen, and the row
+ * of each field in the Peek or on the page, if they show that issue.
+ */
+function flashRows(key: string, fields: readonly string[]) {
+  const row = document.getElementById(rowDomId(`i:${key}`))
+  if (row !== null) flash(row)
+  for (const field of fields) {
+    const selector = `[data-issue="${CSS.escape(key)}"] [data-field="${CSS.escape(field)}"]`
+    for (const property of document.querySelectorAll(selector)) flash(property)
+  }
+}
+
 /**
  * Sidebar, Tree and, while it is open, the Peek. The Shell owns the tree state: the filters, the
  * collapsed and revealed sets, the active row and the Peek. The rows derive from the query caches
@@ -187,12 +218,19 @@ export function Shell({ session }: { session: Session }) {
   } | null>(null)
   const timerQuery = useTimer()
   const startTimer = useStartTimer()
-  // `undoable` puts an Undo button on a field edit's toast.
-  const [notice, setNotice] = useState<{
-    notice: Notice
-    openKey: string | null
-    undoable?: boolean
-  } | null>(null)
+  const client = useQueryClient()
+  // The last two notices, newest last, and what a screen reader last heard of a plain one.
+  const [toasts, setToasts] = useState<ToastItem[]>([])
+  const [heard, setHeard] = useState('')
+  const nextToast = useRef(0)
+  const notify = useCallback<Notify>((notice, options = {}) => {
+    const { openKey = null, entry, retry, flash } = options
+    const id = nextToast.current++
+    setToasts((held) => pushToast(held, { id, notice, openKey, entry, retry }))
+    // A refusal is an alert and announces itself; the rest go to the one live region below.
+    if (!notice.warned) setHeard(spoken(notice))
+    if (flash !== undefined) flashRows(flash.key, flash.fields)
+  }, [])
   // A created issue to make active once its row exists.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const deleteIssue = useDeleteIssue()
@@ -407,28 +445,22 @@ export function Shell({ session }: { session: Session }) {
     const issue = issues.find((i) => i.key === key)
     if (snapshot === undefined || !canCreate) return
     if (issue === undefined) {
-      setNotice({
-        notice: {
-          title: `Cannot time ${key}`,
-          notes: [
-            'It is not in the loaded issues. Wait for the list to finish loading, or open it in Jira.',
-          ],
-          warned: true,
-        },
-        openKey: null,
+      notify({
+        title: `Cannot time ${key}`,
+        notes: [
+          'It is not in the loaded issues. Wait for the list to finish loading, or open it in Jira.',
+        ],
+        warned: true,
       })
       return
     }
     try {
       assertTimeable(issue)
     } catch (error) {
-      setNotice({
-        notice: {
-          title: error instanceof Error ? error.message : String(error),
-          notes: [],
-          warned: true,
-        },
-        openKey: null,
+      notify({
+        title: error instanceof Error ? error.message : String(error),
+        notes: [],
+        warned: true,
       })
       return
     }
@@ -438,19 +470,13 @@ export function Shell({ session }: { session: Session }) {
         { key },
         {
           onSuccess: () => {
-            setNotice({
-              notice: { title: `Started the timer on ${key}`, notes: [], warned: false },
-              openKey: null,
-            })
+            notify({ title: `Started the timer on ${key}`, notes: [], warned: false })
           },
           onError: (failure) => {
-            setNotice({
-              notice: {
-                title: `Could not start the timer on ${key}`,
-                notes: [failure.message],
-                warned: true,
-              },
-              openKey: null,
+            notify({
+              title: `Could not start the timer on ${key}`,
+              notes: [failure.message],
+              warned: true,
             })
           },
         },
@@ -471,38 +497,21 @@ export function Shell({ session }: { session: Session }) {
     const outcome = assignMeOutcome(issue, me)
     if (outcome === 'mine') return
     if (me === undefined || outcome === 'wait') {
-      setNotice({
-        notice: {
-          title: `Cannot assign ${key}`,
-          notes: ['Your account has not loaded yet.'],
-          warned: true,
-        },
-        openKey: null,
+      notify({
+        title: `Cannot assign ${key}`,
+        notes: ['Your account has not loaded yet.'],
+        warned: true,
       })
       return
     }
-    editIssue.mutate(
-      {
-        key,
-        changes: { assignee: me.accountId },
-        patch: assigneePatch({
-          accountId: me.accountId,
-          displayName: me.displayName,
-          avatarUrl: me.avatarUrl,
-        }),
-      },
-      {
-        onError: (failure) => {
-          setNotice({
-            notice: {
-              title: `Could not assign ${key}`,
-              notes: [refusal(key, 'the assignee', failure)],
-              warned: true,
-            },
-            openKey: null,
-          })
-        },
-      },
+    const patch = assigneePatch({
+      accountId: me.accountId,
+      displayName: me.displayName,
+      avatarUrl: me.avatarUrl,
+    })
+    // The Shell sits above the notice context, so it sends through the helper the pickers' hook wraps.
+    attemptWith(notify, client, key, 'Assignee', patch, () =>
+      editIssue.mutateAsync({ key, changes: { assignee: me.accountId }, patch }),
     )
   }
 
@@ -510,12 +519,11 @@ export function Shell({ session }: { session: Session }) {
   function copyIssue(key: string, what: 'key' | 'link') {
     const copied = copyText(what === 'key' ? key : issueUrl(session.siteUrl, key))
     const noun = what === 'key' ? 'the key' : 'the link'
-    setNotice({
-      notice: copied
+    notify(
+      copied
         ? { title: `Copied ${noun} of ${key}`, notes: [], warned: false }
         : { title: `Could not copy ${noun} of ${key}`, notes: [], warned: true },
-      openKey: null,
-    })
+    )
   }
 
   /** The sidebar's Stop button: the stop dialog for whatever timer runs. */
@@ -526,8 +534,14 @@ export function Shell({ session }: { session: Session }) {
   }
 
   const undo = useUndo((reported) => {
-    setNotice({ notice: reported, openKey: null })
+    notify(reported)
   })
+
+  /** Undoes `offered`, or the newest edit, and takes down the toasts that offered it. */
+  function runUndo(offered?: UndoEntry) {
+    const taken = undo(offered)
+    if (taken !== undefined) setToasts((held) => held.filter((toast) => toast.entry !== taken))
+  }
 
   // Every global shortcut (D7), asked of `resolveKey` in one place. The Tree's own keys sit on the
   // Tree element and the page's Esc on the page, so both have run, and called `preventDefault`
@@ -547,7 +561,7 @@ export function Shell({ session }: { session: Session }) {
         return
       case 'undo':
         event.preventDefault()
-        undo()
+        runUndo()
         return
       case 'create':
         if (!canCreate) return
@@ -603,23 +617,20 @@ export function Shell({ session }: { session: Session }) {
     }
   }, [])
 
-  // Each accepted field edit says what changed and offers Undo. It stays an ordinary notice, so a
-  // create's or delete's toast and an edit's replace one another.
-  const client = useQueryClient()
+  // Each accepted field edit says what changed and offers Undo.
   useEffect(
     () =>
       undoStack(client).onPush((entry) => {
-        setNotice({
-          notice: {
+        notify(
+          {
             title: describeEdit(entry),
             notes: entry.reversal === null ? ['This change cannot be undone here.'] : [],
             warned: false,
           },
-          openKey: null,
-          undoable: entry.reversal !== null,
-        })
+          entry.reversal === null ? {} : { entry },
+        )
       }),
-    [client],
+    [client, notify],
   )
 
   // The PSAPAC automation rewrites a new issue after the create's own read-back. Main reads it
@@ -634,14 +645,14 @@ export function Shell({ session }: { session: Session }) {
         created.current.delete(read.key)
         applyUnaskedRead(client, read.issue)
         const late = describeLate(first.draft, first.notice, read)
-        if (late !== null) setNotice({ notice: late, openKey: read.key })
+        if (late !== null) notify(late, { openKey: read.key })
       }),
-    [client],
+    [client, notify],
   )
 
-  const dismissNotice = useCallback(() => {
-    setNotice(null)
-  }, [])
+  const dismissToast = (id: number) => {
+    setToasts((held) => held.filter((toast) => toast.id !== id))
+  }
 
   /** Sends the delete the moment the user confirms; the lists already show it gone. */
   function confirmDelete(args: DeleteIssueArgs) {
@@ -651,26 +662,20 @@ export function Shell({ session }: { session: Session }) {
     if (peekedKey !== null && gone.has(peekedKey)) closePeek()
     deleteIssue.mutate(args, {
       onSuccess: ({ key, deletedSubtasks }) => {
-        setNotice({
-          notice: {
-            title:
-              deletedSubtasks.length === 0
-                ? `Deleted ${key}`
-                : `Deleted ${key} and ${deletedSubtasks.join(', ')}`,
-            notes: [],
-            warned: false,
-          },
-          openKey: null,
+        notify({
+          title:
+            deletedSubtasks.length === 0
+              ? `Deleted ${key}`
+              : `Deleted ${key} and ${deletedSubtasks.join(', ')}`,
+          notes: [],
+          warned: false,
         })
       },
       onError: (failure, _args, rollback) => {
-        setNotice({
-          notice: {
-            title: `Could not delete ${args.key}`,
-            notes: deleteFailureNotes(args.key, failure, (rollback?.removed.length ?? 0) > 0),
-            warned: true,
-          },
-          openKey: null,
+        notify({
+          title: `Could not delete ${args.key}`,
+          notes: deleteFailureNotes(args.key, failure, (rollback?.removed.length ?? 0) > 0),
+          warned: true,
         })
       },
     })
@@ -764,7 +769,7 @@ export function Shell({ session }: { session: Session }) {
     )
   }
 
-  return (
+  const layout = (
     <div
       className={`relative grid h-full grid-rows-[minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
     >
@@ -908,9 +913,7 @@ export function Shell({ session }: { session: Session }) {
             onOpen={setPageKey}
             onDelete={setDeleting}
             pageRef={pageRef}
-            onNotice={(reported) => {
-              setNotice({ notice: reported, openKey: null })
-            }}
+            onNotice={notify}
             onTimer={pressTimer}
           />
         </div>
@@ -928,8 +931,7 @@ export function Shell({ session }: { session: Session }) {
             created.current.set(result.key, { draft, notice: first })
             if (!more) setCreating(null)
             setPendingSelect(result.issue === null ? null : result.key)
-            if (!more)
-              setNotice({ notice: first, openKey: result.issue === null ? null : result.key })
+            if (!more) notify(first, result.issue === null ? {} : { openKey: result.key })
           }}
           returnFocus={focusTree}
         />
@@ -954,7 +956,7 @@ export function Shell({ session }: { session: Session }) {
           }}
           onDone={(reported) => {
             setTiming(null)
-            setNotice({ notice: reported, openKey: null })
+            notify(reported)
           }}
           returnFocus={restoreFocus}
         />
@@ -977,32 +979,56 @@ export function Shell({ session }: { session: Session }) {
           returnFocus={restoreFocus}
         />
       )}
-      {notice !== null && (
-        <Toast
-          notice={notice.notice}
-          onUndo={
-            notice.undoable === true
-              ? () => {
-                  undo()
-                  restoreFocus()
-                }
-              : undefined
-          }
-          onOpen={
-            notice.openKey === null
-              ? undefined
-              : () => {
-                  setPageKey(notice.openKey)
-                  setNotice(null)
-                }
-          }
-          onDismiss={dismissNotice}
-          onDismissClick={() => {
-            dismissNotice()
-            restoreFocus()
-          }}
-        />
+      <p role="status" aria-label="Notice" className="sr-only">
+        {heard}
+      </p>
+      {toasts.length > 0 && (
+        <ul
+          aria-label="Notices"
+          className="fixed bottom-4 left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2"
+        >
+          {toasts.map((toast) => (
+            <Toast
+              key={toast.id}
+              notice={toast.notice}
+              onUndo={
+                toast.entry === undefined
+                  ? undefined
+                  : () => {
+                      runUndo(toast.entry)
+                      restoreFocus()
+                    }
+              }
+              onRetry={
+                toast.retry === undefined
+                  ? undefined
+                  : () => {
+                      toast.retry?.()
+                      dismissToast(toast.id)
+                      restoreFocus()
+                    }
+              }
+              onOpen={
+                toast.openKey === null
+                  ? undefined
+                  : () => {
+                      setPageKey(toast.openKey)
+                      dismissToast(toast.id)
+                    }
+              }
+              onDismiss={() => {
+                dismissToast(toast.id)
+              }}
+              onDismissClick={() => {
+                dismissToast(toast.id)
+                restoreFocus()
+              }}
+            />
+          ))}
+        </ul>
       )}
     </div>
   )
+
+  return <NotifyContext value={notify}>{layout}</NotifyContext>
 }

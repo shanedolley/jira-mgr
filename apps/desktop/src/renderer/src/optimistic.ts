@@ -105,6 +105,20 @@ export function isEditing(client: QueryClient, key: string): boolean {
 }
 
 /**
+ * The fields of issue `key` that a mutation with these variables has changed on screen: its
+ * optimistic patch, or the summary. Every other mutation, such as a create or another issue's
+ * edit, changes none.
+ */
+export function pendingFields(key: string, variables: unknown): string[] {
+  if (typeof variables !== 'object' || variables === null) return []
+  if (!('key' in variables) || variables.key !== key) return []
+  if ('patch' in variables && typeof variables.patch === 'object' && variables.patch !== null) {
+    return Object.keys(variables.patch)
+  }
+  return 'summary' in variables ? ['summary'] : []
+}
+
+/**
  * Puts a read that was not asked for by an edit, such as a created issue's second read, into the
  * caches. While an edit of the issue is in flight the read would bring back the old value over the
  * optimistic one, so it is skipped: the edit reads the issue itself once it settles.

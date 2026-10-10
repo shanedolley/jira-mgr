@@ -1,11 +1,15 @@
 import type { Issue } from '@jira-mgr/core'
 import { STATUS_ORDER } from '@jira-mgr/core/hierarchy'
+import type { QueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
 import { Reason } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
+import { useNotify, type Notify } from './notify'
+import { current } from './optimistic'
 import { Picker, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
 import {
@@ -18,46 +22,90 @@ import {
   priorityPatch,
   projectLabels,
   recentAssignees,
+  refusedNotice,
   statusPatch,
   type Person,
 } from './properties'
+import { changedFields } from './undo'
 import { useEditIssue, useFieldOptions, useSetStatus, useTransitions, useUsers } from './queries'
 import { useDebounced } from './useDebounced'
 
-/** Tells the caller what to show under the pickers: a message, or `null` to clear the last one. */
-export type Report = (message: string | null) => void
-
-/** What the user reads when Jira refuses an edit and the issue shows its old value again. */
-export const refusal = (key: string, what: string, failure: Error) =>
-  `Could not change ${what}, so ${key} shows its old value again. ${failure.message}`
-
-/** Sends an edit with its optimistic patch. A refusal goes to `report`. */
-export function useIssueChange(issue: Issue, report: Report) {
-  const edit = useEditIssue()
-  return (what: string, changes: IssueChanges, patch: Partial<Issue>) => {
-    report(null)
-    edit.mutate(
-      { key: issue.key, changes, patch },
-      {
-        onError: (failure) => {
-          report(refusal(issue.key, what, failure))
-        },
+/**
+ * Sends an edit of issue `key` that changes the fields of `patch`. A refusal, which has shown the
+ * old value again, goes to the toast with Retry and flashes the issue's row and those fields'
+ * rows. It does so even when the control that sent the edit has gone, such as a Peek that moved
+ * on to another issue. Retry sends the edit again only while the fields still show what they
+ * showed before this edit was sent; a later edit of one of them, from anywhere, would be
+ * overwritten, so it refuses instead.
+ */
+export function attemptWith(
+  notify: Notify,
+  client: QueryClient,
+  key: string,
+  what: string,
+  patch: Partial<Issue>,
+  send: () => Promise<unknown>,
+): void {
+  // Taken before the edit is sent. At refusal time the cache may already show a newer edit of
+  // the same fields that was queued behind this one.
+  const before = current(client, key)
+  const fields = Object.keys(patch)
+  send().then(undefined, (failure: unknown) => {
+    notify(refusedNotice(what, failure), {
+      flash: { key, fields },
+      retry: () => {
+        const now = current(client, key)
+        const changed =
+          before === undefined || now === undefined
+            ? ''
+            : changedFields(pick(before, fields), pick(now, fields))
+        if (changed === '') {
+          attemptWith(notify, client, key, what, patch, send)
+          return
+        }
+        notify({
+          title: `Did not retry the ${what} of ${key}`,
+          notes: [`Its ${changed} changed since, and the retry would overwrite that.`],
+          warned: true,
+        })
       },
-    )
+    })
+  })
+}
+
+/** The values of `fields` on `issue`. A field the issue lacks is listed as `undefined`, so it still compares. */
+const pick = (issue: Issue, fields: readonly string[]): Partial<Issue> =>
+  Object.fromEntries(fields.map((field) => [field, issue[field as keyof Issue]]))
+
+/** `attemptWith` for a control that sits inside the Shell's notice context. */
+export function useAttempt(key: string) {
+  const notify = useNotify()
+  const client = useQueryClient()
+  return (what: string, patch: Partial<Issue>, send: () => Promise<unknown>): void => {
+    attemptWith(notify, client, key, what, patch, send)
+  }
+}
+
+/** Sends an edit with its optimistic patch. `what` names the property, as in "Priority not changed." */
+export function useIssueChange(issue: Issue) {
+  const edit = useEditIssue()
+  const attempt = useAttempt(issue.key)
+  return (what: string, changes: IssueChanges, patch: Partial<Issue>) => {
+    attempt(what, patch, () => edit.mutateAsync({ key: issue.key, changes, patch }))
   }
 }
 
 interface PickerProps {
   issue: Issue
-  report: Report
 }
 
 const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
   (choices ?? []).map((c) => ({ id: c.id, label: c.name }))
 
 /** The statuses the issue can reach now, in Q21 order. Opened by `S`. */
-export function StatusPicker({ issue, report }: PickerProps) {
+export function StatusPicker({ issue }: PickerProps) {
   const setStatus = useSetStatus()
+  const attempt = useAttempt(issue.key)
   const [open, setOpen] = useState(false)
   const transitions = useTransitions(issue.key, open)
 
@@ -83,15 +131,8 @@ export function StatusPicker({ issue, report }: PickerProps) {
   function choose(id: string) {
     const option = transitions.data?.find((o) => o.id === id)
     if (option === undefined || id === issue.status.id) return
-    report(null)
-    setStatus.mutate(
-      { key: issue.key, statusId: id, patch: statusPatch(issue, option) },
-      {
-        onError: (failure) => {
-          report(refusal(issue.key, 'the status', failure))
-        },
-      },
-    )
+    const patch = statusPatch(issue, option)
+    attempt('Status', patch, () => setStatus.mutateAsync({ key: issue.key, statusId: id, patch }))
   }
 
   return (
@@ -123,8 +164,8 @@ interface AssigneeProps extends PickerProps {
 }
 
 /** Unassigned, Me, recent assignees, then a search of assignable users. Opened by `A`. */
-export function AssigneePicker({ issue, issues, me, report }: AssigneeProps) {
-  const change = useIssueChange(issue, report)
+export function AssigneePicker({ issue, issues, me }: AssigneeProps) {
+  const change = useIssueChange(issue)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const found = useUsers(useDebounced(query.trim()), open)
@@ -147,7 +188,7 @@ export function AssigneePicker({ issue, issues, me, report }: AssigneeProps) {
     const person = id === NONE ? null : (people.get(id) ?? null)
     if (id !== NONE && person === null) return
     if ((issue.assignee?.accountId ?? NONE) === id) return
-    change('the assignee', { assignee: person?.accountId ?? null }, assigneePatch(person))
+    change('Assignee', { assignee: person?.accountId ?? null }, assigneePatch(person))
   }
 
   return (
@@ -174,15 +215,15 @@ export function AssigneePicker({ issue, issues, me, report }: AssigneeProps) {
 }
 
 /** The project's priorities from the create metadata. Opened by `P`. */
-export function PriorityPicker({ issue, report }: PickerProps) {
-  const change = useIssueChange(issue, report)
+export function PriorityPicker({ issue }: PickerProps) {
+  const change = useIssueChange(issue)
   const [open, setOpen] = useState(false)
   const priorities = useFieldOptions('priority', open)
 
   function choose(id: string) {
     const choice = priorities.data?.find((c) => c.id === id)
     if (choice === undefined || issue.priority?.id === id) return
-    change('the priority', { priorityId: id }, priorityPatch(choice))
+    change('Priority', { priorityId: id }, priorityPatch(choice))
   }
 
   return (
@@ -210,12 +251,8 @@ export function PriorityPicker({ issue, report }: PickerProps) {
 }
 
 /** The labels on the loaded issues, which are the project's own (Q35); a new one can be typed. Opened by `L`. */
-export function LabelsPicker({
-  issue,
-  issues,
-  report,
-}: PickerProps & { issues: readonly Issue[] }) {
-  const change = useIssueChange(issue, report)
+export function LabelsPicker({ issue, issues }: PickerProps & { issues: readonly Issue[] }) {
+  const change = useIssueChange(issue)
   const options: PickerOption[] = [...new Set([...issue.labels, ...projectLabels(issues)])].map(
     (label) => ({ id: label, label, leading: <LabelDot /> }),
   )
@@ -223,7 +260,7 @@ export function LabelsPicker({
   function toggle(label: string) {
     const on = !issue.labels.includes(label)
     change(
-      'the labels',
+      'Labels',
       on ? { addLabels: [label] } : { removeLabels: [label] },
       labelsPatch(issue, label, on),
     )

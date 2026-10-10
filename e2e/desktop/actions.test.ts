@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { SITE, counts, launch, logIn, refuseNextEdit, releaseEdit } from './harness.js'
+import { SITE, counts, launch, logIn, notices, refuseNextEdit, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -70,7 +70,7 @@ test('I assigns the active issue to me, and the toast offers Undo', async () => 
   await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/Test User/)
   await settle(before + 1)
   expect(await lastBody()).toEqual({ fields: { assignee: { accountId: 'u1' } } })
-  await expect(window.getByText('PSAPAC-3: assignee changed to Test User')).toBeVisible()
+  await expect(notices(window).getByText('PSAPAC-3: assignee changed to Test User')).toBeVisible()
   await expect(window.getByRole('button', { name: 'Undo' })).toBeVisible()
   // No Peek opened, and the Tree keeps the keyboard.
   await expect(peek()).toHaveCount(0)
@@ -109,7 +109,9 @@ test('a refused I puts the row back and says so', async () => {
   await window.keyboard.press('i')
   await expect.poll(writes).toBe(before + 1)
   await releaseEdit(app)
-  await expect(window.getByRole('alert')).toContainText('Could not assign PSAPAC-3')
+  const alert = notices(window).getByRole('alert')
+  await expect(alert).toContainText('Assignee not changed. Jira refused it:')
+  await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
   await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/unassigned/)
 })
 
@@ -120,11 +122,11 @@ test('Y copies the issue key and U copies its link on the configured site', asyn
 
   await window.keyboard.press('y')
   await expect.poll(clipboardText).toBe('PSAPAC-4')
-  await expect(window.getByText('Copied the key of PSAPAC-4')).toBeVisible()
+  await expect(notices(window).getByText('Copied the key of PSAPAC-4')).toBeVisible()
 
   await window.keyboard.press('u')
   await expect.poll(clipboardText).toBe(`${SITE}/browse/PSAPAC-4`)
-  await expect(window.getByText('Copied the link of PSAPAC-4')).toBeVisible()
+  await expect(notices(window).getByText('Copied the link of PSAPAC-4')).toBeVisible()
   // Nothing opened and nothing was written.
   await expect(peek()).toHaveCount(0)
   await expect(tree()).toBeFocused()

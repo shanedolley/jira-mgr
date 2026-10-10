@@ -106,6 +106,30 @@ input {
   }
 }
 
+/* A property whose edit waits on Jira: the value dims to 60%, and a spinner takes the chevron's place. */
+[data-pending] {
+  position: relative;
+}
+
+[data-pending] > :not([data-spinner]) {
+  opacity: 0.6;
+}
+
+[data-pending] [data-chevron] {
+  visibility: hidden;
+}
+
+/* The Tree row whose edit Jira refused. It starts on the line colour, since the active row already wears --hover. */
+@keyframes flash {
+  from {
+    background-color: var(--line);
+  }
+}
+
+[data-flash] {
+  animation: flash 1s ease-out;
+}
+
 /* Lets a control sit in a drag region, such as the Peek's Close button beside the traffic lights. */
 .app-no-drag {
   -webkit-app-region: no-drag;

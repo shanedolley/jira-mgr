@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   UNDO_DEPTH,
   UndoStack,
+  changedFields,
   changedSince,
   describeEdit,
   describeUndo,
@@ -207,6 +208,15 @@ describe('changedSince', () => {
   })
 })
 
+describe('changedFields', () => {
+  it('names the fields of what was shown that the issue no longer shows', () => {
+    const low = { id: '4', name: 'Low' }
+    const high = { id: '2', name: 'High' }
+    expect(changedFields({ priority: low }, { priority: low })).toBe('')
+    expect(changedFields({ priority: low }, { priority: high })).toBe('priority')
+  })
+})
+
 describe('UndoStack', () => {
   const entry = (n: number): UndoEntry => ({
     key: `P-${String(n)}`,
@@ -242,6 +252,18 @@ describe('UndoStack', () => {
     stop()
     stack.push(entry(2))
     expect(heard).toHaveBeenCalledExactlyOnceWith(entry(1))
+  })
+
+  it('takes one edit from the middle, once, and leaves the others', () => {
+    const stack = new UndoStack()
+    const [one, two, three] = [entry(1), entry(2), entry(3)]
+    stack.push(one)
+    stack.push(two)
+    stack.push(three)
+    expect(stack.take(two)).toBe(two)
+    expect(stack.take(two)).toBeUndefined()
+    expect(stack.pop()).toBe(three)
+    expect(stack.pop()).toBe(one)
   })
 
   it('forgets everything when cleared', () => {
