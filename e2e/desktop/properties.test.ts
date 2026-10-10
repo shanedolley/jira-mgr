@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { launch, logIn } from './harness.js'
+import { counts, launch, logIn, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -151,4 +151,60 @@ test('the page rows sit 32px apart, and read-only rows have no chevron', async (
   const chevronOf = (name: string) => boxes.filter((r) => r.text.startsWith(name)).map((r) => r.svg)
   expect(chevronOf('Type')).toEqual([false])
   expect(chevronOf('Status')).toEqual([true])
+})
+
+const reads = async () => (await counts(app)).issueReads
+
+test('the Peek reads the description once it holds still, not on each row an arrow key passes', async () => {
+  await open()
+  await item(/PSAPAC-10,/).click()
+  await expect.poll(reads).toEqual(['PSAPAC-10'])
+
+  for (let i = 0; i < 4; i++) await window.keyboard.press('ArrowDown')
+  const key = (await peek().locator('p.font-mono').textContent())?.match(/PSAPAC-\d+/)?.[0]
+  expect(key).not.toBe('PSAPAC-10')
+  await expect.poll(async () => (await reads()).length).toBe(2)
+  // Wait out a late read, then check that only the row the arrows stopped on was read.
+  await window.waitForTimeout(500)
+  expect(await reads()).toEqual(['PSAPAC-10', key])
+})
+
+test('the Peek shows a row visited again from the read it already holds', async () => {
+  await open()
+  await item(/PSAPAC-2,/).click()
+  await expect.poll(reads).toEqual(['PSAPAC-2'])
+  await item(/PSAPAC-3,/).click()
+  await expect.poll(reads).toEqual(['PSAPAC-2', 'PSAPAC-3'])
+
+  await item(/PSAPAC-2,/).click()
+  await expect(peek().getByRole('heading', { name: 'Review the data model' })).toBeVisible()
+  await window.waitForTimeout(500)
+  expect(await reads()).toEqual(['PSAPAC-2', 'PSAPAC-3'])
+})
+
+test('a read of the page that opens while an edit is in flight keeps the edit', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await expect.poll(reads).toEqual(['PSAPAC-4'])
+
+  await peek().getByRole('button', { name: 'Status: In Progress' }).click()
+  await window.getByRole('option', { name: 'To Do' }).click()
+  await expect(peek().getByRole('button', { name: 'Status: To Do' })).toBeVisible()
+  // The fake holds the edit, so Jira still says In Progress while the page reads the issue.
+  await expect.poll(async () => (await counts(app)).edits).toBe(1)
+
+  // Away to the next row and back, then into the page, as a user paging through the Tree would.
+  await tree().focus()
+  await window.keyboard.press('ArrowDown')
+  await window.keyboard.press('ArrowUp')
+  await window.keyboard.press('Enter')
+  const page = window.getByRole('region', { name: 'Issue page' })
+  await expect(page.getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
+  await expect.poll(async () => (await reads()).length).toBe(2)
+  await window.waitForTimeout(300)
+  await expect(page.getByRole('button', { name: 'Status: To Do' })).toBeVisible()
+
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(1)
+  await expect(page.getByRole('button', { name: 'Status: To Do' })).toBeVisible()
 })

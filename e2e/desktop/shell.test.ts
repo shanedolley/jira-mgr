@@ -56,6 +56,8 @@ test('updates a summary before Jira answers, and restores it when Jira refuses',
   await logIn(window)
   await window.getByRole('treeitem', { name: /Migrate the dashboards/ }).click()
   const detail = window.getByRole('complementary', { name: 'Peek' })
+  // The Peek reads the description once it has held still on the row, before the edit below.
+  await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-4'])
   const searched = (await counts(app)).searches.unresolved
 
   await detail.getByRole('button', { name: 'Migrate the dashboards' }).click()

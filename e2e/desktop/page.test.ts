@@ -53,9 +53,11 @@ async function open() {
 async function openPage(row: RegExp, title: string) {
   await open()
   await item(row).click()
+  // The Peek reads the description once it has held still on the row.
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(1)
   await window.keyboard.press('Enter')
   await expect(heading(title)).toBeVisible()
-  // The Peek read the issue for its description, and the page reads its own copy again on opening.
+  // The page reads its own copy again on opening.
   await expect.poll(async () => (await counts(app)).issueReads.length).toBe(2)
 }
 
@@ -594,6 +596,8 @@ test("matches the Epic's Customer from the Peek with one click", async () => {
   await expect(flagged).toHaveAttribute('aria-label', /Customer differs from Epic/)
   await flagged.click()
   await expect(peek().getByText(/Customer differs from the Epic/)).toBeVisible()
+  // The Peek reads the description once it has held still, before the edit below.
+  await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-31'])
 
   await peek().getByRole('button', { name: "Match Epic's Customer" }).click()
 

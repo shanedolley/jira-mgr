@@ -1,6 +1,6 @@
 import type { Issue } from '@jira-mgr/core'
 import { propertyRules } from '@jira-mgr/core/issue'
-import { useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useState, type ReactNode, type RefObject } from 'react'
 
 import type { CurrentUser } from '../../shared/ipc'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
@@ -38,9 +38,32 @@ function Property({
   )
 }
 
-/** The first three lines of the description as plain text, with no editor. */
+/** How long the Peek holds still on an issue before it reads the description. */
+const READ_DELAY_MS = 180
+/** How long a description the Peek read stays fresh, so a row visited again shows it without a read. */
+const FRESH_MS = 30_000
+
+/**
+ * The first three lines of the description as plain text, with no editor. The Peek follows the
+ * active row, so the read waits until the user stops on one, and a copy read lately is reused.
+ * A copy the cache already holds shows at once, whatever the delay.
+ */
 function PeekDescription({ issueKey }: { issueKey: string }) {
-  const detail = useIssueDetail(issueKey)
+  // The Peek is keyed by the issue, so this starts again, unread, on each row the user moves to.
+  const [settled, setSettled] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSettled(true)
+    }, READ_DELAY_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [])
+  const detail = useIssueDetail(issueKey, {
+    enabled: settled,
+    staleTime: FRESH_MS,
+    refetchOnWindowFocus: false,
+  })
   const text = detail.data?.description == null ? '' : blockText(detail.data.description)
   return (
     <section aria-label="Description" className="space-y-1">

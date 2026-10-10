@@ -35,6 +35,7 @@ import {
   deleteMutation,
   doneKey,
   issueDetailKey,
+  isEditing,
   issueMutation,
   issuesKey,
   summaryMutation,
@@ -380,12 +381,37 @@ export function useDeleteIssue() {
   return useMutation(deleteMutation(client, (args) => call('issues:delete', args)))
 }
 
-/** One issue with its description and subtasks. It refetches on focus, like the lists. */
-export function useIssueDetail(key: string | null) {
+/** How a caller of `useIssueDetail` differs from the page's own read. */
+interface DetailOptions {
+  /** False holds the read, while a copy already cached still shows. */
+  enabled?: boolean
+  /** How long a read stays fresh. The default is the page's: stale at once (ADR-0002). */
+  staleTime?: number
+  refetchOnWindowFocus?: boolean
+}
+
+/**
+ * One issue with its description and subtasks. It refetches on focus, like the lists. A read that
+ * lands while an edit of the issue is in flight, or that began before the caches took a newer copy,
+ * would bring back the old value over the optimistic one, so that read keeps the copy held: the
+ * edit reads the issue itself once it settles.
+ */
+export function useIssueDetail(key: string | null, options: DetailOptions = {}) {
+  const client = useQueryClient()
+  const { enabled = true, ...rest } = options
   return useQuery({
     queryKey: issueDetailKey(key ?? ''),
-    queryFn: () => call('issues:get', { key: key ?? '' }),
-    enabled: key !== null,
+    queryFn: async () => {
+      const issueKey = key ?? ''
+      const startedAt = Date.now()
+      const fresh = await call('issues:get', { key: issueKey })
+      const held = client.getQueryData<IssueDetail>(issueDetailKey(issueKey))
+      const updatedAt = client.getQueryState(issueDetailKey(issueKey))?.dataUpdatedAt ?? 0
+      const newer = isEditing(client, issueKey) || updatedAt > startedAt
+      return newer && held !== undefined ? held : fresh
+    },
+    enabled: key !== null && enabled,
+    ...rest,
   })
 }
 
