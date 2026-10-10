@@ -32,18 +32,18 @@ pnpm build
 Confirm the CLI runs:
 
 ```
-pnpm jm -- --version
-pnpm jm -- --help
+pnpm -s jm -- --version
+pnpm -s jm -- --help
 ```
 
-`pnpm jm` runs the built binary at `apps/cli/dist/index.js`. The `--` separates pnpm's arguments from `jm`'s. To type `jm` alone, follow [Install the CLI](../how-to/install-cli.md).
+`pnpm -s jm` runs the built binary at `apps/cli/dist/index.js`. `-s` silences pnpm's banner. The `--` separates pnpm's arguments from `jm`'s. To type `jm` alone, follow [Install the CLI](../how-to/install-cli.md).
 
 ## Log In
 
 Create an API token in your Atlassian account's security settings, then run:
 
 ```
-pnpm jm -- auth login
+pnpm -s jm -- auth login
 ```
 
 `jm` asks for the site URL (`https://<name>.atlassian.net`), the project key, your email and the token. The token prompt hides what you type. `jm` checks the credentials against Jira and works out the project's custom field ids. Only then does it store anything: the token in a Keychain item named `jira-mgr`, the rest in `~/Library/Application Support/jira-mgr/`.
@@ -51,7 +51,7 @@ pnpm jm -- auth login
 Check the result:
 
 ```
-pnpm jm -- auth status
+pnpm -s jm -- auth status
 ```
 
 It prints the site, project, your name and when the fields were resolved.
@@ -59,19 +59,19 @@ It prints the site, project, your name and when the fields were resolved.
 ## List Issues
 
 ```
-pnpm jm -- issue list --mine --limit 5
+pnpm -s jm -- issue list --mine --limit 5
 ```
 
 On a terminal you get a table of up to five open issues assigned to you. Group the same issues by Customer and Epic:
 
 ```
-pnpm jm -- issue tree --mine
+pnpm -s jm -- issue tree --mine
 ```
 
 Read one issue in full, using a key from the table:
 
 ```
-pnpm jm -- issue get <key>
+pnpm -s jm -- issue get <key>
 ```
 
 ## Next

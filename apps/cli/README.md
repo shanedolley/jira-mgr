@@ -6,12 +6,12 @@ The `jm` command, used by people and agents alike. Package `@jira-mgr/cli`, buil
 
 ```
 pnpm build
-pnpm jm -- --help
-pnpm jm -- help --json
-pnpm jm --version
+pnpm -s jm -- --help
+pnpm -s jm -- help --json
+pnpm -s jm --version
 ```
 
-`pnpm jm` runs `scripts/jm.ts`, which starts the built binary at `dist/index.js`.
+`pnpm -s jm` runs `scripts/jm.ts`, which starts the built binary at `dist/index.js`.
 
 ## Rules
 

@@ -4,12 +4,23 @@ Re-record a PSAPAC response when Jira's shape changes, then point the tests at i
 
 ## Record
 
-1. Set the site, email and token in your shell. Never write the token into a file, a command or a log.
+1. Set the site, email and token in your shell. Read the token without echo, so it stays out of your shell history, and never write it into a file, a command or a log.
 
    ```
    export JM_JIRA_SITE=https://engineering-collibra.atlassian.net
    export JM_JIRA_EMAIL=<your email>
-   export JM_JIRA_TOKEN=<your API token>
+   ```
+
+   In zsh:
+
+   ```
+   read -rs 'JM_JIRA_TOKEN?Jira API token: ' && export JM_JIRA_TOKEN
+   ```
+
+   In bash:
+
+   ```
+   read -rsp 'Jira API token: ' JM_JIRA_TOKEN && export JM_JIRA_TOKEN
    ```
 
 2. Record the call. The name uses lowercase letters, digits and hyphens.

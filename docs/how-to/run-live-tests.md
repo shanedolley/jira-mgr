@@ -4,8 +4,8 @@ A live test reads real PSAPAC with your stored token. It never writes. Run one o
 
 ## Before You Start
 
-1. Log in so the Keychain holds a token: `pnpm jm -- auth login`. Live tests build their client with the stored credentials (`createHttpClient()` in `packages/core/src/extras.live.test.ts`).
-2. Check the login with `pnpm jm -- auth status`. It must show `https://engineering-collibra.atlassian.net` and project `PSAPAC`.
+1. Log in so the Keychain holds a token: `pnpm -s jm -- auth login`. Live tests build their client with the stored credentials (`createHttpClient()` in `packages/core/src/extras.live.test.ts`).
+2. Check the login with `pnpm -s jm -- auth status`. It must show `https://engineering-collibra.atlassian.net` and project `PSAPAC`.
 
 ## Run
 

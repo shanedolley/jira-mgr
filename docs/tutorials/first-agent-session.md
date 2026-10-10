@@ -1,10 +1,10 @@
 # First Agent Session
 
-In this lesson an agent reads the issue tree and edits one field through `jm`, using JSON only. Finish [Getting started](getting-started.md) first, so `jm auth status` works. The agent runs in the same repository and calls `pnpm jm -- <args>`.
+In this lesson an agent reads the issue tree and edits one field through `jm`, using JSON only. Finish [Getting started](getting-started.md) first, so `jm auth status` works. The agent runs in the same repository and calls `pnpm -s jm -- <args>`.
 
 ## Why JSON
 
-When `jm` writes to a pipe, or you pass `--json`, stdout carries exactly one JSON value. A success is `{"data": ...}`. A failure is `{"error": {"code": "...", "message": "..."}}`. The exit code tells the same story: 0 for success, 2 for bad input, 3 for not found, 4 for permission denied, 5 for a Jira failure ([CLI reference](../reference/cli.md#envelope)).
+When `jm` writes to a pipe, or you pass `--json`, stdout carries exactly one JSON value. A success is `{"data": ...}`. A failure is `{"error": {"code": "...", "message": "..."}}`. The exit code tells the same story ([exit codes](../reference/cli.md#exit-codes)).
 
 An agent never needs to parse a table or answer a prompt. Only `jm auth login` prompts, so log in yourself before the session starts.
 
@@ -13,47 +13,47 @@ An agent never needs to parse a table or answer a prompt. Only `jm auth login` p
 The agent asks `jm` what it can do:
 
 ```
-pnpm jm -- help --json
+pnpm -s jm -- help --json
 ```
 
 The result lists every command with its flags, an example and the shape of its `data`. For one command:
 
 ```
-pnpm jm -- help issue edit --json
+pnpm -s jm -- help issue edit --json
 ```
 
 ## Read the Tree
 
 ```
-pnpm jm -- issue tree --mine --json
+pnpm -s jm -- issue tree --mine --json
 ```
 
 `data` holds one group per Customer, each with its Epics and their issues. To read one issue, including its description as Markdown:
 
 ```
-pnpm jm -- issue get <key> --json
+pnpm -s jm -- issue get <key> --json
 ```
 
 Try a key that does not exist and watch the failure:
 
 ```
-pnpm jm -- issue get PSAPAC-999999 --json
+pnpm -s jm -- issue get PSAPAC-999999 --json
 ```
 
 The exit code is 3 and the envelope holds `"code": "not_found"`. An agent branches on the code, never on the message text.
 
 ## Edit One Field
 
-This step changes a real issue. Pick one of your own that you are happy to touch. Add a label:
+This step writes to live PSAPAC on `engineering-collibra.atlassian.net`. A person runs it, never an agent: an agent working on this repository skips it, because [AGENTS.md](../../AGENTS.md) forbids writes to Jira from tests and the handover rules keep agents off live data. Pick an issue you own, and undo the change at once. Add a label:
 
 ```
-pnpm jm -- issue edit <key> --add-label agent-test --json
+pnpm -s jm -- issue edit <key> --add-label agent-test --json
 ```
 
-`data` lists the key and the options sent, such as `{"key": "...", "changed": ["label"]}`. Check it with `pnpm jm -- issue get <key> --json` and look in `labels`. Then undo it:
+`data` lists the key and the options sent, such as `{"key": "...", "changed": ["label"]}`. Check it with `pnpm -s jm -- issue get <key> --json` and look in `labels`. Then undo it:
 
 ```
-pnpm jm -- issue edit <key> --remove-label agent-test --json
+pnpm -s jm -- issue edit <key> --remove-label agent-test --json
 ```
 
 ## Brief the Agent

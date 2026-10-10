@@ -20,7 +20,7 @@
 
 ## Fix
 
-1. Run `jm auth login`. The site, project and email come from settings, so it asks only for the token, hidden. Login resolves every field again from the project's create metadata and rewrites `fields.json`.
+1. Have your API token ready, or create one as in [Rotate the Jira token](rotate-jira-token.md). Run `jm auth login`. The site, project and email come from settings, so it asks only for the token, hidden. Login resolves every field again from the project's create metadata and rewrites `fields.json`.
 2. If login fails with `Cannot resolve these fields ... (missing)` or `(ambiguous: customfield_..., customfield_...)`, set the right id in the settings file, `~/Library/Application Support/jira-mgr/settings.json`:
 
    ```json

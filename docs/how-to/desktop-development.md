@@ -10,13 +10,13 @@ pnpm dev
 
 This runs `electron-vite dev` for `@jira-mgr/desktop`, the app with hot reload.
 
-`pnpm dev` reads and writes your real state folder and Keychain item. For a run that must touch neither, point the state at a scratch folder:
+`pnpm dev` reads and writes your real state folder and Keychain item. `JM_STATE_DIR` moves the state files only:
 
 ```
 JM_STATE_DIR=/path/to/scratch pnpm dev
 ```
 
-`JM_STATE_DIR` moves the state files only. The token still comes from the Keychain, so log in again in the scratch run, or use the e2e entry below.
+The Keychain item `jira-mgr` is not scoped. Logging in during that run rewrites your real item, and logging out deletes it. For a run that touches neither the state folder nor the Keychain, use `pnpm e2e`.
 
 ## Debug
 

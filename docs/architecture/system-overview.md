@@ -1,6 +1,6 @@
 # System Overview
 
-Two clients share one core. The CLI and the desktop app's main process both import `@jira-mgr/core`, and only core talks to Jira ([ADR-0001](../adr/0001-shared-core-monorepo.md)). [ARCHITECTURE.md](../../ARCHITECTURE.md) holds the directory map and the boundaries; this page follows a request through them.
+Two clients share one core. The CLI and the desktop app's main process both import `@jira-mgr/core`, and only core talks to Jira ([ADR-0001](../adr/0001-shared-core-monorepo.md)). [ARCHITECTURE.md](../../ARCHITECTURE.md) holds the directory map and the boundaries.
 
 ## Components
 
@@ -17,7 +17,7 @@ Two clients share one core. The CLI and the desktop app's main process both impo
 ## CLI Path
 
 1. `apps/cli/src/index.ts` calls `run(argv, nodeIo())`.
-2. `run.ts` builds a Commander program from the command schema (`schema.ts`), parses `argv` and finds the handler in `commands/index.ts`.
+2. `run.ts` calls `buildProgram` in `program.ts`, which builds a Commander program from the command schema (`schema.ts`). It parses `argv` and finds the handler in `commands/index.ts`.
 3. The handler calls core. The context creates the HTTP client on first use, so `help`, `view list` and the other commands that never reach Jira skip the Keychain (`context.ts`).
 4. The HTTP client reads the credentials on every request through `getCredentials`, which reads `settings.json` and the Keychain ([auth and Keychain](auth-and-keychain.md)).
 5. `run.ts` prints the result as a table or as one JSON envelope and returns the exit code. Core's `JiraMgrError` code picks the exit code (`EXIT_CODES` in `packages/core/src/errors.ts`).
