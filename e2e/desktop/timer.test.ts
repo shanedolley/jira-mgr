@@ -15,8 +15,18 @@ let app: ElectronApplication
 let window: Page
 let stateDir: string
 
+/**
+ * A fixed-offset zone in which it is now about noon. The dialog warns about a timer that crosses
+ * local midnight, and the tests start timers up to 9h back, so a zone near midnight would flip them.
+ * `Etc/GMT+N` is N hours behind UTC.
+ */
+function noonZone(): string {
+  const behind = (new Date().getUTCHours() - 12 + 24) % 24
+  return behind <= 12 ? `Etc/GMT+${String(behind)}` : `Etc/GMT-${String(24 - behind)}`
+}
+
 async function start(env: Record<string, string> = {}) {
-  ;({ app, window } = await launch(stateDir, env))
+  ;({ app, window } = await launch(stateDir, { TZ: noonZone(), ...env }))
 }
 
 test.beforeEach(async () => {
