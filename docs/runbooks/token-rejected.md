@@ -15,6 +15,7 @@
    | `Not logged in` | Settings hold no site or email, or the Keychain holds no token (`getCredentials` in `packages/core/src/auth.ts`) |
    | `Jira answered 401` | Jira does not accept the email and token: the token is expired or revoked, or the email is wrong |
    | `Jira answered 403` | Jira knows the account but refuses this call: it lacks access to the project or the action |
+   | `Field ids are not resolved` | `permission_denied`, exit 4: `fields.json` is missing (`getFieldIds` in `packages/core/src/fields.ts`). Log in again |
    | `No project is set` | `permission_denied`: settings hold no project key (`assertInProject` in `packages/core/src/state.ts`) |
    | `The site URL in settings is not an https://<name>.atlassian.net site` | `validation_failed`, exit 2: `settings.json` was edited to a bad site |
 

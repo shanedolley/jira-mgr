@@ -1,6 +1,6 @@
 # First Agent Session
 
-In this lesson an agent reads the issue tree and edits one field through `jm`, using JSON only. Finish [Getting started](getting-started.md) first, so `jm auth status` works. The agent runs in the same repository and calls `pnpm -s jm -- <args>`.
+In this lesson an agent reads the issue tree, and you edit one field, through `jm` using JSON only. Finish [Getting started](getting-started.md) first, so `jm auth status` works. The agent runs in the same repository and calls `pnpm -s jm -- <args>`.
 
 ## Why JSON
 
@@ -44,7 +44,7 @@ The exit code is 3 and the envelope holds `"code": "not_found"`. An agent branch
 
 ## Edit One Field
 
-This step writes to live PSAPAC on `engineering-collibra.atlassian.net`. A person runs it, never an agent: an agent working on this repository skips it, because [AGENTS.md](../../AGENTS.md) forbids writes to Jira from tests and the handover rules keep agents off live data. Pick an issue you own, and undo the change at once. Add a label:
+This step writes to live PSAPAC on `engineering-collibra.atlassian.net`. A person runs it, never an agent: an agent working on this repository skips it, because the "Not Alone" list in `prompt.md` reserves any write to live Jira for a person. Pick an issue you own, and undo the change at once. Add a label:
 
 ```
 pnpm -s jm -- issue edit <key> --add-label agent-test --json
