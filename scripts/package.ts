@@ -68,6 +68,9 @@ for (const [key, value] of [
 ] as const) {
   execFileSync('/usr/libexec/PlistBuddy', ['-c', `Set :${key} ${value}`, plist])
 }
+// macOS marks every file this app writes as downloaded (quarantine), so an attachment saved from
+// Jira asks before it opens, as a browser download does. Electron's plist does not set it.
+execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Add :LSFileQuarantineEnabled bool true', plist])
 // Editing Info.plist breaks Electron's seal, and Apple silicon refuses a binary whose seal is
 // broken. An ad-hoc signature (no identity) makes it run on this Mac.
 try {

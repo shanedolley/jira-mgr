@@ -169,3 +169,11 @@ const subscribe = (listener: () => void) => {
 export function useUpload(id: string | null): Upload | undefined {
   return useSyncExternalStore(subscribe, () => (id === null ? undefined : entries.get(id)))
 }
+
+/** How many of the issue's image uploads have landed, so the attachment list can read again when it grows. */
+export function useDoneUploads(key: string): number {
+  return useSyncExternalStore(
+    subscribe,
+    () => [...entries.values()].filter((e) => e.key === key && e.state.status === 'done').length,
+  )
+}

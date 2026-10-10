@@ -29,6 +29,8 @@ export interface Counts {
   quitPrompts: number
   /** Every avatar request, in order, and whether it carried an Authorization header. */
   avatarFetches: { url: string; authorized: boolean }[]
+  /** The default file name each stand-in save dialog offered, in order. */
+  downloads: string[]
 }
 
 interface FakeJira {
@@ -46,6 +48,7 @@ interface FakeJira {
   failUpload: () => void
   setDescription: (key: string, description: unknown) => void
   normaliseDescriptions: () => void
+  cancelNextDownload: () => void
 }
 
 interface WithFake {
@@ -159,6 +162,12 @@ export const setDescription = (app: ElectronApplication, key: string, descriptio
 export const normaliseDescriptions = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.normaliseDescriptions()
+  })
+
+/** Makes the stand-in save dialog answer "cancelled" the next time an attachment is downloaded. */
+export const cancelNextDownload = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.cancelNextDownload()
   })
 
 export async function logIn(window: Page, token = TOKEN) {

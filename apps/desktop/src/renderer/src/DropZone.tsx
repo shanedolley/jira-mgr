@@ -16,6 +16,12 @@ interface DropZoneProps {
 
 const carriesFiles = (event: DragEvent) => event.dataTransfer.types.includes('Files')
 
+/** The drops a zone took, so the page does not attach their files a second time. */
+const claimed = new WeakSet<Event>()
+
+/** True when a zone took this drop. The page's own drop handler skips it. */
+export const isClaimed = (event: Event): boolean => claimed.has(event)
+
 /**
  * A place on the page that takes dropped files. Every zone lights up with its own label while a
  * file is dragged anywhere over the page (`useFileDrag`), so several zones can show at once.
@@ -35,6 +41,7 @@ export function DropZone({ label, onFiles, className = '', children }: DropZoneP
         if (!carriesFiles(event)) return
         // The editor takes image files dropped on it while editing and says so with preventDefault.
         const handled = event.defaultPrevented
+        claimed.add(event.nativeEvent)
         event.preventDefault()
         const files = Array.from(event.dataTransfer.files)
         if (files.length > 0) onFiles(files, handled)

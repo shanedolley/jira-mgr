@@ -1,8 +1,9 @@
-import { adfToMarkdown, type AdfDoc, type EditorDoc } from '@jira-mgr/core/adf'
+import type { AdfDoc, EditorDoc } from '@jira-mgr/core/adf'
 import { useIsMutating } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
 import { IMAGE_TYPES } from '../../shared/ipc'
+import { safeMarkdown } from './activity'
 import { AdfEditor, type AdfEditorHandle } from './AdfEditor'
 import type { Notice } from './create'
 import { DropZone } from './DropZone'
@@ -18,6 +19,8 @@ interface DescriptionEditorProps {
   onLeave: () => void
   /** Reports something to the user in the corner of the window. */
   onNotice: (notice: Notice) => void
+  /** Attaches files that are not images, which the description cannot hold. */
+  onAttach: (files: File[]) => void
 }
 
 /** `read` shows the description, `edit` changes it, `saving` waits on Jira with the draft still in the editor. */
@@ -30,7 +33,13 @@ const cannotEdit = 'This description cannot be edited here. It is unchanged in J
  * conflict and draft handling around it. A save shows at once and rolls back if Jira refuses; the
  * text being edited is kept as a draft for the session until it is saved or discarded.
  */
-export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: DescriptionEditorProps) {
+export function DescriptionEditor({
+  issueKey,
+  value,
+  onLeave,
+  onNotice,
+  onAttach,
+}: DescriptionEditorProps) {
   // A draft kept when the page was left comes back as an edit in progress.
   const [restoredDraft] = useState(() => getDraft(issueKey))
   const [phase, setPhase] = useState<Phase>(restoredDraft === undefined ? 'read' : 'edit')
@@ -158,17 +167,11 @@ export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: Descri
 
   const empty = value === null && phase === 'read'
 
-  /** Files dropped on the section: images start an edit and embed, anything else is refused. */
+  /** Files dropped on the section: images start an edit and embed, anything else attaches to the issue. */
   function takeFiles(files: File[], handled: boolean) {
     const images = files.filter((file) => (IMAGE_TYPES as readonly string[]).includes(file.type))
     const others = files.filter((file) => !images.includes(file))
-    if (others.length > 0) {
-      onNotice({
-        title: `${others.map((file) => file.name).join(', ')} was not added`,
-        notes: ['Only images go into the description. Other files cannot be attached here yet.'],
-        warned: false,
-      })
-    }
+    if (others.length > 0) onAttach(others)
     // Images dropped on the editor are already embedded; only the rest was left over.
     if (handled || images.length === 0) return
     if (unsupported || phase === 'saving' || pending) {
@@ -282,13 +285,4 @@ export function DescriptionEditor({ issueKey, value, onLeave, onNotice }: Descri
       )}
     </DropZone>
   )
-}
-
-/** The description as Markdown text, for a description the editor could not take. */
-function safeMarkdown(value: AdfDoc): string {
-  try {
-    return adfToMarkdown(value)
-  } catch {
-    return ''
-  }
 }

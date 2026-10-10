@@ -60,6 +60,12 @@ export interface AdfEditorProps {
   issueKey: string
   /** The accessible name of the editing region. */
   label: string
+  /** The Save button's name, such as "Comment". Defaults to "Save". */
+  saveLabel?: string
+  /** The Cancel button's name, such as "Clear". Defaults to "Cancel". */
+  cancelLabel?: string
+  /** False keeps the caret out of an editor that mounts already editing, such as the comment box. Defaults to true. */
+  autoFocus?: boolean
   editing: boolean
   /** Keeps the content as it is while a save is in flight, whatever `value` becomes. */
   frozen?: boolean
@@ -222,9 +228,14 @@ export function AdfEditor(props: AdfEditorProps) {
     equalityFn: sameSnapshot,
   })
 
+  // An editor told not to focus on mount still focuses the next time editing starts.
+  const neverReadOnly = useRef(true)
+
   // Read and edit mode are one instance, so the read view shows what editing will.
   useEffect(() => {
     editor.setEditable(editing, false)
+    if (!editing) neverReadOnly.current = false
+    if (editing && props.autoFocus === false && neverReadOnly.current) return
     if (editing) {
       const { doc } = editor.state
       const caret = caretRef.current
@@ -242,9 +253,11 @@ export function AdfEditor(props: AdfEditorProps) {
         }
         focus()
         // A page restored with a draft mounts the editor in this same pass, and the shell then
-        // moves focus to the page, so look again on the next frame.
+        // moves focus to the page, so look again on the next frame. A discard dialog opened in
+        // that frame (Esc right after editing starts) keeps the focus it took.
         requestAnimationFrame(() => {
-          if (!editor.view.hasFocus()) focus()
+          const inDialog = document.activeElement?.closest('[role="alertdialog"]') != null
+          if (!editor.view.hasFocus() && !inDialog) focus()
         })
       }
     }
@@ -353,10 +366,10 @@ export function AdfEditor(props: AdfEditorProps) {
               onClick={submit}
               disabled={!state.dirty || state.blocked}
               aria-keyshortcuts="Meta+Enter"
-              title="Save (Cmd+Enter)"
+              title={`${props.saveLabel ?? 'Save'} (Cmd+Enter)`}
               className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink disabled:opacity-50"
             >
-              Save
+              {props.saveLabel ?? 'Save'}
             </button>
             <button
               type="button"
@@ -364,10 +377,10 @@ export function AdfEditor(props: AdfEditorProps) {
                 props.onCancel()
               }}
               aria-keyshortcuts="Escape"
-              title="Cancel (Esc)"
+              title={`${props.cancelLabel ?? 'Cancel'} (Esc)`}
               className="rounded-md border border-line px-3 py-1 hover:bg-hover"
             >
-              Cancel
+              {props.cancelLabel ?? 'Cancel'}
             </button>
             {state.blocked && (
               <span className="text-xs text-muted">

@@ -1,6 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { clearDrafts, draftCount, dropDraft, getDraft, putDraft, subscribeDrafts } from './drafts'
+import {
+  clearDrafts,
+  commentDraftKey,
+  draftCount,
+  dropDraft,
+  dropDraftsOf,
+  getDraft,
+  hasDraftsOf,
+  newCommentDraftKey,
+  putDraft,
+  subscribeDrafts,
+} from './drafts'
 
 const doc = { type: 'doc' as const, content: [{ type: 'paragraph' }] }
 
@@ -36,5 +47,22 @@ describe('drafts', () => {
     unsubscribe()
     putDraft('PSAPAC-3', { doc, base: null })
     expect(listener).toHaveBeenCalledTimes(3)
+  })
+
+  it("keeps a comment's edit and the comment box beside the description's, and drops them with the issue", () => {
+    const draft = { doc, base: null }
+    putDraft('PSAPAC-1', draft)
+    putDraft(commentDraftKey('PSAPAC-1', '7'), draft)
+    putDraft(newCommentDraftKey('PSAPAC-1'), draft)
+    putDraft(commentDraftKey('PSAPAC-12', '7'), draft)
+    expect(draftCount()).toBe(4)
+    expect(hasDraftsOf('PSAPAC-1')).toBe(true)
+
+    // PSAPAC-12 starts with the same text as PSAPAC-1 and must keep its draft.
+    dropDraftsOf('PSAPAC-1')
+    expect(draftCount()).toBe(1)
+    expect(hasDraftsOf('PSAPAC-1')).toBe(false)
+    expect(hasDraftsOf('PSAPAC-12')).toBe(true)
+    clearDrafts()
   })
 })
