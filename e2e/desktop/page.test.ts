@@ -386,6 +386,41 @@ test('sets the Customer, Engagement, priority and type, and lists only Story, Ta
   expect(await lastBody()).toEqual({ fields: { issuetype: { name: 'Task' } } })
 })
 
+test('the Type picker shows each type icon, grey except Bug, and leaves the property names readable', async () => {
+  await openPage(/PSAPAC-3,/, 'Fix the export timeout')
+  const trigger = picker('Type', 'Bug')
+  await trigger.click()
+
+  const types = window.getByRole('listbox', { name: 'Type' })
+  const box = await types.locator('xpath=..').boundingBox()
+  expect(box?.width).toBe(208)
+  // The button sits right of the property names, so a popover that starts at its edge covers none.
+  expect(box?.x).toBeGreaterThanOrEqual((await trigger.boundingBox())?.x ?? Infinity)
+
+  const painted = (css: string) =>
+    window.evaluate((value) => {
+      const probe = document.createElement('span')
+      probe.style.color = value
+      document.body.append(probe)
+      const colour = getComputedStyle(probe).color
+      probe.remove()
+      return colour
+    }, css)
+  const colourOf = (type: string) =>
+    types
+      .getByRole('option', { name: type, exact: true })
+      .locator('.type-icon')
+      .evaluate((icon) => getComputedStyle(icon).color)
+
+  await window.mouse.move(0, 0)
+  expect(await colourOf('Task')).toBe(await painted('var(--type-rest)'))
+  expect(await colourOf('Story')).toBe(await painted('var(--type-rest)'))
+  expect(await colourOf('Bug')).toBe(await painted('var(--type-bug)'))
+
+  await types.getByRole('option', { name: 'Story', exact: true }).hover()
+  expect(await colourOf('Story')).toBe(await painted('var(--type-story)'))
+})
+
 test('puts the old priority back and says why when Jira refuses it', async () => {
   await openPage(/PSAPAC-3,/, 'Fix the export timeout')
 

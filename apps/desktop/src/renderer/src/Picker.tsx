@@ -261,13 +261,13 @@ export function Picker({
         id={popoverId}
         popover="auto"
         onToggle={onToggle}
-        // Opens toward the left edge of its button: the sidebar sits against the window's right edge.
+        // Starts at the left edge of its button, so the property's name stays readable; against the
+        // window's right edge it flips to open leftward.
         style={{
           positionAnchor: anchorOf(uid),
-          positionArea: 'block-end span-inline-start',
-          positionTryFallbacks: 'flip-block',
+          positionTryFallbacks: 'flip-block, flip-inline',
         }}
-        className="menu w-72"
+        className="menu w-52"
       >
         {searchable && (
           <input

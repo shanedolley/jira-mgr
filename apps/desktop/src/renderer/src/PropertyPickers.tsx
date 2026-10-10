@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
+import { LabelDot, PriorityBars } from './Glyphs'
 import { Picker, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
 import {
@@ -187,7 +188,10 @@ export function PriorityPicker({ issue, report }: PickerProps) {
       label="Priority"
       shortcut="P"
       valueText={issue.priority?.name ?? 'None'}
-      options={fromChoices(priorities.data)}
+      options={fromChoices(priorities.data).map((o) => ({
+        ...o,
+        leading: <PriorityBars name={o.label} />,
+      }))}
       selected={issue.priority === null ? [] : [issue.priority.id]}
       onSelect={choose}
       onOpenChange={setOpen}
@@ -210,7 +214,7 @@ export function LabelsPicker({
 }: PickerProps & { issues: readonly Issue[] }) {
   const change = useIssueChange(issue, report)
   const options: PickerOption[] = [...new Set([...issue.labels, ...projectLabels(issues)])].map(
-    (label) => ({ id: label, label }),
+    (label) => ({ id: label, label, leading: <LabelDot /> }),
   )
 
   function toggle(label: string) {

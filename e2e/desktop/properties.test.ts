@@ -208,3 +208,43 @@ test('a read of the page that opens while an edit is in flight keeps the edit', 
   await expect.poll(async () => (await counts(app)).applied).toBe(1)
   await expect(page.getByRole('button', { name: 'Status: To Do' })).toBeVisible()
 })
+
+const listbox = (name: string) => window.getByRole('listbox', { name })
+
+test('a Peek picker opens 13rem wide and leaves every property name readable', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await peek().getByRole('button', { name: 'Priority: Medium' }).click()
+
+  const box = await listbox('Priority').locator('xpath=..').boundingBox()
+  expect(box?.width).toBe(208)
+  const nameEdges = await peek()
+    .locator('dt')
+    .evaluateAll((names) => names.map((name) => name.getBoundingClientRect().right))
+  expect(box?.x).toBeGreaterThanOrEqual(Math.max(...nameEdges))
+})
+
+test('Priority and Labels options carry a glyph, and a check marks the chosen priority', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+
+  await peek().getByRole('button', { name: 'Priority: Medium' }).click()
+  const priorities = listbox('Priority').getByRole('option')
+  await expect(priorities).toHaveCount(4)
+  await expect(priorities.locator('[data-glyph=priority]')).toHaveCount(4)
+  const levels = await priorities
+    .locator('[data-glyph=priority]')
+    .evaluateAll((bars) => bars.map((bar) => bar.getAttribute('data-level')))
+  expect(levels).toEqual(['4', '3', '2', '1'])
+  // The glyph, plus a check on the chosen option only.
+  await expect(priorities.nth(2).locator('svg')).toHaveCount(2)
+  await expect(priorities.nth(1).locator('svg')).toHaveCount(1)
+  await window.keyboard.press('Escape')
+
+  await peek()
+    .getByRole('button', { name: /^Labels:/ })
+    .click()
+  const labels = listbox('Labels').getByRole('option')
+  expect(await labels.count()).toBeGreaterThan(0)
+  await expect(labels.locator('[data-glyph=label]')).toHaveCount(await labels.count())
+})

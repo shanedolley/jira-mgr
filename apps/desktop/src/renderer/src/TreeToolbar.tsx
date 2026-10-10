@@ -1,5 +1,5 @@
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
-import type { KeyboardEvent, RefObject, ToggleEvent } from 'react'
+import type { KeyboardEvent, ReactNode, RefObject, ToggleEvent } from 'react'
 
 import type { Toggles } from '../../shared/ipc'
 import {
@@ -45,12 +45,13 @@ interface TreeToolbarProps {
   doneProgress: string | null
 }
 
-function Check() {
+/** Always laid out, so a toggle keeps its width; `invisible` while the toggle is off. */
+function Check({ on }: { on: boolean }) {
   return (
     <svg
       aria-hidden
       viewBox="0 0 16 16"
-      className="size-3.5"
+      className={`size-3.5 ${on ? '' : 'invisible'}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -60,6 +61,58 @@ function Check() {
       <path d="m3.5 8.5 3 3 6-7" />
     </svg>
   )
+}
+
+/** Marks a button as a menu, and a Filter field as a submenu that turns down when open. */
+function Chevron({ className }: { className: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className={`shrink-0 text-muted ${className}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m6 4 4 4-4 4" />
+    </svg>
+  )
+}
+
+/** A 16px icon before each Filter field. */
+const FIELD_ICONS: Record<FilterField, ReactNode> = {
+  assignee: (
+    <>
+      <circle cx="8" cy="5.5" r="2.5" />
+      <path d="M3 13.5c.6-2.6 2.6-4 5-4s4.4 1.4 5 4" />
+    </>
+  ),
+  status: (
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M8 4.5a3.5 3.5 0 0 1 0 7Z" fill="currentColor" />
+    </>
+  ),
+  label: (
+    <>
+      <path d="M2.5 2.5h5l6 6-5 5-6-6Z" />
+      <circle cx="5.5" cy="5.5" r="0.9" fill="currentColor" />
+    </>
+  ),
+  type: (
+    <>
+      <rect x="2.5" y="2.5" width="5" height="5" rx="1" />
+      <rect x="8.5" y="8.5" width="5" height="5" rx="1" />
+    </>
+  ),
+  sprint: (
+    <>
+      <path d="M13 8a5 5 0 1 1-1.5-3.5" />
+      <path d="M13 2.5v3h-3" />
+    </>
+  ),
 }
 
 const BUTTON =
@@ -121,9 +174,9 @@ export function TreeToolbar({
               onToggle(name)
               onActed()
             }}
-            className={`${BUTTON} aria-pressed:bg-selected`}
+            className={`${BUTTON} aria-pressed:border-accent/40 aria-pressed:bg-selected`}
           >
-            {toggles[name] && <Check />}
+            <Check on={toggles[name]} />
             {TOGGLE_LABELS[name]}
           </button>
         ))}
@@ -136,6 +189,7 @@ export function TreeToolbar({
           className={BUTTON}
         >
           Filter
+          <Chevron className="size-3 rotate-90" />
         </button>
         <div
           id="filter-menu"
@@ -150,9 +204,22 @@ export function TreeToolbar({
         >
           {FILTER_FIELDS.map((field) => (
             <details key={field} className="group/field">
-              <summary className="flex h-8 cursor-default items-center justify-between rounded px-2 hover:bg-hover">
-                {FIELD_LABELS[field]}
+              <summary className="flex h-8 cursor-default items-center gap-2 rounded px-2 hover:bg-hover">
+                <svg
+                  aria-hidden
+                  viewBox="0 0 16 16"
+                  className="size-4 shrink-0 text-muted"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {FIELD_ICONS[field]}
+                </svg>
+                <span className="flex-1">{FIELD_LABELS[field]}</span>
                 <span className="text-xs text-muted">{filters[field]?.length ?? ''}</span>
+                <Chevron className="size-3 group-open/field:rotate-90" />
               </summary>
               <ul className="max-h-56 overflow-y-auto pb-1">
                 {choices[field].map((choice) => (
@@ -183,6 +250,7 @@ export function TreeToolbar({
           className={BUTTON}
         >
           Groups
+          <Chevron className="size-3 rotate-90" />
         </button>
         <div
           id="groups-menu"

@@ -10,6 +10,7 @@ import {
   type FieldChoice,
 } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
+import { LabelDot, PriorityBars } from './Glyphs'
 import { Modal } from './Modal'
 import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
@@ -231,7 +232,7 @@ export function CreateIssueDialog({
   // Labels
   const labelOptions: PickerOption[] = [
     ...new Set([...draft.labels, ...projectLabels(issues)]),
-  ].map((label) => ({ id: label, label }))
+  ].map((label) => ({ id: label, label, leading: <LabelDot /> }))
 
   function toggleLabel(label: string) {
     edit({
@@ -301,7 +302,11 @@ export function CreateIssueDialog({
               <Picker
                 label="Type"
                 valueText={draft.type}
-                options={CREATE_TYPES.map((t) => ({ id: t, label: t }))}
+                options={CREATE_TYPES.map((t) => ({
+                  id: t,
+                  label: t,
+                  leading: <TypeIcon type={{ name: t }} decorative />,
+                }))}
                 selected={[draft.type]}
                 onSelect={(id) => {
                   setDraft((d) => withType(d, id as CreateType, selected, issues))
@@ -386,7 +391,10 @@ export function CreateIssueDialog({
               <Picker
                 label="Priority"
                 valueText={draft.priority?.name ?? 'None'}
-                options={fromChoices(priorities.data)}
+                options={fromChoices(priorities.data).map((o) => ({
+                  ...o,
+                  leading: <PriorityBars name={o.label} />,
+                }))}
                 selected={draft.priority === null ? [] : [draft.priority.id]}
                 onSelect={(id) => {
                   const picked = priorities.data?.find((c) => c.id === id)

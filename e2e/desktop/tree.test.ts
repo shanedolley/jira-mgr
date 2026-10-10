@@ -227,6 +227,100 @@ test('turning Hide done off shows the Done Epic with its subtree', async () => {
   await expect(tree()).toBeFocused()
 })
 
+/** Name, left edge and width of each control in the toolbar row, left to right. */
+const barBoxes = () =>
+  window
+    .getByLabel('Filter by key or summary')
+    .locator('xpath=..')
+    .locator('> button, > input')
+    .evaluateAll((controls) =>
+      controls.map((control) => {
+        const box = control.getBoundingClientRect()
+        const name = control.getAttribute('aria-label') ?? control.textContent.trim()
+        return { name, x: box.x, width: box.width }
+      }),
+    )
+
+test('toggling a toolbar button moves no neighbour', async () => {
+  await openWithDone()
+  const before = await barBoxes()
+  expect(before.map((box) => box.name)).toEqual([
+    'Hide done',
+    'Assignee: me',
+    'Hide empty Customers',
+    'Filter',
+    'Groups',
+    'Filter by key or summary',
+  ])
+
+  for (const name of ['Hide done', 'Assignee: me', 'Hide empty Customers']) {
+    const pressed = await toggle(name).getAttribute('aria-pressed')
+    await toggle(name).click()
+    await expect(toggle(name)).toHaveAttribute(
+      'aria-pressed',
+      pressed === 'true' ? 'false' : 'true',
+    )
+    expect(await barBoxes(), `after toggling ${name}`).toEqual(before)
+    await toggle(name).click()
+  }
+})
+
+test('the Filter and Groups buttons show a chevron and the Filter fields show an icon and a chevron', async () => {
+  await open()
+  await expect(toggle('Filter').locator('svg')).toHaveCount(1)
+  await expect(toggle('Groups').locator('svg')).toHaveCount(1)
+  await expect(toggle('Hide done').locator('svg')).toHaveCount(1)
+
+  await toggle('Filter').click()
+  const fields = window.locator('#filter-menu summary')
+  await expect(fields).toHaveCount(5)
+  for (const field of await fields.all()) {
+    await expect(field.locator('svg')).toHaveCount(2)
+    expect((await field.boundingBox())?.height).toBe(32)
+  }
+})
+
+/** The colour the renderer paints for a CSS value, such as `var(--type-bug)`. */
+const painted = (value: string) =>
+  window.evaluate((css) => {
+    const probe = document.createElement('span')
+    probe.style.color = css
+    document.body.append(probe)
+    const colour = getComputedStyle(probe).color
+    probe.remove()
+    return colour
+  }, value)
+
+const iconColour = (row: RegExp, type: string) =>
+  item(row)
+    .getByRole('img', { name: type })
+    .evaluate((icon) => getComputedStyle(icon).color)
+
+test('type icons are grey at rest except Bug, and show their type colour on hover', async () => {
+  await openWithDone()
+  const types: [RegExp, string, string][] = [
+    [/PSAPAC-10, Epic/, 'Epic', '--type-epic'],
+    [/PSAPAC-4, Story/, 'Story', '--type-story'],
+    [/PSAPAC-3, Bug/, 'Bug', '--type-bug'],
+    [/PSAPAC-13, Task/, 'Task', '--type-task'],
+    [/PSAPAC-12, Subtask/, 'Subtask', '--type-task'],
+  ]
+
+  // Park the pointer away from every row.
+  await window.mouse.move(0, 0)
+  const rest = await painted('var(--type-rest)')
+  for (const [row, type, token] of types) {
+    expect(await iconColour(row, type), `${type} at rest`).toBe(
+      type === 'Bug' ? await painted(`var(${token})`) : rest,
+    )
+  }
+
+  for (const [row, type, token] of types) {
+    await item(row).hover()
+    expect(await iconColour(row, type), `${type} on hover`).toBe(await painted(`var(${token})`))
+  }
+})
+
 test('Assignee: me keeps my issues with their ancestors dimmed', async () => {
   await openWithDone()
 
