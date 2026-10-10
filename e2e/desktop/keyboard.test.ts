@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -618,6 +618,94 @@ test('Dismiss on a toast hands focus back, so a letter works again', async () =>
   await expect(tree()).toBeFocused()
   await window.keyboard.press('c')
   await expect(window.getByRole('dialog', { name: 'New issue' })).toBeVisible()
+})
+
+const help = () => window.getByRole('dialog', { name: 'Keyboard shortcuts' })
+
+test('? lists every table and row of docs/reference/shortcuts.md, and Esc returns to the Tree', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  await window.keyboard.press('?')
+  await expect(help()).toBeVisible()
+
+  // The page is the source: count its tables and the rows of each against the overlay.
+  const doc = await readFile(new URL('../../docs/reference/shortcuts.md', import.meta.url), 'utf8')
+  const tables: { title: string; rows: number }[] = []
+  let table: { title: string; rows: number } | null = null
+  for (const line of doc.split('\n')) {
+    if (line.startsWith('## ')) tables.push((table = { title: line.slice(3), rows: -2 }))
+    // The header and the rule line are not shortcuts.
+    else if (line.startsWith('|') && table !== null) table.rows += 1
+  }
+  // Prose sections such as Tab have no table.
+  const listed = tables.filter((t) => t.rows > 0)
+  expect(listed.map((t) => t.title)).toEqual(['Global', 'Tree', 'Fields and Dialogs'])
+  for (const { title, rows } of listed) {
+    await expect(help().getByRole('region', { name: title }).locator('tbody tr')).toHaveCount(rows)
+  }
+  await expect(
+    help().getByRole('region', { name: 'Global' }).locator('kbd', { hasText: '?' }),
+  ).toBeVisible()
+
+  await window.keyboard.press('Escape')
+  await expect(help()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+})
+
+test('? types into a field, and does nothing over the palette', async () => {
+  await open()
+  await window.keyboard.press('/')
+  await window.keyboard.type('a?b')
+  await expect(filter()).toHaveValue('a?b')
+  await expect(help()).toHaveCount(0)
+
+  await window.keyboard.press('Meta+k')
+  await expect(palette()).toBeVisible()
+  await window.keyboard.type('?')
+  await expect(search()).toHaveValue('?')
+  await expect(help()).toHaveCount(0)
+})
+
+test('the header Shortcuts button opens the list, and its Close button returns focus to it', async () => {
+  await open()
+  const opener = window.getByRole('button', { name: 'Shortcuts' })
+  await opener.click()
+  await expect(help()).toBeVisible()
+  // The way out is on screen without scrolling.
+  await expect(help().getByRole('button', { name: 'Close' })).toBeInViewport()
+  await help().getByRole('button', { name: 'Close' }).click()
+  await expect(help()).toHaveCount(0)
+  await expect(opener).toBeFocused()
+})
+
+test('hovering a Peek picker shows its key as a keycap', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await expect(peek()).toBeVisible()
+  for (const [label, letter] of [
+    ['Status', 'S'],
+    ['Assignee', 'A'],
+    ['Labels', 'L'],
+    ['Priority', 'P'],
+  ] as const) {
+    const keycap = peekPicker(label).locator('kbd')
+    await expect(keycap).toBeHidden()
+    await peekPicker(label).hover()
+    await expect(keycap).toHaveText(letter)
+    await expect(keycap).toBeVisible()
+    await window.mouse.move(0, 0)
+  }
+})
+
+test('the palette draws its keys as keycaps on 36px rows', async () => {
+  await open()
+  await expect(window.getByRole('button', { name: 'Search' }).locator('kbd')).toHaveText('⌘K')
+  await window.keyboard.press('Meta+k')
+  await expect(palette()).toBeVisible()
+  await search().fill('runbook')
+  await expect(palette().getByRole('option')).toHaveCount(1)
+  expect((await option(/PSAPAC-11/).boundingBox())?.height).toBe(36)
+  await expect(palette().locator('kbd')).toHaveText(['Enter', 'Esc'])
 })
 
 /** Slows the renderer, so the Tree's deferred rows lag the text the filter holds. */

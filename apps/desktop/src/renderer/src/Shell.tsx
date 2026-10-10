@@ -22,7 +22,9 @@ import { DeleteIssueDialog } from './DeleteIssueDialog'
 import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
+import { Kbd } from './Kbd'
 import { LoadError } from './LoadError'
+import { ShortcutHelp } from './ShortcutHelp'
 import { Sidebar } from './Sidebar'
 import { TimerDialog } from './TimerDialog'
 import { Toast } from './Toast'
@@ -151,6 +153,8 @@ export function Shell({ session }: { session: Session }) {
   const [deleting, setDeleting] = useState<Issue | null>(null)
   // The Cmd+K palette (D7).
   const [searching, setSearching] = useState(false)
+  // The `?` shortcut list.
+  const [helping, setHelping] = useState(false)
   // The stop dialog, or with `to` the switch dialog, over the timer file as it was when `T` opened it.
   const [timing, setTiming] = useState<{
     snapshot: TimerSnapshot & { timer: RunningTimer }
@@ -456,6 +460,10 @@ export function Shell({ session }: { session: Session }) {
         event.preventDefault()
         setSearching(true)
         return
+      case 'help':
+        event.preventDefault()
+        setHelping(true)
+        return
       case 'undo':
         event.preventDefault()
         undo()
@@ -693,6 +701,17 @@ export function Shell({ session }: { session: Session }) {
             </span>
             <button
               type="button"
+              aria-keyshortcuts="Shift+?"
+              onClick={() => {
+                setHelping(true)
+              }}
+              className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+            >
+              Shortcuts
+              <Kbd aria-hidden>?</Kbd>
+            </button>
+            <button
+              type="button"
               aria-keyshortcuts="Meta+K"
               onClick={() => {
                 setSearching(true)
@@ -700,9 +719,7 @@ export function Shell({ session }: { session: Session }) {
               className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
             >
               Search
-              <kbd aria-hidden className="font-mono text-muted">
-                Cmd K
-              </kbd>
+              <Kbd aria-hidden>⌘K</Kbd>
             </button>
             <button
               type="button"
@@ -712,9 +729,7 @@ export function Shell({ session }: { session: Session }) {
               className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-50"
             >
               New issue
-              <kbd aria-hidden className="font-mono text-muted">
-                C
-              </kbd>
+              <Kbd aria-hidden>C</Kbd>
             </button>
           </div>
         </header>
@@ -852,6 +867,14 @@ export function Shell({ session }: { session: Session }) {
           onOpen={openFromPalette}
           onClose={() => {
             setSearching(false)
+          }}
+          returnFocus={restoreFocus}
+        />
+      )}
+      {helping && (
+        <ShortcutHelp
+          onClose={() => {
+            setHelping(false)
           }}
           returnFocus={restoreFocus}
         />

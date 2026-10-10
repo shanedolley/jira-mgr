@@ -127,6 +127,33 @@ describe('the filter key', () => {
   })
 })
 
+describe('the help key', () => {
+  it('answers to ? with Shift from anywhere that is not a field, picker or dialog', () => {
+    for (const target of [scoped, nowhere, null]) {
+      expect(resolveKey(key('?', { shiftKey: true }), target)).toBe('help')
+    }
+  })
+
+  it('stays out of text fields, pickers, dialogs and editors', () => {
+    for (const own of ['input', 'textarea', 'dialog', '[popover]', '[role="combobox"]']) {
+      expect(resolveKey(key('?', { shiftKey: true }), inside(own))).toBeNull()
+    }
+  })
+
+  it('is never ? with Cmd, Ctrl or Alt, nor a held, composed or handled key', () => {
+    for (const extra of [
+      { metaKey: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { repeat: true },
+      { isComposing: true },
+      { defaultPrevented: true },
+    ]) {
+      expect(resolveKey(key('?', { shiftKey: true, ...extra }), scoped)).toBeNull()
+    }
+  })
+})
+
 describe('Cmd+K', () => {
   it('opens the palette with Cmd, or Ctrl off the Mac, in either case', () => {
     expect(resolveKey(key('k', { metaKey: true }), nowhere)).toBe('palette')
