@@ -36,6 +36,6 @@ Neither client keeps a local replica ([ADR-0002](../adr/0002-live-fetch-without-
 
 ## Shared State
 
-Both clients read and write the files in the state folder, `~/Library/Application Support/jira-mgr/` or the folder `JM_STATE_DIR` names (`stateDir` in `packages/core/src/state.ts`). Each write goes to a temporary file and renames over the target. No lock guards the saved views file, so two writers at once can lose an edit. The CLI's `timer.json` is read by the CLI alone for now: the app has no timer yet.
+Both clients read and write the files in the state folder, `~/Library/Application Support/jira-mgr/` or the folder `JM_STATE_DIR` names (`stateDir` in `packages/core/src/state.ts`). Each write goes to a temporary file and renames over the target. No lock guards the saved views file, so two writers at once can lose an edit. `timer.json` is the one shared timer: both clients start and stop it through core (only the CLI pauses and resumes it), and core takes a lock file around every change, so a timer one client starts the other can stop.
 
 The files and their fields are in [auth and Keychain](auth-and-keychain.md) and the [data model](data-model.md).

@@ -52,7 +52,7 @@ The state folder is `~/Library/Application Support/jira-mgr/`, or the folder `JM
 | `settings.json` | `siteUrl`, `projectKey`, `email`, `fieldOverrides`, `timer` (`rounding`, `reminderThresholdHours`, `reminderIntervalMinutes`) and `toggles` (`hideDone`, `assigneeMe`, `hideEmptyCustomers`) | Login, logout and the app's toggles |
 | `fields.json` | The site, project, `resolvedAt` and the five resolved ids | Login |
 | `views.json` | The saved views | The app (`jm` only reads it) |
-| `timer.json` | The running timer | `jm timer` |
+| `timer.json` | The running timer | `jm timer` and the app, through core |
 
 Every read validates the file with a schema. A file that is not JSON, or fails its schema, throws `validation_failed` naming the file and saying to fix it or delete it. A missing file reads as its default. Writes go through a temporary file and a rename.
 
