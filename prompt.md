@@ -4,8 +4,8 @@
 
 Measured 2026-10-10 from `gh issue list --state open --limit 200` (5 open issues, one page), `gh pr list --state open` (none open) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. Work in this order, landing one pull request at a time:
 
-1. **Finish #106 (reference pages)**, `status:in-progress` on branch `106-reference-pages` (worktree `jira-mgr-106`): `config.md` and `shortcuts.md` written from the code, `core.md` dropped from the index. It is the last unblocked story.
-2. **Nothing else is unblocked.** Every other open issue is in HIL Review; start no new work without a new issue.
+1. **No unblocked story remains.** #106 is Done (#112). The next session starts by checking what Shane closed: `gh issue list --state open` and `gh issue list --label status:hil-review`.
+2. **Keep the docs current.** Fix any stale reference you meet in the pull request that changes the code.
 3. **Waiting on Shane** (he signs off issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #83 (click a summary on the issue page; try Enter, Esc and `E`), #96 (change one field twice quickly and confirm Jira keeps the last value), #102 (type in a comment, switch issues and return, then try an edit that conflicts) and #105 (run `pnpm fixture:record` against a non-Atlassian site and confirm it refuses before sending the token).
 
 Rebase each pull request onto `main` after the one before it merges, since a green run from before the rebase proves nothing (see Traps in the handover). Run e2e with `pnpm e2e --workers=1`, and never in several worktrees at once.
