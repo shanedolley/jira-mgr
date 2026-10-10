@@ -27,6 +27,8 @@ interface IssueTreeProps {
   state: TreeState
   /** The key of the issue the Peek shows, whose row is `aria-selected`. */
   peekedKey: string | null
+  /** The key of the issue the shared timer runs on, or `null`. */
+  timerKey: string | null
   /** Every expandable row id, for Collapse all. */
   expandable: readonly string[]
   /** Called with the next state after a key or a click. */
@@ -52,6 +54,7 @@ export function IssueTree({
   rows,
   state,
   peekedKey,
+  timerKey,
   expandable,
   onChange,
   treeRef,
@@ -178,6 +181,7 @@ export function IssueTree({
                 index={index}
                 active={row.id === state.activeId}
                 selected={row.id === selectedId}
+                timing={row.kind === 'issue' && row.node.issue.key === timerKey}
                 onClick={onRowClick}
               />
             )

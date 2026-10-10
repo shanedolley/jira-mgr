@@ -37,6 +37,9 @@ import type {
   SetSprintArgs,
   SetStatusArgs,
   SetSummaryArgs,
+  StartTimerArgs,
+  StopTimerArgs,
+  SwitchTimerArgs,
   Toggles,
   WorklogIdArgs,
 } from '../shared/ipc'
@@ -303,6 +306,25 @@ const renameViewArgs: z.ZodType<RenameViewArgs> = z.strictObject({ id: viewId, n
 
 const deleteViewArgs: z.ZodType<DeleteViewArgs> = z.strictObject({ id: viewId })
 
+const startTimerArgs: z.ZodType<StartTimerArgs> = z.strictObject({ key: issueKey })
+
+const stopTimerArgs: z.ZodType<StopTimerArgs> = z.strictObject({
+  expectRunning: issueKey,
+  timeSpent: timeSpent.optional(),
+  comment: adfBody.optional(),
+  confirm: z.boolean().optional(),
+  discard: z.boolean().optional(),
+})
+
+const switchTimerArgs: z.ZodType<SwitchTimerArgs> = z.strictObject({
+  key: issueKey,
+  expectRunning: issueKey,
+  timeSpent: timeSpent.optional(),
+  comment: adfBody.optional(),
+  confirm: z.boolean().optional(),
+  discard: z.boolean().optional(),
+})
+
 export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'session:get': z.undefined(),
   'session:login': loginArgs,
@@ -345,6 +367,10 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'views:create': createViewArgs,
   'views:rename': renameViewArgs,
   'views:delete': deleteViewArgs,
+  'timer:get': z.undefined(),
+  'timer:start': startTimerArgs,
+  'timer:stop': stopTimerArgs,
+  'timer:switch': switchTimerArgs,
 }
 
 export type Handlers = {
@@ -496,5 +522,9 @@ export function createHandlers(
       await backend.deleteView(args)
       return null
     }),
+    'timer:get': handle('timer:get', () => backend.getTimer()),
+    'timer:start': handle('timer:start', (args) => backend.startTimer(args)),
+    'timer:stop': handle('timer:stop', (args) => backend.stopTimer(args)),
+    'timer:switch': handle('timer:switch', (args) => backend.switchTimer(args)),
   }
 }

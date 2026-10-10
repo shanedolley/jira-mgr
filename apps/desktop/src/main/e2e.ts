@@ -22,6 +22,8 @@ const bulk = Number(process.env.JM_E2E_BULK ?? '0')
 // app's second read of a created issue, so a test sees the late toast without a 10 s wait.
 const lateAutomationMs = process.env.JM_E2E_LATE_AUTOMATION_MS
 const lateReadMs = process.env.JM_E2E_LATE_READ_MS
+// JM_E2E_REMINDER_MS makes the timer reminders look at the timer that often.
+const reminderMs = process.env.JM_E2E_REMINDER_MS
 const jira = createFakeJira({
   bulk: Number.isInteger(bulk) && bulk > 0 ? bulk : 0,
   ...(lateAutomationMs !== undefined && { lateAutomationMs: Number(lateAutomationMs) }),
@@ -52,5 +54,9 @@ start(
       jira.counts.quitPrompts++
       return true
     },
+    notify: (title, body) => {
+      jira.counts.notifications.push({ title, body })
+    },
+    ...(reminderMs !== undefined && { reminderCheckMs: Number(reminderMs) }),
   },
 )

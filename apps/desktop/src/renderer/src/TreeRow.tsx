@@ -2,6 +2,7 @@ import { memo } from 'react'
 
 import { Avatar } from './Avatar'
 import { StatusDot } from './StatusDot'
+import { TimerClock } from './TimerClock'
 import { ROW_HEIGHT, type TreeRow as Row } from './tree'
 import { TypeIcon } from './TypeIcon'
 
@@ -60,7 +61,7 @@ function mismatchTitle(mismatch: {
   return `Customer: ${mismatch.own?.value ?? 'none'}. Epic's Customer: ${mismatch.epic?.value ?? 'none'}.`
 }
 
-function Content({ row }: { row: Row }) {
+function Content({ row, timing }: { row: Row; timing: boolean }) {
   switch (row.kind) {
     case 'customer':
       return (
@@ -108,6 +109,7 @@ function Content({ row }: { row: Row }) {
               Customer
             </span>
           )}
+          {timing && <TimerClock issueKey={issue.key} className="shrink-0" />}
           {isEpic && <span className="shrink-0 text-xs text-muted">{row.count}</span>}
           <span className="hidden w-14 shrink-0 truncate text-right text-xs text-muted @md:block">
             {issue.issueType.name}
@@ -125,6 +127,8 @@ interface TreeRowProps {
   active: boolean
   /** The row whose issue the Peek shows. */
   selected: boolean
+  /** The shared timer runs on this row's issue. */
+  timing: boolean
   onClick: (id: string, onChevron: boolean) => void
 }
 
@@ -134,6 +138,7 @@ export const TreeRow = memo(function TreeRow({
   index,
   active,
   selected,
+  timing,
   onClick,
 }: TreeRowProps) {
   return (
@@ -158,7 +163,7 @@ export const TreeRow = memo(function TreeRow({
       className={`absolute inset-x-0 flex cursor-default items-center gap-2 pr-4 hover:bg-hover ${row.kind === 'customer' ? 'bg-sidebar' : ''} aria-selected:bg-selected data-[active=true]:bg-hover group-focus:data-[active=true]:shadow-[inset_0_0_0_2px_var(--accent)]`}
     >
       <Chevron row={row} />
-      <Content row={row} />
+      <Content row={row} timing={timing} />
     </div>
   )
 })

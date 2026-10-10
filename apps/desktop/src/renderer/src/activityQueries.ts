@@ -76,7 +76,7 @@ export function removeMutation<D, A>(
 }
 
 /** Reads the issue once, so the sidebar shows the estimate and Time remaining a worklog moved. */
-async function readIssue(client: QueryClient, key: string): Promise<void> {
+export async function readIssue(client: QueryClient, key: string): Promise<void> {
   try {
     applyFreshIssue(client, await call('issues:get', { key }))
   } catch {

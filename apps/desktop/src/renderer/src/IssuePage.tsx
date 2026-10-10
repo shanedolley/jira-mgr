@@ -17,6 +17,9 @@ import { LinksSection } from './LinksSection'
 import { LoadError } from './LoadError'
 import { StatusDot } from './StatusDot'
 import { SummaryEditor } from './SummaryEditor'
+import { pressOf } from './timer'
+import { TimerClock } from './TimerClock'
+import { useTimer } from './timerQueries'
 import { useIssueDetail } from './queries'
 import { TypeIcon } from './TypeIcon'
 import { removeUploadsOf } from './uploads'
@@ -37,6 +40,8 @@ interface IssuePageProps {
   pageRef: RefObject<HTMLElement | null>
   /** Reports something to the user in the corner of the window. */
   onNotice: (notice: Notice) => void
+  /** `T` or the timer button: starts the timer, or opens the stop or switch dialog. */
+  onTimer: (issueKey: string) => void
 }
 
 function PageBody({
@@ -168,7 +173,9 @@ export function IssuePage({
   onDelete,
   pageRef,
   onNotice,
+  onTimer,
 }: IssuePageProps) {
+  const timer = useTimer().data?.timer ?? null
   const dragging = useFileDrag()
   const detail = useIssueDetail(issueKey)
   const { attach, uploading } = useAttach(issueKey, onNotice)
@@ -256,15 +263,32 @@ export function IssuePage({
             </span>
           )}
           {issue !== undefined && (
-            <button
-              type="button"
-              onClick={() => {
-                onDelete(issue)
-              }}
-              className="app-no-drag ml-auto rounded-md border border-line px-2 py-0.5 text-xs text-danger hover:bg-hover"
-            >
-              Delete
-            </button>
+            <div className="app-no-drag ml-auto flex items-center gap-2">
+              {propertyRules(issue.issueType).estimates && (
+                <>
+                  <TimerClock issueKey={issue.key} />
+                  <button
+                    type="button"
+                    aria-keyshortcuts="T"
+                    onClick={() => {
+                      onTimer(issue.key)
+                    }}
+                    className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+                  >
+                    {pressOf(timer, issue.key) === 'stop' ? 'Stop timer' : 'Start timer'}
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  onDelete(issue)
+                }}
+                className="rounded-md border border-line px-2 py-0.5 text-xs text-danger hover:bg-hover"
+              >
+                Delete
+              </button>
+            </div>
           )}
         </header>
         {issue === undefined ? (

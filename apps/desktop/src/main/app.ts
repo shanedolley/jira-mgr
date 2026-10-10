@@ -7,6 +7,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  Notification,
   session,
   shell,
   type IpcMainInvokeEvent,
@@ -16,6 +17,7 @@ import { CHANNELS, ISSUES_PROGRESS_EVENT, LATE_READ_EVENT, WINDOW_FOCUS_EVENT } 
 import { externalUrl } from '../shared/links'
 import type { Backend } from './backend'
 import { createHandlers } from './handlers'
+import { startReminders } from './reminders'
 import { isTrustedFrame } from './trust'
 
 /** The one page a window loads: the dev server in development, the built file otherwise. */
@@ -128,6 +130,14 @@ export interface StartOptions {
   openExternal?: WindowHooks['openExternal']
   /** Replaces the native quit dialog, so a test counts prompts instead of showing one. */
   confirmQuit?: WindowHooks['confirmQuit']
+  /** Replaces the native notification of a timer reminder, so a test counts them. */
+  notify?: (title: string, body: string) => void
+  /** How often the reminders look at the timer. Tests shorten it. */
+  reminderCheckMs?: number
+}
+
+function nativeNotify(title: string, body: string): void {
+  if (Notification.isSupported()) new Notification({ title, body }).show()
 }
 
 /** Registers the IPC handlers for `backend` and opens the window once Electron is ready. */
@@ -167,8 +177,18 @@ export function start(backend: Backend, options: StartOptions = {}): void {
     })
   })
 
+  // Reminders belong to the app, not a window: they keep firing with every window closed (Q55).
+  let stopReminders: (() => void) | undefined
+  void app.whenReady().then(() => {
+    stopReminders = startReminders({
+      notify: options.notify ?? nativeNotify,
+      ...(options.reminderCheckMs !== undefined && { checkMs: options.reminderCheckMs }),
+    })
+  })
+
   // A pending second read of a created issue dies with the app.
   app.on('before-quit', () => {
+    stopReminders?.()
     backend.dispose()
   })
 

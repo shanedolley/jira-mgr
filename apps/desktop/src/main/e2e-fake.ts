@@ -126,6 +126,8 @@ export interface FakeJiraCounts {
   avatarFetches: { url: string; authorized: boolean }[]
   /** The default file name each stand-in save dialog offered, in order. */
   downloads: string[]
+  /** Every timer reminder, as the e2e entry's stand-in for a native notification saw it. */
+  notifications: { title: string; body: string }[]
 }
 
 export interface FakeJiraOptions {
@@ -611,6 +613,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     quitPrompts: 0,
     avatarFetches: [],
     downloads: [],
+    notifications: [],
   }
   // Attachments by issue key. PSAPAC-1 starts with the image its description embeds.
   const attachments = new Map<string, Attachment[]>([
