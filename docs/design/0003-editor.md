@@ -241,7 +241,7 @@ The IPC contract is internal and the error codes are unchanged, so no public con
 
 ### Keyboard and Accessibility
 
-- Read mode: the description sits in the `Description` section with an **Edit description** button (**Add description** when empty), matching D3's Edit summary. A click on the text with nothing selected also enters edit mode at the click point, except on a link or an image; a click that ends a selection does not, so text can be copied.
+- Read mode: the description sits in the `Description` section with an **Edit description** button (**Add description** when empty). A click on the text with nothing selected also enters edit mode at the click point, except on a link or an image; a click that ends a selection does not, so text can be copied.
 - `editorProps.attributes` change with the mode. In edit mode the region has `role="textbox"`, `aria-multiline="true"` and the accessible name "Description"; in read mode it has no role and the name "Description". Focus moves into it on edit. Save and Cancel follow it in tab order, with their shortcuts in their titles.
 - Tab: inside a list, `Tab` and `Shift+Tab` indent and outdent the item (ListKeymap). Outside a list, `Tab` leaves the editor for Save and Cancel. `Cmd+Enter` and `Esc` work from anywhere in the editor.
 - Markdown shortcuts, from StarterKit's input rules: `#` to `######` and a space for headings, `-` or `*` for a bullet list, `1.` for an ordered list, `>` for a quote, three backticks for a code block, `---` for a rule, `**bold**`, `*italic*` or `_italic_`, `~~strike~~`, `` `code` ``. TipTap's own mark shortcuts, such as `Cmd+B`, `Cmd+I` and `Cmd+U`. There is no link dialog in D4: paste a URL over text, or type one.

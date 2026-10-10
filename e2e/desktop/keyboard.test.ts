@@ -273,7 +273,7 @@ test('Esc closes a picker, then the Peek, from wherever focus is', async () => {
   // Focus on a button in the Peek is outside the Tree, and Esc still closes it.
   await window.keyboard.press(' ')
   await expect(peek()).toBeVisible()
-  await peek().getByRole('button', { name: 'Edit summary' }).focus()
+  await peek().getByRole('button', { name: 'Migrate the dashboards' }).focus()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
   await expect(tree()).toBeFocused()

@@ -253,7 +253,7 @@ D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full p
 The Peek shows the issue under `peekKey`, which follows the active row with these exceptions:
 
 - On a header or chip row it keeps showing the last issue.
-- While its summary field holds an unsaved edit, it stays on that issue; `J` and `K` still move the active row, and the Peek catches up once the edit is saved or cancelled.
+- While its summary field is open, it stays on that issue. Focus leaving the field saves the edit (D11), so a click on another row saves it first and the Peek then follows that row. `J` and `K` type into the field and do not move the active row.
 - When its issue leaves the Tree, through a refetch or a filter, it keeps showing the issue's last data under the label "No longer in this view", until the user moves the active row or closes the Peek.
 
 ### Testing

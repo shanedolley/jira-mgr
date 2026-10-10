@@ -58,9 +58,9 @@ test('updates a summary before Jira answers, and restores it when Jira refuses',
   const detail = window.getByRole('complementary', { name: 'Peek' })
   const searched = (await counts(app)).searches.unresolved
 
-  await detail.getByRole('button', { name: 'Edit summary' }).click()
+  await detail.getByRole('button', { name: 'Migrate the dashboards' }).click()
   await detail.getByLabel('Summary').fill('Migrate the reports')
-  await detail.getByRole('button', { name: 'Save' }).click()
+  await detail.getByLabel('Summary').press('Enter')
   // The fake holds the edit until released, so Jira has not answered while both views show it.
   await expect.poll(async () => (await counts(app)).edits).toBe(1)
   await expect(detail.getByRole('heading', { name: 'Migrate the reports' })).toBeVisible()
@@ -72,9 +72,9 @@ test('updates a summary before Jira answers, and restores it when Jira refuses',
   await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-4'])
   expect((await counts(app)).searches.unresolved).toBe(searched)
 
-  await detail.getByRole('button', { name: 'Edit summary' }).click()
+  await detail.getByRole('button', { name: 'Migrate the reports' }).click()
   await detail.getByLabel('Summary').fill('reject me')
-  await detail.getByRole('button', { name: 'Save' }).click()
+  await detail.getByLabel('Summary').press('Enter')
   await expect.poll(async () => (await counts(app)).edits).toBe(2)
   await expect(detail.getByRole('heading', { name: 'reject me' })).toBeVisible()
   await releaseEdit(app)

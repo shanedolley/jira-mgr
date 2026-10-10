@@ -391,22 +391,26 @@ test('keeps the Peek on an issue a filter removed, labelled, until the active ro
   await expect(peek()).not.toContainText('No longer in this view')
 })
 
-test('keeps the Peek on its issue while the summary is being edited', async () => {
+test('saves an unsaved summary when another row is clicked, and cancels one on Esc', async () => {
   await open()
   await item(/PSAPAC-11,/).click()
-  await peek().getByRole('button', { name: 'Edit summary' }).click()
+  await peek().getByRole('button', { name: 'Draft the runbook' }).click()
   await peek().getByLabel('Summary').fill('Draft the runbook, edited')
 
-  // The active row moves, but the Peek stays with the unsaved edit.
+  // The click takes focus from the field, which saves, and the Peek follows the active row.
   await item(/PSAPAC-2,/).click()
   await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'true')
-  await expect(peek().getByLabel('Summary')).toHaveValue('Draft the runbook, edited')
+  await expect(peek().getByRole('heading', { name: 'Review the data model' })).toBeVisible()
+  await expect(item(/Draft the runbook, edited/)).toBeVisible()
+  expect((await counts(app)).edits).toBe(1)
 
-  // Esc cancels the edit and puts focus on the Tree, and the Peek catches up.
+  // Esc cancels the edit and puts focus on the Tree.
+  await peek().getByRole('button', { name: 'Review the data model' }).click()
+  await peek().getByLabel('Summary').fill('Never saved')
   await peek().getByLabel('Summary').press('Escape')
   await expect(tree()).toBeFocused()
   await expect(peek().getByRole('heading', { name: 'Review the data model' })).toBeVisible()
-  expect((await counts(app)).edits).toBe(0)
+  expect((await counts(app)).edits).toBe(1)
 })
 
 test('reports each page of a load to the window that asked', async () => {
