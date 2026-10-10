@@ -666,10 +666,16 @@ test('? types into a field, and does nothing over the palette', async () => {
   await expect(help()).toHaveCount(0)
 })
 
-test('the header Shortcuts button opens the same list', async () => {
+test('the header Shortcuts button opens the list, and its Close button returns focus to it', async () => {
   await open()
-  await window.getByRole('button', { name: 'Shortcuts' }).click()
+  const opener = window.getByRole('button', { name: 'Shortcuts' })
+  await opener.click()
   await expect(help()).toBeVisible()
+  // The way out is on screen without scrolling.
+  await expect(help().getByRole('button', { name: 'Close' })).toBeInViewport()
+  await help().getByRole('button', { name: 'Close' }).click()
+  await expect(help()).toHaveCount(0)
+  await expect(opener).toBeFocused()
 })
 
 test('hovering a Peek picker shows its key as a keycap', async () => {

@@ -74,9 +74,10 @@ const LETTERS = new Map<string, Command>([
  * with Cmd, Ctrl or Alt, not held down, not part of an IME composition, not already handled, not
  * typed into a field, picker, dialog or editor, and only with focus inside the Tree, the Peek or
  * the issue page. `/` and `?` obey the same rules except the last: `/` focuses the filter and `?`
- * opens the shortcut list, each from any target outside a field, picker, dialog or editor. `Cmd+Z` and `Esc` obey the same target rule, so a
- * text field keeps its native undo and a picker keeps its own `Esc`. `Cmd+K` opens from a text
- * field, but not over a dialog or an open picker. Ctrl stands in for Cmd off the Mac.
+ * opens the shortcut list, each from any target outside a field, picker, dialog or editor. `Cmd+Z`
+ * and `Esc` obey the same target rule, so a text field keeps its native undo and a picker keeps
+ * its own `Esc`. `Cmd+K` opens from a text field, but not over a dialog or an open picker. Ctrl
+ * stands in for Cmd off the Mac.
  */
 export function resolveKey(event: KeyEvent, target: KeyTarget | null): Command | null {
   if (event.defaultPrevented || event.isComposing || event.altKey) return null

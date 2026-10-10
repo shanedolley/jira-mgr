@@ -22,9 +22,19 @@ export function ShortcutHelp({ onClose, returnFocus }: ShortcutHelpProps) {
       returnFocus={returnFocus}
       className="w-[min(44rem,calc(100vw-2rem))]"
     >
-      <h2 id={titleId} className="border-b border-line px-4 py-3 font-semibold">
-        Keyboard shortcuts
-      </h2>
+      <header className="sticky top-0 flex items-center justify-between border-b border-line bg-panel px-4 py-3">
+        <h2 id={titleId} className="font-semibold">
+          Keyboard shortcuts
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+        >
+          Close
+          <Kbd aria-hidden>Esc</Kbd>
+        </button>
+      </header>
       <div className="space-y-5 p-4">
         {SHORTCUT_TABLES.map((table) => (
           <section key={table.title} aria-label={table.title}>
@@ -45,7 +55,7 @@ export function ShortcutHelp({ onClose, returnFocus }: ShortcutHelpProps) {
                     {row.map((cell, at) => (
                       <td
                         key={table.columns[at]}
-                        className={`py-1.5 pr-4 align-top ${table.columns[at] === 'Key' ? 'w-44 whitespace-nowrap' : ''}`}
+                        className={`py-1.5 pr-4 align-top ${at === 0 ? 'w-44' : ''}`}
                       >
                         <Keys text={cell} />
                       </td>
@@ -58,7 +68,7 @@ export function ShortcutHelp({ onClose, returnFocus }: ShortcutHelpProps) {
         ))}
       </div>
       <p className="border-t border-line px-4 py-2 text-xs text-muted">
-        <Kbd>Esc</Kbd> closes. Ctrl stands in for ⌘ off the Mac.
+        Ctrl stands in for ⌘ off the Mac.
       </p>
     </Modal>
   )

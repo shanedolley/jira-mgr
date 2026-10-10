@@ -20,6 +20,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Cmd+K` | Open the search palette; it searches issues and lists no commands. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo |
 | `Esc` | Close the page, then the Peek |
+| `Tab` | The first stop is a "Skip to issues" link, hidden until it has focus; `Enter` on it moves focus to the Tree |
 
 ## Tree
 
@@ -57,7 +58,3 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Palette | `Enter`, `Esc` | Open the issue page, or close |
 
 Ctrl stands in for Cmd off the Mac.
-
-## Tab
-
-The first Tab stop is a "Skip to issues" link, hidden until it has focus. `Enter` on it moves focus to the Tree.
