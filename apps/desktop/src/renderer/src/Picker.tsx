@@ -76,6 +76,25 @@ function Check() {
   )
 }
 
+/** Marks the trigger as editable: read-only values show no chevron. */
+function Chevron() {
+  return (
+    <svg
+      aria-hidden
+      data-chevron
+      viewBox="0 0 16 16"
+      className="size-3.5 shrink-0 text-muted"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m4 6 4 4 4-4" />
+    </svg>
+  )
+}
+
 /**
  * A button that opens a native popover holding a listbox, the one picker every property uses.
  * With a search field the field is a combobox that points at the active option with
@@ -231,10 +250,11 @@ export function Picker({
           popoverRef.current?.showPopover()
         }}
         style={{ anchorName: anchorOf(uid) }}
-        className="flex h-7 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-hover disabled:opacity-60 aria-expanded:bg-hover"
+        className="flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left hover:bg-hover disabled:opacity-60 aria-expanded:bg-hover"
       >
         {leading}
-        <span className="min-w-0 truncate">{valueText}</span>
+        <span className="min-w-0 flex-1 truncate">{valueText}</span>
+        <Chevron />
       </button>
       <div
         ref={popoverRef}

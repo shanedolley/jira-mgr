@@ -37,7 +37,7 @@ import { useFieldOptions, useSetSprint, useSprints } from './queries'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section aria-label={title} className="space-y-0.5 border-b border-line py-3 last:border-b-0">
+    <section aria-label={title} className="border-b border-line py-3 last:border-b-0">
       <h3 className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
         {title}
       </h3>
@@ -47,14 +47,39 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const FIELD =
-  'h-7 w-full min-w-0 rounded-md border border-field-border bg-transparent px-2 hover:bg-hover focus:bg-canvas disabled:opacity-60'
+  'peer h-7 w-full min-w-0 rounded-md border border-field-border bg-transparent px-2 hover:bg-hover focus:bg-canvas disabled:opacity-60'
+
+/** The read-only rows follow the editable ones after an 8px gap. */
+function ReadOnly({ children }: { children: ReactNode }) {
+  return <div className="mt-2">{children}</div>
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    >
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 4.5V8l2.5 1.5" />
+    </svg>
+  )
+}
 
 interface TextFieldProps {
   label: string
   /** What the field holds now. A change from outside replaces the draft. */
   value: string
   type?: 'text' | 'date' | 'number'
+  /** Shown while the field is empty. A date field draws it itself, since the browser's is a format. */
   placeholder?: string
+  /** A clock before the text, for durations. */
+  clock?: boolean
   /** Called with the draft when it changed and the user left the field or pressed Enter. */
   onCommit: (draft: string) => void
   /** Whether a draft can be sent. A draft that cannot is shown as an error and not sent. */
@@ -68,6 +93,7 @@ function TextField({
   value,
   type = 'text',
   placeholder,
+  clock = false,
   onCommit,
   valid = () => true,
   hint,
@@ -109,25 +135,37 @@ function TextField({
     }
   }
 
+  const emptyDate = type === 'date' && draft === ''
   return (
     <>
-      <input
-        type={type}
-        aria-label={label}
-        aria-invalid={invalid || undefined}
-        placeholder={placeholder}
-        value={draft}
-        onChange={(event) => {
-          sent.current = null
-          setDraft(event.target.value)
-        }}
-        onBlur={(event) => {
-          commit(event.currentTarget)
-        }}
-        onKeyDown={onKeyDown}
-        {...(type === 'number' ? { min: 0, step: 0.25 } : {})}
-        className={`${FIELD} aria-invalid:border-danger`}
-      />
+      <div className="relative">
+        {clock && <ClockIcon />}
+        <input
+          type={type}
+          aria-label={label}
+          aria-invalid={invalid || undefined}
+          placeholder={type === 'date' ? undefined : placeholder}
+          value={draft}
+          onChange={(event) => {
+            sent.current = null
+            setDraft(event.target.value)
+          }}
+          onBlur={(event) => {
+            commit(event.currentTarget)
+          }}
+          onKeyDown={onKeyDown}
+          {...(type === 'number' ? { min: 0, step: 0.25 } : {})}
+          className={`${FIELD} aria-invalid:border-danger ${clock ? 'pl-7' : ''} ${emptyDate ? 'date-empty' : ''}`}
+        />
+        {emptyDate && placeholder !== undefined && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted peer-focus:hidden"
+          >
+            {placeholder}
+          </span>
+        )}
+      </div>
       {invalid && hint !== undefined && <p className="px-2 text-xs text-danger">{hint}</p>}
     </>
   )
@@ -268,6 +306,8 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
   const originalEstimate =
     issue.originalEstimateSeconds === null ? '' : formatEstimate(issue.originalEstimateSeconds)
   const timeRemaining = issue.timeRemainingHours === null ? '' : String(issue.timeRemainingHours)
+  // Time left means nothing before an estimate, so it waits for one. A value Jira holds still shows.
+  const hasEstimate = issue.originalEstimateSeconds !== null || issue.timeRemainingHours !== null
 
   return (
     <aside
@@ -290,8 +330,8 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
       </Group>
 
       <Group title="Details">
-        <Row name="Type">
-          {rules.typeChange ? (
+        {rules.typeChange && (
+          <Row name="Type">
             <Picker
               label="Type"
               valueText={issue.issueType.name}
@@ -303,10 +343,8 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               onOpenChange={setTypeOpen}
               note={types.isPending ? 'Loading types' : undefined}
             />
-          ) : (
-            <span className="flex h-7 items-center px-2">{issue.issueType.name}</span>
-          )}
-        </Row>
+          </Row>
+        )}
         {rules.parent && (
           <Row name="Parent">
             <Picker
@@ -397,6 +435,13 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             />
           </Row>
         )}
+        {!rules.typeChange && (
+          <ReadOnly>
+            <Row name="Type">
+              <span className="flex h-8 items-center px-2">{issue.issueType.name}</span>
+            </Row>
+          </ReadOnly>
+        )}
       </Group>
 
       <Group title="Dates and time">
@@ -405,6 +450,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             key={issue.startDate ?? ''}
             label="Start date"
             type="date"
+            placeholder="Set start date"
             value={issue.startDate ?? ''}
             onCommit={(draft) => {
               change(
@@ -422,6 +468,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             key={issue.dueDate ?? ''}
             label="Due date"
             type="date"
+            placeholder="Set due date"
             value={issue.dueDate ?? ''}
             onCommit={(draft) => {
               change(
@@ -440,7 +487,8 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               <TextField
                 label="Original estimate"
                 value={originalEstimate}
-                placeholder="2h 30m"
+                placeholder="Set estimate"
+                clock
                 valid={(draft) => parseEstimate(draft) !== null}
                 hint="Use a duration such as 2h 30m."
                 onCommit={(draft) => {
@@ -454,33 +502,38 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
                 }}
               />
             </Row>
-            <Row name="Remaining">
-              <span className="flex h-7 items-center px-2">
-                <span className="sr-only">Remaining estimate, read-only: </span>
-                {issue.remainingEstimateSeconds === null
-                  ? 'None'
-                  : formatEstimate(issue.remainingEstimateSeconds)}
-              </span>
-            </Row>
-            <Row name="Time left (h)">
-              <TextField
-                label="Time remaining (h)"
-                type="number"
-                value={timeRemaining}
-                valid={(draft) => draft === '' || Number(draft) >= 0}
-                hint="Use a number of hours, 0 or more."
-                onCommit={(draft) => {
-                  const hours = draft === '' ? null : Number(draft)
-                  change(
-                    'the time remaining',
-                    { timeRemainingHours: hours },
-                    {
-                      timeRemainingHours: hours,
-                    },
-                  )
-                }}
-              />
-            </Row>
+            {hasEstimate && (
+              <Row name="Time left (h)">
+                <TextField
+                  clock
+                  label="Time remaining (h)"
+                  type="number"
+                  value={timeRemaining}
+                  valid={(draft) => draft === '' || Number(draft) >= 0}
+                  hint="Use a number of hours, 0 or more."
+                  onCommit={(draft) => {
+                    const hours = draft === '' ? null : Number(draft)
+                    change(
+                      'the time remaining',
+                      { timeRemainingHours: hours },
+                      {
+                        timeRemainingHours: hours,
+                      },
+                    )
+                  }}
+                />
+              </Row>
+            )}
+            <ReadOnly>
+              <Row name="Remaining">
+                <span className="flex h-8 items-center px-2">
+                  <span className="sr-only">Remaining estimate, read-only: </span>
+                  {issue.remainingEstimateSeconds === null
+                    ? 'None'
+                    : formatEstimate(issue.remainingEstimateSeconds)}
+                </span>
+              </Row>
+            </ReadOnly>
           </>
         )}
       </Group>

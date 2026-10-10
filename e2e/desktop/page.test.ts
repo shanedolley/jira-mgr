@@ -53,10 +53,12 @@ async function open() {
 async function openPage(row: RegExp, title: string) {
   await open()
   await item(row).click()
+  // The Peek reads the description once it has held still on the row.
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(1)
   await window.keyboard.press('Enter')
   await expect(heading(title)).toBeVisible()
-  // The page reads its own copy once, which adds the description.
-  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(1)
+  // The page reads its own copy again on opening.
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(2)
 }
 
 const writes = async () => (await counts(app)).edits
@@ -217,9 +219,9 @@ test('changes the status from the keyboard, then reads that one issue and no lis
   expect(await lastBody()).toEqual({ transition: { id: 't1' } })
 
   await releaseEdit(app)
-  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(2)
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(3)
   const after = await counts(app)
-  expect(after.issueReads).toEqual(['PSAPAC-4', 'PSAPAC-4'])
+  expect(after.issueReads).toEqual(['PSAPAC-4', 'PSAPAC-4', 'PSAPAC-4'])
   expect(after.searches).toEqual(before.searches)
   await expect(picker('Status', 'To Do')).toBeVisible()
 })
@@ -318,7 +320,7 @@ test('adds, creates and removes labels, and refuses a label with a space', async
   await releaseEdit(app)
   await expect.poll(async () => (await counts(app)).applied).toBe(3)
   // One read after the last of the three settles.
-  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(2)
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(3)
   await expect(picker('Labels', 'needs-review')).toBeVisible()
 })
 
@@ -483,7 +485,7 @@ test('sends a second edit of the same field only once Jira has answered the firs
   ])
   expect((await fieldsOf(app, 'PSAPAC-4'))?.duedate).toBe('2027-03-03')
   // The read after the last edit shows what Jira holds.
-  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(2)
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(3)
   await expect(due).toHaveValue('2027-03-03')
 })
 
@@ -517,7 +519,7 @@ test('edits the estimate, shows the remaining estimate Jira cascades, and refuse
   await window.keyboard.press('Enter')
   await settle(2)
   expect(await lastBody()).toEqual({ fields: { customfield_5: 3 } })
-  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(3)
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(4)
 
   // "3e" is half a number: the field reports "" but is not emptied, so nothing is cleared.
   await remaining.focus()
@@ -594,6 +596,8 @@ test("matches the Epic's Customer from the Peek with one click", async () => {
   await expect(flagged).toHaveAttribute('aria-label', /Customer differs from Epic/)
   await flagged.click()
   await expect(peek().getByText(/Customer differs from the Epic/)).toBeVisible()
+  // The Peek reads the description once it has held still, before the edit below.
+  await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-31'])
 
   await peek().getByRole('button', { name: "Match Epic's Customer" }).click()
 
@@ -603,7 +607,7 @@ test("matches the Epic's Customer from the Peek with one click", async () => {
   await expect(peek().getByText('Beta Ltd')).toBeVisible()
   await settle(1)
   expect(await lastBody()).toEqual({ fields: { customfield_1: { id: '2' } } })
-  await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-31'])
+  await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-31', 'PSAPAC-31'])
 })
 
 test("matches the Epic's Customer from the issue page", async () => {
@@ -766,8 +770,11 @@ test('focus leaving saves the summary, Esc cancels it, and an empty one is refus
 
 test('offers Retry when the page cannot read its issue, and shows the description after it', async () => {
   await open()
+  // The Peek reads first, and says so when it fails.
   await failRead(app)
   await item(/PSAPAC-1,/).click()
+  await expect(peek().getByText('Could not load the description.')).toBeVisible()
+  await failRead(app)
   await window.keyboard.press('Enter')
 
   // The summary and properties come from the loaded lists, so the page still shows.
