@@ -2,7 +2,7 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (5 open issues, one page), `gh pr list --state open` (none open) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. Work in this order, landing one pull request at a time:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (4 open issues, one page), `gh pr list --state open` (none open) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. Work in this order, landing one pull request at a time:
 
 1. **No unblocked story remains.** #106 is Done (#112). The next session starts by checking what Shane closed: `gh issue list --state open` and `gh issue list --label status:hil-review`.
 2. **Keep the docs current.** Fix any stale reference you meet in the pull request that changes the code.
