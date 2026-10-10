@@ -28,14 +28,20 @@ export function phaseKey(phase: IssuePhase) {
 const phaseOf = (issue: Issue): IssuePhase =>
   issue.status.category === 'done' ? 'done' : 'unresolved'
 
-/**
- * Edits in flight per issue and client. It lives outside the mutation options because a hook
- * builds new options on every render, and two editors must count against the same total.
- */
-const inFlight = new WeakMap<QueryClient, Map<string, number>>()
+/** An edit in line: its arguments, naming it when it settles, and the call that lets it send. */
+interface Flight {
+  args: object
+  go: () => void
+}
 
-function flights(client: QueryClient): Map<string, number> {
-  const held = inFlight.get(client) ?? new Map<string, number>()
+/**
+ * Edits in flight per issue and client, oldest first. It lives outside the mutation options
+ * because a hook builds new options on every render, and two editors must queue in the same line.
+ */
+const inFlight = new WeakMap<QueryClient, Map<string, Flight[]>>()
+
+function flights(client: QueryClient): Map<string, Flight[]> {
+  const held = inFlight.get(client) ?? new Map<string, Flight[]>()
   inFlight.set(client, held)
   return held
 }
@@ -95,7 +101,7 @@ export function current(client: QueryClient, key: string): Issue | undefined {
 
 /** True while an edit to the issue is in flight, so its optimistic value is not Jira's yet. */
 export function isEditing(client: QueryClient, key: string): boolean {
-  return (flights(client).get(key) ?? 0) > 0
+  return flights(client).has(key)
 }
 
 /**
@@ -150,9 +156,10 @@ export function applyFreshIssue(client: QueryClient, fresh: IssueDetail): void {
  * again. `patchOf` names the fields the edit changes, as the issue will show them. The patch goes
  * into every cache that holds the issue (each phase and the page's own read), and a refusal puts
  * back only the fields the edit changed, and only while they still show the optimistic value, so
- * a failure never undoes a later edit. Once the last edit to that issue settles, whatever the
- * outcome, `reread` fetches the issue and the caches take Jira's answer, including anything Jira
- * changed on its own, such as a remaining estimate. Only the one issue is read: no list is
+ * a failure never undoes a later edit. Edits to one issue send one at a time, in the order they
+ * were made, so Jira keeps the last one made. Once the last edit to that issue settles, whatever
+ * the outcome, `reread` fetches the issue and the caches take Jira's answer, including anything
+ * Jira changed on its own, such as a remaining estimate. Only the one issue is read: no list is
  * cancelled or reloaded unless the read itself fails, so an edit never restarts the Done load.
  * An edit Jira accepted goes to `record` with the fields as it set them and as they were, which is
  * what an undo needs (D7). A refused edit, and one on an issue no cache holds, record nothing.
@@ -168,13 +175,20 @@ export function issueMutation<A extends { key: string }>(
     mutationFn: send,
     async onMutate(args) {
       const { key } = args
+      // Queued before anything can throw or wait, so the edits send in the order they were made.
+      // Two sent at once can reach Jira in either order, and Jira keeps whichever lands last.
+      const queue = flights(client).get(key) ?? []
+      flights(client).set(key, queue)
+      const turn = new Promise<void>((go) => queue.push({ args, go }))
+      if (queue.length === 1) queue[0]?.go()
       const patch = patchOf(args)
-      // Counted before the first await, so every edit is counted before any of them settles.
-      flights(client).set(key, (flights(client).get(key) ?? 0) + 1)
       // A refetch landing now would overwrite the optimistic value with Jira's old one.
       await Promise.all(holding(client, key).map((queryKey) => client.cancelQueries({ queryKey })))
       const before = current(client, key)
-      if (before === undefined) return undefined
+      if (before === undefined) {
+        await turn
+        return undefined
+      }
       // The description and subtasks exist only on the page's own read, so a rollback takes them from it.
       const detail = client.getQueryData<IssueDetail>(issueDetailKey(key))
       const previous = Object.fromEntries(
@@ -189,6 +203,7 @@ export function issueMutation<A extends { key: string }>(
         ...issue,
         ...(detail ? patch : listFields(patch)),
       }))
+      await turn
       return { key, patch, previous }
     },
     onSuccess(_data, args, rollback) {
@@ -209,12 +224,17 @@ export function issueMutation<A extends { key: string }>(
         return { ...issue, ...back }
       })
     },
-    async onSettled(_data, _error, { key }) {
+    async onSettled(_data, _error, args) {
+      const { key } = args
       // A read while another edit is in flight would bring back Jira's old value over that
-      // edit's optimistic one. The last to settle reads, even when edits settle in one tick.
-      const left = (flights(client).get(key) ?? 1) - 1
-      if (left > 0) {
-        flights(client).set(key, left)
+      // edit's optimistic one, so this one lets the next send and the last to settle reads. An
+      // edit whose `onMutate` threw settles before its turn, so it leaves the line without
+      // starting anyone.
+      const queue = flights(client).get(key) ?? []
+      const at = queue.findIndex((flight) => flight.args === args)
+      if (at !== -1) queue.splice(at, 1)
+      if (queue.length > 0) {
+        if (at === 0) queue[0]?.go()
         return
       }
       flights(client).delete(key)

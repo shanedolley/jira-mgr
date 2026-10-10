@@ -34,6 +34,8 @@ export interface Counts {
 interface FakeJira {
   counts: Counts
   releaseEdit: () => void
+  releaseNewestEdit: () => void
+  fieldsOf: (key: string) => Record<string, unknown> | undefined
   releaseDone: () => void
   failDone: () => void
   failRead: () => void
@@ -88,6 +90,19 @@ export const releaseEdit = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.releaseEdit()
   })
+
+/** Lets the fake Jira answer the newest edit it holds, as a network may answer a later one first. */
+export const releaseNewestEdit = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.releaseNewestEdit()
+  })
+
+/** The fields of an issue as the fake Jira holds them, by Jira's field ids. */
+export const fieldsOf = (app: ElectronApplication, key: string) =>
+  app.evaluate(
+    (_electron, name) => (globalThis as unknown as WithFake).__fakeJira.fieldsOf(name),
+    key,
+  )
 
 /** Lets the fake Jira answer the first Done page it holds. Until then no Done issue has loaded. */
 export const releaseDone = (app: ElectronApplication) =>

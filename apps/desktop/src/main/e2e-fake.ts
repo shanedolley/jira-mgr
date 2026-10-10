@@ -490,6 +490,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   counts: FakeJiraCounts
   /** Lets the oldest held edit proceed. The test waits for `counts.edits` first, so one is held. */
   releaseEdit: () => void
+  /** Lets the newest held edit proceed, as a network may answer a later request first. */
+  releaseNewestEdit: () => void
+  /** The fields of an issue as the fake holds them, or `undefined` when it has no such issue. */
+  fieldsOf: (key: string) => RawFields | undefined
   /** Lets the first Done page proceed. Until then no Done issue has loaded, with no timing window. */
   releaseDone: () => void
   /** Makes the next Done page answer 500. */
@@ -1008,6 +1012,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     releaseEdit: () => {
       held.shift()?.()
     },
+    releaseNewestEdit: () => {
+      held.pop()?.()
+    },
+    fieldsOf: (key) => find(key)?.fields,
     releaseDone: () => {
       releaseFirstDone()
     },

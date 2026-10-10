@@ -4,7 +4,16 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, failRead, launch, logIn, releaseDone, releaseEdit } from './harness.js'
+import {
+  counts,
+  failRead,
+  fieldsOf,
+  launch,
+  logIn,
+  releaseDone,
+  releaseEdit,
+  releaseNewestEdit,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -292,17 +301,19 @@ test('adds, creates and removes labels, and refuses a label with a space', async
   await search.fill('needs-review')
   await option('Create "needs-review"').click()
   await expect(picker('Labels', 'docs, needs-review')).toBeVisible()
-  await expect.poll(writes).toBe(2)
-  expect(await lastBody()).toEqual({ fields: {}, update: { labels: [{ add: 'needs-review' }] } })
 
   await search.fill('')
   await option('docs').click()
   await expect(picker('Labels', 'needs-review')).toBeVisible()
-  await expect.poll(writes).toBe(3)
-  expect(await lastBody()).toEqual({ fields: {}, update: { labels: [{ remove: 'docs' }] } })
+  // Each edit shows at once, but goes to Jira only once Jira has answered the one before.
+  expect(await writes()).toBe(1)
 
   await releaseEdit(app)
+  await expect.poll(writes).toBe(2)
+  expect(await lastBody()).toEqual({ fields: {}, update: { labels: [{ add: 'needs-review' }] } })
   await releaseEdit(app)
+  await expect.poll(writes).toBe(3)
+  expect(await lastBody()).toEqual({ fields: {}, update: { labels: [{ remove: 'docs' }] } })
   await releaseEdit(app)
   await expect.poll(async () => (await counts(app)).applied).toBe(3)
   // One read after the last of the three settles.
@@ -440,8 +451,9 @@ test('sends a date once when Enter is followed at once by leaving the field', as
   expect(await lastBody()).toEqual({ fields: { duedate: '2027-02-02' } })
 })
 
-test('sends a second edit of the same field made before Jira answers the first', async () => {
+test('sends a second edit of the same field only once Jira has answered the first', async () => {
   await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  const due = props().getByLabel('Due date')
 
   // One task, so neither edit is replaced by Jira's answer to the other.
   await window.evaluate(`(() => {
@@ -457,17 +469,21 @@ test('sends a second edit of the same field made before Jira answers the first',
     type('2027-03-03')
     input.blur()
   })()`)
+  // Jira answers the newest write it holds first, as a network may. Two writes held at once would
+  // land newest first and leave the older date in Jira, so only one may be out at a time.
+  await expect.poll(writes).toBe(1)
+  await releaseNewestEdit(app)
   await expect.poll(writes).toBe(2)
-  // Both edits go out; which reaches Jira first is not fixed.
-  expect((await counts(app)).editBodies).toEqual(
-    expect.arrayContaining([
-      { fields: { duedate: '2027-02-02' } },
-      { fields: { duedate: '2027-03-03' } },
-    ]),
-  )
-  await releaseEdit(app)
-  await releaseEdit(app)
+  await releaseNewestEdit(app)
   await expect.poll(async () => (await counts(app)).applied).toBe(2)
+  expect((await counts(app)).editBodies).toEqual([
+    { fields: { duedate: '2027-02-02' } },
+    { fields: { duedate: '2027-03-03' } },
+  ])
+  expect((await fieldsOf(app, 'PSAPAC-4'))?.duedate).toBe('2027-03-03')
+  // The read after the last edit shows what Jira holds.
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(2)
+  await expect(due).toHaveValue('2027-03-03')
 })
 
 test('edits the estimate, shows the remaining estimate Jira cascades, and refuses a bad duration', async () => {
