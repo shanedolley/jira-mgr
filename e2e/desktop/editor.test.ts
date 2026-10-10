@@ -178,10 +178,20 @@ const mentionParagraph = (): Node => ({
   ],
 })
 
+/**
+ * Waits until a caret key is safe. For 20 ms after the editor takes focus, ProseMirror puts back
+ * any caret the browser moved before ProseMirror read the move, so a key in that window can be
+ * undone on a slow machine. A page timer armed now runs after ProseMirror's. The 20 matches the
+ * delay in `handlers.focus` in prosemirror-view 1.42.6; check it when upgrading that library.
+ */
+const focusSettled = () =>
+  window.evaluate(() => new Promise<void>((resolve) => setTimeout(resolve, 20)))
+
 /** Puts the caret at the end of the first paragraph of the rich description. */
 async function endOfFirstParagraph() {
   // A pause between press and release, as a hand makes: a click with none can go unseen by ProseMirror.
   await editor().getByText('Agree the scope with the sponsor.').click({ delay: 60 })
+  await focusSettled()
   await window.keyboard.press('End')
 }
 
@@ -563,6 +573,7 @@ test('a failed save reopens with the caret where it was and Cmd+Z undoing the la
   await addDescription()
   await refuseNextEdit(app)
   await window.keyboard.type('abc')
+  await focusSettled()
   // Saved straight after the caret moves, before the browser reports the move to the editor.
   await window.keyboard.press('ArrowLeft')
   await window.keyboard.press(`${MOD}+Enter`)
