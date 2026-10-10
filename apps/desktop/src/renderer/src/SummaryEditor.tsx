@@ -103,7 +103,7 @@ export function SummaryEditor({ issue, onEditingChange, onLeave, page }: Summary
           aria-description="Edit summary"
           title="Edit summary (E)"
           onClick={start}
-          className="-mx-2 w-[calc(100%+1rem)] cursor-text rounded-md border border-transparent px-2 py-0.5 text-left hover:bg-hover"
+          className="-mx-2 w-[calc(100%+1rem)] cursor-text break-words rounded-md border border-transparent px-2 py-0.5 text-left hover:bg-hover"
         >
           {issue.summary}
         </button>

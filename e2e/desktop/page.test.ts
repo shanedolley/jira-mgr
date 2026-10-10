@@ -902,3 +902,21 @@ test('starts the description by y=140 in the page', async () => {
   await expect(description).toBeVisible()
   expect((await description.boundingBox())?.y).toBeLessThanOrEqual(140)
 })
+
+test('wraps a long unbroken summary inside the page instead of overflowing it', async () => {
+  await openPage(/PSAPAC-3,/, 'Fix the export timeout')
+  const long = `https://example.com/${'a'.repeat(200)}`
+
+  await summary('Fix the export timeout').click()
+  await issuePage().getByLabel('Summary').fill(long)
+  await window.keyboard.press('Enter')
+  const title = summary(long)
+  await expect(title).toBeVisible()
+  await settle(1)
+
+  const overflow = await title.evaluate((el) => ({
+    button: el.scrollWidth - el.clientWidth,
+    article: (el.closest('article')?.scrollWidth ?? 0) - (el.closest('article')?.clientWidth ?? 0),
+  }))
+  expect(overflow).toEqual({ button: 0, article: 0 })
+})
