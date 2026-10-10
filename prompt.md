@@ -2,12 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (9 open issues, one page), `gh pr list --state open` (only #99, this update) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep it current, and remove every stale reference (branch names that are gone, features listed as planned that exist, wrong counts, dead links) in the pull request that changes the code. Work in order, landing one pull request at a time:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (9 open issues, one page), `gh pr list --state open` (#99, this update, and #104, D5) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep it current, and remove every stale reference (branch names that are gone, features listed as planned that exist, wrong counts, dead links) in the pull request that changes the code. Work in order, landing one pull request at a time:
 
-1. **Land the caret test fix** from `fix-caret-focus-timer` (worktree `jira-mgr-caret`, test-only, under review by 98-flakes-review): open the pull request, merge on green.
-2. **Land D5 activity (#32)** from `d5-activity` (worktree `jira-mgr-d5`). The delta review passed at 7660685; the builder is rebasing onto `main` and opening the pull request. It carries design doc 0004 and the README text for D5, so its docs land with it.
-3. **Then, unblocked by D5:** D9 timer (#36) and the D5 follow-ups (#102). **Unblocked now:** D11 click-to-edit summary (#83), built in a worktree of its own after D5 merges since it touches `IssuePage` and `SummaryEditor.tsx`, and the planned docs pages (#101).
-4. **Waiting on Shane** (he closes issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #84 (late-automation toast), #85 (D12 icons), #86 (D13 profile images), and #96 (ordered edits, fixed by #100) once it reaches HIL Review. The two D5 live checks need him present: an image embedded in a comment rendering in live Jira, and the real native save dialog.
+1. **Land D5 activity (#32), PR #104** from `d5-activity` (worktree `jira-mgr-d5`). The delta review passed at 7660685; the builder is rebasing onto `main`. It carries design doc 0004 and the README text for D5, so its docs land with it.
+2. **Then, unblocked by D5:** D9 timer (#36) and the D5 follow-ups (#102). **Unblocked now:** D11 click-to-edit summary (#83), built in a worktree of its own after D5 merges since it touches `IssuePage` and `SummaryEditor.tsx`, and the planned docs pages (#101).
+3. **Waiting on Shane** (he closes issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #84 (late-automation toast), #85 (D12 icons), #86 (D13 profile images) and #96 (ordered edits, fixed by #100). The two D5 live checks need him present: an image embedded in a comment rendering in live Jira, and the real native save dialog.
 
 Rebase each pull request onto `main` after the one before it merges, since a green run from before the rebase proves nothing (see Traps in the handover). Run e2e with `pnpm e2e --workers=1`, and never in several worktrees at once.
 
