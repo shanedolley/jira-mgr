@@ -40,6 +40,10 @@ interface IssueTreeProps {
   expandable: readonly string[]
   /** Called with the next state after a key or a click. */
   onChange: (next: MoveResult) => void
+  /** A click on an issue row's status dot or avatar, made after the row became active. */
+  onPick: (key: string, property: 'status' | 'assignee') => void
+  /** A click on a group header's "+". */
+  onAdd: (row: Row) => void
   treeRef: RefObject<HTMLDivElement | null>
   /** Shown over a Tree with no issues, which stays mounted so focus is not lost. */
   empty: ReactNode
@@ -64,6 +68,8 @@ export function IssueTree({
   timerKey,
   expandable,
   onChange,
+  onPick,
+  onAdd,
   treeRef,
   empty,
 }: IssueTreeProps) {
@@ -191,6 +197,8 @@ export function IssueTree({
                 selected={row.id === selectedId}
                 timing={row.kind === 'issue' && row.node.issue.key === timerKey}
                 onClick={onRowClick}
+                onPick={onPick}
+                onAdd={onAdd}
               />
             )
           })}

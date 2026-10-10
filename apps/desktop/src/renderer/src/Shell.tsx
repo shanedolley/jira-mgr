@@ -15,7 +15,9 @@ import {
 import { flushSync } from 'react-dom'
 
 import type { DeleteIssueArgs, SavedView, Session, TimerSnapshot, Toggles } from '../../shared/ipc'
+import { issueUrl } from '../../shared/links'
 import { Banner } from './Banner'
+import { copyText } from './clipboard'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
 import { DeleteIssueDialog } from './DeleteIssueDialog'
@@ -48,9 +50,12 @@ import {
   type FilterField,
 } from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
+import { assigneePatch } from './properties'
+import { refusal } from './PropertyPickers'
 import {
   useCustomers,
   useDeleteIssue,
+  useEditIssue,
   useDoneIssues,
   useLoadedCount,
   useMe,
@@ -191,6 +196,7 @@ export function Shell({ session }: { session: Session }) {
   // A created issue to make active once its row exists.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const deleteIssue = useDeleteIssue()
+  const editIssue = useEditIssue()
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
@@ -457,6 +463,59 @@ export function Shell({ session }: { session: Session }) {
     })
   }
 
+  /** `I` on `key`: assigns the issue to the signed-in user, as the Assignee picker's Me does. */
+  function assignToMe(key: string) {
+    const me = meQuery.data
+    const issue = issues.find((i) => i.key === key)
+    if (issue === undefined || issue.assignee?.accountId === me?.accountId) return
+    if (me === undefined) {
+      setNotice({
+        notice: {
+          title: `Cannot assign ${key}`,
+          notes: ['Your account has not loaded yet.'],
+          warned: true,
+        },
+        openKey: null,
+      })
+      return
+    }
+    editIssue.mutate(
+      {
+        key,
+        changes: { assignee: me.accountId },
+        patch: assigneePatch({
+          accountId: me.accountId,
+          displayName: me.displayName,
+          avatarUrl: me.avatarUrl,
+        }),
+      },
+      {
+        onError: (failure) => {
+          setNotice({
+            notice: {
+              title: `Could not assign ${key}`,
+              notes: [refusal(key, 'the assignee', failure)],
+              warned: true,
+            },
+            openKey: null,
+          })
+        },
+      },
+    )
+  }
+
+  /** `Y`, `U` and the Peek's buttons: puts an issue's key or its Jira link on the clipboard. */
+  function copyIssue(key: string, what: 'key' | 'link') {
+    const copied = copyText(what === 'key' ? key : issueUrl(session.siteUrl, key))
+    const noun = what === 'key' ? 'the key' : 'the link'
+    setNotice({
+      notice: copied
+        ? { title: `Copied ${noun} of ${key}`, notes: [], warned: false }
+        : { title: `Could not copy ${noun} of ${key}`, notes: [], warned: true },
+      openKey: null,
+    })
+  }
+
   /** The sidebar's Stop button: the stop dialog for whatever timer runs. */
   function stopFromSidebar() {
     const snapshot = timerQuery.data
@@ -525,7 +584,10 @@ export function Shell({ session }: { session: Session }) {
         if (key === null || !treeReady || creating !== null || deleting !== null || timing !== null)
           return
         event.preventDefault()
-        openProperty(command, key)
+        if (command === 'assignMe') assignToMe(key)
+        else if (command === 'copyKey') copyIssue(key, 'key')
+        else if (command === 'copyLink') copyIssue(key, 'link')
+        else openProperty(command, key)
       }
     }
   })
@@ -676,6 +738,12 @@ export function Shell({ session }: { session: Session }) {
         timerKey={timerQuery.data?.timer?.issueKey ?? null}
         expandable={expandable}
         onChange={apply}
+        onPick={(key, property) => {
+          openProperty(property, key)
+        }}
+        onAdd={(row) => {
+          if (canCreate) setCreating(createContext(row, issues))
+        }}
         treeRef={treeRef}
         empty={
           shown > 0 ? null : (
@@ -816,6 +884,7 @@ export function Shell({ session }: { session: Session }) {
           onOpenPage={setPageKey}
           onDelete={setDeleting}
           onTimer={pressTimer}
+          onCopy={copyIssue}
           onEditingChange={(editing) => {
             setEditingKey(editing ? lastIssueKey : null)
           }}

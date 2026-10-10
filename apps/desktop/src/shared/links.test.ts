@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { externalUrl } from './links'
+import { externalUrl, issueUrl } from './links'
 
 describe('externalUrl', () => {
   it('opens http, https and mailto links and refuses every other scheme', () => {
@@ -47,5 +47,25 @@ describe('externalUrl', () => {
   it('opens the parsed href, not the raw string', () => {
     expect(externalUrl('HTTPS://EXAMPLE.test:443/a b')).toBe('https://example.test/a%20b')
     expect(externalUrl('https://example.test/é')).toBe('https://example.test/%C3%A9')
+  })
+})
+
+describe('issueUrl', () => {
+  it('points at the issue on the site, with or without a trailing slash', () => {
+    expect(issueUrl('https://example.test', 'PSAPAC-12')).toBe(
+      'https://example.test/browse/PSAPAC-12',
+    )
+    expect(issueUrl('https://example.test/', 'PSAPAC-12')).toBe(
+      'https://example.test/browse/PSAPAC-12',
+    )
+  })
+
+  it('keeps a path the site holds and cannot be steered by the key', () => {
+    expect(issueUrl('https://example.test/jira', 'PSAPAC-12')).toBe(
+      'https://example.test/jira/browse/PSAPAC-12',
+    )
+    expect(issueUrl('https://example.test', '../x?y#z')).toBe(
+      'https://example.test/browse/..%2Fx%3Fy%23z',
+    )
   })
 })

@@ -53,6 +53,8 @@ export interface PickerProps {
   selected: readonly string[]
   /** Several options can be chosen, and choosing one leaves the list open. */
   multiple?: boolean
+  /** The first nine options answer to the keys 1 to 9, shown as keycaps. Not with `searchable`, where digits type. */
+  numbered?: boolean
   /** Shows a search field. Without `onQuery`, the picker filters the options by label itself. */
   searchable?: boolean
   /** Remote search: told each query, while the caller supplies the options that match. */
@@ -128,6 +130,7 @@ export function Picker({
   options,
   selected,
   multiple = false,
+  numbered = false,
   searchable = false,
   onQuery,
   create,
@@ -226,6 +229,18 @@ export function Picker({
   }
 
   function onKeyDown(event: KeyboardEvent) {
+    if (
+      numbered &&
+      /^[1-9]$/.test(event.key) &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
+      event.preventDefault()
+      const option = visible[Number(event.key) - 1]
+      if (option !== undefined) choose(option.id)
+      return
+    }
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault()
@@ -357,6 +372,7 @@ export function Picker({
                   role="option"
                   aria-selected={selected.includes(option.id)}
                   aria-disabled={option.disabled}
+                  aria-keyshortcuts={numbered && index < 9 ? String(index + 1) : undefined}
                   data-active={option.id === active}
                   onClick={() => {
                     choose(option.id)
@@ -368,6 +384,7 @@ export function Picker({
                   {option.detail !== undefined && (
                     <span className="shrink-0 text-xs text-muted">{option.detail}</span>
                   )}
+                  {numbered && index < 9 && <Kbd aria-hidden>{index + 1}</Kbd>}
                   {selected.includes(option.id) && <Check />}
                 </div>
               ))}

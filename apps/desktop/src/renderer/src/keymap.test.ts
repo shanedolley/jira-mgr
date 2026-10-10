@@ -24,7 +24,7 @@ const SCOPE = '[data-key-scope]'
 const scoped = inside(SCOPE)
 
 describe('the letter shortcuts', () => {
-  it('map C, T, S, A, L, P and E, in either case', () => {
+  it('map C, T, S, A, L, P, E, I, Y and U, in either case', () => {
     const expected = {
       c: 'create',
       t: 'timer',
@@ -33,6 +33,9 @@ describe('the letter shortcuts', () => {
       l: 'labels',
       p: 'priority',
       e: 'edit',
+      i: 'assignMe',
+      y: 'copyKey',
+      u: 'copyLink',
     }
     for (const [letter, command] of Object.entries(expected)) {
       expect(resolveKey(key(letter), scoped)).toBe(command)
@@ -58,7 +61,7 @@ describe('the letter shortcuts', () => {
   })
 
   it('are never Cmd or Ctrl with a letter', () => {
-    for (const letter of ['c', 't', 's', 'a', 'l', 'p', 'e']) {
+    for (const letter of ['c', 't', 's', 'a', 'l', 'p', 'e', 'i', 'y', 'u']) {
       expect(resolveKey(key(letter, { metaKey: true }), scoped)).toBeNull()
       expect(resolveKey(key(letter, { ctrlKey: true }), scoped)).toBeNull()
     }
@@ -85,7 +88,7 @@ describe('the letter shortcuts', () => {
   })
 
   it('act only inside the Tree, the Peek or the issue page', () => {
-    for (const letter of ['c', 't', 's', 'a', 'l', 'p', 'e']) {
+    for (const letter of ['c', 't', 's', 'a', 'l', 'p', 'e', 'i', 'y', 'u']) {
       expect(resolveKey(key(letter), scoped)).not.toBeNull()
       expect(resolveKey(key(letter), nowhere)).toBeNull()
       expect(resolveKey(key(letter), null)).toBeNull()

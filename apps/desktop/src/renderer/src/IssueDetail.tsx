@@ -98,6 +98,8 @@ interface PeekProps {
   onDelete: (issue: Issue) => void
   /** `T` or the timer button: starts the timer, or opens the stop or switch dialog. */
   onTimer: (issueKey: string) => void
+  /** `Y`, `U` or a copy button: puts the issue's key or its Jira link on the clipboard. */
+  onCopy: (issueKey: string, what: 'key' | 'link') => void
   onEditingChange: (editing: boolean) => void
   onLeave: () => void
   /** True while the full page covers the Peek, so nothing in it can be reached. */
@@ -215,6 +217,7 @@ export function IssueDetail({
   onOpenPage,
   onDelete,
   onTimer,
+  onCopy,
   onEditingChange,
   onLeave,
   inert,
@@ -240,6 +243,26 @@ export function IssueDetail({
               className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
             >
               Open
+            </button>
+            <button
+              type="button"
+              aria-keyshortcuts="Y"
+              onClick={() => {
+                onCopy(issue.key, 'key')
+              }}
+              className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+            >
+              Copy key
+            </button>
+            <button
+              type="button"
+              aria-keyshortcuts="U"
+              onClick={() => {
+                onCopy(issue.key, 'link')
+              }}
+              className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+            >
+              Copy link
             </button>
             <button
               type="button"

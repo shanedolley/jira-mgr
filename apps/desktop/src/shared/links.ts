@@ -25,3 +25,9 @@ export function externalUrl(raw: string): string | null {
   const query = kept.toString()
   return `mailto:${url.pathname}${query === '' ? '' : `?${query}`}`
 }
+
+/** Where Jira shows an issue: `/browse/<key>` on the logged-in site, under any path the site holds. */
+export function issueUrl(siteUrl: string, key: string): string {
+  const base = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`
+  return new URL(`browse/${encodeURIComponent(key)}`, base).href
+}

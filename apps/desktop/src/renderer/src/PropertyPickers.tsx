@@ -102,6 +102,7 @@ export function StatusPicker({ issue, report }: PickerProps) {
       leading={<StatusDot status={issue.status} />}
       options={options}
       selected={[issue.status.id]}
+      numbered
       onSelect={choose}
       onOpenChange={setOpen}
       note={
@@ -194,6 +195,7 @@ export function PriorityPicker({ issue, report }: PickerProps) {
         leading: <PriorityBars name={o.label} />,
       }))}
       selected={issue.priority === null ? [] : [issue.priority.id]}
+      numbered
       onSelect={choose}
       onOpenChange={setOpen}
       note={
