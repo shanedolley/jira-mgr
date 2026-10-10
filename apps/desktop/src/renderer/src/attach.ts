@@ -12,7 +12,8 @@ export interface AttachDeps {
   start: (name: string) => void
   /** A file is done, sent or not. */
   finish: (name: string) => void
-  fail: (notice: Notice) => void
+  /** A file was refused or failed. `file` is its name and `notice` says why. */
+  fail: (notice: Notice, file: string) => void
 }
 
 const limitMb = String(ATTACHMENT_LIMIT_BYTES / 1_000_000)
@@ -24,7 +25,7 @@ const limitMb = String(ATTACHMENT_LIMIT_BYTES / 1_000_000)
 export async function attachFiles(files: readonly File[], deps: AttachDeps): Promise<void> {
   for (const file of files) {
     const refuse = (reason: string) => {
-      deps.fail(failureNotice(`${file.name} was not attached`, reason))
+      deps.fail(failureNotice(`${file.name} was not attached`, reason), file.name)
     }
     if (file.size === 0) {
       refuse('The file is empty.')

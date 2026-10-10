@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import type { EditorDoc, EditorNode } from '@jira-mgr/core/adf'
 import { describe, expect, it } from 'vitest'
 
 import type { CreatedIssue } from '../../shared/ipc'
@@ -8,6 +9,7 @@ import {
   deleteFailureNotes,
   describeCreated,
   describeLate,
+  descriptionOf,
   firstMissing,
   missingKeys,
   initialDraft,
@@ -16,6 +18,7 @@ import {
   nextDraft,
   toCreateArgs,
   withType,
+  withUploadFailures,
   type CreateDraft,
 } from './create'
 import type { TreeRow } from './tree'
@@ -249,6 +252,17 @@ describe('missingFields and toCreateArgs', () => {
     })
   })
 
+  const typed = {
+    version: 1 as const,
+    type: 'doc' as const,
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Plan it' }] }],
+  }
+
+  it('sends the typed description, and none while the editor holds no text', () => {
+    expect(toCreateArgs({ ...ready, description: typed })).toMatchObject({ description: typed })
+    expect(toCreateArgs(ready)).not.toHaveProperty('description')
+  })
+
   it('leaves out the parent, sprint and estimate an Epic does not have', () => {
     const args = toCreateArgs({
       ...ready,
@@ -263,16 +277,67 @@ describe('missingFields and toCreateArgs', () => {
   })
 })
 
+describe('descriptionOf', () => {
+  const paragraph = (text?: string) => ({
+    type: 'paragraph',
+    ...(text !== undefined && { content: [{ type: 'text', text }] }),
+  })
+  const doc = (...content: EditorNode[]): EditorDoc => ({ type: 'doc', content })
+
+  it('is null while the editor holds no text, however many empty paragraphs Enter made', () => {
+    expect(descriptionOf(doc(paragraph()))).toBeNull()
+    expect(descriptionOf(doc(paragraph(), paragraph()))).toBeNull()
+  })
+
+  it('is the ADF once there is text', () => {
+    expect(descriptionOf(doc(paragraph(), paragraph('Plan it')))).toEqual({
+      version: 1,
+      type: 'doc',
+      content: [paragraph(), paragraph('Plan it')],
+    })
+  })
+})
+
 describe('nextDraft', () => {
-  it('clears only the summary', () => {
+  it('clears the summary and the description, and keeps the rest', () => {
     const draft: CreateDraft = {
       ...initialDraft(byKey('P-1'), ISSUES),
       summary: 'One',
+      description: { version: 1, type: 'doc', content: [] },
       labels: ['docs'],
       type: 'Bug',
     }
 
-    expect(nextDraft(draft)).toEqual({ ...draft, summary: '' })
+    expect(nextDraft(draft)).toEqual({ ...draft, summary: '', description: null })
+  })
+})
+
+describe('withUploadFailures', () => {
+  const notice = {
+    title: 'Created P-9: Write it',
+    notes: ['Jira added the label X.'],
+    warned: false,
+  }
+
+  it('returns the notice as it was when every file attached', () => {
+    expect(withUploadFailures(notice, 'P-9', [])).toBe(notice)
+  })
+
+  it('names each failed file and the created key, and keeps the notice until dismissed', () => {
+    expect(
+      withUploadFailures(notice, 'P-9', [
+        { name: 'a.txt', reason: 'Jira said no.' },
+        { name: 'b.txt', reason: 'The file is empty.' },
+      ]),
+    ).toEqual({
+      title: 'Created P-9: Write it',
+      notes: [
+        'Jira added the label X.',
+        'Could not attach a.txt to P-9. Jira said no.',
+        'Could not attach b.txt to P-9. The file is empty.',
+      ],
+      warned: true,
+    })
   })
 })
 

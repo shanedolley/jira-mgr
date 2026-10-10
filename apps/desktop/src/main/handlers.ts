@@ -240,6 +240,7 @@ const createIssueArgs: z.ZodType<CreateIssueArgs> = z.strictObject({
   engagementId: text(64),
   parentKey: issueKey.optional(),
   assignee: text(128).optional(),
+  description: adfBody.optional(),
   priorityId: text(64).optional(),
   labels: labelList.optional(),
   originalEstimate: text(64).optional(),

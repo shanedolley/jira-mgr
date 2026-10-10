@@ -73,6 +73,12 @@ export interface AdfEditorProps {
   focusAt?: number | 'end' | null
   /** Hides the editor, such as for a description that is empty. */
   hidden?: boolean
+  /**
+   * For an editor inside its host's own frame and form, such as the create dialog's description:
+   * no border, no Save and Cancel row, and no embedded images, since the issue they would attach to
+   * does not exist yet. The host reads the document from `onChange`.
+   */
+  embedded?: boolean
   onSave: (doc: AdfDoc | null) => void
   onCancel: () => void
   /** After every change to the document, with whether it still differs from `base`. */
@@ -142,7 +148,7 @@ const sameSnapshot = (a: Snapshot, b: Snapshot | null) =>
  * cannot edit stay as the original ADF, and an image dropped or pasted uploads and embeds inline.
  */
 export function AdfEditor(props: AdfEditorProps) {
-  const { value, issueKey, editing, frozen = false, hidden = false } = props
+  const { value, issueKey, editing, frozen = false, hidden = false, embedded = false } = props
   const baseDoc = props.base === undefined ? value : props.base
   const base = useMemo(() => toEditor(baseDoc), [baseDoc])
   const baseRef = useRef(base)
@@ -171,7 +177,9 @@ export function AdfEditor(props: AdfEditorProps) {
         live.current.onEditRequest(pos)
       },
       images(files, pos) {
-        if (!live.current.editing || editorRef.current === null) return false
+        if (!live.current.editing || live.current.embedded === true || editorRef.current === null) {
+          return false
+        }
         embed(editorRef.current, files, pos)
         return true
       },
@@ -352,14 +360,16 @@ export function AdfEditor(props: AdfEditorProps) {
       <div hidden={hidden} className="space-y-2">
         <EditorContent
           editor={editor}
-          className={editing ? 'rounded-md border border-field-border bg-panel p-2' : ''}
+          className={
+            editing && !embedded ? 'rounded-md border border-field-border bg-panel p-2' : ''
+          }
         />
         {problem !== null && (
           <p role="alert" className="text-danger">
             {problem}
           </p>
         )}
-        {editing && (
+        {editing && !embedded && (
           <div className="flex items-center gap-2">
             <button
               type="button"

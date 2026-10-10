@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { editorToAdf, type AdfDoc, type EditorDoc } from '@jira-mgr/core/adf'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import {
   formatEstimate,
@@ -38,6 +39,8 @@ export interface CreateDraft {
   priority: FieldChoice | null
   /** A Jira duration such as `2h 30m`, or empty. */
   estimate: string
+  /** What the description editor holds, or `null` while it holds no text. */
+  description: AdfDoc | null
 }
 
 /** What the type lets the form show. An Epic has no parent, sprint or estimate; a Subtask no sprint. */
@@ -108,6 +111,7 @@ export function initialDraft(
     labels: [],
     priority: null,
     estimate: '',
+    description: null,
   }
 }
 
@@ -210,6 +214,7 @@ export function toCreateArgs(draft: CreateDraft): CreateIssueArgs | null {
     engagementId: draft.engagement.id,
     ...(rules.parent && draft.parent !== null && { parentKey: draft.parent.key }),
     ...(draft.assignee !== null && { assignee: draft.assignee.accountId }),
+    ...(draft.description !== null && { description: draft.description }),
     ...(draft.priority !== null && { priorityId: draft.priority.id }),
     ...(draft.labels.length > 0 && { labels: draft.labels }),
     ...(rules.estimates && estimate !== '' && { originalEstimate: estimate }),
@@ -217,8 +222,29 @@ export function toCreateArgs(draft: CreateDraft): CreateIssueArgs | null {
   }
 }
 
-/** After "Create more": the same form with nothing typed for the next issue. */
-export const nextDraft = (draft: CreateDraft): CreateDraft => ({ ...draft, summary: '' })
+/**
+ * The description editor's document as ADF, or `null` while it holds no text: a document of empty
+ * paragraphs, which Enter alone makes, is not a description.
+ */
+export function descriptionOf(doc: EditorDoc): AdfDoc | null {
+  let adf: AdfDoc | null
+  try {
+    adf = editorToAdf(doc)
+  } catch {
+    // Only an image still uploading makes it throw, and the create dialog's editor takes no images.
+    return null
+  }
+  const empty = (block: { type: string; content?: unknown[] }) =>
+    block.type === 'paragraph' && (block.content ?? []).length === 0
+  return adf === null || adf.content.every(empty) ? null : adf
+}
+
+/** After "Create more": the same form with no summary or description for the next issue. */
+export const nextDraft = (draft: CreateDraft): CreateDraft => ({
+  ...draft,
+  summary: '',
+  description: null,
+})
 
 export interface Notice {
   title: string
@@ -279,6 +305,32 @@ export function describeCreated(draft: CreateDraft, result: CreatedIssue): Notic
   if (warning !== null) notes.push(warning)
   return { title: `Created ${key}: ${issue.summary}`, notes, warned }
 }
+
+/** A file the create could not attach, and Jira's or the app's reason. */
+export interface FailedFile {
+  name: string
+  reason: string
+}
+
+/**
+ * The notice with a note for each file that did not attach. The issue exists, so each note names
+ * `key`, and the notice stays until dismissed.
+ */
+export const withUploadFailures = (
+  notice: Notice,
+  key: string,
+  failed: readonly FailedFile[],
+): Notice =>
+  failed.length === 0
+    ? notice
+    : {
+        ...notice,
+        notes: [
+          ...notice.notes,
+          ...failed.map(({ name, reason }) => `Could not attach ${name} to ${key}. ${reason}`),
+        ],
+        warned: true,
+      }
 
 /**
  * What to tell the user when the second read of a created issue shows more automation. It compares

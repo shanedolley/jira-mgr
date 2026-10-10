@@ -4,7 +4,15 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, notices, releaseEdit } from './harness.js'
+import {
+  counts,
+  failUpload,
+  launch,
+  logIn,
+  notices,
+  releaseEdit,
+  releaseUpload,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -677,4 +685,199 @@ test('the Tree keys still work beside C, and another letter opens nothing', asyn
   await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'true')
   await window.keyboard.press('x')
   await expect(dialog()).toHaveCount(0)
+})
+
+const description = () => dialog().getByRole('textbox', { name: 'Description' })
+const picker = () => dialog().getByLabel('Choose files to attach')
+const file = (name: string, text = 'hello') => ({
+  name,
+  mimeType: 'text/plain',
+  buffer: Buffer.from(text),
+})
+const uploads = async () => (await counts(app)).uploads
+
+/** Fills the summary, then types a description and chooses `names`, for a form that is ready. */
+async function fillDescribed(summary: string, names: string[] = []) {
+  await dialog().getByLabel('Summary').fill(summary)
+  await description().click()
+  await window.keyboard.type('Plan the cutover')
+  if (names.length > 0) await picker().setInputFiles(names.map((name) => file(name)))
+}
+
+test('the created issue carries the typed ADF description, sent in the create request', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await expect(dialog().getByText('Add a description')).toBeVisible()
+  await fillDescribed('Describe it')
+  await expect(dialog().getByText('Add a description')).toHaveCount(0)
+  // Cmd+Enter from inside the editor creates once.
+  await window.keyboard.press('Meta+Enter')
+  await settle(1)
+
+  const body = (await lastBody()) as { fields: { description: unknown } }
+  expect(body.fields.description).toEqual({
+    version: 1,
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Plan the cutover' }] }],
+  })
+  await expect(dialog()).toHaveCount(0)
+  expect(await writes()).toBe(1)
+  await expect(item(/PSAPAC-2000,/)).toHaveAttribute('data-active', 'true')
+  await window.keyboard.press('Enter')
+  await expect(
+    issuePage().getByRole('region', { name: 'Description' }).getByText('Plan the cutover'),
+  ).toBeVisible()
+})
+
+test('an empty description is not sent', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Summary').fill('No detail yet')
+  await description().click()
+  await window.keyboard.press('Enter')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+
+  expect((await lastBody()).fields).not.toHaveProperty('description')
+})
+
+test('Esc in the description closes the dialog', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await description().click()
+  await window.keyboard.press('Escape')
+  await expect(dialog()).toHaveCount(0)
+})
+
+test('chosen files attach to the new issue after it exists', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await fillDescribed('With a file', ['notes.txt'])
+  await expect(dialog().getByText('notes.txt', { exact: true })).toBeVisible()
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+
+  // The issue is created first; nothing is attached before Jira has answered.
+  await expect.poll(writes).toBe(1)
+  expect(await uploads()).toEqual([])
+  await releaseEdit(app)
+  await expect.poll(async () => (await uploads()).length).toBe(1)
+  expect((await uploads())[0]).toMatchObject({
+    key: 'PSAPAC-2000',
+    filename: 'notes.txt',
+    type: 'text/plain',
+    size: 5,
+  })
+  await expect(dialog().getByRole('button', { name: 'Attaching' })).toBeDisabled()
+  await releaseUpload(app)
+
+  await expect(dialog()).toHaveCount(0)
+  await expect(toast()).toContainText('Created PSAPAC-2000: With a file')
+  await expect(toast()).not.toContainText('Could not attach')
+  await window.keyboard.press('Enter')
+  await expect(
+    issuePage().getByRole('region', { name: 'Attachments' }).getByText('notes.txt'),
+  ).toBeVisible()
+})
+
+test('a chosen file can be removed before the create', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await picker().setInputFiles([file('a.txt'), file('b.txt')])
+  await dialog().getByRole('button', { name: 'Remove a.txt' }).click()
+  await expect(dialog().getByText('a.txt', { exact: true })).toHaveCount(0)
+  await dialog().getByLabel('Summary').fill('One file')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await releaseEdit(app)
+  await expect.poll(async () => (await uploads()).length).toBe(1)
+  await releaseUpload(app)
+  await expect(dialog()).toHaveCount(0)
+  expect((await uploads()).map((u) => u.filename)).toEqual(['b.txt'])
+})
+
+test('a failed upload leaves the issue and the notice names the file and the key', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await fillDescribed('Half attached', ['broken.txt', 'fine.txt'])
+  // The fake fails the next upload, which is broken.txt, and holds fine.txt until released.
+  await failUpload(app)
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+  await expect.poll(async () => (await uploads()).length).toBe(2)
+  await releaseUpload(app)
+
+  await expect(dialog()).toHaveCount(0)
+  await expect(toast()).toContainText('Created PSAPAC-2000: Half attached')
+  await expect(toast()).toContainText('Could not attach broken.txt to PSAPAC-2000.')
+  await expect(toast()).not.toContainText('fine.txt')
+  await expect(toast()).not.toContainText('/rest/')
+  // The issue stays: its row is there and selected.
+  await expect(item(/PSAPAC-2000,/)).toHaveAttribute('data-active', 'true')
+  expect((await uploads()).map((u) => u.filename)).toEqual(['broken.txt', 'fine.txt'])
+})
+
+test('Create more clears the description and the chosen files', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Create more').check()
+  await fillDescribed('First of two', ['notes.txt'])
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await releaseEdit(app)
+  await expect.poll(async () => (await uploads()).length).toBe(1)
+  await releaseUpload(app)
+
+  await expect(dialog().getByRole('status')).toContainText('Created PSAPAC-2000: First of two')
+  await expect(dialog().getByLabel('Summary')).toHaveValue('')
+  await expect(description()).toHaveText('')
+  await expect(dialog().getByText('Add a description')).toBeVisible()
+  await expect(dialog().getByText('notes.txt', { exact: true })).toHaveCount(0)
+
+  await dialog().getByLabel('Summary').fill('Second of two')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(2)
+  expect((await lastBody()).fields).not.toHaveProperty('description')
+  expect(await uploads()).toHaveLength(1)
+})
+
+test('a failed upload still reaches a toast when Create more keeps the dialog open', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Create more').check()
+  await dialog().getByLabel('Summary').fill('Kept open')
+  await picker().setInputFiles([file('broken.txt')])
+  await failUpload(app)
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+
+  await expect(dialog().getByRole('status')).toContainText(
+    'Could not attach broken.txt to PSAPAC-2000.',
+  )
+  await expect(toast()).toContainText('Could not attach broken.txt to PSAPAC-2000.')
+})
+
+// Linux CI sets a wider system font (PR #163); the new rows must not push the dialog sideways.
+test('the description and long file names fit the dialog in a wide font', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  await dialog().getByLabel('Summary').fill('Fits')
+  await description().click()
+  await window.keyboard.type('word '.repeat(60))
+  const names = [
+    'a-very-long-file-name-for-the-quarterly-engagement-report-final.pdf',
+    'b.txt',
+    'c.txt',
+  ]
+  await picker().setInputFiles(names.map((name) => file(name)))
+
+  const box = await dialog().evaluate((el) => {
+    const right = el.getBoundingClientRect().right
+    const outside = [...el.querySelectorAll('*')].filter(
+      (child) => child.getBoundingClientRect().right > right + 1,
+    )
+    return { overflow: el.scrollWidth - el.clientWidth, outside: outside.length }
+  })
+  expect(box).toEqual({ overflow: 0, outside: 0 })
+  expect(await chipRows()).toBeLessThanOrEqual(2)
 })

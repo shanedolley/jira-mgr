@@ -273,12 +273,31 @@ describe('issues:create', () => {
     ['a label with a space', { ...NEW_ISSUE, labels: ['two words'] }],
     ['a fractional sprint', { ...NEW_ISSUE, sprintId: 1.5 }],
     ['a field it does not take', { ...NEW_ISSUE, dueDate: '2026-10-09' }],
+    ['a description that is not ADF', { ...NEW_ISSUE, description: 'plain text' }],
+    ['a null description', { ...NEW_ISSUE, description: null }],
     ['no argument', undefined],
   ])('refuses %s before the backend runs', async (_name, raw) => {
     const { backend, calls } = fakeBackend()
     const result = await createHandlers(backend)['issues:create'](raw, noProgress)
     expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
     expect(calls).toEqual([])
+  })
+
+  it('passes the typed ADF description to the backend unchanged', async () => {
+    const { backend, calls } = fakeBackend()
+    const description = {
+      version: 1,
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Plan it' }] }],
+    }
+    const result = await createHandlers(backend)['issues:create'](
+      { ...NEW_ISSUE, description },
+      noProgress,
+    )
+    expect(result).toMatchObject({ ok: true })
+    expect(calls).toEqual([
+      { method: 'createIssue', args: [{ ...NEW_ISSUE, description }, noProgress] },
+    ])
   })
 
   it('passes a new issue to the backend with the summary trimmed', async () => {

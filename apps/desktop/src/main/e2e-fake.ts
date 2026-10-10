@@ -1075,6 +1075,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         assignee: assignee ?? null,
         priority: priority ?? MEDIUM,
         labels: [...((fields.labels as string[] | undefined) ?? [])],
+        ...(fields.description === undefined ? {} : { description: fields.description }),
         ...(estimate === undefined
           ? {}
           : {
