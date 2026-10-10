@@ -75,7 +75,6 @@ export function Sidebar({
             </button>
             <button
               type="button"
-              aria-keyshortcuts="T"
               onClick={onStopTimer}
               className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
             >

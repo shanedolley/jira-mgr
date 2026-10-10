@@ -136,8 +136,18 @@ export interface StartOptions {
   reminderCheckMs?: number
 }
 
+let warnedUnsupported = false
+
 function nativeNotify(title: string, body: string): void {
-  if (Notification.isSupported()) new Notification({ title, body }).show()
+  if (Notification.isSupported()) {
+    new Notification({ title, body }).show()
+    return
+  }
+  // Once, not at every reminder: it explains why no reminder ever appears.
+  if (!warnedUnsupported) {
+    warnedUnsupported = true
+    console.error('jm reminders: notifications are not supported on this system')
+  }
 }
 
 /** Registers the IPC handlers for `backend` and opens the window once Electron is ready. */

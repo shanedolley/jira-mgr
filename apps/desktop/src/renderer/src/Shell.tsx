@@ -355,7 +355,20 @@ export function Shell({ session }: { session: Session }) {
   function pressTimer(key: string) {
     const snapshot = timerQuery.data
     const issue = issues.find((i) => i.key === key)
-    if (snapshot === undefined || issue === undefined || !canCreate) return
+    if (snapshot === undefined || !canCreate) return
+    if (issue === undefined) {
+      setNotice({
+        notice: {
+          title: `Cannot time ${key}`,
+          notes: [
+            'It is not in the loaded issues. Wait for the list to finish loading, or open it in Jira.',
+          ],
+          warned: true,
+        },
+        openKey: null,
+      })
+      return
+    }
     try {
       assertTimeable(issue)
     } catch (error) {
