@@ -1,77 +1,138 @@
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type FocusEvent } from 'react'
 
 import type { Notice } from './create'
 
 /** A plain notice stays this long. One that reports a failure stays until dismissed. */
 const LINGER_MS = 10_000
+/** After the pointer or focus leaves, a notice that was held stays this much longer. */
+const RESTART_MS = 5_000
 
 interface ToastProps {
   notice: Notice
   /** Opens the issue the notice is about. */
   onOpen?: () => void
-  /** Undoes the edit the notice reports; the same as Cmd+Z. */
+  /** Undoes the edit the notice reports. */
   onUndo?: () => void
+  /** Sends the failed edit again. */
+  onRetry?: () => void
   /** The notice's time ran out. Focus stays where the user has it. */
   onDismiss: () => void
   /** The Dismiss button was clicked, so focus has nowhere to go but the body. */
   onDismissClick: () => void
 }
 
+const ACTION = 'rounded px-1.5 py-0.5 text-xs text-accent hover:bg-hover'
+
+function Icon({ warned }: { warned: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className={`mt-0.5 size-4 shrink-0 ${warned ? 'text-danger' : 'text-muted'}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {warned ? (
+        <path d="M8 2 1.5 13.5h13L8 2ZM8 6.5v3.2M8 11.6v.1" />
+      ) : (
+        <path d="m3.5 8.5 3 3 6-7" />
+      )}
+    </svg>
+  )
+}
+
 /**
- * A notice in the corner: what just happened and anything Jira did differently. A failure is an
- * alert and stays; the rest is a status and goes after a while. After a field edit it offers Undo.
+ * One notice for the corner stack: what just happened and anything Jira did differently, with
+ * Undo after a field edit and Retry after a refusal. A failure is an alert and stays; the rest
+ * goes after a while, and the time stops while the pointer rests on the notice or focus is in it.
  */
-export function Toast({ notice, onOpen, onUndo, onDismiss, onDismissClick }: ToastProps) {
+export function Toast({ notice, onOpen, onUndo, onRetry, onDismiss, onDismissClick }: ToastProps) {
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const delay = useRef(LINGER_MS)
+  const held = hovered || focused
+  const expire = useEffectEvent(onDismiss)
+
   useEffect(() => {
+    if (held) {
+      delay.current = RESTART_MS
+      return
+    }
     if (notice.warned) return
-    const timer = setTimeout(onDismiss, LINGER_MS)
+    const timer = setTimeout(() => {
+      expire()
+    }, delay.current)
     return () => {
       clearTimeout(timer)
     }
-  }, [notice, onDismiss])
+  }, [held, notice.warned])
 
   return (
-    <div
-      role={notice.warned ? 'alert' : 'status'}
-      className="fixed bottom-4 left-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 space-y-1 rounded-lg border border-line bg-panel p-3 shadow-[0_8px_24px_oklch(0_0_0/0.18)]"
-    >
-      <p className={`font-medium ${notice.warned ? 'text-danger' : ''}`}>{notice.title}</p>
-      {notice.notes.length > 0 && (
-        <ul className="space-y-0.5 text-xs text-muted">
+    <li>
+      <div
+        role={notice.warned ? 'alert' : undefined}
+        onMouseEnter={() => {
+          setHovered(true)
+        }}
+        onMouseLeave={() => {
+          setHovered(false)
+        }}
+        onFocus={() => {
+          setFocused(true)
+        }}
+        onBlur={(event: FocusEvent<HTMLDivElement>) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
+        }}
+        className="flex w-fit max-w-full items-start gap-2 rounded-lg border border-line bg-panel py-1.5 pl-3 pr-1.5 shadow-[0_8px_24px_oklch(0_0_0/0.18)]"
+      >
+        <Icon warned={notice.warned} />
+        <div className="min-w-0 flex-1 py-0.5">
+          <p className="break-words">{notice.title}</p>
           {notice.notes.map((note) => (
-            <li key={note}>{note}</li>
+            <p key={note} className="break-words text-xs text-muted">
+              {note}
+            </p>
           ))}
-        </ul>
-      )}
-      <div className="flex justify-end gap-2 pt-1">
-        {onUndo !== undefined && (
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {onUndo !== undefined && (
+            <button type="button" onClick={onUndo} className={ACTION}>
+              Undo
+            </button>
+          )}
+          {onRetry !== undefined && (
+            <button type="button" onClick={onRetry} className={ACTION}>
+              Retry
+            </button>
+          )}
+          {onOpen !== undefined && (
+            <button type="button" onClick={onOpen} className={ACTION}>
+              Open
+            </button>
+          )}
           <button
             type="button"
-            aria-keyshortcuts="Meta+Z"
-            title="Undo (Cmd+Z)"
-            onClick={onUndo}
-            className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+            aria-label="Dismiss"
+            onClick={onDismissClick}
+            className="grid size-6 place-items-center rounded text-muted hover:bg-hover"
           >
-            Undo
+            <svg
+              aria-hidden
+              viewBox="0 0 16 16"
+              className="size-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
+              <path d="m4 4 8 8M12 4l-8 8" />
+            </svg>
           </button>
-        )}
-        {onOpen !== undefined && (
-          <button
-            type="button"
-            onClick={onOpen}
-            className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-          >
-            Open
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onDismissClick}
-          className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-        >
-          Dismiss
-        </button>
+        </div>
       </div>
-    </div>
+    </li>
   )
 }

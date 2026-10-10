@@ -320,6 +320,12 @@ export class UndoStack {
     return this.entries.pop()
   }
 
+  /** Takes one edit off the stack wherever it sits, such as the one an older toast offers to undo. */
+  take(entry: UndoEntry): UndoEntry | undefined {
+    const at = this.entries.indexOf(entry)
+    return at === -1 ? undefined : this.entries.splice(at, 1)[0]
+  }
+
   clear(): void {
     this.entries = []
   }

@@ -11,6 +11,7 @@ import {
   doneKey,
   issueDetailKey,
   issueMutation,
+  pendingFields,
   summaryMutation,
   unresolvedKey,
 } from './optimistic'
@@ -929,5 +930,21 @@ describe('a description edit', () => {
     answer.resolve({ ...detail(issue('PSAPAC-1', 'One')), description: doc('old') })
     await expect(done).rejects.toMatchObject({ code: 'validation_failed' })
     expect(descriptionOf()).toEqual(doc('old'))
+  })
+})
+
+describe('pendingFields', () => {
+  it('names the fields an edit of the issue has changed on screen', () => {
+    expect(
+      pendingFields('P-1', { key: 'P-1', changes: {}, patch: { priority: null, labels: [] } }),
+    ).toEqual(['priority', 'labels'])
+    expect(pendingFields('P-1', { key: 'P-1', summary: 'New' })).toEqual(['summary'])
+  })
+
+  it('names none for another issue, a create, a delete or nothing', () => {
+    expect(pendingFields('P-1', { key: 'P-2', patch: { priority: null } })).toEqual([])
+    expect(pendingFields('P-1', { type: 'Story', summary: 'New' })).toEqual([])
+    expect(pendingFields('P-1', { key: 'P-1', deleteSubtasks: false, subtasks: [] })).toEqual([])
+    expect(pendingFields('P-1', undefined)).toEqual([])
   })
 })

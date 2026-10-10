@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -104,7 +104,7 @@ test('the Peek starts the timer on an issue, and offers none on an Epic', async 
   await open()
   await item(/PSAPAC-2,/).click()
   await peek().getByRole('button', { name: 'Start timer' }).click()
-  await expect(window.getByText('Started the timer on PSAPAC-2')).toBeVisible()
+  await expect(notices(window).getByText('Started the timer on PSAPAC-2')).toBeVisible()
   await expect(peek().getByRole('button', { name: 'Stop timer' })).toBeVisible()
 
   await item(/PSAPAC-10,/).click()

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -29,7 +29,10 @@ const field = (label: string, value: string | RegExp) =>
   })
 const option = (name: string | RegExp) =>
   window.getByRole('option', typeof name === 'string' ? { name, exact: true } : { name })
-const toast = () => window.getByRole('status').filter({ hasText: /^Created|^Deleted/ })
+const toast = () =>
+  notices(window)
+    .getByRole('listitem')
+    .filter({ hasText: /^Created|^Deleted/ })
 const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 
 /** The create request for the form filled in below, recorded from the dialog as it was before #133. */

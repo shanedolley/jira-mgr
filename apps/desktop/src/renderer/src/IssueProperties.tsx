@@ -17,7 +17,7 @@ import {
   LabelsPicker,
   PriorityPicker,
   StatusPicker,
-  refusal,
+  useAttempt,
   useIssueChange,
 } from './PropertyPickers'
 import { Row } from './PropertyRow'
@@ -34,7 +34,7 @@ import {
   typePatch,
   type ParentMatch,
 } from './properties'
-import { useFieldOptions, useSetSprint, useSprints } from './queries'
+import { useFieldOptions, usePendingFields, useSetSprint, useSprints } from './queries'
 import { TypeIcon } from './TypeIcon'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
@@ -182,13 +182,15 @@ interface IssuePropertiesProps {
 
 /**
  * The properties sidebar of the issue page: one picker or field per property, each an optimistic
- * edit that rolls back with a message when Jira refuses. Which properties show follows the issue
+ * edit that rolls back, with a toast and a Retry, when Jira refuses, and shows dimmed with a
+ * spinner until Jira answers. Which properties show follows the issue
  * type (`propertyRules`); Jira has the last word on what it accepts.
  */
 export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
   const rules = propertyRules(issue.issueType)
   const setSprint = useSetSprint()
-  const [error, setError] = useState<string | null>(null)
+  const pending = usePendingFields(issue.key)
+  const attempt = useAttempt(issue.key)
   const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)
   const parentTrigger = useRef<HTMLButtonElement>(null)
   // The dialog unmounts with its answer, so focus goes back to the button that asked.
@@ -211,7 +213,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
 
   const [parentQuery, setParentQuery] = useState('')
 
-  const change = useIssueChange(issue, setError)
+  const change = useIssueChange(issue)
 
   // Simple option fields
   const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
@@ -220,19 +222,19 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
   function chooseCustomer(id: string) {
     const choice = customers.data?.find((c) => c.id === id)
     if (choice === undefined || issue.customer?.id === id) return
-    change('the Customer', { customerId: id }, customerPatch(choice))
+    change('Customer', { customerId: id }, customerPatch(choice))
   }
 
   function chooseEngagement(id: string) {
     const choice = engagements.data?.find((c) => c.id === id)
     if (choice === undefined || issue.engagement?.id === id) return
-    change('the Engagement', { engagementId: id }, engagementPatch(choice))
+    change('Engagement', { engagementId: id }, engagementPatch(choice))
   }
 
   function chooseType(id: string) {
     const choice = types.data?.find((c) => c.id === id)
     if (choice === undefined || issue.issueType.id === id) return
-    change('the type', { type: choice.name as SwappableType }, typePatch(issue, choice))
+    change('Type', { type: choice.name as SwappableType }, typePatch(issue, choice))
   }
 
   // Sprint
@@ -253,14 +255,12 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
     const target = id === NONE ? null : sprintList.find((s) => String(s.id) === id)
     if (target === undefined) return
     if ((sprint === null ? NONE : String(sprint.id)) === id) return
-    setError(null)
-    setSprint.mutate(
-      { key: issue.key, sprintId: target?.id ?? null, patch: sprintPatch(issue, target) },
-      {
-        onError: (failure) => {
-          setError(refusal(issue.key, 'the sprint', failure))
-        },
-      },
+    attempt('Sprint', () =>
+      setSprint.mutateAsync({
+        key: issue.key,
+        sprintId: target?.id ?? null,
+        patch: sprintPatch(issue, target),
+      }),
     )
   }
 
@@ -278,7 +278,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
     if (target === undefined || key === issue.parentKey) return
     const match = parentMatch(issue, target)
     if (match.customer === null && match.engagement === null) {
-      change('the parent', { parentKey: key }, { parentKey: key })
+      change('Parent', { parentKey: key }, { parentKey: key })
       return
     }
     setPrompt({ parent: target, match })
@@ -290,7 +290,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
     setPrompt(null)
     const copy = withMatch ? match : { customer: null, engagement: null }
     change(
-      'the parent',
+      'Parent',
       {
         parentKey: target.key,
         ...(copy.customer && { customerId: copy.customer.id }),
@@ -317,23 +317,23 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
       className="min-h-0 overflow-y-auto border-l border-line bg-panel px-3"
     >
       <Group title="Status">
-        <Row name="Status">
-          <StatusPicker issue={issue} report={setError} />
+        <Row name="Status" pending={pending.has('status')}>
+          <StatusPicker issue={issue} />
         </Row>
-        <Row name="Assignee">
-          <AssigneePicker issue={issue} issues={issues} me={me} report={setError} />
+        <Row name="Assignee" pending={pending.has('assignee')}>
+          <AssigneePicker issue={issue} issues={issues} me={me} />
         </Row>
-        <Row name="Priority">
-          <PriorityPicker issue={issue} report={setError} />
+        <Row name="Priority" pending={pending.has('priority')}>
+          <PriorityPicker issue={issue} />
         </Row>
-        <Row name="Labels">
-          <LabelsPicker issue={issue} issues={issues} report={setError} />
+        <Row name="Labels" pending={pending.has('labels')}>
+          <LabelsPicker issue={issue} issues={issues} />
         </Row>
       </Group>
 
       <Group title="Details">
         {rules.typeChange && (
-          <Row name="Type">
+          <Row name="Type" pending={pending.has('issueType')}>
             <Picker
               label="Type"
               valueText={issue.issueType.name}
@@ -348,7 +348,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
           </Row>
         )}
         {rules.parent && (
-          <Row name="Parent">
+          <Row name="Parent" pending={pending.has('parentKey')}>
             <Picker
               label="Parent"
               triggerRef={parentTrigger}
@@ -370,7 +370,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             />
           </Row>
         )}
-        <Row name="Customer">
+        <Row name="Customer" pending={pending.has('customer')}>
           <Picker
             label="Customer"
             valueText={issue.customer?.value ?? 'None'}
@@ -388,7 +388,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             }
           />
         </Row>
-        <Row name="Engagement">
+        <Row name="Engagement" pending={pending.has('engagement')}>
           <Picker
             label="Engagement"
             valueText={issue.engagement?.value ?? 'None'}
@@ -407,7 +407,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
           />
         </Row>
         {rules.sprint && (
-          <Row name="Sprint">
+          <Row name="Sprint" pending={pending.has('sprints')}>
             <Picker
               label="Sprint"
               valueText={sprint?.name ?? 'Backlog'}
@@ -447,7 +447,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
       </Group>
 
       <Group title="Dates and time">
-        <Row name="Start date">
+        <Row name="Start date" pending={pending.has('startDate')}>
           <TextField
             key={issue.startDate ?? ''}
             label="Start date"
@@ -456,7 +456,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             value={issue.startDate ?? ''}
             onCommit={(draft) => {
               change(
-                'the start date',
+                'Start date',
                 { startDate: draft === '' ? null : draft },
                 {
                   startDate: draft === '' ? null : draft,
@@ -465,7 +465,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             }}
           />
         </Row>
-        <Row name="Due date">
+        <Row name="Due date" pending={pending.has('dueDate')}>
           <TextField
             key={issue.dueDate ?? ''}
             label="Due date"
@@ -474,7 +474,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             value={issue.dueDate ?? ''}
             onCommit={(draft) => {
               change(
-                'the due date',
+                'Due date',
                 { dueDate: draft === '' ? null : draft },
                 {
                   dueDate: draft === '' ? null : draft,
@@ -485,7 +485,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
         </Row>
         {rules.estimates && (
           <>
-            <Row name="Estimate">
+            <Row name="Estimate" pending={pending.has('originalEstimateSeconds')}>
               <TextField
                 label="Original estimate"
                 value={originalEstimate}
@@ -497,7 +497,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
                   const seconds = parseEstimate(draft)
                   if (seconds === null) return
                   change(
-                    'the original estimate',
+                    'Original estimate',
                     { originalEstimate: draft.trim() },
                     { originalEstimateSeconds: seconds },
                   )
@@ -505,7 +505,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               />
             </Row>
             {hasEstimate && (
-              <Row name="Time left (h)">
+              <Row name="Time left (h)" pending={pending.has('timeRemainingHours')}>
                 <TextField
                   clock
                   label="Time remaining (h)"
@@ -516,7 +516,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
                   onCommit={(draft) => {
                     const hours = draft === '' ? null : Number(draft)
                     change(
-                      'the time remaining',
+                      'Time remaining',
                       { timeRemainingHours: hours },
                       {
                         timeRemainingHours: hours,
@@ -539,12 +539,6 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
           </>
         )}
       </Group>
-
-      {error !== null && (
-        <p role="alert" className="border-t border-line py-3 text-xs text-danger">
-          {error}
-        </p>
-      )}
 
       {prompt !== null && (
         <ParentPrompt

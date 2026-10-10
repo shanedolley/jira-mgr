@@ -244,6 +244,18 @@ describe('UndoStack', () => {
     expect(heard).toHaveBeenCalledExactlyOnceWith(entry(1))
   })
 
+  it('takes one edit from the middle, once, and leaves the others', () => {
+    const stack = new UndoStack()
+    const [one, two, three] = [entry(1), entry(2), entry(3)]
+    stack.push(one)
+    stack.push(two)
+    stack.push(three)
+    expect(stack.take(two)).toBe(two)
+    expect(stack.take(two)).toBeUndefined()
+    expect(stack.pop()).toBe(three)
+    expect(stack.pop()).toBe(one)
+  })
+
   it('forgets everything when cleared', () => {
     const stack = new UndoStack()
     stack.push(entry(1))

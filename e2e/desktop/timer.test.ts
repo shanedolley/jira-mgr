@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, readState, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, readState, releaseEdit } from './harness.js'
 
 interface TimerFile {
   issueKey: string
@@ -90,7 +90,7 @@ test.describe('start and stop with T', () => {
     await expect(rowClock(/PSAPAC-2,/)).toBeVisible()
     await expect(rowClock(/PSAPAC-2,/)).toHaveText(/^\d+:\d{2}$/)
     await expect(sidebarTimer()).toContainText('PSAPAC-2')
-    await expect(window.getByText('Started the timer on PSAPAC-2')).toBeVisible()
+    await expect(notices(window).getByText('Started the timer on PSAPAC-2')).toBeVisible()
     await expect.poll(timerFile).toMatchObject({
       issueKey: 'PSAPAC-2',
       segments: [{ end: null }],
@@ -129,7 +129,7 @@ test.describe('start and stop with T', () => {
     await releaseEdit(app)
 
     await expect(dialog(stop)).toHaveCount(0)
-    await expect(window.getByText('Logged 5m on PSAPAC-2')).toBeVisible()
+    await expect(notices(window).getByText('Logged 5m on PSAPAC-2')).toBeVisible()
     await expect(rowClock(/PSAPAC-2,/)).toHaveCount(0)
     await expect(sidebarTimer()).toHaveCount(0)
     expect(await timerFile()).toBeNull()
@@ -148,7 +148,7 @@ test.describe('start and stop with T', () => {
     await expect.poll(async () => (await counts(app)).edits).toBe(1)
     expect(await lastBody()).toMatchObject({ worklog: 'add', key: 'PSAPAC-2', timeSpent: '45m' })
     await releaseEdit(app)
-    await expect(window.getByText('Logged 45m on PSAPAC-2')).toBeVisible()
+    await expect(notices(window).getByText('Logged 45m on PSAPAC-2')).toBeVisible()
   })
 
   test('Discard drops the time, and Cancel keeps the timer', async () => {
@@ -165,7 +165,7 @@ test.describe('start and stop with T', () => {
 
     await window.keyboard.press('t')
     await dialog(stop).getByRole('button', { name: 'Discard' }).click()
-    await expect(window.getByText('Discarded the timer on PSAPAC-2')).toBeVisible()
+    await expect(notices(window).getByText('Discarded the timer on PSAPAC-2')).toBeVisible()
     await expect(rowClock(/PSAPAC-2,/)).toHaveCount(0)
     expect(await timerFile()).toBeNull()
     expect((await counts(app)).edits).toBe(0)
@@ -243,8 +243,8 @@ test.describe('switch', () => {
     expect((await timerFile())?.issueKey).not.toBe('PSAPAC-3')
     await releaseEdit(app)
 
-    await expect(window.getByText('Logged 1h on PSAPAC-2')).toBeVisible()
-    await expect(window.getByText('Started the timer on PSAPAC-3')).toBeVisible()
+    await expect(notices(window).getByText('Logged 1h on PSAPAC-2')).toBeVisible()
+    await expect(notices(window).getByText('Started the timer on PSAPAC-3')).toBeVisible()
     await expect(rowClock(/PSAPAC-3,/)).toBeVisible()
     await expect(rowClock(/PSAPAC-2,/)).toHaveCount(0)
     expect((await timerFile())?.issueKey).toBe('PSAPAC-3')
@@ -252,7 +252,7 @@ test.describe('switch', () => {
 
   test('Discard drops the old time and starts the new timer', async () => {
     await dialog(name).getByRole('button', { name: 'Discard and start PSAPAC-3' }).click()
-    await expect(window.getByText('Discarded the timer on PSAPAC-2')).toBeVisible()
+    await expect(notices(window).getByText('Discarded the timer on PSAPAC-2')).toBeVisible()
     await expect(rowClock(/PSAPAC-3,/)).toBeVisible()
     expect((await timerFile())?.issueKey).toBe('PSAPAC-3')
     expect((await counts(app)).edits).toBe(0)
@@ -292,7 +292,7 @@ test.describe('long timer', () => {
     await expect.poll(async () => (await counts(app)).edits).toBe(1)
     expect(await lastBody()).toMatchObject({ worklog: 'add', key: 'PSAPAC-2', timeSpent: '9h' })
     await releaseEdit(app)
-    await expect(window.getByText('Logged 9h on PSAPAC-2')).toBeVisible()
+    await expect(notices(window).getByText('Logged 9h on PSAPAC-2')).toBeVisible()
     expect(await timerFile()).toBeNull()
   })
 
@@ -302,7 +302,7 @@ test.describe('long timer', () => {
     await expect.poll(async () => (await counts(app)).edits).toBe(1)
     expect(await lastBody()).toMatchObject({ worklog: 'add', key: 'PSAPAC-2', timeSpent: '2h' })
     await releaseEdit(app)
-    await expect(window.getByText('Logged 2h on PSAPAC-2')).toBeVisible()
+    await expect(notices(window).getByText('Logged 2h on PSAPAC-2')).toBeVisible()
   })
 
   test('a timer under the threshold shows no warning', async () => {

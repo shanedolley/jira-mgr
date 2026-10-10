@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, dropIssue, launch, logIn, releaseDone, releaseEdit } from './harness.js'
+import { counts, dropIssue, launch, logIn, notices, releaseDone, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -25,7 +25,10 @@ const item = (name: string | RegExp, exact = false) => tree().getByRole('treeite
 const peek = () => window.getByRole('complementary', { name: 'Peek' })
 const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 const dialog = (key: string) => window.getByRole('dialog', { name: `Delete ${key}?` })
-const toast = () => window.getByRole('status').filter({ hasText: /^Deleted/ })
+const toast = () =>
+  notices(window)
+    .getByRole('listitem')
+    .filter({ hasText: /^Deleted/ })
 
 async function open() {
   await logIn(window)

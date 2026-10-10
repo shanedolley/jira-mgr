@@ -2,6 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 import { parentCandidates } from '@jira-mgr/core/issue'
 
 import type { FieldChoice, SprintOption, StatusOption, UserOption } from '../../shared/ipc'
+import type { Notice } from './create'
 
 /**
  * The pure model behind the issue page's pickers: the choices each one lists, the patch each
@@ -228,3 +229,22 @@ export const sprintPatch = (issue: Issue, sprint: SprintOption | null): Partial<
     ...(sprint === null ? [] : [{ id: sprint.id, name: sprint.name, state: sprint.state }]),
   ],
 })
+
+/** Jira's answer as main words it: "Jira answered 400: <reason>", or "Jira answered 403. <next step>". */
+const ANSWER = /^Jira answered \d{3}(?::\s*|\.\s*)/
+
+/**
+ * The toast for an edit that failed, which has shown the old value again: "Priority not changed.
+ * Jira refused it: <reason>." Main has dropped the request from the message already. A failure
+ * that is not an answer from Jira, such as a lost connection, says so in its own words.
+ */
+export function refusedNotice(what: string, failure: unknown): Notice {
+  const message = failure instanceof Error ? failure.message : String(failure)
+  const answer = ANSWER.exec(message)
+  const reason = answer === null ? message : `Jira refused it: ${message.slice(answer[0].length)}`
+  return {
+    title: `${what} not changed. ${/[.!?]$/.test(reason) ? reason : `${reason}.`}`,
+    notes: [],
+    warned: true,
+  }
+}

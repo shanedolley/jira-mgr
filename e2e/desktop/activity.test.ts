@@ -6,13 +6,14 @@ import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
 import {
+  addWorklog,
   cancelNextDownload,
   counts,
-  addWorklog,
   failUpload,
   holdReads,
   launch,
   logIn,
+  notices,
   refuseNextEdit,
   releaseEdit,
   releaseReads,
@@ -759,7 +760,7 @@ test.describe('attachments', () => {
     await openStory()
     await section('Attachments').getByRole('button', { name: 'Download report.xlsx' }).click()
 
-    await expect(window.getByText('Saved report.xlsx')).toBeVisible()
+    await expect(notices(window).getByText('Saved report.xlsx')).toBeVisible()
     expect((await counts(app)).downloads).toEqual(['report.xlsx'])
     const saved = await readFile(join(stateDir, 'downloads', 'report.xlsx'), 'utf8')
     expect(saved).toBe('xlsx-bytes')
@@ -771,7 +772,7 @@ test.describe('attachments', () => {
     await section('Attachments').getByRole('button', { name: 'Download report.xlsx' }).click()
 
     await expect.poll(async () => (await counts(app)).downloads).toEqual(['report.xlsx'])
-    await expect(window.getByText('Saved report.xlsx')).toHaveCount(0)
+    await expect(notices(window).getByText('Saved report.xlsx')).toHaveCount(0)
     await expect(readFile(join(stateDir, 'downloads', 'report.xlsx'))).rejects.toThrow()
   })
 

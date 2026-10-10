@@ -9,6 +9,7 @@ import {
   launch,
   logIn,
   moveIssue,
+  notices,
   refuseNextEdit,
   releaseDone,
   releaseEdit,
@@ -38,7 +39,7 @@ const search = () => palette().getByRole('combobox')
 const peekPicker = (label: string) => peek().getByRole('button', { name: new RegExp(`^${label}:`) })
 const option = (name: string | RegExp) => window.getByRole('option', { name })
 const undoButton = () => window.getByRole('button', { name: 'Undo' })
-const notice = (text: string | RegExp) => window.getByText(text)
+const notice = (text: string | RegExp) => notices(window).getByText(text)
 
 async function open() {
   await logIn(window)
@@ -356,8 +357,9 @@ test('Cmd+Z undoes the status, newest edit first, and the toast offers Undo', as
   await settle(before + 3)
   expect(await lastBody()).toEqual({ fields: { priority: { id: '3' } } })
   await expect(notice('Undid PSAPAC-4: priority back to Medium')).toBeVisible()
-  // The undo's own toast offers no Undo, since Cmd+Z walks on.
-  await expect(undoButton()).toHaveCount(0)
+  // The undo's own toast offers no Undo, since Cmd+Z walks on. The status toast still does.
+  await expect(notices(window).getByRole('listitem').filter({ hasText: 'Undid' })).toBeVisible()
+  await expect(undoButton()).toHaveCount(1)
 
   // Then the status, moved back by the old status's transition.
   await window.keyboard.press('Meta+z')
@@ -427,7 +429,7 @@ test('Cmd+Z leaves native undo to a text field, and a refused edit leaves nothin
   await window.keyboard.press('Enter')
   await expect.poll(writes).toBe(before + 3)
   await releaseEdit(app)
-  await expect(window.getByRole('alert')).toContainText('Could not change the priority')
+  await expect(window.getByRole('alert')).toContainText('Priority not changed.')
   await window.keyboard.press('Meta+z')
   await expect(notice('Nothing to undo')).toBeVisible()
 })

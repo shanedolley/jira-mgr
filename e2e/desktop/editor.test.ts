@@ -12,6 +12,7 @@ import {
   launch,
   logIn,
   normaliseDescriptions,
+  notices,
   refuseNextEdit,
   releaseDone,
   releaseEdit,
@@ -743,7 +744,7 @@ test('Cmd+Z after a description save restores the previous description', async (
   expect(await lastBody()).toBeNull()
   await releaseEdit(app)
   await expect(issuePage().getByText('No description')).toBeVisible()
-  await expect(window.getByText('Undid PSAPAC-4: description back to empty')).toBeVisible()
+  await expect(notices(window).getByText('Undid PSAPAC-4: description back to empty')).toBeVisible()
 })
 
 test("removing a pasted copy of another issue's upload leaves that upload running", async () => {
@@ -864,7 +865,7 @@ test('falls back to the Tree when the issue on the page no longer exists', async
     first?.emit('focus')
   })
   await expect(issuePage()).toHaveCount(0)
-  await expect(window.getByText('PSAPAC-4 no longer exists')).toBeVisible()
+  await expect(notices(window).getByText('PSAPAC-4 no longer exists')).toBeVisible()
   await expect(tree()).toBeVisible()
 })
 
@@ -881,7 +882,7 @@ test('a page that falls back for a missing issue drops its draft, so a quit is n
     first?.emit('focus')
   })
   await expect(issuePage()).toHaveCount(0)
-  await expect(window.getByText('Its unsaved description was dropped.')).toBeVisible()
+  await expect(notices(window).getByText('Its unsaved description was dropped.')).toBeVisible()
   await expect.poll(blocksUnload).toBe(false)
 })
 

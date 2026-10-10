@@ -11,6 +11,7 @@ import {
   fieldsOf,
   launch,
   logIn,
+  notices,
   releaseDone,
   releaseEdit,
   releaseNewestEdit,
@@ -40,7 +41,7 @@ const summary = (name: string) => issuePage().getByRole('button', { name })
 const picker = (label: string, value: string | RegExp) =>
   props().getByRole('button', { name: typeof value === 'string' ? `${label}: ${value}` : value })
 const option = (name: string | RegExp) => window.getByRole('option', { name })
-const alert = () => props().getByRole('alert')
+const alert = () => notices(window).getByRole('alert')
 
 async function open() {
   await logIn(window)
@@ -432,9 +433,10 @@ test('puts the old priority back and says why when Jira refuses it', async () =>
 
   await releaseEdit(app)
   await expect(picker('Priority', 'Medium')).toBeVisible()
-  await expect(alert()).toContainText('Could not change the priority')
-  await expect(alert()).toContainText('PSAPAC-3 shows its old value again')
+  await expect(alert()).toContainText('Priority not changed. Jira refused it:')
   await expect(alert()).toContainText('The fake refuses this priority')
+  // The page shows the refusal in the toast, not under the properties.
+  await expect(props().getByRole('alert')).toHaveCount(0)
 })
 
 test('saves a date when focus leaves the field, clears it, and abandons an edit on Esc', async () => {
