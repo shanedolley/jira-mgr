@@ -10,12 +10,15 @@ interface SectionProps {
   children: ReactNode
 }
 
-/** One block of the issue page: the small heading D3 and D4 use, and what it holds. */
+/** A page section's heading: 13/600 in sentence case. Properties groups keep the small uppercase one. */
+export const SECTION_HEADING = 'text-[13px] font-semibold leading-5 text-ink'
+
+/** One block of the issue page: its heading, a 1px rule above, and what it holds. */
 export function Section({ title, actions, children }: SectionProps) {
   return (
-    <section aria-label={title} className="space-y-1.5">
+    <section aria-label={title} className="space-y-1.5 border-t border-line pt-4">
       <div className="flex min-h-6 items-center gap-2">
-        <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">{title}</h2>
+        <h2 className={SECTION_HEADING}>{title}</h2>
         {actions}
       </div>
       {children}
