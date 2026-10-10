@@ -249,11 +249,13 @@ export function Shell({ session }: { session: Session }) {
     treeRef.current?.focus()
   }
 
-  /** Enter or Down in the filter: the first row becomes active and takes focus, the query stays. */
+  /**
+   * Enter or Down in the filter: the first issue row becomes active, skipping group headers, and
+   * takes focus. With no issue row the first row does. The query stays.
+   */
   function enterTree() {
-    const input = { key: 'Home', shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }
-    const next = moveActive(rows, state, input, { pageSize: 1, expandable })
-    if (next !== null) apply(next)
+    const first = rows.find((r) => r.kind === 'issue') ?? rows[0]
+    if (first !== undefined) apply({ ...state, activeId: first.id, openPage: false })
     focusTree()
   }
 
@@ -669,6 +671,7 @@ export function Shell({ session }: { session: Session }) {
         onStopTimer={stopFromSidebar}
       />
       <section
+        id="issue-list"
         aria-label="Issue list"
         inert={pageOpen}
         className="col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
@@ -864,6 +867,10 @@ export function Shell({ session }: { session: Session }) {
                 }
           }
           onDismiss={dismissNotice}
+          onDismissClick={() => {
+            dismissNotice()
+            restoreFocus()
+          }}
         />
       )}
     </div>

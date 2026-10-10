@@ -21,6 +21,13 @@ import {
   type TreeState,
 } from './tree'
 
+/**
+ * With no rows the Tree has no active row to show focus, and the "No issues match" panel covers
+ * the Tree, so the ring is a pseudo-element above the panel, drawn while the Tree has focus.
+ */
+const RING =
+  'has-[[role=tree]:focus-visible]:after:pointer-events-none has-[[role=tree]:focus-visible]:after:absolute has-[[role=tree]:focus-visible]:after:inset-0 has-[[role=tree]:focus-visible]:after:z-10 has-[[role=tree]:focus-visible]:after:outline-2 has-[[role=tree]:focus-visible]:after:-outline-offset-2 has-[[role=tree]:focus-visible]:after:outline-accent'
+
 interface IssueTreeProps {
   rows: readonly Row[]
   /** Active row, collapsed and revealed sets and the Peek: everything `moveActive` reads. */
@@ -159,9 +166,7 @@ export function IssueTree({
   const selectedId = peekedKey === null ? null : `i:${peekedKey}`
 
   return (
-    <div
-      className={`@container relative min-h-0 flex-1 ${rows.length === 0 ? 'has-[[role=tree]:focus-visible]:outline-2 has-[[role=tree]:focus-visible]:-outline-offset-2 has-[[role=tree]:focus-visible]:outline-accent' : ''}`}
-    >
+    <div className={`@container relative min-h-0 flex-1 ${rows.length === 0 ? RING : ''}`}>
       <div
         ref={treeRef}
         role="tree"

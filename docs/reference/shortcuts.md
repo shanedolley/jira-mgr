@@ -42,7 +42,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 |---|---|---|
 | Rich-text editor, comment box | `Cmd+Enter` | Save or post; `Esc` cancels the editor |
 | Create dialog | `Cmd+Enter` | Create the issue |
-| Text filter | `Enter`, `Down` | Move to the first row, with the query kept |
+| Text filter | `Enter`, `Down` | Move to the first issue row, skipping group headers, with the query kept |
 | Text filter | `Esc` | Clear the query; when empty, return to the Tree |
 | Summary and property fields | `Enter` | Save |
 | Summary and property fields | `Esc` | Cancel the edit |

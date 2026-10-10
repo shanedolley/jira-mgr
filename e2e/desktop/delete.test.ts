@@ -239,8 +239,6 @@ test('keeps the delete dialog open when a refetch drops the issue, says it is go
   await expect(failure).not.toContainText('back in the list')
   await failure.getByRole('button', { name: 'Dismiss' }).click()
   await expect(window.getByRole('button', { name: 'New issue' })).toBeEnabled()
-  // Dismissing the toast drops focus on the body, where a letter does nothing, so return to the Tree.
-  await tree().focus()
   await window.keyboard.press('c')
   await expect(window.getByRole('dialog', { name: 'New issue' })).toBeVisible()
 })
