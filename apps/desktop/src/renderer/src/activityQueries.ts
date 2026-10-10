@@ -12,7 +12,7 @@ import {
 import type { AddAttachmentArgs, CommentItem, LinksResult, WorklogItem } from '../../shared/ipc'
 import { commentDraftIds, dropOrphanedCommentDrafts } from './drafts'
 import { call } from './ipc'
-import { applyFreshIssue, issueDetailKey } from './optimistic'
+import { applyUnaskedRead, issueDetailKey, isEditing } from './optimistic'
 import {
   attachmentListKey,
   commentsKey,
@@ -96,11 +96,15 @@ export function removeMutation<D, A>(
   }
 }
 
-/** Reads the issue once, so the sidebar shows the estimate and Time remaining a worklog moved. */
+/**
+ * Reads the issue once, so the sidebar shows the estimate and Time remaining a worklog moved. An
+ * edit of the issue made while the read was out keeps its optimistic value and reads it itself.
+ */
 export async function readIssue(client: QueryClient, key: string): Promise<void> {
   try {
-    applyFreshIssue(client, await call('issues:get', { key }))
+    applyUnaskedRead(client, await call('issues:get', { key }))
   } catch {
+    if (isEditing(client, key)) return
     // The worklog was written or refused either way; the page's own read shows what Jira holds.
     await client.invalidateQueries({ queryKey: issueDetailKey(key) })
   }

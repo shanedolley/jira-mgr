@@ -1,10 +1,12 @@
-import { JiraMgrError } from '@jira-mgr/core'
+import { JiraMgrError, type Issue } from '@jira-mgr/core'
+import type { IssueDetail } from '@jira-mgr/core/issue'
 import { MutationObserver, QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { CommentItem, LinksResult } from '../../shared/ipc'
-import { commentsQuery, editCommentMutation, removeMutation } from './activityQueries'
+import { commentsQuery, editCommentMutation, readIssue, removeMutation } from './activityQueries'
 import { clearDrafts, commentDraftKey, getDraft, newCommentDraftKey, putDraft } from './drafts'
+import { issueDetailKey, summaryMutation } from './optimistic'
 import { activityKey, clearAccountData, commentsKey, linksKey } from './queries'
 
 const calls = vi.hoisted(() => vi.fn<(channel: string) => Promise<unknown>>())
@@ -187,5 +189,49 @@ describe('editCommentMutation', () => {
     await Promise.all([edit(client, text('old')), edit(client, text('old'))])
     const lists = calls.mock.calls.filter(([channel]) => channel === 'comments:list')
     expect(lists).toHaveLength(2)
+  })
+})
+
+describe('readIssue', () => {
+  const one = (summary: string) =>
+    ({
+      key: 'PSAPAC-1',
+      summary,
+      status: { id: '1', name: 'To Do', category: 'new' },
+      description: null,
+      subtasks: [],
+    }) as unknown as IssueDetail
+
+  /** A summary edit Jira has not answered yet, so the issue shows its optimistic value. */
+  async function editing(client: QueryClient) {
+    client.setQueryData(issueDetailKey('PSAPAC-1'), one('One'))
+    const held = new Promise<null>(() => undefined)
+    void new MutationObserver(
+      client,
+      summaryMutation(
+        client,
+        () => held,
+        () => Promise.resolve(one('One, edited')),
+      ),
+    ).mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    await vi.waitFor(() => {
+      expect(client.getQueryData<Issue>(issueDetailKey('PSAPAC-1'))?.summary).toBe('One, edited')
+    })
+  }
+
+  it('leaves an edit made while the read was out alone', async () => {
+    const client = new QueryClient()
+    await editing(client)
+    calls.mockResolvedValueOnce(one('One'))
+    await readIssue(client, 'PSAPAC-1')
+    expect(client.getQueryData<Issue>(issueDetailKey('PSAPAC-1'))?.summary).toBe('One, edited')
+  })
+
+  it('reloads nothing over an edit in flight when the read fails', async () => {
+    const client = new QueryClient()
+    await editing(client)
+    calls.mockRejectedValueOnce(new JiraMgrError('jira_error', 'Jira is down.'))
+    await readIssue(client, 'PSAPAC-1')
+    expect(client.getQueryState(issueDetailKey('PSAPAC-1'))?.isInvalidated).toBe(false)
   })
 })

@@ -159,8 +159,9 @@ export function applyFreshIssue(client: QueryClient, fresh: IssueDetail): void {
  * a failure never undoes a later edit. Edits to one issue send one at a time, in the order they
  * were made, so Jira keeps the last one made. Once the last edit to that issue settles, whatever
  * the outcome, `reread` fetches the issue and the caches take Jira's answer, including anything
- * Jira changed on its own, such as a remaining estimate. Only the one issue is read: no list is
- * cancelled or reloaded unless the read itself fails, so an edit never restarts the Done load.
+ * Jira changed on its own, such as a remaining estimate, unless another edit of the issue started
+ * while the read was out. Only the one issue is read: no list is cancelled or reloaded unless the
+ * read itself fails, so an edit never restarts the Done load.
  * An edit Jira accepted goes to `record` with the fields as it set them and as they were, which is
  * what an undo needs (D7). A refused edit, and one on an issue no cache holds, record nothing.
  */
@@ -239,8 +240,11 @@ export function issueMutation<A extends { key: string }>(
       }
       flights(client).delete(key)
       try {
-        applyFreshIssue(client, await reread(key))
+        // An edit made while this read was out, such as a quick Cmd+Z, keeps its optimistic value
+        // and reads the issue itself once it settles.
+        applyUnaskedRead(client, await reread(key))
       } catch {
+        if (isEditing(client, key)) return
         // The edit went through or was refused either way; the lists reload to show what Jira holds.
         await Promise.all(
           holding(client, key).map((queryKey) => client.invalidateQueries({ queryKey })),
