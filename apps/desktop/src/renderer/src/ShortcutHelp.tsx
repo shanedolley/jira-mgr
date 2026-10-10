@@ -55,7 +55,7 @@ export function ShortcutHelp({ onClose, returnFocus }: ShortcutHelpProps) {
                     {row.map((cell, at) => (
                       <td
                         key={table.columns[at]}
-                        className={`py-1.5 pr-4 align-top ${at === 0 ? 'w-44' : ''}`}
+                        className={`py-1.5 pr-4 align-top ${at < table.columns.length - 1 ? 'whitespace-nowrap' : ''}`}
                       >
                         <Keys text={cell} />
                       </td>
