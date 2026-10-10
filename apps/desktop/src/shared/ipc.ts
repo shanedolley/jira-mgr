@@ -505,6 +505,8 @@ export interface LateRead {
 export interface IpcError {
   code: ErrorCode
   message: string
+  /** The message with the request it names, when `message` leaves that out. Shown behind Details. */
+  detail?: string
 }
 
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: IpcError }

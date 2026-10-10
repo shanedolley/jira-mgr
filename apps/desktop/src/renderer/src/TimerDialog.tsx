@@ -6,6 +6,7 @@ import { useState, type SyntheticEvent } from 'react'
 import type { StopTimerArgs, TimerOutcome, TimerSnapshot } from '../../shared/ipc'
 import { adfFromText, formatWhen } from './activity'
 import type { Notice } from './create'
+import { Failure } from './Failure'
 import { Modal } from './Modal'
 import { BUTTON, FIELD } from './Section'
 import { formatClock } from './timer'
@@ -141,11 +142,7 @@ export function TimerDialog({ snapshot, to, onClose, onDone, returnFocus }: Time
             Time spent must be a duration such as 1h 30m.
           </p>
         )}
-        {failure !== null && (
-          <p role="alert" className="text-danger">
-            {failure.message}
-          </p>
-        )}
+        {failure !== null && <Failure error={failure} className="text-danger" />}
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" disabled={pending} onClick={onClose} className={BUTTON}>
             Cancel

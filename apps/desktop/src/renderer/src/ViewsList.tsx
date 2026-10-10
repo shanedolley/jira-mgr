@@ -2,6 +2,7 @@ import type { ViewFilters } from '@jira-mgr/core/view-filter'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import type { SavedView, Toggles } from '../../shared/ipc'
+import { Details, Failure } from './Failure'
 import { useCreateView, useDeleteView, useRenameView, useViews } from './viewQueries'
 import { activeView } from './views'
 
@@ -285,6 +286,7 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
       {viewsQuery.isError && views === undefined && (
         <div role="alert" className="space-y-1 px-2 text-xs text-danger">
           <p>Could not load views. {viewsQuery.error.message}</p>
+          <Details error={viewsQuery.error} />
           <button
             type="button"
             onClick={() => void viewsQuery.refetch()}
@@ -388,19 +390,25 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
       </ul>
 
       {create.isError && (
-        <p role="alert" className="px-2 pt-1 text-xs text-danger">
-          Could not save the view. {create.error.message}
-        </p>
+        <Failure
+          lead="Could not save the view."
+          error={create.error}
+          className="px-2 pt-1 text-xs text-danger"
+        />
       )}
       {rename.isError && (
-        <p role="alert" className="px-2 pt-1 text-xs text-danger">
-          Could not rename the view. {rename.error.message}
-        </p>
+        <Failure
+          lead="Could not rename the view."
+          error={rename.error}
+          className="px-2 pt-1 text-xs text-danger"
+        />
       )}
       {remove.isError && (
-        <p role="alert" className="px-2 pt-1 text-xs text-danger">
-          Could not delete the view. {remove.error.message}
-        </p>
+        <Failure
+          lead="Could not delete the view."
+          error={remove.error}
+          className="px-2 pt-1 text-xs text-danger"
+        />
       )}
     </section>
   )

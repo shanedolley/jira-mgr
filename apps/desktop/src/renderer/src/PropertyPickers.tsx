@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
+import { Reason } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
 import { Picker, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
@@ -104,11 +105,11 @@ export function StatusPicker({ issue, report }: PickerProps) {
       onSelect={choose}
       onOpenChange={setOpen}
       note={
-        transitions.isPending
-          ? 'Loading statuses'
-          : transitions.isError
-            ? `Could not load the statuses. ${transitions.error.message}`
-            : undefined
+        transitions.isPending ? (
+          'Loading statuses'
+        ) : transitions.isError ? (
+          <Reason lead="Could not load the statuses." error={transitions.error} />
+        ) : undefined
       }
     />
   )
@@ -161,11 +162,11 @@ export function AssigneePicker({ issue, issues, me, report }: AssigneeProps) {
       onSelect={choose}
       onOpenChange={setOpen}
       note={
-        found.isError
-          ? `Could not search people. ${found.error.message}`
-          : found.isFetching
-            ? 'Searching'
-            : undefined
+        found.isError ? (
+          <Reason lead="Could not search people." error={found.error} />
+        ) : found.isFetching ? (
+          'Searching'
+        ) : undefined
       }
     />
   )
@@ -196,11 +197,11 @@ export function PriorityPicker({ issue, report }: PickerProps) {
       onSelect={choose}
       onOpenChange={setOpen}
       note={
-        priorities.isPending
-          ? 'Loading priorities'
-          : priorities.isError
-            ? `Could not load the priorities. ${priorities.error.message}`
-            : undefined
+        priorities.isPending ? (
+          'Loading priorities'
+        ) : priorities.isError ? (
+          <Reason lead="Could not load the priorities." error={priorities.error} />
+        ) : undefined
       }
     />
   )

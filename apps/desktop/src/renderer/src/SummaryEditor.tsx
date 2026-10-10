@@ -1,6 +1,7 @@
 import type { Issue } from '@jira-mgr/core'
 import { useRef, useState, type MouseEvent } from 'react'
 
+import { Failure } from './Failure'
 import { useSetSummary } from './queries'
 
 export interface SummaryEditorProps {
@@ -114,9 +115,11 @@ export function SummaryEditor({ issue, onEditingChange, onLeave, page }: Summary
         </p>
       )}
       {save.isError && (
-        <p role="alert" className="text-danger">
-          Could not save the summary, so {issue.key} shows its old one again. {save.error.message}
-        </p>
+        <Failure
+          lead={`Could not save the summary, so ${issue.key} shows its old one again.`}
+          error={save.error}
+          className="text-danger"
+        />
       )}
     </div>
   )

@@ -5,7 +5,16 @@ import type { ArgsOf, Channel, IpcResult, ResultOf } from '../../shared/ipc'
 /** The data of an `ok` result, or the core error a failed one carries, rebuilt as a `JiraMgrError`. */
 export function unwrap<T>(result: IpcResult<T>): T {
   if (result.ok) return result.data
-  throw new JiraMgrError(result.error.code, result.error.message)
+  const { code, message, detail } = result.error
+  throw new JiraMgrError(code, message, detail === undefined ? {} : { details: { detail } })
+}
+
+/** The full message an error left out of its text, from `unwrap`, or `undefined`. */
+export function detailOf(error: unknown): string | undefined {
+  if (!(error instanceof JiraMgrError)) return undefined
+  const { details } = error
+  if (typeof details !== 'object' || details === null || !('detail' in details)) return undefined
+  return typeof details.detail === 'string' ? details.detail : undefined
 }
 
 /** Sends one typed request to the main process. Rejects with a `JiraMgrError` on failure. */

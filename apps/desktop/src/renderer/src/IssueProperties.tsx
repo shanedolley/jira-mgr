@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 
 import type { CurrentUser, FieldChoice } from '../../shared/ipc'
+import { Reason } from './Failure'
 import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
 import {
@@ -379,11 +380,11 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             onSelect={chooseCustomer}
             onOpenChange={setCustomerOpen}
             note={
-              customers.isPending
-                ? 'Loading Customers'
-                : customers.isError
-                  ? `Could not load the Customers. ${customers.error.message}`
-                  : undefined
+              customers.isPending ? (
+                'Loading Customers'
+              ) : customers.isError ? (
+                <Reason lead="Could not load the Customers." error={customers.error} />
+              ) : undefined
             }
           />
         </Row>
@@ -397,11 +398,11 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
             onSelect={chooseEngagement}
             onOpenChange={setEngagementOpen}
             note={
-              engagements.isPending
-                ? 'Loading Engagements'
-                : engagements.isError
-                  ? `Could not load the Engagements. ${engagements.error.message}`
-                  : undefined
+              engagements.isPending ? (
+                'Loading Engagements'
+              ) : engagements.isError ? (
+                <Reason lead="Could not load the Engagements." error={engagements.error} />
+              ) : undefined
             }
           />
         </Row>
@@ -415,11 +416,11 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               onSelect={chooseSprint}
               onOpenChange={setSprintOpen}
               note={
-                sprints.isPending
-                  ? 'Loading sprints'
-                  : sprints.isError
-                    ? `Could not load the sprints. ${sprints.error.message}`
-                    : undefined
+                sprints.isPending ? (
+                  'Loading sprints'
+                ) : sprints.isError ? (
+                  <Reason lead="Could not load the sprints." error={sprints.error} />
+                ) : undefined
               }
               footer={
                 <button

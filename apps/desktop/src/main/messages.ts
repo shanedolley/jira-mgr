@@ -15,10 +15,39 @@ const REWRITES: readonly [RegExp, string][] = [
   ],
 ]
 
-/** The message as the app shows it. A message without CLI wording comes back unchanged. */
-export function desktopMessage(message: string): string {
-  return REWRITES.reduce(
-    (text, [pattern, replacement]) => text.replace(pattern, replacement),
-    message,
+/**
+ * A request as core words it: "GET /rest/api/3/issue/PSAPAC-2", or the bare path in "an
+ * unexpected response for /rest/api/3/field", with the "to" of "answered 500 to" before it.
+ * Core refuses any path outside /rest/, so the path anchors the match.
+ */
+const REQUEST =
+  /(?:(?: to)? )?(?:(?:GET|POST|PUT|DELETE|PATCH|HEAD) )?\/rest\/\S*?(?=[:.]?(?:\s|$))/g
+
+/** Core's wording with the CLI's `jm` sentences put in the app's words. */
+const rewritten = (message: string): string =>
+  REWRITES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), message)
+
+/**
+ * Drops the request core's message names: "Jira answered 500 to GET /rest/api/3/issue/PSAPAC-2:
+ * Boom." reads "Jira answered 500: Boom." A label that leads or follows another word becomes
+ * "The request" or "the request".
+ */
+const withoutRequest = (message: string): string =>
+  message.replace(REQUEST, (match, offset: number) =>
+    match.startsWith(' to ') ? '' : offset === 0 ? 'The request' : ' the request',
   )
+
+/** The message as the app shows it. A message without CLI wording or a request comes back unchanged. */
+export function desktopMessage(message: string): string {
+  return withoutRequest(rewritten(message))
+}
+
+/**
+ * The message for the window, and the full one as `detail` when dropping the request changed it,
+ * so a Details disclosure can still show where the failure happened.
+ */
+export function desktopError(message: string): { message: string; detail?: string } {
+  const full = rewritten(message)
+  const plain = withoutRequest(full)
+  return plain === full ? { message: plain } : { message: plain, detail: full }
 }

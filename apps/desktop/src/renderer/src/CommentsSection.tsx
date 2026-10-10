@@ -396,7 +396,7 @@ export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSec
   const [boxVersion, setBoxVersion] = useState(0)
   return (
     <Section title="Activity">
-      <QueryBody query={comments} loading="Loading comments">
+      <QueryBody query={comments} loading="Loading comments" what="the comments">
         {(list) =>
           list.length === 0 ? (
             <p className="text-muted">No comments</p>

@@ -7,6 +7,7 @@ import { expect, test, type ElectronApplication, type Locator, type Page } from 
 import {
   counts,
   failRead,
+  failTransitions,
   fieldsOf,
   launch,
   logIn,
@@ -814,12 +815,34 @@ test('offers Retry when the page cannot read its issue, and shows the descriptio
 
   // The summary and properties come from the loaded lists, so the page still shows.
   await expect(heading('Kick off the engagement')).toBeVisible()
-  await expect(issuePage().getByRole('alert')).toContainText('The fake failed this read')
+  const alert = issuePage().getByRole('alert')
+  await expect(alert).toContainText(
+    'Could not load the description. Retry, or check your connection.',
+  )
+  // Jira's message, which names the request, stays behind Details.
+  await expect(alert.getByText('The fake failed this read')).toBeHidden()
+  await alert.getByText('Details', { exact: true }).click()
+  await expect(alert.getByText('The fake failed this read')).toBeVisible()
   await expect(issuePage().getByText('Loading description')).toHaveCount(0)
 
   await issuePage().getByRole('button', { name: 'Retry' }).click()
   await expect(issuePage().getByText('Agree the scope with the sponsor.')).toBeVisible()
   await expect(issuePage().getByRole('alert')).toHaveCount(0)
+})
+
+test("shows no request path when a picker's lookup fails, until Details opens", async () => {
+  await openPage(/PSAPAC-1,/, 'Kick off the engagement')
+  await failTransitions(app)
+
+  await picker('Status', 'In Progress').click()
+
+  const note = window.getByRole('status').filter({ hasText: 'Could not load the statuses.' })
+  await expect(note).toContainText('Jira answered 500: The fake failed this lookup.')
+  // The path sits in the DOM behind the closed disclosure, so only visible text counts.
+  const path = window.locator('p:visible', { hasText: '/rest/' })
+  await expect(path).toHaveCount(0)
+  await note.getByText('Details', { exact: true }).click()
+  await expect(path.first()).toContainText('GET /rest/api/3/issue/PSAPAC-1/transitions')
 })
 
 test('applying a saved view from the sidebar closes the page and returns to the Tree', async () => {

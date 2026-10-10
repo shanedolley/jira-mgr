@@ -195,7 +195,7 @@ export function LinksSection({ issueKey, issues, onOpen, onNotice }: LinksSectio
         )
       }
     >
-      <QueryBody query={links} loading="Loading links">
+      <QueryBody query={links} loading="Loading links" what="the links">
         {({ links: list, types }) => (
           <>
             {adding && (

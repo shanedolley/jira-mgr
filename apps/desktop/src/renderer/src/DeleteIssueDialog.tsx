@@ -58,7 +58,11 @@ export function DeleteIssueDialog({
         <p className="text-muted">Jira deletes it permanently. This cannot be undone.</p>
 
         {detail.isError && detail.data === undefined ? (
-          <LoadError error={detail.error} onRetry={() => void detail.refetch()} />
+          <LoadError
+            what="the subtasks"
+            error={detail.error}
+            onRetry={() => void detail.refetch()}
+          />
         ) : !ready ? (
           <p role="status" className="text-muted">
             Checking for subtasks
