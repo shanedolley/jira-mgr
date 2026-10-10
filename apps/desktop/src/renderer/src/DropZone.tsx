@@ -14,6 +14,23 @@ interface DropZoneProps {
   children: ReactNode
 }
 
+function UploadIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="size-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 13V3m0 0L6 7m4-4 4 4M3.5 13v2.5a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V13" />
+    </svg>
+  )
+}
+
 const carriesFiles = (event: DragEvent) => event.dataTransfer.types.includes('Files')
 
 /** The drops a zone took, so the page does not attach their files a second time. */
@@ -31,7 +48,7 @@ export function DropZone({ label, onFiles, className = '', children }: DropZoneP
   return (
     <div
       data-drop-zone={label}
-      className={`relative rounded-md ${dragging ? 'outline-2 outline-dashed outline-accent' : ''} ${className}`}
+      className={`relative rounded-md ${dragging ? '[&>:not([data-drop-label])]:opacity-20' : ''} ${className}`}
       onDragOver={(event) => {
         if (!carriesFiles(event)) return
         event.preventDefault()
@@ -49,7 +66,11 @@ export function DropZone({ label, onFiles, className = '', children }: DropZoneP
     >
       {children}
       {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-md bg-canvas/80 font-medium text-accent">
+        <div
+          data-drop-label
+          className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed border-accent bg-canvas/95 text-[13px] font-medium text-accent"
+        >
+          <UploadIcon />
           {label}
         </div>
       )}

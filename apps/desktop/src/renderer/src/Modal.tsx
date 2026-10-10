@@ -50,7 +50,7 @@ export function Modal({
         event.preventDefault()
         if (closable) onClose()
       }}
-      className={`m-auto max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-line bg-panel p-0 text-ink shadow-[0_16px_48px_oklch(0_0_0/0.3)] backdrop:bg-black/40 ${className}`}
+      className={`m-auto max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-line bg-panel p-0 text-ink shadow-[0_16px_48px_var(--dialog-shadow)] backdrop:bg-(--scrim) ${className}`}
     >
       {children}
     </dialog>

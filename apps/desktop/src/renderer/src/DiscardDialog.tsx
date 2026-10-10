@@ -35,13 +35,13 @@ export function DiscardDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-(--scrim)">
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="discard-title"
         onKeyDown={onKeyDown}
-        className="w-[min(26rem,calc(100vw-2rem))] space-y-4 rounded-xl border border-line bg-panel p-4 shadow-[0_16px_48px_oklch(0_0_0/0.3)]"
+        className="w-[min(26rem,calc(100vw-2rem))] space-y-4 rounded-xl border border-line bg-panel p-4 shadow-[0_16px_48px_var(--dialog-shadow)]"
       >
         <p id="discard-title" className="font-medium">
           {title}
