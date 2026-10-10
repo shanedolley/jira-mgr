@@ -2,10 +2,10 @@
 
 ## Start Here
 
-Measured 2026-10-10 (main 00b6309, head set by `git log --oneline -1 origin/main`). No story is open until the lead files the review stories. Work in this order, landing one pull request at a time:
+Measured 2026-10-10 (main c829c8d, head set by `git log --oneline -1 origin/main`). 26 review stories are filed and open (#126 to #151). Work in this order, landing one pull request at a time:
 
 1. **Keep the docs current.** Fix any stale reference you meet in the pull request that changes the code. For a docs-only pass, grep `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`, `AGENTS.md`, `docs/` and each package README for closed issues named as open and for features named as planned, and run a link check over all markdown. Last swept 2026-10-10.
-2. **Build the filed review stories.** Shane decided on 2026-10-10 ([docs/discovery/2026-10-10-review-decisions.md](docs/discovery/2026-10-10-review-decisions.md)): all 14 UX stories and gap stories 1 to 12 and 15, consolidated into 26 issues, which the lead files after the decisions PR merges. Run `gh issue list --state open --label enhancement` for them, and build in dependency order: each issue names its blockers. #119 and #120 stay in HIL Review for Shane to close. Do not build gap 13 (undecided) or gap 14 (Later).
+2. **Build the filed review stories**, #126 to #151 ([decisions](docs/discovery/2026-10-10-review-decisions.md)). Unblocked now, in build order: #126, #127, #128, #129, #130, #131, #133, #134, #135, #136, #146, #148 (each has an empty blocked_by, checked 2026-10-10 with `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by`). Take the rest as their blockers close; each issue names them. Each user-visible desktop change goes to HIL Review for Shane. #143 (bulk select and edit) needs Shane present for one live bulk write on a throwaway PSAPAC issue before it relies on the bulk path. #119 and #120 stay in HIL Review for Shane to close. Do not build gap 13 (undecided) or gap 14 (Later).
 3. **Check the board.** Run `gh issue list --state open`. If a new issue appears, claim it per Loop.
 
 Rebase each pull request onto `main` after the one before it merges, since a green run from before the rebase proves nothing (see Traps in the handover). Run e2e with `pnpm e2e --workers=1`, and never in several worktrees at once.
