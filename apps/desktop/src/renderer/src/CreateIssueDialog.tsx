@@ -10,6 +10,7 @@ import {
   type FieldChoice,
 } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
+import { Failure, Reason } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
 import { Modal } from './Modal'
 import { ParentPrompt } from './ParentPrompt'
@@ -294,11 +295,11 @@ export function CreateIssueDialog({
     query: { isPending: boolean; isError: boolean; error: Error | null },
     what: string,
   ) =>
-    query.isPending
-      ? `Loading ${what}`
-      : query.isError
-        ? `Could not load ${what}. ${query.error?.message ?? ''}`
-        : undefined
+    query.isPending ? (
+      `Loading ${what}`
+    ) : query.isError ? (
+      <Reason lead={`Could not load ${what}.`} message={query.error?.message ?? ''} />
+    ) : undefined
 
   return (
     <Modal
@@ -446,11 +447,11 @@ export function CreateIssueDialog({
               onSelect={chooseAssignee}
               onOpenChange={setAssigneeOpen}
               note={
-                found.isError
-                  ? `Could not search people. ${found.error.message}`
-                  : found.isFetching
-                    ? 'Searching'
-                    : undefined
+                found.isError ? (
+                  <Reason lead="Could not search people." message={found.error.message} />
+                ) : found.isFetching ? (
+                  'Searching'
+                ) : undefined
               }
             />
             {meUser !== undefined && draft.assignee?.accountId !== meUser.accountId && (
@@ -533,9 +534,11 @@ export function CreateIssueDialog({
               </p>
             )}
             {create.isError && (
-              <p role="alert" className="text-xs text-danger">
-                Could not create the issue. {create.error.message}
-              </p>
+              <Failure
+                lead="Could not create the issue."
+                message={create.error.message}
+                className="text-xs text-danger"
+              />
             )}
             <p id="create-needs" className="text-xs text-muted">
               {missing.length === 0 ? 'Ready to create.' : `Add ${listWords(missing)} to create.`}

@@ -21,6 +21,7 @@ import {
   type WorklogInput,
 } from './activityQueries'
 import type { Notice } from './create'
+import { plainMessage } from './Failure'
 import { BUTTON, DANGER_BUTTON, FIELD, PRIMARY_BUTTON, QueryBody, Section } from './Section'
 
 interface WorklogsSectionProps {
@@ -70,7 +71,9 @@ function WorklogFormRow({
         comment: request.comment,
       })
     } catch (error) {
-      setProblem(`Could not save the worklog. ${error instanceof Error ? error.message : ''}`)
+      setProblem(
+        `Could not save the worklog. ${plainMessage(error instanceof Error ? error.message : '')}`,
+      )
       setSaving(false)
     }
   }

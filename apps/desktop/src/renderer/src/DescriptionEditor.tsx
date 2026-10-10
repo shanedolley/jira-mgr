@@ -9,6 +9,7 @@ import type { Notice } from './create'
 import { DropZone } from './DropZone'
 import { DiscardDialog } from './DiscardDialog'
 import { dropDraft, getDraft, putDraft } from './drafts'
+import { plainMessage } from './Failure'
 import { conflictOf, useSetDescription, type DescriptionConflict } from './queries'
 
 interface DescriptionEditorProps {
@@ -110,7 +111,7 @@ export function DescriptionEditor({
       const clash = conflictOf(error)
       if (clash !== null) setConflict(clash)
       else {
-        const reason = error instanceof Error ? error.message : String(error)
+        const reason = plainMessage(error instanceof Error ? error.message : String(error))
         setProblem(`Could not save the description, so Jira still holds the old one. ${reason}`)
       }
       setFocusAt(null)

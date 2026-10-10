@@ -16,6 +16,7 @@ import {
   newCommentDraftKey,
   putDraft,
 } from './drafts'
+import { plainMessage } from './Failure'
 import { conflictOf } from './queries'
 import { BUTTON, DANGER_BUTTON, QueryBody, Section } from './Section'
 
@@ -27,7 +28,8 @@ interface CommentsSectionProps {
   onNotice: (notice: Notice) => void
 }
 
-const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
+const reasonOf = (error: unknown) =>
+  plainMessage(error instanceof Error ? error.message : String(error))
 
 /** `read` shows the comment, `edit` changes it, `saving` waits on Jira with the text still in the editor. */
 type Phase = 'read' | 'edit' | 'saving'

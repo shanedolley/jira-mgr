@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
+import { Reason, plainMessage } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
 import { Picker, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
@@ -28,7 +29,7 @@ export type Report = (message: string | null) => void
 
 /** What the user reads when Jira refuses an edit and the issue shows its old value again. */
 export const refusal = (key: string, what: string, failure: Error) =>
-  `Could not change ${what}, so ${key} shows its old value again. ${failure.message}`
+  `Could not change ${what}, so ${key} shows its old value again. ${plainMessage(failure.message)}`
 
 /** Sends an edit with its optimistic patch. A refusal goes to `report`. */
 export function useIssueChange(issue: Issue, report: Report) {
@@ -104,11 +105,11 @@ export function StatusPicker({ issue, report }: PickerProps) {
       onSelect={choose}
       onOpenChange={setOpen}
       note={
-        transitions.isPending
-          ? 'Loading statuses'
-          : transitions.isError
-            ? `Could not load the statuses. ${transitions.error.message}`
-            : undefined
+        transitions.isPending ? (
+          'Loading statuses'
+        ) : transitions.isError ? (
+          <Reason lead="Could not load the statuses." message={transitions.error.message} />
+        ) : undefined
       }
     />
   )
@@ -161,11 +162,11 @@ export function AssigneePicker({ issue, issues, me, report }: AssigneeProps) {
       onSelect={choose}
       onOpenChange={setOpen}
       note={
-        found.isError
-          ? `Could not search people. ${found.error.message}`
-          : found.isFetching
-            ? 'Searching'
-            : undefined
+        found.isError ? (
+          <Reason lead="Could not search people." message={found.error.message} />
+        ) : found.isFetching ? (
+          'Searching'
+        ) : undefined
       }
     />
   )
@@ -196,11 +197,11 @@ export function PriorityPicker({ issue, report }: PickerProps) {
       onSelect={choose}
       onOpenChange={setOpen}
       note={
-        priorities.isPending
-          ? 'Loading priorities'
-          : priorities.isError
-            ? `Could not load the priorities. ${priorities.error.message}`
-            : undefined
+        priorities.isPending ? (
+          'Loading priorities'
+        ) : priorities.isError ? (
+          <Reason lead="Could not load the priorities." message={priorities.error.message} />
+        ) : undefined
       }
     />
   )

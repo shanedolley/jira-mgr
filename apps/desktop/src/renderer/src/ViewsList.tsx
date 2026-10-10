@@ -2,6 +2,7 @@ import type { ViewFilters } from '@jira-mgr/core/view-filter'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import type { SavedView, Toggles } from '../../shared/ipc'
+import { Details, Failure, plainMessage } from './Failure'
 import { useCreateView, useDeleteView, useRenameView, useViews } from './viewQueries'
 import { activeView } from './views'
 
@@ -284,7 +285,8 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
 
       {viewsQuery.isError && views === undefined && (
         <div role="alert" className="space-y-1 px-2 text-xs text-danger">
-          <p>Could not load views. {viewsQuery.error.message}</p>
+          <p>Could not load views. {plainMessage(viewsQuery.error.message)}</p>
+          <Details message={viewsQuery.error.message} />
           <button
             type="button"
             onClick={() => void viewsQuery.refetch()}
@@ -388,19 +390,25 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
       </ul>
 
       {create.isError && (
-        <p role="alert" className="px-2 pt-1 text-xs text-danger">
-          Could not save the view. {create.error.message}
-        </p>
+        <Failure
+          lead="Could not save the view."
+          message={create.error.message}
+          className="px-2 pt-1 text-xs text-danger"
+        />
       )}
       {rename.isError && (
-        <p role="alert" className="px-2 pt-1 text-xs text-danger">
-          Could not rename the view. {rename.error.message}
-        </p>
+        <Failure
+          lead="Could not rename the view."
+          message={rename.error.message}
+          className="px-2 pt-1 text-xs text-danger"
+        />
       )}
       {remove.isError && (
-        <p role="alert" className="px-2 pt-1 text-xs text-danger">
-          Could not delete the view. {remove.error.message}
-        </p>
+        <Failure
+          lead="Could not delete the view."
+          message={remove.error.message}
+          className="px-2 pt-1 text-xs text-danger"
+        />
       )}
     </section>
   )

@@ -19,6 +19,7 @@ import { Banner } from './Banner'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
 import { DeleteIssueDialog } from './DeleteIssueDialog'
+import { plainMessage } from './Failure'
 import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
@@ -441,7 +442,7 @@ export function Shell({ session }: { session: Session }) {
             setNotice({
               notice: {
                 title: `Could not start the timer on ${key}`,
-                notes: [failure.message],
+                notes: [plainMessage(failure.message)],
                 warned: true,
               },
               openKey: null,

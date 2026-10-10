@@ -2,6 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import { useState } from 'react'
 
+import { plainMessage } from './Failure'
 import { useEditIssue } from './queries'
 
 export interface Mismatch {
@@ -33,7 +34,7 @@ export function useMatchCustomer(issue: Issue) {
         {
           onError: (failure) => {
             setError(
-              `Could not set the Customer, so ${issue.key} shows ${mismatch.own?.value ?? 'none'} again. ${failure.message}`,
+              `Could not set the Customer, so ${issue.key} shows ${mismatch.own?.value ?? 'none'} again. ${plainMessage(failure.message)}`,
             )
           },
         },

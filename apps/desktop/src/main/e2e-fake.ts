@@ -557,6 +557,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failDone: () => void
   /** Makes the next read of one issue answer 500. */
   failRead: () => void
+  /** Makes the next read of an issue's transitions answer 500. */
+  failTransitions: () => void
   /** Makes the next issue edit answer 400, whatever it holds, so a test can watch an undo refused. */
   refuseNextEdit: () => void
   /** Removes an issue as if someone else deleted it: no hold and no count, so the next refetch loses it. */
@@ -716,6 +718,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   let doneHeld = false
   let failNextDone = false
   let failNextRead = false
+  let failNextTransitions = false
   let refuseNext = false
   let readsHeld = false
   const heldReads: (() => void)[] = []
@@ -946,6 +949,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       // Transition ids differ from status ids, as they do in the real project.
       const open = Object.values(STATUSES).filter((s) => s.id !== target.fields.status.id)
       if (method === 'GET') {
+        if (failNextTransitions) {
+          failNextTransitions = false
+          return json({ errorMessages: ['The fake failed this lookup.'] }, 500)
+        }
         return json({
           transitions: open.map((to) => ({ id: `t${to.id}`, name: `Go to ${to.name}`, to })),
         })
@@ -1385,6 +1392,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failRead: () => {
       failNextRead = true
+    },
+    failTransitions: () => {
+      failNextTransitions = true
     },
     refuseNextEdit: () => {
       refuseNext = true

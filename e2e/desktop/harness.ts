@@ -43,6 +43,7 @@ interface FakeJira {
   releaseDone: () => void
   failDone: () => void
   failRead: () => void
+  failTransitions: () => void
   dropIssue: (key: string) => void
   refuseNextEdit: () => void
   moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
@@ -130,6 +131,12 @@ export const failDone = (app: ElectronApplication) =>
 export const failRead = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failRead()
+  })
+
+/** Makes the fake Jira answer 500 to the next read of an issue's transitions, the Status picker's lookup. */
+export const failTransitions = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.failTransitions()
   })
 
 /** Makes the fake Jira answer 400 to the next issue edit. */
