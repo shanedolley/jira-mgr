@@ -16,7 +16,7 @@ Before changing an area, read its standard from [docs/standards](docs/standards/
 - Update docs in the same pull request, per [documentation](docs/standards/documentation.md).
 - After `pnpm install` in a new worktree, check the Electron dist with `du -sh node_modules/.pnpm/electron@*/node_modules/electron/dist` (about 307 MB, with `path.txt` beside it). If the dist is missing or truncated, run `node node_modules/.pnpm/electron@*/node_modules/electron/install.js` there, or every e2e test fails to launch.
 - Run e2e on one worker with `pnpm e2e --workers=1` and read the worker count in the output. `pnpm e2e -- --workers 1` passes `--` literally and leaves Playwright on 5 workers.
-- Shell noclobber is on, so `cmd > existing-file` fails silently and the command does not run. Use `>|` or `tee`, or a fresh file name, and check the file changed before trusting a before-and-after run (a revert proof ran the new code twice on 2026-10-11 without anyone noticing).
+- Shell noclobber is on, so `>` onto an existing file fails silently. Overwrite with `>|` or `tee`, and confirm the file changed before trusting a before-and-after run. It has cost a revert proof three times (2026-10-07, 127-keyboard-review and 133-create-build, 2026-10-11).
 - Finish against the [definition of done](docs/standards/code-review.md#definition-of-done). Merge only on green CI and approval from a reviewer other than the builder.
 
 ## Ask First
