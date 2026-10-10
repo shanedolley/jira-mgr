@@ -14,6 +14,19 @@ const AVATAR_HOSTS = [
   (url: URL) => url.port === '' && url.hostname === 'secure.gravatar.com',
 ]
 
+/** Gravatar answers 302 to these WordPress image hosts. They are reached only by that one redirect. */
+const REDIRECT_HOSTS = new Set(['i0.wp.com', 'i1.wp.com', 'i2.wp.com'])
+
+/** Where an avatar host may send one redirect: https, no userinfo, no port, an avatar or WordPress image host. */
+function redirectTarget(response: Response, from: URL): URL | null {
+  const location = response.headers.get('location')
+  if (location === null || !URL.canParse(location, from)) return null
+  const next = new URL(location, from)
+  const plain = next.protocol === 'https:' && next.username === '' && next.password === ''
+  const allowed = REDIRECT_HOSTS.has(next.hostname) || AVATAR_HOSTS.some((host) => host(next))
+  return plain && next.port === '' && allowed ? next : null
+}
+
 const refuse = (message: string) => new JiraMgrError('not_found', message)
 
 /** A URL main will not fetch. Nothing was asked of a host, so the answer is not cached. */
@@ -52,8 +65,11 @@ export interface AvatarFetcher {
 
 /**
  * Fetches profile images for the renderer. Https only. Jira credentials go to the Jira site's own
- * host and to no other. A redirect is never followed, so a host cannot bounce a request, and its
- * credentials, elsewhere. Each URL is fetched once while cached, a miss included; a refused URL is never fetched.
+ * host and to no other. A redirect from the site host is never followed, so it cannot bounce its
+ * credentials elsewhere. A host fetched without credentials may redirect once, to an avatar host or
+ * `i0.wp.com`, `i1.wp.com` or `i2.wp.com`, which is how Gravatar serves its initials image; that
+ * second request carries no credentials and a further redirect is refused. Each URL is fetched
+ * once while cached, a miss included; a refused URL is never fetched.
  */
 export function createAvatarFetcher(deps: {
   credentials: () => Promise<Credentials>
@@ -81,11 +97,18 @@ export function createAvatarFetcher(deps: {
     }
     let bytes: Uint8Array
     try {
-      const response = await send(target, {
-        headers,
-        redirect: 'manual',
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      })
+      const request = (to: URL) =>
+        send(to, { headers, redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS) })
+      let response = await request(target)
+      // One redirect, and only from a host fetched without credentials. A refused redirect is a
+      // host answer, so it caches as a miss like any other.
+      if (response.status >= 300 && response.status < 400 && headers.Authorization === undefined) {
+        const next = redirectTarget(response, target)
+        if (next !== null) {
+          await response.body?.cancel()
+          response = await request(next)
+        }
+      }
       if (response.status !== 200) {
         throw refuse(`The image host answered ${String(response.status)}.`)
       }
