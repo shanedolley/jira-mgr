@@ -42,7 +42,6 @@ Regenerate these; never edit them by hand:
 | `pnpm-lock.yaml` | `pnpm install` |
 | `docs/reference/cli.md` | `pnpm docs:reference`, which runs `scripts/gen-reference.ts` |
 | `docs/reference/errors.md` | `pnpm docs:reference` |
-| `docs/reference/core.md` | Not generated yet: it needs a TypeDoc dev dependency, which a later story adds |
 
 ## Commands
 
