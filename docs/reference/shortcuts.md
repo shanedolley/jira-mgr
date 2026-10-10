@@ -34,3 +34,21 @@ A letter acts only when pressed alone, not held, and not typed into a field, pic
 | `Enter` | Open the issue page; toggle a header |
 | `Space` | Toggle the Peek |
 | `Esc` | Close the Peek |
+
+## Fields and Dialogs
+
+| Where | Key | Action |
+|---|---|---|
+| Rich-text editor, comment box | `Cmd+Enter` | Save or post; `Esc` cancels the editor |
+| Create dialog | `Cmd+Enter` | Create the issue |
+| Summary and property fields | `Enter` | Save |
+| Summary and property fields | `Esc` | Cancel the edit |
+| Saved views list | `Up`, `Down` | Move between views |
+| Saved views list | `F2` | Rename the focused view |
+| View name field | `Enter`, `Esc` | Save or cancel the rename |
+| Pickers | `Up`, `Down`, `Home`, `End` | Move the highlight |
+| Pickers | `Enter` | Choose the highlighted option |
+| Palette | `Up`, `Down` | Move the highlight |
+| Palette | `Enter`, `Esc` | Open the issue page, or close |
+
+Ctrl stands in for Cmd off the Mac.

@@ -28,5 +28,5 @@ For a key that does something else, such as `C` for create:
 
 ## Test
 
-- Add the letter to the table in `keymap.test.ts` (`map C, S, A, L, P and E, in either case`) and to the Cmd and Ctrl loop beside it.
+- Add the letter to the table in `keymap.test.ts` (`map C, T, S, A, L, P and E, in either case`) and to the Cmd and Ctrl loop beside it.
 - Add an end-to-end case in `e2e/desktop/keyboard.test.ts`, which presses real keys against the fake Jira ([run the tests](run-tests.md)).
