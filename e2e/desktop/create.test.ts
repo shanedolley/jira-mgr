@@ -788,7 +788,7 @@ test('a chosen file can be removed before the create', async () => {
   await expect(dialog().getByText('a.txt', { exact: true })).toHaveCount(0)
   await dialog().getByLabel('Summary').fill('One file')
   await dialog().getByRole('button', { name: 'Create issue' }).click()
-  await releaseEdit(app)
+  await settle(1)
   await expect.poll(async () => (await uploads()).length).toBe(1)
   await releaseUpload(app)
   await expect(dialog()).toHaveCount(0)
@@ -822,7 +822,7 @@ test('Create more clears the description and the chosen files', async () => {
   await dialog().getByLabel('Create more').check()
   await fillDescribed('First of two', ['notes.txt'])
   await dialog().getByRole('button', { name: 'Create issue' }).click()
-  await releaseEdit(app)
+  await settle(1)
   await expect.poll(async () => (await uploads()).length).toBe(1)
   await releaseUpload(app)
 
