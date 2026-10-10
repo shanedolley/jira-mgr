@@ -20,7 +20,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `U` | Copy the link to the issue on the Jira site |
 | `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open page |
 | `?` | List every shortcut on this page; works from a sidebar or toolbar button too, not in a field or over a dialog |
-| `Cmd+K` | Open the search palette; it searches issues and lists no commands. Not over a dialog or open picker |
+| `Cmd+K` | Open the search palette; it searches loaded issues and, below them, Jira text; it lists no commands. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo |
 | `Esc` | Close the page, then the Peek |
 | `Tab` | The first stop is a "Skip to issues" link, hidden until it has focus; `Enter` on it moves focus to the Tree |

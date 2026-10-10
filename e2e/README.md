@@ -2,9 +2,9 @@
 
 Playwright tests that cross package boundaries. Unit and integration tests sit beside the code they test.
 
-| Suite      | Drives                                                                                                                                                                                                                                                                                                                                                                               |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `desktop/` | The built desktop app, through Playwright's Electron driver, on a fake Jira and a fake Keychain: `shell.test.ts`, `tree.test.ts`, `page.test.ts`, `create.test.ts`, `delete.test.ts`, `keyboard.test.ts`, `properties.test.ts`, `editor.test.ts`, `avatars.test.ts`, `activity.test.ts`, `views.test.ts`, `lateRead.test.ts`, `package.test.ts`, `timer.test.ts`, `surfaces.test.ts` |
+| Suite      | Drives                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `desktop/` | The built desktop app, through Playwright's Electron driver, on a fake Jira and a fake Keychain: `shell.test.ts`, `tree.test.ts`, `page.test.ts`, `create.test.ts`, `delete.test.ts`, `keyboard.test.ts`, `properties.test.ts`, `editor.test.ts`, `avatars.test.ts`, `activity.test.ts`, `views.test.ts`, `lateRead.test.ts`, `package.test.ts`, `timer.test.ts`, `surfaces.test.ts`, `textSearch.test.ts`, `actions.test.ts` |
 
 ## Run
 
@@ -23,6 +23,8 @@ Electron's `pnpm install` step downloads its binary. After `pnpm install` in a n
 `desktop/lateRead.test.ts` covers the create toast's second read: it names what the automation changed after the create returned, and shows no second toast when the read finds nothing new.
 
 `desktop/textSearch.test.ts` covers the palette's "Search text in Jira" group against the fake Jira: a word only a description or a comment holds finds its issue, the loaded matches rank first without repeats, a new query aborts the search in flight (`counts.textSearches` records each query and whether the app aborted it; `holdTextSearch` and `releaseTextSearch` keep one in flight), and text under three characters sends nothing.
+
+`desktop/actions.test.ts` covers the Tree quick actions: `I`, `Y` and `U` with their guards, the 1 to 9 keys in the Status and Priority pickers, a click on a status dot or avatar opening the Peek's picker, the `+` on Customer and No Epic headers, and the Peek's Copy key and Copy link buttons at the narrowest window and in a wide font.
 
 `desktop/keyboard.test.ts` covers D7: the `Cmd+K` palette, the letter shortcuts on the Tree and the page, the `Esc` order, and `Cmd+Z` with its toast, its stale check and its native-undo carve-out. It presses real keys, so the guards (text fields, dialogs, modifiers) are tested where they run. `Meta+z` and `Meta+k` work on Linux too, since the keymap accepts Ctrl or Cmd. It also covers the `/` filter key and its hand-off to the first issue row, the Skip to issues link, letters that do nothing on a sidebar or toolbar button, and focus on an empty Tree.
 
