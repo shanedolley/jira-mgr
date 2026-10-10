@@ -253,6 +253,7 @@ describe('createAvatarFetcher', () => {
       'https://i0.wp.com/evil.example.test/a.png',
       'https://i0.wp.com/evilatl-paas.net/a.png',
       'https://i0.wp.com/atl-paas.net/a.png',
+      'https://i0.wp.com/evil.test%2Fx.atl-paas.net/a.png',
       'https://i0.wp.com/x.atl-paas.net.evil.test/a.png',
       'https://i0.wp.com/',
       'https://avatars.example.atl-paas.net/a.png',
