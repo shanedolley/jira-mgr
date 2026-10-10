@@ -489,3 +489,104 @@ test('a refused undo shows the value as it was, says why, and is not retried', a
   await expect(notice('Nothing to undo')).toBeVisible()
   expect(await writes()).toBe(before + 2)
 })
+
+const filter = () => window.getByRole('textbox', { name: 'Filter by key or summary' })
+const skipLink = () => window.getByRole('link', { name: 'Skip to issues' })
+
+test('/ focuses the filter, and Enter lands on the first row with the query kept', async () => {
+  await open()
+  await expect(tree()).toBeFocused()
+
+  await window.keyboard.press('/')
+  await expect(filter()).toBeFocused()
+  await window.keyboard.type('runbook')
+  await expect(filter()).toHaveValue('runbook')
+  await expect(item(/PSAPAC-11,/)).toBeVisible()
+
+  await window.keyboard.press('Enter')
+  await expect(tree()).toBeFocused()
+  await expect(filter()).toHaveValue('runbook')
+  await expect(tree().getByRole('treeitem').first()).toHaveAttribute('data-active', 'true')
+  expect(await writes()).toBe(0)
+})
+
+test('ArrowDown in the filter also moves to the first row, and a typed / stays in the field', async () => {
+  await open()
+  await window.keyboard.press('/')
+  await window.keyboard.type('a/b')
+  await expect(filter()).toHaveValue('a/b')
+  await filter().fill('PSAPAC')
+
+  await window.keyboard.press('ArrowDown')
+  await expect(tree()).toBeFocused()
+  await expect(filter()).toHaveValue('PSAPAC')
+  await expect(tree().getByRole('treeitem').first()).toHaveAttribute('data-active', 'true')
+})
+
+test('/ selects the text already in the filter, and does nothing with a modifier', async () => {
+  await open()
+  await window.keyboard.press('/')
+  await window.keyboard.type('old')
+  await window.keyboard.press('Enter')
+  await expect(tree()).toBeFocused()
+
+  await window.keyboard.press('Meta+/')
+  await expect(tree()).toBeFocused()
+  await window.keyboard.press('/')
+  await expect(filter()).toBeFocused()
+  await window.keyboard.type('new')
+  await expect(filter()).toHaveValue('new')
+})
+
+test('letters do nothing on a sidebar button, and still act in the Tree', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  const logout = window.getByRole('button', { name: 'Log out' })
+  await logout.focus()
+  await expect(logout).toBeFocused()
+
+  for (const letter of ['t', 'c', 's']) await window.keyboard.press(letter)
+  await expect(notice(/Started the timer/)).toHaveCount(0)
+  await expect(window.getByRole('dialog')).toHaveCount(0)
+  await expect(peek()).toHaveCount(0)
+  await expect(logout).toBeFocused()
+
+  await tree().focus()
+  await window.keyboard.press('t')
+  await expect(notice('Started the timer on PSAPAC-2')).toBeVisible()
+})
+
+test('letters do nothing on a toolbar button either', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  const toggle = window.getByRole('button', { name: 'Hide done' })
+  await toggle.focus()
+  await window.keyboard.press('c')
+  await expect(window.getByRole('dialog')).toHaveCount(0)
+})
+
+test('the first Tab stop is Skip to issues, which shows on focus and moves focus to the Tree', async () => {
+  await open()
+  await window.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  })
+  await window.keyboard.press('Tab')
+  await expect(skipLink()).toBeFocused()
+  const box = await skipLink().boundingBox()
+  expect(box).not.toBeNull()
+  expect(box?.y).toBeGreaterThanOrEqual(0)
+  expect(box?.x).toBeGreaterThanOrEqual(0)
+
+  await window.keyboard.press('Enter')
+  await expect(tree()).toBeFocused()
+})
+
+test('an empty Tree still shows focus', async () => {
+  await open()
+  await filter().fill('zzzzzz')
+  await expect(window.getByText('No issues match')).toBeVisible()
+  await window.keyboard.press('Enter')
+  await expect(tree()).toBeFocused()
+  await expect(tree().locator('xpath=..')).toHaveCSS('outline-style', 'solid')
+  await expect(tree().locator('xpath=..')).toHaveCSS('outline-width', '2px')
+})

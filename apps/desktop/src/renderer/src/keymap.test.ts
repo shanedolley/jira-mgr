@@ -14,11 +14,14 @@ const key = (name: string, extra: Partial<KeyEvent> = {}): KeyEvent => ({
   ...extra,
 })
 
-/** A target that sits inside an element matching `selector`, and no other. */
-const inside = (selector: string): KeyTarget => ({
-  closest: (list) => (list.split(', ').includes(selector) ? {} : null),
+/** A target that sits inside an element matching each of `selectors`, and no other. */
+const inside = (...selectors: string[]): KeyTarget => ({
+  closest: (list) => (list.split(', ').some((one) => selectors.includes(one)) ? {} : null),
 })
 const nowhere: KeyTarget = { closest: () => null }
+/** The Tree, the Peek or the issue page, where a letter acts. */
+const SCOPE = '[data-key-scope]'
+const scoped = inside(SCOPE)
 
 describe('the letter shortcuts', () => {
   it('map C, T, S, A, L, P and E, in either case', () => {
@@ -32,14 +35,14 @@ describe('the letter shortcuts', () => {
       e: 'edit',
     }
     for (const [letter, command] of Object.entries(expected)) {
-      expect(resolveKey(key(letter), nowhere)).toBe(command)
-      expect(resolveKey(key(letter.toUpperCase(), { shiftKey: true }), nowhere)).toBe(command)
+      expect(resolveKey(key(letter), scoped)).toBe(command)
+      expect(resolveKey(key(letter.toUpperCase(), { shiftKey: true }), scoped)).toBe(command)
     }
   })
 
   it('leave every other key to the control that has it', () => {
     for (const other of ['x', 'j', 'k', ' ', 'Enter', 'ArrowDown', 'constructor']) {
-      expect(resolveKey(key(other), nowhere)).toBeNull()
+      expect(resolveKey(key(other), scoped)).toBeNull()
     }
   })
 
@@ -50,14 +53,14 @@ describe('the letter shortcuts', () => {
       { isComposing: true },
       { defaultPrevented: true },
     ]) {
-      expect(resolveKey(key('s', extra), nowhere)).toBeNull()
+      expect(resolveKey(key('s', extra), scoped)).toBeNull()
     }
   })
 
   it('are never Cmd or Ctrl with a letter', () => {
     for (const letter of ['c', 't', 's', 'a', 'l', 'p', 'e']) {
-      expect(resolveKey(key(letter, { metaKey: true }), nowhere)).toBeNull()
-      expect(resolveKey(key(letter, { ctrlKey: true }), nowhere)).toBeNull()
+      expect(resolveKey(key(letter, { metaKey: true }), scoped)).toBeNull()
+      expect(resolveKey(key(letter, { ctrlKey: true }), scoped)).toBeNull()
     }
   })
 
@@ -74,11 +77,53 @@ describe('the letter shortcuts', () => {
       '[role="alertdialog"]',
       '[role="menu"]',
     ]) {
-      expect(resolveKey(key('s'), inside(own))).toBeNull()
-      expect(keepsLetters(inside(own))).toBe(true)
+      expect(resolveKey(key('s'), inside(SCOPE, own))).toBeNull()
+      expect(keepsLetters(inside(SCOPE, own))).toBe(true)
     }
-    expect(keepsLetters(nowhere)).toBe(false)
+    expect(keepsLetters(scoped)).toBe(false)
     expect(keepsLetters(null)).toBe(false)
+  })
+
+  it('act only inside the Tree, the Peek or the issue page', () => {
+    for (const letter of ['c', 't', 's', 'a', 'l', 'p', 'e']) {
+      expect(resolveKey(key(letter), scoped)).not.toBeNull()
+      expect(resolveKey(key(letter), nowhere)).toBeNull()
+      expect(resolveKey(key(letter), null)).toBeNull()
+    }
+  })
+
+  it('do nothing on a sidebar or toolbar button', () => {
+    // `closest` finds a button's own ancestors, none of which is a scope.
+    const button = inside('button', 'nav', 'section')
+    expect(resolveKey(key('t'), button)).toBeNull()
+    expect(resolveKey(key('c'), button)).toBeNull()
+  })
+})
+
+describe('the filter key', () => {
+  it('answers to / from anywhere that is not a field, picker or dialog', () => {
+    expect(resolveKey(key('/'), scoped)).toBe('filter')
+    expect(resolveKey(key('/'), nowhere)).toBe('filter')
+    expect(resolveKey(key('/'), null)).toBe('filter')
+  })
+
+  it('stays out of text fields, pickers, dialogs and editors', () => {
+    for (const own of ['input', 'textarea', 'dialog', '[popover]', '[role="combobox"]']) {
+      expect(resolveKey(key('/'), inside(own))).toBeNull()
+    }
+  })
+
+  it('is never / with Cmd, Ctrl or Alt, nor a held, composed or handled key', () => {
+    for (const extra of [
+      { metaKey: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { repeat: true },
+      { isComposing: true },
+      { defaultPrevented: true },
+    ]) {
+      expect(resolveKey(key('/', extra), scoped)).toBeNull()
+    }
   })
 })
 

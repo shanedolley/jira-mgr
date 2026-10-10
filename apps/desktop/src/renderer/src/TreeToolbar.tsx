@@ -1,5 +1,5 @@
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
-import type { KeyboardEvent, ToggleEvent } from 'react'
+import type { KeyboardEvent, RefObject, ToggleEvent } from 'react'
 
 import type { Toggles } from '../../shared/ipc'
 import {
@@ -37,6 +37,10 @@ interface TreeToolbarProps {
   onExpandAll: () => void
   /** A toolbar control acted, or a menu closed: focus goes back to the Tree. */
   onActed: () => void
+  /** Enter or Down in the text field: focus goes to the first row, with the query kept. */
+  onEnterTree: () => void
+  /** The text field, which `/` focuses. */
+  inputRef: RefObject<HTMLInputElement | null>
   /** Shown beside the controls while Done issues load for the first time. */
   doneProgress: string | null
 }
@@ -84,11 +88,18 @@ export function TreeToolbar({
   onCollapseAll,
   onExpandAll,
   onActed,
+  onEnterTree,
+  inputRef,
   doneProgress,
 }: TreeToolbarProps) {
   const chips = filterChips(filters, choices)
 
   function onTextKey(event: KeyboardEvent<HTMLInputElement>) {
+    if ((event.key === 'Enter' || event.key === 'ArrowDown') && !event.nativeEvent.isComposing) {
+      event.preventDefault()
+      onEnterTree()
+      return
+    }
     if (event.key !== 'Escape') return
     event.preventDefault()
     if ((filters.text ?? '') === '') {
@@ -205,7 +216,9 @@ export function TreeToolbar({
         </div>
 
         <input
+          ref={inputRef}
           type="text"
+          aria-keyshortcuts="/"
           aria-label="Filter by key or summary"
           placeholder="Filter by key or summary"
           value={filters.text ?? ''}

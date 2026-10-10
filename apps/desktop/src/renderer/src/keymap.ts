@@ -16,7 +16,8 @@ export const PROPERTY_KEYS = {
 
 export type PropertyCommand = keyof typeof PROPERTY_KEYS
 
-export type Command = PropertyCommand | 'create' | 'timer' | 'palette' | 'undo' | 'escape'
+export type Command =
+  PropertyCommand | 'create' | 'timer' | 'filter' | 'palette' | 'undo' | 'escape'
 
 export interface KeyEvent {
   key: string
@@ -37,6 +38,12 @@ export interface KeyTarget {
 /** Controls where a letter is typing or choosing, not a command. */
 const OWN_KEYS =
   'input, textarea, select, dialog, [popover], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="alertdialog"], [role="combobox"], [role="listbox"], [role="menu"]'
+
+/**
+ * The places a letter acts on an issue: the Tree, the Peek and the issue page, each marked
+ * `data-key-scope`. A letter on a sidebar or toolbar button does nothing.
+ */
+const LETTER_SCOPES = '[data-key-scope]'
 
 /** Where `Cmd+K` must not open a second layer: over a dialog or an open picker. */
 const OVERLAYS = 'dialog, [popover]'
@@ -64,8 +71,9 @@ const LETTERS = new Map<string, Command>([
 
 /**
  * What a keystroke asks for, or `null` when it is not ours. A letter is a command only alone: not
- * with Cmd, Ctrl or Alt, not held down, not part of an IME composition, not already handled, and
- * not typed into a field, picker, dialog or editor. `Cmd+Z` and `Esc` obey the same target rule,
+ * with Cmd, Ctrl or Alt, not held down, not part of an IME composition, not already handled, not
+ * typed into a field, picker, dialog or editor, and only with focus inside the Tree, the Peek or
+ * the issue page. `/` obeys the same rules except the last: it focuses the filter from anywhere. `Cmd+Z` and `Esc` obey the same target rule,
  * so a text field keeps its native undo and a picker keeps its own `Esc`. `Cmd+K` opens from a
  * text field, but not over a dialog or an open picker. Ctrl stands in for Cmd off the Mac.
  */
@@ -80,5 +88,7 @@ export function resolveKey(event: KeyEvent, target: KeyTarget | null): Command |
   }
   if (event.repeat || keepsLetters(target)) return null
   if (key === 'escape') return 'escape'
+  if (key === '/') return 'filter'
+  if (!inside(target, LETTER_SCOPES)) return null
   return LETTERS.get(key) ?? null
 }

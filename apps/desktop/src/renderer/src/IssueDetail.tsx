@@ -224,6 +224,7 @@ export function IssueDetail({
     <aside
       ref={asideRef}
       tabIndex={-1}
+      data-key-scope
       inert={inert}
       aria-label="Peek"
       className="col-start-3 row-start-1 min-h-0 overflow-y-auto border-l border-line bg-panel"

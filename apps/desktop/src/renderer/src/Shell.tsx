@@ -168,6 +168,7 @@ export function Shell({ session }: { session: Session }) {
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
+  const filterRef = useRef<HTMLInputElement>(null)
 
   const customersQuery = useCustomers(toggles?.hideEmptyCustomers === false)
   const customersFailed = customersQuery.isError && customersQuery.data === undefined
@@ -246,6 +247,14 @@ export function Shell({ session }: { session: Session }) {
 
   function focusTree() {
     treeRef.current?.focus()
+  }
+
+  /** Enter or Down in the filter: the first row becomes active and takes focus, the query stays. */
+  function enterTree() {
+    const input = { key: 'Home', shiftKey: false, metaKey: false, ctrlKey: false, altKey: false }
+    const next = moveActive(rows, state, input, { pageSize: 1, expandable })
+    if (next !== null) apply(next)
+    focusTree()
   }
 
   /** Collapse all and Expand all are the Shift+Arrow keys, so the menu and the keys agree. */
@@ -445,6 +454,15 @@ export function Shell({ session }: { session: Session }) {
         event.preventDefault()
         openCreate()
         return
+      case 'filter': {
+        // The list is inert under an open page, so the field cannot take focus there.
+        const field = filterRef.current
+        if (field === null || pageOpen) return
+        event.preventDefault()
+        field.focus()
+        field.select()
+        return
+      }
       case 'timer': {
         const key = pageKey ?? activeKey
         if (key === null || !treeReady) return
@@ -633,6 +651,16 @@ export function Shell({ session }: { session: Session }) {
     <div
       className={`relative grid h-full grid-rows-[minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
     >
+      <a
+        href="#issue-list"
+        onClick={(event) => {
+          event.preventDefault()
+          restoreFocus()
+        }}
+        className="app-no-drag absolute left-24 top-1.5 z-50 -translate-y-12 rounded-md border border-line bg-panel px-3 py-1 text-ink focus:translate-y-0"
+      >
+        Skip to issues
+      </a>
       <Sidebar
         session={session}
         count={unresolved.data?.length}
@@ -694,6 +722,8 @@ export function Shell({ session }: { session: Session }) {
               groupsKey('ArrowRight')
             }}
             onActed={focusTree}
+            onEnterTree={enterTree}
+            inputRef={filterRef}
             doneProgress={doneLoading ? `Loading Done issues: ${String(doneCount)}` : null}
           />
         )}

@@ -159,10 +159,13 @@ export function IssueTree({
   const selectedId = peekedKey === null ? null : `i:${peekedKey}`
 
   return (
-    <div className="@container relative min-h-0 flex-1">
+    <div
+      className={`@container relative min-h-0 flex-1 ${rows.length === 0 ? 'has-[[role=tree]:focus-visible]:outline-2 has-[[role=tree]:focus-visible]:-outline-offset-2 has-[[role=tree]:focus-visible]:outline-accent' : ''}`}
+    >
       <div
         ref={treeRef}
         role="tree"
+        data-key-scope
         aria-label="Issues"
         tabIndex={0}
         aria-activedescendant={activeRow === undefined ? undefined : rowDomId(activeRow.id)}
