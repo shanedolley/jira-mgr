@@ -2,11 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (5 open issues, one page), `gh pr list --state open` (only #99, this update) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. D5 activity (#32) is on `main` (#104) and closed: Shane passed both live checks on 2026-10-10. Work in this order, landing one pull request at a time:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (5 open issues, one page), `gh pr list --state open` (none open) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. Work in this order, landing one pull request at a time:
 
-1. **Finish #36 (D9 timer), #83 (D11 click-to-edit summary) and #101 (planned docs pages)**, all `status:in-progress` since 2026-10-10 in local, unpushed worktrees `jira-mgr-36`, `jira-mgr-83` and `jira-mgr-101`. #36 and #83 touch the issue page, so rebase the second onto `main` after the first merges.
-2. **D5 follow-ups (#102)**, no blockers, after #83 merges: both touch the issue page.
-3. **Waiting on Shane** (he signs off issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #96 (ordered edits, fixed by #100).
+1. **Finish #106 (reference pages)**, `status:in-progress` on branch `106-reference-pages` (worktree `jira-mgr-106`): `config.md` and `shortcuts.md` written from the code, `core.md` dropped from the index. It is the last unblocked story.
+2. **Nothing else is unblocked.** Every other open issue is in HIL Review; start no new work without a new issue.
+3. **Waiting on Shane** (he signs off issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #83 (click a summary on the issue page; try Enter, Esc and `E`), #96 (change one field twice quickly and confirm Jira keeps the last value), #102 (type in a comment, switch issues and return, then try an edit that conflicts) and #105 (run `pnpm fixture:record` against a non-Atlassian site and confirm it refuses before sending the token).
 
 Rebase each pull request onto `main` after the one before it merges, since a green run from before the rebase proves nothing (see Traps in the handover). Run e2e with `pnpm e2e --workers=1`, and never in several worktrees at once.
 
