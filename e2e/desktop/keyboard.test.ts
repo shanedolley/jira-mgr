@@ -619,3 +619,27 @@ test('Dismiss on a toast hands focus back, so a letter works again', async () =>
   await window.keyboard.press('c')
   await expect(window.getByRole('dialog', { name: 'New issue' })).toBeVisible()
 })
+
+/** Slows the renderer, so the Tree's deferred rows lag the text the filter holds. */
+async function throttle(rate: number) {
+  const session = await window.context().newCDPSession(window)
+  await session.send('Emulation.setCPUThrottlingRate', { rate })
+}
+
+for (const key of ['Enter', 'ArrowDown']) {
+  test(`${key} in a filter whose Tree is still catching up lands on the first issue row`, async () => {
+    await open()
+    await window.keyboard.press('/')
+    await window.keyboard.type('a/b')
+    await expect(window.getByText('No issues match')).toBeVisible()
+    await throttle(20)
+    await filter().fill('PSAPAC')
+
+    await window.keyboard.press(key)
+    await expect(tree()).toBeFocused()
+    await expect(filter()).toHaveValue('PSAPAC')
+    await expect(item(/PSAPAC-10,/)).toBeVisible()
+    await expect(tree().getByRole('treeitem').first()).toHaveAttribute('data-active', 'false')
+    await expect(tree().locator('[data-active="true"]')).toHaveAccessibleName(/^PSAPAC-\d+,/)
+  })
+}

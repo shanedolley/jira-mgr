@@ -138,6 +138,8 @@ export function Shell({ session }: { session: Session }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set())
   const [peekOpen, setPeekOpen] = useState(false)
+  // Enter in the filter asked for the first issue row, which waits for the deferred rows.
+  const [enterPending, setEnterPending] = useState(false)
   const [lastIssueKey, setLastIssueKey] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   // The issue whose full page is open. The Tree stays mounted under it, so its scroll survives.
@@ -233,6 +235,7 @@ export function Shell({ session }: { session: Session }) {
   )
 
   function apply(next: MoveResult) {
+    setEnterPending(false)
     setTrack((t) => ({ ...t, activeId: next.activeId }))
     setCollapsed(next.collapsed)
     setRevealed(next.revealed)
@@ -251,12 +254,18 @@ export function Shell({ session }: { session: Session }) {
 
   /**
    * Enter or Down in the filter: the first issue row becomes active, skipping group headers, and
-   * takes focus. With no issue row the first row does. The query stays.
+   * takes focus. With no issue row the first row does. The query stays. The rows follow the
+   * filters a render late (`useDeferredValue`), so the choice waits until they match the query.
    */
   function enterTree() {
+    setEnterPending(true)
+    focusTree()
+  }
+
+  if (enterPending && filters === deferredFilters) {
+    setEnterPending(false)
     const first = rows.find((r) => r.kind === 'issue') ?? rows[0]
     if (first !== undefined) apply({ ...state, activeId: first.id, openPage: false })
-    focusTree()
   }
 
   /** Collapse all and Expand all are the Shift+Arrow keys, so the menu and the keys agree. */
