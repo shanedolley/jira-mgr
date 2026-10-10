@@ -38,6 +38,23 @@ function Property({
   )
 }
 
+/**
+ * The Peek's copy buttons are icons, so the header's five buttons fit the Peek at the narrowest
+ * window (348px) in a wide font. The name and key are in `aria-label` and `title`.
+ */
+const COPY_BUTTON =
+  'app-no-drag grid h-[22px] w-7 place-items-center rounded-md border border-line text-muted hover:bg-hover hover:text-ink'
+const COPY_ICON = {
+  'aria-hidden': true,
+  viewBox: '0 0 16 16',
+  className: 'size-3.5',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.5,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+} as const
+
 /** How long the Peek holds still on an issue before it reads the description. */
 const READ_DELAY_MS = 180
 /** How long a description the Peek read stays fresh, so a row visited again shows it without a read. */
@@ -246,23 +263,32 @@ export function IssueDetail({
             </button>
             <button
               type="button"
+              aria-label="Copy key"
+              title="Copy key (Y)"
               aria-keyshortcuts="Y"
               onClick={() => {
                 onCopy(issue.key, 'key')
               }}
-              className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+              className={COPY_BUTTON}
             >
-              Copy key
+              <svg {...COPY_ICON}>
+                <circle cx="5.5" cy="10.5" r="2.5" />
+                <path d="m7.4 8.6 6.1-6.1M11.5 4.5l1.5 1.5M9.5 6.5 11 8" />
+              </svg>
             </button>
             <button
               type="button"
+              aria-label="Copy link"
+              title="Copy link (U)"
               aria-keyshortcuts="U"
               onClick={() => {
                 onCopy(issue.key, 'link')
               }}
-              className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+              className={COPY_BUTTON}
             >
-              Copy link
+              <svg {...COPY_ICON}>
+                <path d="M6.5 9.5a2.5 2.5 0 0 0 3.5 0l2.5-2.5a2.5 2.5 0 0 0-3.5-3.5l-.7.7M9.5 6.5a2.5 2.5 0 0 0-3.5 0L3.5 9a2.5 2.5 0 0 0 3.5 3.5l.7-.7" />
+              </svg>
             </button>
             <button
               type="button"

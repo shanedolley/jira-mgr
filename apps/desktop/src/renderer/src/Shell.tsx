@@ -50,7 +50,7 @@ import {
   type FilterField,
 } from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
-import { assigneePatch } from './properties'
+import { assignMeOutcome, assigneePatch } from './properties'
 import { refusal } from './PropertyPickers'
 import {
   useCustomers,
@@ -467,8 +467,10 @@ export function Shell({ session }: { session: Session }) {
   function assignToMe(key: string) {
     const me = meQuery.data
     const issue = issues.find((i) => i.key === key)
-    if (issue === undefined || issue.assignee?.accountId === me?.accountId) return
-    if (me === undefined) {
+    if (issue === undefined) return
+    const outcome = assignMeOutcome(issue, me)
+    if (outcome === 'mine') return
+    if (me === undefined || outcome === 'wait') {
       setNotice({
         notice: {
           title: `Cannot assign ${key}`,

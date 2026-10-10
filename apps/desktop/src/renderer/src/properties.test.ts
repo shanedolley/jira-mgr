@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { SprintOption } from '../../shared/ipc'
 import {
+  assignMeOutcome,
   assigneeChoices,
   assigneePatch,
   currentSprint,
@@ -240,5 +241,23 @@ describe('patches', () => {
     }
     expect(sprintPatch(base, target).sprints?.map((s) => s.id)).toEqual([1, 3])
     expect(sprintPatch(base, null).sprints?.map((s) => s.id)).toEqual([1])
+  })
+})
+
+describe('assignMeOutcome', () => {
+  const me = { accountId: 'u1' }
+
+  it('waits while the signed-in user is unknown, even for an unassigned issue', () => {
+    expect(assignMeOutcome(issue('A-1', { assignee: null }), undefined)).toBe('wait')
+    expect(assignMeOutcome(issue('A-1', { assignee: person('u2') }), undefined)).toBe('wait')
+  })
+
+  it('leaves an issue that is already mine', () => {
+    expect(assignMeOutcome(issue('A-1', { assignee: person('u1') }), me)).toBe('mine')
+  })
+
+  it("takes an unassigned issue and another person's", () => {
+    expect(assignMeOutcome(issue('A-1', { assignee: null }), me)).toBe('assign')
+    expect(assignMeOutcome(issue('A-1', { assignee: person('u2') }), me)).toBe('assign')
   })
 })

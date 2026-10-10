@@ -178,6 +178,18 @@ export function matchWords({ customer, engagement }: ParentMatch): string {
   return [customer && 'Customer', engagement && 'Engagement'].filter(Boolean).join(' and ')
 }
 
+/**
+ * What `I` does on an issue: wait when the signed-in user has not loaded (so nobody is compared
+ * with an unassigned issue), leave an issue that is already theirs, otherwise take it.
+ */
+export function assignMeOutcome(
+  issue: Pick<Issue, 'assignee'>,
+  me: { accountId: string } | undefined,
+): 'wait' | 'mine' | 'assign' {
+  if (me === undefined) return 'wait'
+  return issue.assignee?.accountId === me.accountId ? 'mine' : 'assign'
+}
+
 export const assigneePatch = (person: Person | null): Partial<Issue> => ({
   assignee: person === null ? null : { ...person },
 })

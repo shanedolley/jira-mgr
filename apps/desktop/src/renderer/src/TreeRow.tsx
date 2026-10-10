@@ -80,11 +80,16 @@ function Pick({
 
 /** Adds an issue to a group: a header's "+" opens create with that group's Customer. */
 function AddButton({ row, onAdd }: { row: Row; onAdd: (row: Row) => void }) {
+  const customer = row.kind === 'customer' || row.kind === 'noEpic' ? row.customer : null
+  const label =
+    row.kind === 'noEpic'
+      ? `No Epic in ${customer?.value ?? 'No Customer'}`
+      : (customer?.value ?? 'No Customer')
   return (
     <button
       type="button"
       tabIndex={-1}
-      aria-label={`Add issue to ${row.kind === 'customer' ? (row.customer?.value ?? 'No Customer') : 'No Epic'}`}
+      aria-label={`Add issue to ${label}`}
       title="Add issue"
       // Keeps focus in the Tree, so the click moves neither the active row nor the keyboard.
       onMouseDown={(event) => {

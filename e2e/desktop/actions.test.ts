@@ -140,10 +140,55 @@ test('Copy key and Copy link in the Peek copy for its issue', async () => {
   await expect.poll(clipboardText).toBe('PSAPAC-2')
   await peek().getByRole('button', { name: 'Copy link' }).click()
   await expect.poll(clipboardText).toBe(`${SITE}/browse/PSAPAC-2`)
+})
 
-  // The header holds all five buttons at the Peek's narrowest, with none cut off.
+/** The window's smallest width (app.ts), where the Peek is 348px, not the 416px of a 1200px window. */
+async function narrowestPeekHeader(font?: string) {
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setSize(900, 800)
+  })
+  if (font !== undefined) {
+    await window.addStyleTag({ content: `* { font-family: ${font} !important }` })
+  }
+  await item(/PSAPAC-2,/).click()
+  await expect(peek()).toBeVisible()
   const header = peek().locator('.app-drag')
-  expect(await header.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await expect(header.getByRole('button')).toHaveCount(5)
+  // With justify-end an overflow runs off the left edge, so compare each button's box to the header's.
+  return header.evaluate((el) => {
+    const box = el.getBoundingClientRect()
+    return {
+      width: Math.round(box.width),
+      leftMargins: [...el.querySelectorAll('button')].map((b) =>
+        Math.round(b.getBoundingClientRect().left - box.left),
+      ),
+      heights: [...el.querySelectorAll('button')].map((b) =>
+        Math.round(b.getBoundingClientRect().height),
+      ),
+      tops: [...el.querySelectorAll('button')].map((b) =>
+        Math.round(b.getBoundingClientRect().top),
+      ),
+    }
+  })
+}
+
+test("the Peek's five header buttons fit on one line at the narrowest window", async () => {
+  await open()
+  const fit = await narrowestPeekHeader()
+  expect(fit.width).toBeLessThanOrEqual(360)
+  // The header pads 12px, so no button starts left of it, and all five sit on one line.
+  for (const left of fit.leftMargins) expect(left).toBeGreaterThanOrEqual(12)
+  expect(new Set(fit.heights).size).toBe(1)
+  expect(new Set(fit.tops).size).toBe(1)
+})
+
+// Linux CI sets the system font in a face wider than macOS's (PR #163).
+test("the Peek's header buttons fit in a wide font too", async () => {
+  await open()
+  const fit = await narrowestPeekHeader('Verdana, "DejaVu Sans", sans-serif')
+  for (const left of fit.leftMargins) expect(left).toBeGreaterThanOrEqual(12)
+  expect(new Set(fit.heights).size).toBe(1)
+  expect(new Set(fit.tops).size).toBe(1)
 })
 
 test('I, Y and U do nothing in a field, with a modifier, in a dialog or with no issue selected', async () => {
@@ -210,6 +255,23 @@ test('1 to 9 choose the numbered option in the Status and Priority pickers', asy
   )
   await settle(before + 2)
   await expect(tree()).toBeFocused()
+})
+
+test('Cmd, Ctrl and Alt with a digit do nothing in a numbered picker', async () => {
+  await open()
+  await select(/PSAPAC-4,/)
+  const before = await writes()
+  await window.keyboard.press('s')
+  const list = window.getByRole('listbox', { name: 'Status' })
+  await expect(list).toBeFocused()
+  await expect(option('To Do')).toBeVisible()
+
+  for (const key of ['Meta+1', 'Control+1', 'Alt+1']) await window.keyboard.press(key)
+  await expect(list).toBeVisible()
+  expect(await writes()).toBe(before)
+  await expect(peek().getByRole('button', { name: /^Status:/ })).toHaveAccessibleName(
+    /^Status: In Progress/,
+  )
 })
 
 test('digits type into the searchable Assignee picker instead of choosing', async () => {
@@ -284,6 +346,13 @@ test('the + on a Customer header opens create with that Customer, without toggli
   await expect(header).toHaveAttribute('aria-expanded', 'true')
   expect(await tree().getAttribute('aria-activedescendant')).toBe(active)
   await expect(tree()).toBeFocused()
+})
+
+test('the + on a No Epic header names its Customer', async () => {
+  await open()
+  await expect(
+    tree().getByRole('button', { name: 'Add issue to No Epic in Beta Ltd' }),
+  ).toHaveCount(1)
 })
 
 test('the + stays out of the Tab order', async () => {
