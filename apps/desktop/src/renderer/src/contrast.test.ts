@@ -93,6 +93,15 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
     }
   })
 
+  it('keeps the grey type icon (--type-rest) at 3:1 on every row background', () => {
+    for (const surface of ['canvas', 'panel', 'hover', 'selected']) {
+      expect(
+        contrast(token('type-rest', theme), token(surface, theme)),
+        surface,
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+
   it('keeps field borders at 3:1 on canvas and panel', () => {
     for (const surface of ['canvas', 'panel']) {
       expect(

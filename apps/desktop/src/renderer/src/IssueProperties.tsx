@@ -34,6 +34,7 @@ import {
   type ParentMatch,
 } from './properties'
 import { useFieldOptions, useSetSprint, useSprints } from './queries'
+import { TypeIcon } from './TypeIcon'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -337,7 +338,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               valueText={issue.issueType.name}
               options={fromChoices(
                 types.data?.filter((t) => (SWAPPABLE_TYPES as readonly string[]).includes(t.name)),
-              )}
+              ).map((o) => ({ ...o, leading: <TypeIcon type={{ name: o.label }} decorative /> }))}
               selected={[issue.issueType.id]}
               onSelect={chooseType}
               onOpenChange={setTypeOpen}

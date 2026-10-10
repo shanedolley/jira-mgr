@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import type { CSSProperties } from 'react'
 
 type Kind = 'epic' | 'story' | 'bug' | 'task' | 'subtask' | 'other'
 
@@ -47,16 +48,31 @@ const SHAPES: Record<Kind, React.ReactNode> = {
   other: <rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="none" />,
 }
 
-/** The issue type as a coloured icon; the type name is the accessible label. */
-export function TypeIcon({ type }: { type: Issue['issueType'] }) {
+/**
+ * The issue type as an icon, grey at rest except Bug and in its type colour on hover (see
+ * `.type-icon`); the type name is the accessible label, unless `decorative` because text names it.
+ */
+export function TypeIcon({
+  type,
+  decorative = false,
+}: {
+  type: Pick<Issue['issueType'], 'name'>
+  decorative?: boolean
+}) {
   const kind = typeKind(type.name)
   return (
     <svg
-      role="img"
-      aria-label={type.name}
+      role={decorative ? undefined : 'img'}
+      aria-label={decorative ? undefined : type.name}
+      aria-hidden={decorative || undefined}
       viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      style={{ color: COLOURS[kind] }}
+      className="type-icon size-3.5 shrink-0"
+      style={
+        {
+          '--kind': COLOURS[kind],
+          '--rest': kind === 'bug' ? COLOURS.bug : 'var(--type-rest)',
+        } as CSSProperties
+      }
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"

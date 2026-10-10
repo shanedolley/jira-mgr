@@ -26,6 +26,8 @@
   --type-story: light-dark(oklch(0.6 0.14 80), oklch(0.82 0.15 90));
   --type-bug: light-dark(oklch(0.58 0.2 27), oklch(0.7 0.17 27));
   --type-task: light-dark(oklch(0.6 0.15 255), oklch(0.72 0.14 255));
+  /* The resting grey of every type icon but Bug. */
+  --type-rest: light-dark(oklch(0.58 0.012 275), oklch(0.62 0.01 275));
 }
 
 :root[data-theme='light'] {
@@ -117,6 +119,16 @@ input {
   background: var(--panel);
   color: var(--ink);
   box-shadow: 0 8px 24px oklch(0 0 0 / 0.18);
+}
+
+/* A type icon rests in --rest and shows its type colour, --kind, under the pointer or its parent's. */
+.type-icon {
+  color: var(--rest);
+}
+
+.type-icon:hover,
+:hover > .type-icon {
+  color: var(--kind);
 }
 
 /* The description editor (D4). Tailwind's reset strips lists and headings, so they return here. */
