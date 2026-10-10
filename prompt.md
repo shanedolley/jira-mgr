@@ -2,11 +2,11 @@
 
 ## Start Here
 
-Measured 2026-10-10 from `gh issue list --state open --limit 200` (4 open issues, one page), `gh pr list --state open` (none open) and `gh api repos/shanedolley/jira-mgr/issues/<n>/dependencies/blocked_by` for each. The focus is documentation: keep docs current, and remove stale references in the pull request that changes the code. Work in this order, landing one pull request at a time:
+Measured 2026-10-10 from `gh issue list --state open --limit 200` (1 open issue, one page), `gh pr list --state open` (none open) and `gh api repos/shanedolley/jira-mgr/issues/115/dependencies/blocked_by` (empty). The focus is documentation: keep docs current and remove stale references. A docs sweep on 2026-10-10 fixed the README status and the desktop README overview; the avatar docs already match #116. Work in this order, landing one pull request at a time:
 
-1. **No unblocked story remains.** #106 is Done (#112). The next session starts by checking what Shane closed: `gh issue list --state open` and `gh issue list --label status:hil-review`.
-2. **Keep the docs current.** Fix any stale reference you meet in the pull request that changes the code.
-3. **Waiting on Shane** (he signs off issues carrying `status:hil-review`; check `gh issue list --label status:hil-review`): #83 (click a summary on the issue page; try Enter, Esc and `E`), #96 (change one field twice quickly and confirm Jira keeps the last value), #102 (type in a comment, switch issues and return, then try an edit that conflicts) and #105 (run `pnpm fixture:record` against a non-Atlassian site and confirm it refuses before sending the token).
+1. **Keep the docs current.** Fix any stale reference you meet in the pull request that changes the code. For a docs-only pass, grep `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`, `AGENTS.md`, `docs/` and each package README for closed issues named as open and for features named as planned.
+2. **No unblocked story remains.** Every issue except #115 is closed, and #115 waits on Shane. Start by checking what he closed: `gh issue list --state open` and `gh issue list --label status:hil-review`. If a new issue appears, claim it per Loop.
+3. **Waiting on Shane** (he signs off issues carrying `status:hil-review`): #115. To try it, run `pnpm dev`, open a few issues, and check that people show profile images rather than initials and that the terminal prints no `avatars:get failed: not_found` lines.
 
 Rebase each pull request onto `main` after the one before it merges, since a green run from before the rebase proves nothing (see Traps in the handover). Run e2e with `pnpm e2e --workers=1`, and never in several worktrees at once.
 
@@ -24,7 +24,7 @@ Rebase each pull request onto `main` after the one before it merges, since a gre
 4. Build the smallest change that meets the criteria, with its test.
 5. Run `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build`, plus `pnpm e2e` for desktop work. Read the pass and fail counts. Commit locally and have a reviewer other than the builder pass it before pushing, since a green PR may merge at once.
 6. Run `/autonomous:update`, so the handover lands in the story's commit.
-7. Commit with `Refs #n`, push, open the pull request, watch CI with `gh pr checks <n> --watch`.
+7. Commit with `Refs #n`, push, open the pull request, watch CI with `gh pr checks <n> --watch`, and rerun it until the run for your head finishes (see Traps).
 8. On green CI the ship-it automation sometimes merges; do not race it with `gh pr merge`. It did not merge any pull request on 2026-10-10 (#88 to #95 and #98), so if a green PR with a review PASS is still open, merge it with `gh pr merge <n> --squash`. Confirm MERGED, then clean up the branch.
 9. Comment on the issue how each criterion is met, ending with `Review verdict: PASS (reviewer <agent>, builder <agent>)`. Then have `kothar:project-manager` close it as Done, unless it needs Shane's judgement: anything he sees or uses (CLI output, Desktop UI), anything touching security or credentials, and live PSAPAC checks. Those go to `status:hil-review` for Shane to close (rule adopted by Shane 2026-10-07).
 
