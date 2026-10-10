@@ -21,6 +21,7 @@ Checked 2026-10-10.
 - D5 follow-ups (#102) merged in #111 (4e9d4b2, 2026-10-10): comment drafts are checked for conflicts and keep typed text, orphaned drafts are cleaned up, and two weak tests are fixed. In HIL Review (`status:hil-review`, checked 2026-10-10).
 - Fixture recorder site check (#105) merged in #110 (6b06fa0, 2026-10-10): the recorder, now `packages/core/scripts/record-fixture.ts`, refuses a site that is not `https://<name>.atlassian.net` before it sends the token. In HIL Review (`status:hil-review`, checked 2026-10-10) because it touches token handling.
 - Planned docs pages (#101) merged in #107 (9b58fcf, 2026-10-10) and closed as Done on 2026-10-10T02:48:21Z. #106 merged in #112 (60e4e11, 2026-10-10) and closed as Done: it wrote `docs/reference/config.md` and `shortcuts.md` from the code and dropped `core.md` from the index, by Shane's decision on 2026-10-10 (readers use `packages/core/README.md` and the source, with no TypeDoc dependency).
+- Optimistic-edit race fixed (2026-10-10): PR #114 merged as 678b4c3. A settled edit's read-back could land after the next edit of the issue started and overwrite it on screen; `applyUnaskedRead` in `apps/desktop/src/renderer/src/optimistic.ts` now skips a read while a newer edit is in flight, and `readIssue` in `activityQueries.ts` has the same guard. Recorded on #96.
 - Open (2026-10-10): nothing is in progress and no pull request is open. #83, #96, #102 and #105 sit in HIL Review for Shane. #84 (D6's create toast missed automation changes that land after its re-read; PR #93, e91c265) closed on 2026-10-10 at 02:17:47Z with Shane's "Approved".
 - E2E flakes fixed (2026-10-10): PR #98 merged as cd41c81 (reviewer 98-flakes-review, builder e2e-flakes-1010, review PASS). It fixed the `views.test.ts` ENOENT race (a `readState` helper in `e2e/desktop/harness.ts`), the `AdfEditor` caret bug at `editor.test.ts` (a real app bug on a fast `Cmd+Enter`) and the `shell.test.ts:101` theme race (`launch` now awaits `waitForLoadState`). The branch and its worktree are deleted.
 - Bug #96 fixed (2026-10-10): PR #100 merged as c1dc6f6 (reviewer 96-ordered-review, builder 96-ordered-edits, `Review verdict: PASS`, a delta review passed too). The main process reordered two in-flight IPC edits at three awaits; a per-issue FIFO in `apps/desktop/src/renderer/src/optimistic.ts` now sends an issue's edits to Jira one at a time, with queue entries matched by identity so a throw in `onMutate` cannot shift another edit's entry. [Criteria comment](https://github.com/shanedolley/jira-mgr/issues/96#issuecomment-6092242492). It is in HIL Review (`status:hil-review`, checked 2026-10-10), for Shane to close. The branch and worktree are deleted.
@@ -56,7 +57,7 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 ## Open Pull Requests
 
-Checked 2026-10-10 with `gh pr list --state open` and `git ls-remote --heads origin`: no pull request is open and the only remote branch is `main` (60e4e11). Merged this session: #107 (9b58fcf, docs pages), #109 (56e9e5d, timer), #108 (1177695, summary), #110 (6b06fa0, recorder check), #111 (4e9d4b2, D5 follow-ups) and #112 (60e4e11, reference pages). The only worktree is the main tree. No Dependabot branches remain.
+Checked 2026-10-10 with `gh pr list --state open` and `git ls-remote --heads origin`: no pull request is open and the only remote branch is `main` (678b4c3). Merged this session: #107 (9b58fcf, docs pages), #109 (56e9e5d, timer), #108 (1177695, summary), #110 (6b06fa0, recorder check), #111 (4e9d4b2, D5 follow-ups) #112 (60e4e11, reference pages) and #114 (678b4c3, the optimistic-edit race fix). The only worktree is the main tree. No Dependabot branches remain.
 
 ## What Runs
 
@@ -75,7 +76,7 @@ All from the repository root, under Node 24 (see Traps).
 
 State files live in `~/Library/Application Support/jira-mgr/`; set `JM_STATE_DIR` to point a run or test elsewhere. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item (`jira-mgr-test-<uuid>`); unit tests inject a fake `security` runner and never touch the Keychain.
 
-No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last merge on `main`: PR #112 (60e4e11, docs only); the CI run on 4e9d4b2 (38021598559) passed and the run on 60e4e11 (38022846069) had not finished when checked (2026-10-10). The last app feature is PR #109 (56e9e5d, timer). For the current head run, use `gh run list --workflow ci.yml --branch main --limit 1`.
+No database exists or is planned. CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Last merge on `main`: PR #114 (678b4c3, desktop fix); the CI run on 4e9d4b2 (38021598559) passed, the run on 60e4e11 (38022846069) failed on `page.test.ts:721` (see Traps), and the run on 678b4c3 (38025383042) was in progress when checked (2026-10-10). The last app feature is PR #109 (56e9e5d, timer). For the current head run, use `gh run list --workflow ci.yml --branch main --limit 1`.
 
 ## Environments
 
@@ -99,6 +100,7 @@ Answered 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue 
 
 ## Traps
 
+- **An edit's read-back must skip while a newer edit of the issue is in flight** (`applyUnaskedRead`; 2026-10-10, met as a red main CI on 60e4e11, `page.test.ts:721`, at the cost of one CI cycle and a debug session; fixed by #114). A read that lands late overwrites the newer edit on screen. Any new read-back of an issue must use `applyUnaskedRead`.
 - **Single-file e2e runs test stale code** (2026-10-10, met by 36-d9-review, cost: one review rerun). `npx playwright test desktop/<file>` inside `e2e/` runs the last build in `apps/desktop/out`. Run `pnpm build` first; `pnpm e2e` builds first.
 - **`pnpm jm --` prints a banner** (2026-10-10). Use `pnpm -s jm --` so JSON output stays parseable.
 - **Recorder moved** (2026-10-10, #110). It lives at `packages/core/scripts/record-fixture.ts`; `pnpm fixture:record` is unchanged.
