@@ -53,7 +53,7 @@ import {
 } from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
 import { assignMeOutcome, assigneePatch } from './properties'
-import { refusal } from './PropertyPickers'
+import { attemptWith } from './PropertyPickers'
 import {
   useCustomers,
   useDeleteIssue,
@@ -218,6 +218,7 @@ export function Shell({ session }: { session: Session }) {
   } | null>(null)
   const timerQuery = useTimer()
   const startTimer = useStartTimer()
+  const client = useQueryClient()
   // The last two notices, newest last, and what a screen reader last heard of a plain one.
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const [heard, setHeard] = useState('')
@@ -496,38 +497,21 @@ export function Shell({ session }: { session: Session }) {
     const outcome = assignMeOutcome(issue, me)
     if (outcome === 'mine') return
     if (me === undefined || outcome === 'wait') {
-      setNotice({
-        notice: {
-          title: `Cannot assign ${key}`,
-          notes: ['Your account has not loaded yet.'],
-          warned: true,
-        },
-        openKey: null,
+      notify({
+        title: `Cannot assign ${key}`,
+        notes: ['Your account has not loaded yet.'],
+        warned: true,
       })
       return
     }
-    editIssue.mutate(
-      {
-        key,
-        changes: { assignee: me.accountId },
-        patch: assigneePatch({
-          accountId: me.accountId,
-          displayName: me.displayName,
-          avatarUrl: me.avatarUrl,
-        }),
-      },
-      {
-        onError: (failure) => {
-          setNotice({
-            notice: {
-              title: `Could not assign ${key}`,
-              notes: [refusal(key, 'the assignee', failure)],
-              warned: true,
-            },
-            openKey: null,
-          })
-        },
-      },
+    const patch = assigneePatch({
+      accountId: me.accountId,
+      displayName: me.displayName,
+      avatarUrl: me.avatarUrl,
+    })
+    // The Shell sits above the notice context, so it sends through the helper the pickers' hook wraps.
+    attemptWith(notify, client, key, 'Assignee', patch, () =>
+      editIssue.mutateAsync({ key, changes: { assignee: me.accountId }, patch }),
     )
   }
 
@@ -535,12 +519,11 @@ export function Shell({ session }: { session: Session }) {
   function copyIssue(key: string, what: 'key' | 'link') {
     const copied = copyText(what === 'key' ? key : issueUrl(session.siteUrl, key))
     const noun = what === 'key' ? 'the key' : 'the link'
-    setNotice({
-      notice: copied
+    notify(
+      copied
         ? { title: `Copied ${noun} of ${key}`, notes: [], warned: false }
         : { title: `Could not copy ${noun} of ${key}`, notes: [], warned: true },
-      openKey: null,
-    })
+    )
   }
 
   /** The sidebar's Stop button: the stop dialog for whatever timer runs. */
@@ -635,7 +618,6 @@ export function Shell({ session }: { session: Session }) {
   }, [])
 
   // Each accepted field edit says what changed and offers Undo.
-  const client = useQueryClient()
   useEffect(
     () =>
       undoStack(client).onPush((entry) => {
