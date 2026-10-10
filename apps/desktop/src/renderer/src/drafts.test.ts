@@ -6,6 +6,7 @@ import {
   draftCount,
   dropDraft,
   dropDraftsOf,
+  dropOrphanedCommentDrafts,
   getDraft,
   hasDraftsOf,
   newCommentDraftKey,
@@ -64,5 +65,26 @@ describe('drafts', () => {
     expect(hasDraftsOf('PSAPAC-1')).toBe(false)
     expect(hasDraftsOf('PSAPAC-12')).toBe(true)
     clearDrafts()
+  })
+})
+
+describe('dropOrphanedCommentDrafts', () => {
+  it('drops the comment drafts of the issue that the list no longer holds, and tells listeners', () => {
+    putDraft('PSAPAC-1', { doc, base: null })
+    putDraft(commentDraftKey('PSAPAC-1', '7'), { doc, base: null })
+    putDraft(commentDraftKey('PSAPAC-1', '8'), { doc, base: null })
+    putDraft(newCommentDraftKey('PSAPAC-1'), { doc, base: null })
+    putDraft(commentDraftKey('PSAPAC-2', '7'), { doc, base: null })
+    const listener = vi.fn()
+    const stop = subscribeDrafts(listener)
+
+    dropOrphanedCommentDrafts('PSAPAC-1', ['8'])
+
+    expect(draftCount()).toBe(4)
+    expect(getDraft(commentDraftKey('PSAPAC-1', '7'))).toBeUndefined()
+    expect(listener).toHaveBeenCalledTimes(1)
+    dropOrphanedCommentDrafts('PSAPAC-1', ['8'])
+    expect(listener).toHaveBeenCalledTimes(1)
+    stop()
   })
 })

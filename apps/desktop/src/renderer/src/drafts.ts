@@ -65,6 +65,19 @@ export function dropDraftsOf(issueKey: string): void {
   if (dropped) changed()
 }
 
+/**
+ * Forgets the drafts of the issue's comments that are not in `liveIds`, the comments a list read
+ * still found. A comment deleted in Jira never mounts again, so its draft would linger.
+ */
+export function dropOrphanedCommentDrafts(issueKey: string, liveIds: readonly string[]): void {
+  const live = new Set([...liveIds, 'new'].map((id) => commentDraftKey(issueKey, id)))
+  let dropped = false
+  for (const key of [...drafts.keys()]) {
+    if (key.startsWith(`${issueKey}#`) && !live.has(key)) dropped = drafts.delete(key) || dropped
+  }
+  if (dropped) changed()
+}
+
 /** How many drafts hold unsaved text: descriptions and comments. */
 export const draftCount = (): number => drafts.size
 

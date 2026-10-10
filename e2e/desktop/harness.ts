@@ -50,6 +50,11 @@ interface FakeJira {
   failUpload: () => void
   setDescription: (key: string, description: unknown) => void
   normaliseDescriptions: () => void
+  setComment: (key: string, id: number, body: unknown) => void
+  removeComment: (key: string, id: number) => void
+  addWorklog: (key: string, comment: unknown) => void
+  holdReads: () => void
+  releaseReads: () => void
   cancelNextDownload: () => void
 }
 
@@ -164,6 +169,52 @@ export const setDescription = (app: ElectronApplication, key: string, descriptio
 export const normaliseDescriptions = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.normaliseDescriptions()
+  })
+
+/** Replaces a comment's body in the fake Jira, as if someone else edited it. */
+export const setComment = (app: ElectronApplication, key: string, id: number, body: unknown) =>
+  app.evaluate(
+    (_electron, [name, commentId, adf]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.setComment(
+        name as string,
+        commentId as number,
+        adf,
+      )
+    },
+    [key, id, body],
+  )
+
+/** Removes a comment from the fake Jira, as if someone else deleted it. */
+export const removeComment = (app: ElectronApplication, key: string, id: number) =>
+  app.evaluate(
+    (_electron, [name, commentId]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.removeComment(
+        name as string,
+        commentId as number,
+      )
+    },
+    [key, id],
+  )
+
+/** Adds a worklog by the signed-in user whose comment is this document, before the page opens. */
+export const addWorklog = (app: ElectronApplication, key: string, comment: unknown) =>
+  app.evaluate(
+    (_electron, [name, adf]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.addWorklog(name as string, adf)
+    },
+    [key, comment],
+  )
+
+/** Holds each comment and link list read until `releaseReads`, so a test sees the page before a refetch lands. */
+export const holdReads = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.holdReads()
+  })
+
+/** Answers the held list reads and stops holding. */
+export const releaseReads = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.releaseReads()
   })
 
 /** Makes the stand-in save dialog answer "cancelled" the next time an attachment is downloaded. */

@@ -1,5 +1,5 @@
-import type { JiraMgrError } from '@jira-mgr/core'
-import type { AdfDoc } from '@jira-mgr/core/adf'
+import { JiraMgrError } from '@jira-mgr/core'
+import { sameAdf, type AdfDoc } from '@jira-mgr/core/adf'
 import {
   useMutation,
   useQuery,
@@ -10,13 +10,32 @@ import {
 } from '@tanstack/react-query'
 
 import type { AddAttachmentArgs, CommentItem, LinksResult, WorklogItem } from '../../shared/ipc'
+import { dropOrphanedCommentDrafts } from './drafts'
 import { call } from './ipc'
 import { applyFreshIssue, issueDetailKey } from './optimistic'
-import { attachmentListKey, commentsKey, linksKey, worklogsKey } from './queries'
+import {
+  attachmentListKey,
+  commentsKey,
+  linksKey,
+  worklogsKey,
+  type DescriptionConflict,
+} from './queries'
+
+/** The comment list read. A draft for a comment the read no longer holds is dropped, so it stops counting. */
+export const commentsQuery = (key: string) => ({
+  queryKey: commentsKey(key),
+  queryFn: async () => {
+    const list = await call('comments:list', { key })
+    dropOrphanedCommentDrafts(
+      key,
+      list.map((comment) => comment.id),
+    )
+    return list
+  },
+})
 
 /** A list from the page's own read, which refetches on window focus like the rest. */
-export const useComments = (key: string) =>
-  useQuery({ queryKey: commentsKey(key), queryFn: () => call('comments:list', { key }) })
+export const useComments = (key: string) => useQuery(commentsQuery(key))
 
 export const useWorklogs = (key: string) =>
   useQuery({ queryKey: worklogsKey(key), queryFn: () => call('worklogs:list', { key }) })
@@ -95,15 +114,44 @@ export function useAddComment(key: string) {
   })
 }
 
+/** What a comment edit sends, and the comment as the edit began, which Jira's must still match. */
+export interface EditCommentInput {
+  commentId: string
+  body: AdfDoc
+  base: AdfDoc
+}
+
+/**
+ * Reads the comments again and refuses with a conflict, as a description save does, when the
+ * comment no longer matches `base`. A comment gone from the read is left to Jira to refuse.
+ */
+export async function assertCommentUnchanged(
+  client: QueryClient,
+  key: string,
+  { commentId, base }: Pick<EditCommentInput, 'commentId' | 'base'>,
+): Promise<void> {
+  const list = await client.query({ ...commentsQuery(key), staleTime: 0 })
+  const current = list.find((comment) => comment.id === commentId)?.body
+  if (current === undefined || sameAdf(current, base)) return
+  throw new JiraMgrError('validation_failed', 'The comment changed in Jira while you edited.', {
+    details: { conflict: true, current } satisfies DescriptionConflict,
+  })
+}
+
+/** The options of a comment edit: it checks the comment first, and puts Jira's answer in the list. */
+export const editCommentMutation = (client: QueryClient, key: string) => ({
+  mutationFn: async (input: EditCommentInput) => {
+    await assertCommentUnchanged(client, key, input)
+    return call('comments:edit', { key, commentId: input.commentId, body: input.body })
+  },
+  onSuccess: (edited: CommentItem) => {
+    upsert(client, commentsKey(key), edited)
+  },
+})
+
 export function useEditComment(key: string) {
   const client = useQueryClient()
-  return useMutation({
-    mutationFn: ({ commentId, body }: { commentId: string; body: AdfDoc }) =>
-      call('comments:edit', { key, commentId, body }),
-    onSuccess: (edited) => {
-      upsert(client, commentsKey(key), edited)
-    },
-  })
+  return useMutation(editCommentMutation(client, key))
 }
 
 export function useDeleteComment(key: string) {

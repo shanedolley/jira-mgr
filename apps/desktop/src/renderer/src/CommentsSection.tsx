@@ -8,6 +8,7 @@ import { AdfEditor, type AdfEditorHandle } from './AdfEditor'
 import type { Notice } from './create'
 import { DiscardDialog } from './DiscardDialog'
 import { commentDraftKey, dropDraft, getDraft, newCommentDraftKey, putDraft } from './drafts'
+import { conflictOf } from './queries'
 import { BUTTON, DANGER_BUTTON, QueryBody, Section } from './Section'
 
 interface CommentsSectionProps {
@@ -34,6 +35,10 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
   const draftKey = commentDraftKey(issueKey, comment.id)
   const [restored] = useState(() => getDraft(draftKey))
   const [phase, setPhase] = useState<Phase>(restored === undefined ? 'read' : 'edit')
+  // The comment as the edit began, which Jira's must still match when the edit is saved.
+  const [base, setBase] = useState<AdfDoc>(restored?.base ?? comment.body)
+  // Jira's comment, when it changed since the edit began.
+  const [conflict, setConflict] = useState<AdfDoc | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [unsupported, setUnsupported] = useState(false)
   const [discarding, setDiscarding] = useState(false)
@@ -48,21 +53,29 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
     dropDraft(draftKey)
     setPhase('read')
     setProblem(null)
+    setConflict(null)
     onLeave()
   }
 
-  async function save(doc: AdfDoc | null) {
+  async function save(doc: AdfDoc | null, against: AdfDoc = base) {
     if (doc === null) {
       setProblem('A comment cannot be empty.')
       return
     }
     setPhase('saving')
     setProblem(null)
+    setConflict(null)
     try {
-      await edit.mutateAsync({ commentId: comment.id, body: doc })
+      await edit.mutateAsync({ commentId: comment.id, body: doc, base: against })
     } catch (error) {
       // The text stays in the editor, so nothing typed is lost.
-      setProblem(`Could not save the comment, so Jira still holds the old one. ${reasonOf(error)}`)
+      const clash = conflictOf(error)
+      if (clash?.current != null) setConflict(clash.current)
+      else {
+        setProblem(
+          `Could not save the comment, so Jira still holds the old one. ${reasonOf(error)}`,
+        )
+      }
       setPhase('edit')
       return
     }
@@ -78,6 +91,24 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
   function discard() {
     setDiscarding(false)
     editor.current?.reset(comment.body)
+    dirty.current = false
+    leave()
+  }
+
+  /** Sends the draft over Jira's current comment, which the user chose to overwrite. */
+  function saveMine(current: AdfDoc) {
+    try {
+      const mine = editor.current?.adf() ?? null
+      setBase(current)
+      void save(mine, current)
+    } catch (error) {
+      setProblem(reasonOf(error))
+    }
+  }
+
+  /** Shows Jira's comment and drops the draft. */
+  function discardMine(current: AdfDoc) {
+    editor.current?.reset(current)
     dirty.current = false
     leave()
   }
@@ -123,7 +154,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
           onCancel={cancel}
           onChange={(doc, isDirty) => {
             dirty.current = isDirty
-            if (isDirty) putDraft(draftKey, { doc, base: comment.body })
+            if (isDirty) putDraft(draftKey, { doc, base })
             else dropDraft(draftKey)
           }}
           onEditRequest={() => undefined}
@@ -137,6 +168,31 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
           Saving
         </p>
       )}
+      {conflict !== null && (
+        <div role="alert" className="space-y-2 rounded-md border border-danger p-3">
+          <p>This comment changed in Jira while you edited.</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                saveMine(conflict)
+              }}
+              className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink"
+            >
+              Save mine anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                discardMine(conflict)
+              }}
+              className={BUTTON}
+            >
+              Discard mine
+            </button>
+          </div>
+        </div>
+      )}
       {problem !== null && (
         <p role="alert" className="text-danger">
           {problem}
@@ -149,6 +205,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice }: CommentRowPr
               type="button"
               onClick={() => {
                 setProblem(null)
+                setBase(comment.body)
                 setPhase('edit')
               }}
               className={BUTTON}
