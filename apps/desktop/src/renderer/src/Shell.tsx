@@ -5,6 +5,7 @@ import {
   applyViewToggles,
   filtersNeedMe,
   issueMatcher,
+  openBlocks,
   type ViewFilters,
 } from '@jira-mgr/core/view-filter'
 import { useQueryClient } from '@tanstack/react-query'
@@ -303,6 +304,11 @@ export function Shell({ session }: { session: Session }) {
     () => (unresolved.data === undefined ? [] : mergeIssues(unresolved.data, done.data ?? [])),
     [unresolved.data, done.data],
   )
+  // Read from the loaded issues, so a blocker moved to Done in the app clears its pills at once.
+  const blocks = useMemo(() => {
+    const byKey = new Map(issues.map((i) => [i.key, i]))
+    return new Map(issues.map((i) => [i.key, openBlocks(i, byKey)]))
+  }, [issues])
   const customerNames = useMemo(
     () => customersQuery.data?.map((c) => c.value) ?? [],
     [customersQuery.data],
@@ -903,6 +909,7 @@ export function Shell({ session }: { session: Session }) {
         timerKey={timerQuery.data?.timer?.issueKey ?? null}
         properties={display.properties}
         today={today}
+        blocks={blocks}
         expandable={expandable}
         onChange={apply}
         onPick={(key, property) => {
@@ -1086,6 +1093,7 @@ export function Shell({ session }: { session: Session }) {
         <IssueDetail
           issue={peekedIssue}
           issues={issues}
+          blockers={peekedKey === null ? undefined : blocks.get(peekedKey)?.blockedBy}
           me={meQuery.data}
           mismatch={peekedNode?.customerMismatch ?? null}
           inView={peekedNode !== undefined}

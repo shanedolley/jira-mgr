@@ -1,4 +1,5 @@
 import type { RowProperty } from '@jira-mgr/core/display'
+import type { OpenBlocks } from '@jira-mgr/core/view-filter'
 import {
   useCallback,
   useEffect,
@@ -43,6 +44,8 @@ interface IssueTreeProps {
   properties: readonly RowProperty[]
   /** Today's local date, for the dates a row shows. */
   today: string
+  /** The open blockers of each issue that has any, by key. */
+  blocks: ReadonlyMap<string, OpenBlocks>
   /** Every expandable row id, for Collapse all. */
   expandable: readonly string[]
   /** Called with the next state after a key or a click. */
@@ -75,6 +78,7 @@ export function IssueTree({
   timerKey,
   properties,
   today,
+  blocks,
   expandable,
   onChange,
   onPick,
@@ -200,6 +204,7 @@ export function IssueTree({
           {indices.map((index) => {
             const row = rows[index]
             if (row === undefined) return null
+            const held = row.kind === 'issue' ? blocks.get(row.node.issue.key) : undefined
             return (
               <TreeRow
                 key={row.id}
@@ -210,6 +215,8 @@ export function IssueTree({
                 timing={row.kind === 'issue' && row.node.issue.key === timerKey}
                 properties={properties}
                 today={today}
+                blockedBy={held?.blockedBy.length ?? 0}
+                blocking={held?.blocking.length ?? 0}
                 onClick={onRowClick}
                 onPick={onPick}
                 onAdd={onAdd}

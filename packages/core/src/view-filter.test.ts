@@ -10,6 +10,7 @@ import {
   filtersNeedMe,
   type FilterContext,
   issueMatcher,
+  openBlocks,
   type ViewFilters,
 } from './view-filter.js'
 
@@ -565,5 +566,89 @@ describe('recorded fixtures', () => {
         .map((n) => n.issue.key)
         .toSorted(),
     ).toEqual(keys(matched).toSorted())
+  })
+})
+
+describe('openBlocks on the recorded link fixtures', () => {
+  const IDS = {
+    customer: 'customfield_14849',
+    engagement: 'customfield_14850',
+    sprint: 'customfield_10600',
+    startDate: 'customfield_13808',
+    timeRemaining: 'customfield_21785',
+  }
+  interface End {
+    fields: { status: { statusCategory: { key: string } } }
+  }
+  interface RawLink {
+    inwardIssue?: End
+    outwardIssue?: End
+  }
+
+  /** The issue PSAPAC-664 or 666 as a search returns it, with the recorded links and every end set to `category`. */
+  function recorded(name: 'issue-links-psapac-664' | 'issue-links-psapac-666', category = 'done') {
+    const raw = loadFixture(name) as unknown as {
+      key: string
+      fields: { issuelinks: RawLink[] }
+    }
+    for (const l of raw.fields.issuelinks) {
+      for (const end of [l.inwardIssue, l.outwardIssue]) {
+        if (end) end.fields.status.statusCategory.key = category
+      }
+    }
+    return issueSchema(IDS).parse({
+      id: raw.key,
+      key: raw.key,
+      fields: {
+        summary: 'S',
+        issuetype: { id: '1', name: 'Story', subtask: false, hierarchyLevel: 0 },
+        status: { id: '1', name: 'To Do', statusCategory: { key: 'new' } },
+        labels: [],
+        created: '2026-01-01T00:00:00.000Z',
+        updated: '2026-01-01T00:00:00.000Z',
+        issuelinks: raw.fields.issuelinks,
+      },
+    })
+  }
+
+  it('reads the issue named inwardIssue as the blocker', () => {
+    // PSAPAC-664 "is blocked by" 666 and 665; 666 "blocks" 664, 663 and 669.
+    expect(openBlocks(recorded('issue-links-psapac-664', 'new'))).toEqual({
+      blockedBy: ['PSAPAC-666', 'PSAPAC-665'],
+      blocking: [],
+    })
+    expect(openBlocks(recorded('issue-links-psapac-666', 'new'))).toEqual({
+      blockedBy: [],
+      blocking: ['PSAPAC-664', 'PSAPAC-663', 'PSAPAC-669'],
+    })
+  })
+
+  it('counts nothing while every other end is Done, as the fixtures record them', () => {
+    expect(openBlocks(recorded('issue-links-psapac-664'))).toEqual({ blockedBy: [], blocking: [] })
+    expect(openBlocks(recorded('issue-links-psapac-666'))).toEqual({ blockedBy: [], blocking: [] })
+  })
+
+  it('takes the loaded status of an end over the category its link carried', () => {
+    const blocked = recorded('issue-links-psapac-664', 'new')
+    const done = { ...issue('PSAPAC-666', { status: 'Done' }) }
+    const loaded = new Map([[done.key, done]])
+    expect(openBlocks(blocked, loaded).blockedBy).toEqual(['PSAPAC-665'])
+    const reopened = new Map([['PSAPAC-665', issue('PSAPAC-665')]])
+    expect(openBlocks(recorded('issue-links-psapac-664'), reopened).blockedBy).toEqual([
+      'PSAPAC-665',
+    ])
+  })
+
+  it('counts a key once and skips other link types', () => {
+    const l = (type: string, key: string) => ({
+      type,
+      direction: 'inward' as const,
+      key,
+      category: 'new' as const,
+    })
+    const held = issue('P-1', {
+      links: [l('Blocks', 'P-2'), l('Blocks', 'P-2'), l('Relates', 'P-3')],
+    })
+    expect(openBlocks(held)).toEqual({ blockedBy: ['P-2'], blocking: [] })
   })
 })

@@ -117,6 +117,8 @@ interface PeekProps {
   issue: Issue | undefined
   /** Every loaded issue: the assignee and label pickers draw their choices from them. */
   issues: readonly Issue[]
+  /** The keys of the open issues that hold this one up. */
+  blockers: readonly string[] | undefined
   me: CurrentUser | undefined
   /** Set when the issue's Customer differs from its Epic's. */
   mismatch: Mismatch | null
@@ -142,6 +144,7 @@ interface PeekProps {
 function PeekIssue({
   issue,
   issues,
+  blockers,
   me,
   mismatch,
   inView,
@@ -150,7 +153,7 @@ function PeekIssue({
   onLeave,
 }: Pick<
   PeekProps,
-  'issues' | 'me' | 'mismatch' | 'inView' | 'onTimer' | 'onEditingChange' | 'onLeave'
+  'issues' | 'blockers' | 'me' | 'mismatch' | 'inView' | 'onTimer' | 'onEditingChange' | 'onLeave'
 > & {
   issue: Issue
 }) {
@@ -209,6 +212,21 @@ function PeekIssue({
           {new Date(issue.updated).toLocaleDateString()}
         </Property>
       </dl>
+      {blockers !== undefined && blockers.length > 0 && (
+        <section aria-label="Blocked by" className="space-y-1">
+          <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">Blocked by</h2>
+          <ul className="space-y-1">
+            {blockers.map((key) => (
+              <li key={key} data-blocker={key} className="flex gap-2">
+                <span className="shrink-0 font-mono text-xs text-muted">{key}</span>
+                <span className="min-w-0 truncate">
+                  {issues.find((i) => i.key === key)?.summary}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {mismatch !== null && (
         <CustomerMismatch
           mismatch={mismatch}
@@ -236,6 +254,7 @@ function PeekIssue({
 export function IssueDetail({
   issue,
   issues,
+  blockers,
   me,
   mismatch,
   inView,
@@ -321,6 +340,7 @@ export function IssueDetail({
           key={issue.key}
           issue={issue}
           issues={issues}
+          blockers={blockers}
           me={me}
           mismatch={mismatch}
           inView={inView}

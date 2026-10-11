@@ -23,12 +23,27 @@ const hasPriorityGlyph = (
   priorityLevel(priority.name) !== 0 &&
   priorityLevel(priority.name) !== priorityLevel('Medium')
 
+/** How many open issues hold a row's issue up, and how many it holds up. */
+export interface BlockCounts {
+  blockedBy: number
+  blocking: number
+}
+
+const NO_BLOCKS: BlockCounts = { blockedBy: 0, blocking: 0 }
+
+const blockedTitle = (n: number) => `Blocked by ${plural(n, 'issue')}`
+const blockingTitle = (n: number) => `Blocking ${plural(n, 'issue')}`
+
 /**
  * The accessible name of a row, in one format per kind. An issue's name ends with what the row
- * shows only as a glyph or a column: its priority when not Medium, and its due date when the Due
- * property is on. The rest of the contents are presentation only.
+ * shows only as a glyph, a pill or a column: its open blockers, its priority when not Medium, and
+ * its due date when the Due property is on. The rest of the contents are presentation only.
  */
-export function rowName(row: Row, properties: readonly RowProperty[] = []): string {
+export function rowName(
+  row: Row,
+  properties: readonly RowProperty[] = [],
+  blocks: BlockCounts = NO_BLOCKS,
+): string {
   switch (row.kind) {
     case 'customer':
       return `${row.customer?.value ?? 'No Customer'}, ${plural(row.count, 'issue')}`
@@ -46,6 +61,8 @@ export function rowName(row: Row, properties: readonly RowProperty[] = []): stri
         issue.assignee?.displayName ?? 'unassigned',
         ...(customerMismatch === null ? [] : ['Customer differs from Epic']),
         ...(contextOnly ? ['context'] : []),
+        ...(blocks.blockedBy > 0 ? [blockedTitle(blocks.blockedBy).toLowerCase()] : []),
+        ...(blocks.blocking > 0 ? [blockingTitle(blocks.blocking).toLowerCase()] : []),
         ...(hasPriorityGlyph(issue.priority) ? [`priority ${issue.priority.name}`] : []),
         ...(properties.includes('due') && issue.dueDate !== null ? [`due ${issue.dueDate}`] : []),
       ].join(', ')
@@ -139,6 +156,47 @@ function mismatchTitle(mismatch: {
   epic: { value: string } | null
 }) {
   return `Customer: ${mismatch.own?.value ?? 'none'}. Epic's Customer: ${mismatch.epic?.value ?? 'none'}.`
+}
+
+const PILL =
+  'inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-1.5 text-[11px] leading-4 tabular-nums'
+
+/**
+ * Pills for the open issues that hold a row's issue up and the open issues it holds up, drawn only
+ * when a count is above zero. The red is the icon's, and the shapes differ so the pair reads
+ * without colour: a disc for blocked, a square for blocking. The count is text, so it keeps its contrast.
+ */
+function BlockPills({ blockedBy, blocking }: BlockCounts) {
+  return (
+    <>
+      {blockedBy > 0 && (
+        <span data-pill="blocked" title={blockedTitle(blockedBy)} className={PILL}>
+          <svg aria-hidden viewBox="0 0 16 16" className="size-3.5 shrink-0 text-danger">
+            <circle cx="8" cy="8" r="6.5" fill="currentColor" />
+            <path d="M5 8h6" stroke="var(--panel)" strokeWidth="1.75" strokeLinecap="round" />
+          </svg>
+          {blockedBy}
+        </span>
+      )}
+      {blocking > 0 && (
+        <span data-pill="blocking" title={blockingTitle(blocking)} className={PILL}>
+          <svg
+            aria-hidden
+            viewBox="0 0 16 16"
+            className="size-3.5 shrink-0 text-danger"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          >
+            <rect x="2.5" y="2.5" width="11" height="11" rx="3" />
+            <path d="M5.5 8h5" />
+          </svg>
+          {blocking}
+        </span>
+      )}
+    </>
+  )
 }
 
 /** The priority bars in a fixed slot, drawn only above or below the default (Medium), so the column lines up. */
@@ -271,12 +329,14 @@ function Content({
   timing,
   properties,
   today,
+  blocks,
   onAdd,
 }: {
   row: Row
   timing: boolean
   properties: readonly RowProperty[]
   today: string
+  blocks: BlockCounts
   onAdd: (row: Row) => void
 }) {
   switch (row.kind) {
@@ -321,6 +381,7 @@ function Content({
             {issue.key}
           </span>
           <span className={`min-w-0 flex-1 truncate font-medium ${tone}`}>{issue.summary}</span>
+          <BlockPills {...blocks} />
           {customerMismatch !== null && (
             <span
               title={mismatchTitle(customerMismatch)}
@@ -356,6 +417,9 @@ interface TreeRowProps {
   properties: readonly RowProperty[]
   /** Today's local date, which the due date's colour and the short dates read. */
   today: string
+  /** The open issues holding this row's issue up, and held up by it, as counts so the memo holds. */
+  blockedBy: number
+  blocking: number
   onClick: (id: string, onChevron: boolean) => void
   /** A click on the row's status dot or avatar, after `onClick` has made the row active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
@@ -372,15 +436,18 @@ export const TreeRow = memo(function TreeRow({
   timing,
   properties,
   today,
+  blockedBy,
+  blocking,
   onClick,
   onPick,
   onAdd,
 }: TreeRowProps) {
+  const blocks = { blockedBy, blocking }
   return (
     <div
       id={rowDomId(row.id)}
       role="treeitem"
-      aria-label={rowName(row, properties)}
+      aria-label={rowName(row, properties, blocks)}
       aria-level={row.level}
       aria-setsize={row.setSize}
       aria-posinset={row.posInSet}
@@ -405,7 +472,14 @@ export const TreeRow = memo(function TreeRow({
       className="tree-row group/row absolute inset-x-2 flex cursor-default items-center gap-2 rounded-lg pr-2"
     >
       <Chevron row={row} />
-      <Content row={row} timing={timing} properties={properties} today={today} onAdd={onAdd} />
+      <Content
+        row={row}
+        timing={timing}
+        properties={properties}
+        today={today}
+        blocks={blocks}
+        onAdd={onAdd}
+      />
     </div>
   )
 })
