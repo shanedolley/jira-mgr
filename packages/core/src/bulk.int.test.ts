@@ -252,6 +252,45 @@ describe('runBatch edit', () => {
     expect(only(requests, BULK_FIELDS)[0]?.body).toEqual(loadFixture('bulk-fields-post-request'))
   })
 
+  it('replays the recorded assign request for assignee, Customer and Engagement', async () => {
+    const requests = jira({
+      [BULK_FIELDS]: to(json(loadFixture('bulk-assign-post-response'))),
+      [QUEUE]: to(json(loadFixture('bulk-queue-complete-assign'))),
+    })
+    const change = edit({
+      assignee: '712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34',
+      customerId: '21979',
+      engagementId: '15868',
+    })
+    const batch = [
+      { key: 'PSAPAC-3143', id: '1454087', change },
+      { key: 'PSAPAC-3144', id: '1454086', change },
+    ]
+
+    const outcome = await runBatch(client, batch, { sleep: noSleep })
+
+    expect(outcome).toEqual({ done: ['PSAPAC-3143', 'PSAPAC-3144'], refused: [] })
+    expect(only(requests, BULK_FIELDS)).toHaveLength(1)
+    expect(only(requests, BULK_FIELDS)[0]?.body).toEqual(loadFixture('bulk-assign-post-request'))
+  })
+
+  it('replays the recorded unassign request', async () => {
+    const requests = jira({
+      [BULK_FIELDS]: to(json(loadFixture('bulk-unassign-post-response'))),
+      [QUEUE]: to(json(loadFixture('bulk-queue-complete-unassign'))),
+    })
+    const change = edit({ assignee: null })
+    const batch = [
+      { key: 'PSAPAC-3143', id: '1454087', change },
+      { key: 'PSAPAC-3144', id: '1454086', change },
+    ]
+
+    const outcome = await runBatch(client, batch, { sleep: noSleep })
+
+    expect(outcome).toEqual({ done: ['PSAPAC-3143', 'PSAPAC-3144'], refused: [] })
+    expect(only(requests, BULK_FIELDS)[0]?.body).toEqual(loadFixture('bulk-unassign-post-request'))
+  })
+
   it('sends assignee, Customer, Engagement and a label in the bulk shapes', async () => {
     const list = keys(2)
     const requests = jira({

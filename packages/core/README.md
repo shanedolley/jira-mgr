@@ -271,6 +271,8 @@ Items with an equal `change` form a group, and a group makes one grouped call, s
 
 Core resolves the Customer, Engagement and Start date field ids by name, as `editIssue` does. Date edits always go one issue at a time, because the bulk date format is unproven live and a misparsed date would go unseen.
 
+Proven live on 2026-10-12 (the `bulk-*` fixtures; the tests deep-equal the bodies against the recorded requests): priority, label ADD, status transitions, assignee, unassign, Customer and Engagement. Label REMOVE and REPLACE follow the Atlassian documentation and are unproven.
+
 A bulk submit returns a task id. `runBatch` polls `GET /bulk/queue/{taskId}` every `pollMs` (default 1000) and settles each issue from `processedAccessibleIssues` and `failedAccessibleIssues`, which hold issue ids. A failed issue is refused with Jira's message, and an issue in neither list with `Jira skipped it.`.
 
 Fallback rules:
