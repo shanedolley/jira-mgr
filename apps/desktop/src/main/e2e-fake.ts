@@ -575,6 +575,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failRead: () => void
   /** Makes the next read of an issue's transitions answer 500. */
   failTransitions: () => void
+  /** Makes the next read of any issue's comments answer `status`. */
+  failComments: (status: 404 | 500) => void
   /** Holds each `text ~` search until `releaseTextSearch` or until the app aborts it. */
   holdTextSearch: () => void
   /** Answers the held text searches and stops holding. */
@@ -740,6 +742,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   let failNextDone = false
   let failNextRead = false
   let failNextTransitions = false
+  let failNextComments: 404 | 500 | null = null
   let refuseNext = false
   let textHeld = false
   const heldText: (() => void)[] = []
@@ -1199,6 +1202,11 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const shownComment = (c: Comment) => ({ ...c, id: String(c.id) })
       const found = list.find((c) => String(c.id) === commentCollection[2])
       if (method === 'GET' && commentCollection[2] === undefined) {
+        if (failNextComments !== null) {
+          const status = failNextComments
+          failNextComments = null
+          return json({ errorMessages: ['The fake failed this comments read.'] }, status)
+        }
         await holdRead()
         return json({ total: list.length, comments: list.map(shownComment) })
       }
@@ -1453,6 +1461,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failTransitions: () => {
       failNextTransitions = true
+    },
+    failComments: (status) => {
+      failNextComments = status
     },
     holdTextSearch: () => {
       textHeld = true

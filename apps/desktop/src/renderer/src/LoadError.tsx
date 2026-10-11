@@ -1,18 +1,19 @@
 import type { JiraMgrError } from '@jira-mgr/core'
 
 import { detailOf } from './ipc'
+import { loadErrorCopy } from './loadErrorCopy'
 import { useLogout } from './queries'
 
 /**
- * D1's error state: what failed, Retry, and Log in again when Jira refused the token. Jira's own
- * message, which names the request, sits behind Details.
+ * D1's error state: what failed and why (`loadErrorCopy`), Retry, and Log in again when Jira
+ * refused the token. Jira's own message, which names the request, sits behind Details.
  */
 export function LoadError({
   what,
   error,
   onRetry,
 }: {
-  /** What did not load, after "Could not load": "this issue", "the description". */
+  /** What did not load: "this issue", "the description". */
   what: string
   error: JiraMgrError
   onRetry: () => void
@@ -21,10 +22,7 @@ export function LoadError({
   const denied = error.code === 'permission_denied'
   return (
     <div role="alert" className="space-y-3 p-4">
-      <p className="text-danger">
-        Could not load {what}.{' '}
-        {denied ? 'Retry, or log in again.' : 'Retry, or check your connection.'}
-      </p>
+      <p className="text-danger">{loadErrorCopy(what, error)}</p>
       <div className="flex gap-2">
         <button type="button" onClick={onRetry} className="btn">
           Retry

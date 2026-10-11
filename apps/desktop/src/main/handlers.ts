@@ -392,7 +392,14 @@ const INTERNAL_MESSAGE =
 /** Core errors keep their code and message, less the request they name (the full text is `detail`). Anything else becomes `internal` with a fixed message. */
 export function toIpcError(error: unknown): IpcError {
   if (error instanceof JiraMgrError) {
-    return { code: error.code, ...desktopError(error.message) }
+    const { details } = error
+    const status =
+      typeof details === 'object' && details !== null && 'status' in details ? details.status : null
+    return {
+      code: error.code,
+      ...desktopError(error.message),
+      ...(typeof status === 'number' ? { status } : {}),
+    }
   }
   return { code: 'internal' satisfies ErrorCode, message: INTERNAL_MESSAGE }
 }

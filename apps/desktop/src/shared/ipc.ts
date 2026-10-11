@@ -517,6 +517,8 @@ export interface IpcError {
   message: string
   /** The message with the request it names, when `message` leaves that out. Shown behind Details. */
   detail?: string
+  /** The HTTP status Jira answered with, when it answered. The window words 404 and 5xx differently. */
+  status?: number
 }
 
 export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: IpcError }

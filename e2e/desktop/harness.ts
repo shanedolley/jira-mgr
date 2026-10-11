@@ -53,6 +53,7 @@ interface FakeJira {
   moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
   releaseUpload: () => void
   failUpload: () => void
+  failComments: (status: 404 | 500) => void
   setDescription: (key: string, description: unknown) => void
   normaliseDescriptions: () => void
   setComment: (key: string, id: number, body: unknown) => void
@@ -145,6 +146,12 @@ export const failTransitions = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failTransitions()
   })
+
+/** Makes the fake Jira answer `status` to the next read of an issue's comments, the Comments section's load. */
+export const failComments = (app: ElectronApplication, status: 404 | 500) =>
+  app.evaluate((_electron, code) => {
+    ;(globalThis as unknown as WithFake).__fakeJira.failComments(code)
+  }, status)
 
 /** Holds each text search in the fake Jira until `releaseTextSearch`, or until the app aborts it. */
 export const holdTextSearch = (app: ElectronApplication) =>
