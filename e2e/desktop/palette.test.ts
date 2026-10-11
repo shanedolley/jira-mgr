@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { SITE, counts, launch, logIn, notices, releaseEdit } from './harness.js'
+import { SITE, counts, launch, logIn, notices, releaseEdit, setDescription } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -359,5 +359,56 @@ test('an arrow key moves from the first issue up to an action, and Enter runs it
   await window.keyboard.press('Enter')
   await expect(palette()).toHaveCount(0)
   await expect(notices(window).getByText('Copied the link of PSAPAC-4')).toBeVisible()
+  await expect.poll(clipboardText).toBe(`${SITE}/browse/PSAPAC-4`)
+})
+
+test('Jira text matches landing after a pause do not take the highlight from the action', async () => {
+  await open()
+  // PSAPAC-11 is someone else's, so Assign to me writes. PSAPAC-3 holds the words only in its description.
+  await setDescription(app, 'PSAPAC-3', {
+    version: 1,
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Please assign to me.' }] }],
+  })
+  await select(/PSAPAC-11,/)
+  const before = await writes()
+  await window.keyboard.press('Meta+k')
+  await search().fill('assign to me')
+  await expect(action('Assign to me')).toHaveAttribute('aria-selected', 'true')
+
+  const jira = palette().getByRole('group', { name: 'Search text in Jira' })
+  await expect(jira.getByRole('option')).toHaveCount(1)
+  await expect(jira).toContainText('1 more match')
+  // The Jira match is listed below, and the highlight has not moved to it.
+  await expect(jira.getByRole('option')).toHaveAttribute('aria-selected', 'false')
+  await expect(action('Assign to me')).toHaveAttribute('aria-selected', 'true')
+
+  await window.keyboard.press('Enter')
+  await expect(palette()).toHaveCount(0)
+  await expect(issuePage()).toHaveCount(0)
+  await expect(item(/PSAPAC-11,/)).toHaveAccessibleName(/Test User/)
+  await settle(before + 1)
+})
+
+/** Slows the renderer, so the issue list lags the text the field holds. */
+async function throttle(rate: number) {
+  const session = await window.context().newCDPSession(window)
+  await session.send('Emulation.setCPUThrottlingRate', { rate })
+}
+
+test('an action chosen with an arrow key still runs on an Enter pressed while the issue list lags', async () => {
+  await open()
+  await select(/PSAPAC-4,/)
+  await clearClipboard()
+  await window.keyboard.press('Meta+k')
+  await expect(search()).toBeFocused()
+  await throttle(20)
+
+  // No wait between the keys: the field has changed, but the deferred issue list has not caught up.
+  await search().fill('li')
+  await window.keyboard.press('ArrowUp')
+  await window.keyboard.press('Enter')
+  await expect(palette()).toHaveCount(0)
+  await expect(issuePage()).toHaveCount(0)
   await expect.poll(clipboardText).toBe(`${SITE}/browse/PSAPAC-4`)
 })

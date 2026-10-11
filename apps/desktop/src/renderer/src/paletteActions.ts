@@ -77,9 +77,15 @@ export function matchingViews(views: readonly SavedView[], query: string): Saved
 }
 
 /**
- * The row Enter takes before the user moves: the first issue when any is listed, so Enter opens
- * an issue as it did before the palette had actions, else the first action or view.
+ * The row Enter takes before the user moves: the first loaded issue when any matches, so Enter
+ * opens an issue as it did before the palette had actions, else the first action or view, else the
+ * first Jira text match. The Jira matches land a moment after the user stops typing, so they never
+ * take the highlight from a row already shown.
  */
-export function defaultRow<T>(lead: readonly T[], issues: readonly T[]): T | undefined {
-  return issues[0] ?? lead[0]
+export function defaultRow<T>(
+  loaded: readonly T[],
+  lead: readonly T[],
+  jira: readonly T[],
+): T | undefined {
+  return loaded[0] ?? lead[0] ?? jira[0]
 }

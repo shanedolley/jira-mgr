@@ -83,13 +83,17 @@ describe('matchingViews', () => {
 })
 
 describe('defaultRow', () => {
-  it('takes the first issue when any is listed, so Enter opens an issue', () => {
-    expect(defaultRow(['action', 'view'], ['issue 1', 'issue 2'])).toBe('issue 1')
-    expect(defaultRow([], ['issue 1'])).toBe('issue 1')
+  it('takes the first loaded issue when any is listed, so Enter opens an issue', () => {
+    expect(defaultRow(['loaded 1', 'loaded 2'], ['action'], ['jira'])).toBe('loaded 1')
+    expect(defaultRow(['loaded 1'], [], [])).toBe('loaded 1')
   })
 
-  it('takes the first action or view only when no issue is listed', () => {
-    expect(defaultRow(['action', 'view'], [])).toBe('action')
-    expect(defaultRow<string>([], [])).toBeUndefined()
+  it('takes the first action or view when no loaded issue matches, before any Jira match', () => {
+    expect(defaultRow<string>([], ['action', 'view'], ['jira'])).toBe('action')
+  })
+
+  it('takes the first Jira match only when nothing else is listed', () => {
+    expect(defaultRow<string>([], [], ['jira 1', 'jira 2'])).toBe('jira 1')
+    expect(defaultRow<string>([], [], [])).toBeUndefined()
   })
 })

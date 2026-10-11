@@ -106,12 +106,13 @@ export function CommandPalette({
   // Labels are few, so they follow the field itself rather than the deferred value.
   const { actions: actionRows, views: viewRows } = leadRows(context, views, query)
   const lead: Row[] = [...actionRows, ...viewRows]
-  const issueRows = [...shown.map(issueRow), ...found.map(issueRow)]
-  const rows: Row[] = [...lead, ...issueRows]
+  const loadedRows = shown.map(issueRow)
+  const jiraRows = found.map(issueRow)
+  const rows: Row[] = [...lead, ...loadedRows, ...jiraRows]
 
   // Until an arrow key moves it, the highlight is on the first issue, not the first action.
   const moved = rows.findIndex((row) => row.rid === activeRid)
-  const active = moved >= 0 ? rows[moved] : defaultRow<Row>(lead, issueRows)
+  const active = moved >= 0 ? rows[moved] : defaultRow<Row>(loadedRows, lead, jiraRows)
   const activeIndex = active === undefined ? 0 : rows.indexOf(active)
 
   const activeId = active === undefined ? undefined : optionId(active.rid)
@@ -160,7 +161,8 @@ export function CommandPalette({
           const target =
             deferred === query
               ? active
-              : (chosen ?? defaultRow<Row>(lead, searchIssues(issues, query).shown.map(issueRow)))
+              : (chosen ??
+                defaultRow<Row>(searchIssues(issues, query).shown.map(issueRow), lead, []))
           if (target !== undefined) choose(target)
         }
         break
