@@ -4,12 +4,18 @@ import { MutationObserver, QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { CommentItem, LinksResult } from '../../shared/ipc'
-import { commentsQuery, editCommentMutation, readIssue, removeMutation } from './activityQueries'
+import {
+  commentsQuery,
+  editCommentMutation,
+  linkSettled,
+  readIssue,
+  removeMutation,
+} from './activityQueries'
 import { clearDrafts, commentDraftKey, getDraft, newCommentDraftKey, putDraft } from './drafts'
-import { issueDetailKey, summaryMutation } from './optimistic'
+import { issueDetailKey, summaryMutation, unresolvedKey } from './optimistic'
 import { activityKey, clearAccountData, commentsKey, linksKey } from './queries'
 
-const calls = vi.hoisted(() => vi.fn<(channel: string) => Promise<unknown>>())
+const calls = vi.hoisted(() => vi.fn<(channel: string, args?: unknown) => Promise<unknown>>())
 vi.mock('./ipc', () => ({ call: calls }))
 
 interface Row {
@@ -233,5 +239,82 @@ describe('readIssue', () => {
     calls.mockRejectedValueOnce(new JiraMgrError('jira_error', 'Jira is down.'))
     await readIssue(client, 'PSAPAC-1')
     expect(client.getQueryState(issueDetailKey('PSAPAC-1'))?.isInvalidated).toBe(false)
+  })
+})
+
+describe('linkSettled', () => {
+  const issue = (key: string, summary = key) =>
+    ({
+      key,
+      summary,
+      status: { id: '1', name: 'To Do', category: 'new' },
+      description: null,
+      subtasks: [],
+    }) as unknown as IssueDetail
+
+  /** A Tree holding PSAPAC-1 and PSAPAC-2, and a Jira that reads any key, as the main process does. */
+  function tree() {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1'), issue('PSAPAC-2')])
+    calls.mockReset()
+    calls.mockImplementation((_channel, args) =>
+      Promise.resolve(issue((args as { key: string }).key, 'read')),
+    )
+    return client
+  }
+  const keys = (client: QueryClient) =>
+    client.getQueryData<Issue[]>(unresolvedKey)?.map((i) => i.key)
+  const read = () =>
+    calls.mock.calls.filter(([channel]) => channel === 'issues:get').map(([, args]) => args)
+
+  it('reads both ends the Tree holds, so their links show', async () => {
+    const client = tree()
+    await linkSettled(client, 'PSAPAC-1', 'PSAPAC-2', false)
+    expect(read()).toEqual([{ key: 'PSAPAC-1' }, { key: 'PSAPAC-2' }])
+    expect(client.getQueryData<Issue[]>(unresolvedKey)?.map((i) => i.summary)).toEqual([
+      'read',
+      'read',
+    ])
+  })
+
+  it('reads nothing after a refused write, and adds no row for an issue outside the project', async () => {
+    const client = tree()
+    await linkSettled(client, 'PSAPAC-1', 'COLL-12', true)
+    expect(read()).toEqual([])
+    expect(keys(client)).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+  })
+
+  it('reads only the end the Tree holds when the other is an unloaded foreign issue', async () => {
+    const client = tree()
+    await linkSettled(client, 'PSAPAC-1', 'COLL-12', false)
+    expect(read()).toEqual([{ key: 'PSAPAC-1' }])
+    expect(keys(client)).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+  })
+
+  it('tells a removal whether it failed', async () => {
+    const client = new QueryClient()
+    const key = linksKey('PSAPAC-1')
+    client.setQueryData(key, rows)
+    const settled = vi.fn<(args: string, failed: boolean) => void>()
+    const options = removeMutation<Row[], string>(
+      client,
+      key,
+      () => Promise.resolve(),
+      without,
+      settled,
+    )
+    await new MutationObserver(client, options).mutate('2')
+    const refused = removeMutation<Row[], string>(
+      client,
+      key,
+      () => Promise.reject(new JiraMgrError('permission_denied', 'Not yours.')),
+      without,
+      settled,
+    )
+    await new MutationObserver(client, refused).mutate('2').catch(() => undefined)
+    expect(settled.mock.calls).toEqual([
+      ['2', false],
+      ['2', true],
+    ])
   })
 })

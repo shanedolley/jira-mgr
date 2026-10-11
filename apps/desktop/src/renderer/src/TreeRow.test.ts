@@ -51,4 +51,12 @@ describe('rowName', () => {
     expect(rowName(both, ['due'])).toMatch(/, priority Highest, due 2026-10-14$/)
     expect(rowName(both, ['due'])).toMatch(/^PSAPAC-11,/)
   })
+
+  it('names the open blockers before the priority, and only when there are some', () => {
+    const held = row({ priority: { id: '2', name: 'High' } })
+    expect(rowName(held, [], { blockedBy: 0, blocking: 0 })).toBe(rowName(held))
+    expect(rowName(held, [], { blockedBy: 2, blocking: 1 })).toBe(
+      'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, blocked by 2 issues, blocking 1 issue, priority High',
+    )
+  })
 })

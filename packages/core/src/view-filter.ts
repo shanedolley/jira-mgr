@@ -171,18 +171,36 @@ function valueMatchers(context: FilterContext): Record<FilterListField, (v: stri
       ),
     relations: (v) => {
       const keyword = lower(v)
-      const direction = keyword === 'blocked' ? 'inward' : keyword === 'blocking' ? 'outward' : null
-      return (issue) =>
-        direction !== null &&
-        issue.links.some(
-          (l) => l.type === BLOCKS && l.direction === direction && l.category !== 'done',
-        )
+      const side = keyword === 'blocked' ? 'blockedBy' : keyword === 'blocking' ? 'blocking' : null
+      return (issue) => side !== null && openBlocks(issue, index())[side].length > 0
     },
   }
 }
 
 /** Jira's link type for blocking. */
 const BLOCKS = 'Blocks'
+
+/** The keys of the open issues that hold an issue up and of the open issues it holds up. */
+export interface OpenBlocks {
+  blockedBy: string[]
+  blocking: string[]
+}
+
+/**
+ * The "Blocks" links of an issue whose other end is not Done. In a link the issue Jira names
+ * `inwardIssue` is the blocker, so an `inward` link means the issue is blocked by that key. An end
+ * found in `byKey` counts by its loaded status, which an edit moves on before Jira's copy in the
+ * link is read again; any other end counts by the category the link carried. Each key counts once.
+ */
+export function openBlocks(issue: Issue, byKey?: ReadonlyMap<string, Issue>): OpenBlocks {
+  const blockedBy = new Set<string>()
+  const blocking = new Set<string>()
+  for (const l of issue.links) {
+    if (l.type !== BLOCKS || (byKey?.get(l.key)?.status.category ?? l.category) === 'done') continue
+    ;(l.direction === 'inward' ? blockedBy : blocking).add(l.key)
+  }
+  return { blockedBy: [...blockedBy], blocking: [...blocking] }
+}
 
 /**
  * The predicate a view's filters describe: values within a field are alternatives (OR), and every

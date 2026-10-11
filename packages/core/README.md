@@ -120,6 +120,7 @@ It returns `CustomerGroup[]`, each `{ customer, epics, noEpic }`, and `customer:
 
 - `issueMatcher(filters, { accountId, issues?, now? })` returns the predicate, or `undefined` when the filters select everything. `issues` is the loaded list, which `epic` reads to climb from a Subtask to its Epic; it may still be filling, and the matcher sees what has arrived. `now` sets "today" for the date filters and defaults to the current time.
 - `filterIssues(issues, filters, { accountId })` returns the matching issues in input order.
+- `openBlocks(issue, byKey?)` returns `{ blockedBy, blocking }`, the keys of the not-Done issues on each side of the issue's "Blocks" links, each once. The issue Jira names `inwardIssue` is the blocker. An end found in `byKey` counts by its loaded status, so an edit that moves a blocker to Done clears it before the link is read again. `relations` and the desktop Tree's blocker pills both read it.
 - `filtersNeedMe(filters)` is true when `me` appears under `assignee` or `creator`, included or excluded, so a client knows to fetch the signed-in user first.
 - `filters.not` lists values to leave out, per field, and an issue must hold none of them. The new filters and `not` are optional keys, so a `views.json` from before them parses unchanged; see [config](../../docs/reference/config.md#viewsjson).
 - `applyViewToggles(settings.toggles, view)` returns the toggles to build the hierarchy with. The view's win, since a saved view always holds all three.

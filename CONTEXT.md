@@ -46,6 +46,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Saved view** | A named filter and set of toggles, and optionally its row properties and order, you create, update with the current filters, duplicate, rename, reorder and delete, stored as local JSON that the CLI also reads. The array order is its place in the sidebar and the tabs over the list. | filter, query |
 | **Creator** | The person who created an issue. The Filter menu and a saved view's `creator` filter use it. | reporter, author |
 | **Relations** | The Filter menu's field for Link state: Blocked (a "Blocks" link into the issue from one not Done) and Blocking (one out of it). | dependencies |
+| **Blocker pill** | The pill after a Tree row's title that counts the open issues holding the issue up (blocked), and a second that counts the open issues it holds up (blocking, tooltip "Blocking 2 issues"). Only "Blocks" links count, an end counts until it is Done, and the Peek lists the blockers. | badge, dependency |
 | **Is not** | The operator that leaves out the issues holding a value. A saved view stores it under `not`. | exclude, negate |
 | **Overdue** | An open issue with a due date before today. | late |
 | **Palette** | The Cmd+K menu: the issue in context and its actions, saved views, a search over loaded issues, and Jira text search below them. | command bar, omnibox |
