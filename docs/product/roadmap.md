@@ -15,7 +15,7 @@ Three milestones, built in order: Core, CLI, Desktop. Each item becomes one GitH
 | C5 | Field resolution | Customer, Engagement, Sprint, Start date and Time remaining (h) resolved by name from createmeta across every issue type; missing or ambiguous names fail login; overrides from `settings.json` ([ADR-0004](../adr/0004-custom-fields-resolved-by-name.md)) | C2, C4 |
 | C6 | Issue search | Token-paged `search/jql` into a domain `Issue`; unresolved first, Done second; running count without a total | C5 |
 | C7 | Hierarchy | Pure function: Customer, Epic, Story/Task/Bug, Subtask tree; Customer mismatch flag; "No Epic" group; Done children of an open parent collapsed to a count; "Hide done", "Assignee: me" and empty-Customer toggles; Customer sort with internal last (Q15, Q17, Q27-Q29) | C6 |
-| C8 | Views and search | Saved view model and filter evaluation (assignee, status, label, type, sprint, text on key and summary); starter views "My issues" and "Current sprint" (Q30, Q37) | C2, C7 |
+| C8 | Views and search | Saved view model and filter evaluation (assignee, status, label, type, sprint, text on key and summary); starter views "My issues" and "Current sprint" (Q30, Q37), later five (#146) | C2, C7 |
 | C9 | ADF and Markdown | ADF to Markdown and back for the CLI; nodes Markdown can't express survive a no-edit round trip | C1 |
 | C10 | Issue writes | Create with Customer and Engagement required on every type; edit summary, description, assignee, priority, dates, labels, parent, Customer, Engagement, original estimate, Time remaining (h), type within Story, Task and Bug; delete with an explicit subtask flag; status change by transition (Q14, Q23, Q9) | C5, C9 |
 | C11 | Issue extras | Comments add, edit, delete; worklogs add, edit, delete with auto-adjusted remaining estimate; links add and remove across all 21 types; attachments add and remove; sprint set; label suggestions; assignable user search; field options | C10 |
@@ -54,6 +54,19 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 | D11 | Click to edit summary | Clicking the summary on the issue page edits it in place with the existing optimistic edit and undo; Enter or blur saves, `Esc` cancels, and the Edit summary button goes. Issue #83 | D3, D7 |
 | D12 | Issue type icons | An icon for Epic, Story, Bug, Task and Subtask, grey at rest except Bug and coloured by type on hover (#134), before the key on Tree rows, the Peek, the issue page header, the palette and the parent picker, as inline SVG with an accessible name. Issue #85 | D3 |
 | D13 | Profile images | Jira profile images beside users in the Tree, Peek, page, assignee picker and sidebar, with initials as the fallback. Main fetches the images under strict rules, so it gets a security review. Issue #86 | D3 |
+
+## Review Follow-ups
+
+Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md). Each is one issue; the tracker holds the status. All are built and merged except #143, which needs a live bulk write with Shane present.
+
+| Issue | Item |
+|---|---|
+| #126 to #137 | Interface fixes: contrast, keyboard basics, status glyphs, scrim and login, toasts, focus and selection, properties sidebar, create chip strip, toolbar, shortcut help, type scale, buttons |
+| #138, #144 | Tree row anatomy with row properties and ordering; blocked and blocking pills |
+| #139, #146, #147, #148, #149 | Filters by more fields; saved views that update; Jira text search; the Inbox; the Sprint page |
+| #140, #141, #142, #145 | Tree quick actions; issue actions in the palette; description and attachments in the create dialog; sub-issues from the issue page |
+| #150, #151 | Epic progress, the Epics table and the Customers page; a layout for narrow windows |
+| #143 | Select and edit several issues at once. Not built |
 
 ## Working Rules
 

@@ -10,4 +10,4 @@ Research, spikes and question rounds that fed a decision. A record is kept as it
 | [2026-10-10 UX Review](2026-10-10-ux-review.md) | The desktop app reviewed through visual, interaction and accessibility lenses: 30 findings with screenshots ([folder](2026-10-10-ux-review/)), a contrast table and 14 ranked proposed stories |
 | [2026-10-10 Review Decisions](2026-10-10-review-decisions.md) | Shane's picks on the UX review and the gap analysis: 12 mockup choices ([mockups](2026-10-10-ux-review/mockups/)), the stories to build, later or leave open, and the answers to the open questions |
 
-Planned: a PSAPAC metadata record (issue types, custom field shapes, link types, workflows and sprints).
+PSAPAC's measured shape (issue types, custom fields, link types, workflows and sprints) is in [round 2](2026-10-07-product-grilling/round-2.md).
