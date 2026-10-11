@@ -252,7 +252,7 @@ describe('runBatch edit', () => {
     expect(only(requests, BULK_FIELDS)[0]?.body).toEqual(loadFixture('bulk-fields-post-request'))
   })
 
-  it('sends assignee, Customer, Engagement and dates in the bulk shapes', async () => {
+  it('sends assignee, Customer, Engagement and a label in the bulk shapes', async () => {
     const list = keys(2)
     const requests = jira({
       [BULK_FIELDS]: to(json({ taskId: '9' })),
@@ -267,8 +267,6 @@ describe('runBatch edit', () => {
           assignee: 'acc-1',
           customerId: '10042',
           engagementId: '10043',
-          startDate: '2026-10-05',
-          dueDate: null,
           removeLabels: ['old'],
         }),
       ),
@@ -285,10 +283,6 @@ describe('runBatch edit', () => {
           { fieldId: 'customfield_14849', option: { optionId: 10042 } },
           { fieldId: 'customfield_14850', option: { optionId: 10043 } },
         ],
-        datePickerFields: [
-          { fieldId: 'customfield_13808', date: { formattedDate: '5/Oct/26' } },
-          { fieldId: 'duedate', date: { formattedDate: '' } },
-        ],
         labelsFields: [
           {
             bulkEditMultiSelectFieldOption: 'REMOVE',
@@ -297,14 +291,7 @@ describe('runBatch edit', () => {
           },
         ],
       },
-      selectedActions: [
-        'assignee',
-        'customfield_14849',
-        'customfield_14850',
-        'customfield_13808',
-        'duedate',
-        'labels',
-      ],
+      selectedActions: ['assignee', 'customfield_14849', 'customfield_14850', 'labels'],
       selectedIssueIdsOrKeys: list,
       sendBulkNotification: false,
     })
@@ -433,12 +420,22 @@ describe('runBatch edit', () => {
     expect(requests).toHaveLength(4)
   })
 
-  it('sends a date past the two-digit year range one by one', async () => {
+  it('sends Start date and Due date edits one by one, alone or with bulk fields', async () => {
+    const list = keys(2)
     const requests = jira({ [EDIT]: () => noContent() })
 
-    await runBatch(client, all(['PSAPAC-1'], edit({ startDate: '2099-01-01' })), { sleep: noSleep })
+    for (const changes of [
+      { startDate: '2026-10-05' },
+      { dueDate: null },
+      { priorityId: '3', dueDate: '2026-10-09' },
+    ]) {
+      const outcome = await runBatch(client, all(list, edit(changes)), { sleep: noSleep })
+      expect(outcome.done).toEqual(list)
+    }
 
-    expect(paths(requests)).toEqual(['PUT /rest/api/3/issue/PSAPAC-1'])
+    expect(requests).toHaveLength(6)
+    expect(requests.every(({ method }) => method === 'PUT')).toBe(true)
+    expect(requests.map(({ body }) => JSON.stringify(body)).join()).toContain('"duedate":null')
   })
 
   it("records a failed per-issue call as that issue's refusal only", async () => {

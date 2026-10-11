@@ -286,7 +286,10 @@ async function runStatus(run: Run, items: readonly Item[], statusId: string): Pr
   await perIssue(run, [...unmatched.values()], one)
 }
 
-/** The edit inputs the bulk endpoint can carry. Everything else goes one issue at a time. */
+/**
+ * The edit inputs the bulk endpoint can carry. Everything else goes one issue at a time,
+ * dates included: the bulk date format is unproven live, and a misparsed date would go unseen.
+ */
 const BULK_EDITABLE = [
   'assignee',
   'priorityId',
@@ -295,22 +298,7 @@ const BULK_EDITABLE = [
   'removeLabels',
   'customerId',
   'engagementId',
-  'startDate',
-  'dueDate',
 ]
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-/**
- * A date as the bulk endpoint's documented `d/MMM/yy` format, `''` to clear, or `undefined` when
- * the two-digit year would be read as another century.
- */
-function bulkDate(date: string | null): string | undefined {
-  if (date === null) return ''
-  const [year = 0, month = 0, day = 0] = date.split('-').map(Number)
-  if (year < 2000 || year > 2069) return undefined
-  return `${String(day)}/${MONTHS[month - 1] ?? ''}/${String(year % 100).padStart(2, '0')}`
-}
 
 /**
  * The body of `POST /rest/api/3/bulk/issues/fields` for `changes`, or `undefined` when an input
@@ -334,7 +322,6 @@ async function bulkEditBody(keys: string[], changes: Edit): Promise<object | und
   const actions: string[] = []
   const input: Record<string, unknown> = {}
   const singleSelect: object[] = []
-  const dates: object[] = []
   const labelEdits: object[] = []
   const labelEdit = (option: string, names: string[]) => {
     actions.push('labels')
@@ -367,22 +354,11 @@ async function bulkEditBody(keys: string[], changes: Edit): Promise<object | und
     actions.push(fieldId)
     singleSelect.push({ fieldId, option: { optionId: Number(optionId) } })
   }
-  for (const [fieldId, date] of [
-    [ids.startDate, changes.startDate],
-    ['duedate', changes.dueDate],
-  ] as const) {
-    if (date === undefined) continue
-    const formattedDate = bulkDate(date)
-    if (formattedDate === undefined) return undefined
-    actions.push(fieldId)
-    dates.push({ fieldId, date: { formattedDate } })
-  }
   if (addLabels.length > 0) labelEdit('ADD', addLabels)
   if (removeLabels.length > 0) labelEdit('REMOVE', removeLabels)
   if (labels !== undefined) labelEdit(labels.length > 0 ? 'REPLACE' : 'REMOVE_ALL', labels)
 
   if (singleSelect.length > 0) input.singleSelectFields = singleSelect
-  if (dates.length > 0) input.datePickerFields = dates
   if (labelEdits.length > 0) input.labelsFields = labelEdits
   return {
     editedFieldsInput: input,
@@ -447,7 +423,7 @@ async function runSprint(run: Run, items: readonly Item[], sprintId: number | nu
 /**
  * Applies each item's change, one grouped call per distinct change where Jira has one:
  * `POST /bulk/issues/transition` for a status, `POST /bulk/issues/fields` for assignee, priority,
- * labels, Customer, Engagement, Start date and Due date, the Agile move in chunks of 50 for a
+ * labels, Customer and Engagement, the Agile move in chunks of 50 for a
  * sprint. The rest go one issue at a time, five at a time, as does any group Jira answers 400 or
  * 403. Any other failure of a grouped call refuses its issues without a retry, since a write may
  * have gone through. A bulk task that runs past 120 seconds refuses its issues the same way.
