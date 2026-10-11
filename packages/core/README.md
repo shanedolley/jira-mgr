@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It owns the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, the pure view filters at `@jira-mgr/core/view-filter`, the Inbox at `@jira-mgr/core/inbox`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It owns the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, the pure view filters at `@jira-mgr/core/view-filter`, the row properties, orders and priority levels at `@jira-mgr/core/display`, the Inbox at `@jira-mgr/core/inbox`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -30,10 +30,10 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 `@jira-mgr/core/state` manages `views.json`. Each call reads, changes and writes the whole file, so the app and the CLI writing at once can lose an edit.
 
 - `findView(idOrName)` returns the view with that id, or failing that that name in any case. It throws `not_found` for an unknown view.
-- `createView(name, { filters, toggles })` returns the new view. Its id is the name as a slug (`Bugs this week` is `bugs-this-week`), with `-2`, `-3` and so on when taken.
-- `renameView(idOrName, name)` keeps the id, filters and toggles.
-- `updateView(idOrName, { filters, toggles })` replaces a view's filters and toggles and keeps its id, name and place.
-- `duplicateView(idOrName)` copies a view to just after it, named `<name> copy`, then `<name> copy 2` and so on.
+- `createView(name, { filters, toggles, display? })` returns the new view. Its id is the name as a slug (`Bugs this week` is `bugs-this-week`), with `-2`, `-3` and so on when taken.
+- `renameView(idOrName, name)` keeps the id, filters, toggles and display.
+- `updateView(idOrName, { filters, toggles, display? })` replaces a view's filters and toggles, and its display when one is given, and keeps its id, name and place.
+- `duplicateView(idOrName)` copies a view, display included, to just after it, named `<name> copy`, then `<name> copy 2` and so on.
 - `moveView(idOrName, toIndex)` moves a view to a zero-based position and returns the new order. A position outside the list throws `validation_failed`. The order is the array order in `views.json`, so a reorder rewrites the array and the file keeps its shape.
 - `deleteView(idOrName)` allows deleting the last view. The next `readViews()` then returns `[]`, not the starters: once `views.json` exists, "My issues", "Created by me", "Current sprint", "Active" and "Backlog" are ordinary views. A starter added later reaches only users with no `views.json`.
 - A name is trimmed, and an empty one or one that matches another view in any case throws `validation_failed`. Renaming a view to its own name in a new case is allowed.
@@ -109,7 +109,10 @@ It returns `CustomerGroup[]`, each `{ customer, epics, noEpic }`, and `customer:
 - `assigneeMe` and `match` keep the issues assigned to `accountId` and the issues `match` accepts (both, when both are set), plus their ancestors. An ancestor kept only as context has `contextOnly: true`.
 - `hideEmptyCustomers: false` adds a group for every Customer in `customers`, and for every Customer whose issues the toggles hid.
 - `STATUS_ORDER` is the status display order, exported so a client lists statuses in the same order.
-- Customers sort case-insensitively, then No Customer, then "Collibra (Internal team)" and "Collibra (Internal template)". Epics sort by key descending. Children sort by status (Opportunity, To Do, In Progress, Review, Hold, Done, then any other), then key descending.
+- Customers sort case-insensitively, then No Customer, then "Collibra (Internal team)" and "Collibra (Internal template)". Epics sort by key descending. Children sort by status (Opportunity, To Do, In Progress, Review, Hold, Done, then any other), then key descending. That is `order: 'key'`, the default.
+- `order` (`IssueOrder`: `key`, `priority`, `updated` or `due`) changes the sort of Epics, of children at every depth and of `noEpic`, never of the Customer groups. `priority` sorts highest first (by `priorityLevel`, so an issue with no priority or an unlisted name sorts last), `updated` newest first, and `due` soonest first with undated issues last. Ties fall back to the `key` rule for that list: key descending for Epics, status then key descending for the rest.
+
+`@jira-mgr/core/display` is pure and holds `ROW_PROPERTIES` (`labels`, `sprint`, `due`, `created`, `updated`), `ISSUE_ORDERS`, their defaults (`updated`, `key`), `keepKnownProperties` and `priorityLevel`, the four-level rank the Tree's priority glyph and the `priority` order share. `settings.json` and a saved view hold them as `display: { properties, order }`; see [config](../../docs/reference/config.md#settingsjson). The schema reads leniently, so a value from a newer build drops or falls back and never fails the file.
 
 ## View Filters
 

@@ -1,12 +1,14 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import type { Display } from '../shared/ipc'
 import type { Backend, ProgressSender } from './backend'
 import { createHandlers, stackFrames } from './handlers'
 
 const TOKEN = 'ATATT3xFfGF0-secret_token=ABC123'
 const LIST = { phase: 'unresolved', loadId: 1 } as const
 const TOGGLES = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
+const DISPLAY: Display = { properties: ['labels', 'due'], order: 'priority' }
 const VIEW = { id: 'bugs', name: 'Bugs', filters: { type: ['Bug'] }, toggles: TOGGLES }
 const NEW_VIEW = { name: 'Bugs', filters: { type: ['Bug'], text: 'etl' }, toggles: TOGGLES }
 
@@ -84,6 +86,8 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     listCustomers: record('listCustomers', []),
     getToggles: record('getToggles', TOGGLES),
     setToggles: record('setToggles', TOGGLES),
+    getDisplay: record('getDisplay', DISPLAY),
+    setDisplay: record('setDisplay', DISPLAY),
     listViews: record('listViews', []),
     createView: record('createView', VIEW),
     renameView: record('renameView', VIEW),
@@ -451,6 +455,41 @@ describe('toggles', () => {
     const result = await createHandlers(backend)['settings:setToggles'](TOGGLES, noProgress)
     expect(result).toEqual({ ok: true, data: TOGGLES })
     expect(calls).toEqual([{ method: 'setToggles', args: [TOGGLES] }])
+  })
+})
+
+describe('display', () => {
+  it.each([
+    ['an unknown property', { properties: ['assignee'], order: 'key' }],
+    ['an unknown order', { properties: [], order: 'rank' }],
+    ['an extra key', { ...DISPLAY, density: 'wide' }],
+    ['a missing order', { properties: ['due'] }],
+    ['no argument', undefined],
+  ])('settings:setDisplay refuses %s', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['settings:setDisplay'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('settings:setDisplay passes the properties and order to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['settings:setDisplay'](DISPLAY, noProgress)
+    expect(result).toEqual({ ok: true, data: DISPLAY })
+    expect(calls).toEqual([{ method: 'setDisplay', args: [DISPLAY] }])
+  })
+
+  it('views:update accepts a display and refuses a bad one', async () => {
+    const { backend, calls } = fakeBackend()
+    const args = { id: 'v', filters: {}, toggles: TOGGLES }
+    const handlers = createHandlers(backend)
+    expect(await handlers['views:update']({ ...args, display: DISPLAY }, noProgress)).toMatchObject(
+      { ok: true },
+    )
+    expect(await handlers['views:update'](args, noProgress)).toMatchObject({ ok: true })
+    const bad = { ...args, display: { properties: ['x'], order: 'key' } }
+    expect(await handlers['views:update'](bad, noProgress)).toMatchObject({ ok: false })
+    expect(calls.map((c) => c.method)).toEqual(['updateView', 'updateView'])
   })
 })
 

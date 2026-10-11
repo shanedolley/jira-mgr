@@ -82,6 +82,8 @@ import {
   useDoneIssues,
   useLoadedCount,
   useMe,
+  useDisplay,
+  useSetDisplay,
   useSetToggles,
   useToggles,
   useUnresolvedIssues,
@@ -203,10 +205,13 @@ function flashRows(key: string, fields: readonly string[]) {
 export function Shell({ session }: { session: Session }) {
   const togglesQuery = useToggles()
   const setToggles = useSetToggles()
+  const displayQuery = useDisplay()
+  const setDisplay = useSetDisplay()
   const meQuery = useMe()
   const unresolved = useUnresolvedIssues()
   const done = useDoneIssues(unresolved.data !== undefined)
   const toggles = togglesQuery.data
+  const display = displayQuery.data
   const savedViews = useViews().data
   /** The view applied last, so a duplicate of the view the bar matches can be the lit one. */
   const [appliedViewId, setAppliedViewId] = useState<string>()
@@ -289,7 +294,10 @@ export function Shell({ session }: { session: Session }) {
   const accountId = meQuery.data?.accountId
   const needsMe = toggles?.assigneeMe === true || filtersNeedMe(deferredFilters)
   const treeReady =
-    unresolved.data !== undefined && toggles !== undefined && (!needsMe || accountId !== undefined)
+    unresolved.data !== undefined &&
+    toggles !== undefined &&
+    display !== undefined &&
+    (!needsMe || accountId !== undefined)
 
   const issues = useMemo(
     () => (unresolved.data === undefined ? [] : mergeIssues(unresolved.data, done.data ?? [])),
@@ -302,6 +310,7 @@ export function Shell({ session }: { session: Session }) {
   const today = useToday()
   const choices = useMemo(() => filterChoices(issues, customerNames), [issues, customerNames])
 
+  const order = display?.order
   const groups = useMemo(() => {
     if (!treeReady) return []
     // Overdue and the date windows read `today`, so they rebuild at local midnight.
@@ -316,12 +325,14 @@ export function Shell({ session }: { session: Session }) {
       hideEmptyCustomers: customersFailed || toggles.hideEmptyCustomers,
       accountId: accountId ?? '',
       customers: showEmptyCustomers ? customersQuery.data : undefined,
+      order,
       ...(match === undefined ? {} : { match }),
     })
   }, [
     treeReady,
     issues,
     toggles,
+    order,
     deferredFilters,
     accountId,
     customersFailed,
@@ -427,13 +438,14 @@ export function Shell({ session }: { session: Session }) {
   /**
    * A view replaces the bar's filters and sets the toggles. The toggles go through the same write
    * as a press on a toggle button, so they stay as the view left them after a restart (Q28: each
-   * toggle remembers its last state). The sidebar stays clickable under an open page, whose Tree
+   * toggle remembers its last state). A view's display, when it has one, goes the same way. The sidebar stays clickable under an open page, whose Tree
    * is inert, so applying a view closes the page, and focus then returns to the Tree.
    */
   function applyView(view: SavedView) {
     setAppliedViewId(view.id)
     setFilters(view.filters)
     if (toggles !== undefined) setToggles.mutate(applyViewToggles(toggles, view))
+    if (view.display !== undefined) setDisplay.mutate(view.display)
     setInboxOpen(false)
     if (pageOpen || sprintOpen) {
       setPageKey(null)
@@ -858,13 +870,10 @@ export function Shell({ session }: { session: Session }) {
   let body
   // The empty-Tree panel, with its own Clear filters, shows only over the Tree.
   let emptyPanel = false
-  if (toggles === undefined) {
-    body = togglesQuery.isError ? (
-      <LoadError
-        what="your settings"
-        error={togglesQuery.error}
-        onRetry={() => void togglesQuery.refetch()}
-      />
+  if (toggles === undefined || display === undefined) {
+    const failed = togglesQuery.isError ? togglesQuery : displayQuery
+    body = failed.isError ? (
+      <LoadError what="your settings" error={failed.error} onRetry={() => void failed.refetch()} />
     ) : (
       <p role="status" className="p-4 text-muted">
         Loading settings
@@ -892,6 +901,8 @@ export function Shell({ session }: { session: Session }) {
         state={state}
         peekedKey={peekOpen ? peekedKey : null}
         timerKey={timerQuery.data?.timer?.issueKey ?? null}
+        properties={display.properties}
+        today={today}
         expandable={expandable}
         onChange={apply}
         onPick={(key, property) => {
@@ -959,6 +970,7 @@ export function Shell({ session }: { session: Session }) {
           <ViewsList
             filters={filters}
             toggles={toggles}
+            display={display}
             applied={appliedViewId}
             onApply={applyView}
             showCurrent={!inboxOpen && !sprintOpen}
@@ -1014,11 +1026,15 @@ export function Shell({ session }: { session: Session }) {
           </div>
         </header>
         <ViewTabs filters={filters} toggles={toggles} applied={appliedViewId} onApply={applyView} />
-        {toggles !== undefined && (
+        {toggles !== undefined && display !== undefined && (
           <TreeToolbar
             toggles={toggles}
             onToggle={(name) => {
               setToggles.mutate({ ...toggles, [name]: !toggles[name] })
+            }}
+            display={display}
+            onDisplay={(next) => {
+              setDisplay.mutate(next)
             }}
             filters={filters}
             choices={choices}
@@ -1042,6 +1058,11 @@ export function Shell({ session }: { session: Session }) {
         {setToggles.isError && (
           <p role="alert" className="shrink-0 border-b border-line px-4 py-1.5 text-xs text-danger">
             Could not save the toggle. {setToggles.error.message}
+          </p>
+        )}
+        {setDisplay.isError && (
+          <p role="alert" className="shrink-0 border-b border-line px-4 py-1.5 text-xs text-danger">
+            Could not save the display. {setDisplay.error.message}
           </p>
         )}
         {refreshFailed && <Banner onRetry={retryAll}>Could not refresh.</Banner>}

@@ -1,3 +1,4 @@
+import { priorityLevel, type IssueOrder } from './display.js'
 import type { Issue } from './issue.js'
 
 export type CustomerOption = NonNullable<Issue['customer']>
@@ -15,6 +16,12 @@ export interface HierarchyOptions {
    * matches plus their ancestors, which show as context.
    */
   match?: ((issue: Issue) => boolean) | undefined
+  /**
+   * How issues sort among their siblings: Epics, an Epic's children at every depth, and No Epic.
+   * `key` (the default) is the original order. The others sort on one field and break ties as `key`
+   * does, so a list with no ties on the field is fully ordered by it. Customer groups keep their order.
+   */
+  order?: IssueOrder | undefined
 }
 
 export interface HierarchyNode {
@@ -61,6 +68,32 @@ function statusRank(i: Issue): number {
 
 const byStatusThenKey = (a: Issue, b: Issue) => statusRank(a) - statusRank(b) || byKeyDesc(a, b)
 
+const priorityOf = (i: Issue) => priorityLevel(i.priority?.name ?? '')
+
+/** Highest priority first, then the soonest due date with undated last, or the newest update first. */
+const FIELD_ORDERS: Record<Exclude<IssueOrder, 'key'>, (a: Issue, b: Issue) => number> = {
+  priority: (a, b) => priorityOf(b) - priorityOf(a),
+  updated: (a, b) => Date.parse(b.updated) - Date.parse(a.updated),
+  due: (a, b) => {
+    if (a.dueDate === b.dueDate) return 0
+    if (a.dueDate === null) return 1
+    if (b.dueDate === null) return -1
+    return a.dueDate < b.dueDate ? -1 : 1
+  },
+}
+
+type Compare = (a: Issue, b: Issue) => number
+
+/** The comparators for Epics and for every other list, each with `key`'s tie-break. */
+function comparators(order: IssueOrder): { epics: Compare; others: Compare } {
+  if (order === 'key') return { epics: byKeyDesc, others: byStatusThenKey }
+  const field = FIELD_ORDERS[order]
+  return {
+    epics: (a, b) => field(a, b) || byKeyDesc(a, b),
+    others: (a, b) => field(a, b) || byStatusThenKey(a, b),
+  }
+}
+
 /** Ordinary Customers first, then No Customer, then the internal ones. */
 function customerRank(c: CustomerOption | null): number {
   if (c === null) return 1
@@ -79,6 +112,7 @@ function byCustomer(a: CustomerGroup, b: CustomerGroup): number {
  * changes.
  */
 export function buildHierarchy(issues: Issue[], options: HierarchyOptions): CustomerGroup[] {
+  const sort = comparators(options.order ?? 'key')
   const byKey = new Map(issues.map((i) => [i.key, i]))
   /** The loaded ancestors of an issue, nearest first. */
   function ancestors(issue: Issue): Issue[] {
@@ -134,7 +168,7 @@ export function buildHierarchy(issues: Issue[], options: HierarchyOptions): Cust
     const all =
       open || !options.hideDone ? listed : listed.filter((c) => !isDone(c) || rescued.has(c.key))
     const build = (list: Issue[]) =>
-      list.sort(byStatusThenKey).map((c) => node(c, isEpic(issue) ? issue : null))
+      list.sort(sort.others).map((c) => node(c, isEpic(issue) ? issue : null))
     const doneChildren = open ? build(all.filter(isDone)) : []
     const children = build(open ? all.filter((c) => !isDone(c)) : all)
     const own = issue.customer
@@ -174,8 +208,8 @@ export function buildHierarchy(issues: Issue[], options: HierarchyOptions): Cust
   return [...groups.values()]
     .map((g) => ({
       ...g,
-      epics: g.epics.sort((a, b) => byKeyDesc(a.issue, b.issue)),
-      noEpic: g.noEpic.sort((a, b) => byStatusThenKey(a.issue, b.issue)),
+      epics: g.epics.sort((a, b) => sort.epics(a.issue, b.issue)),
+      noEpic: g.noEpic.sort((a, b) => sort.others(a.issue, b.issue)),
     }))
     .sort(byCustomer)
 }

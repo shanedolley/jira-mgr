@@ -1,3 +1,9 @@
+import {
+  ISSUE_ORDERS,
+  ROW_PROPERTIES,
+  type IssueOrder,
+  type RowProperty,
+} from '@jira-mgr/core/display'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 import {
   useState,
@@ -7,7 +13,7 @@ import {
   type ToggleEvent,
 } from 'react'
 
-import type { Toggles } from '../../shared/ipc'
+import type { Display, Toggles } from '../../shared/ipc'
 import {
   FIELD_LABELS,
   FILTER_FIELDS,
@@ -30,6 +36,21 @@ const TOGGLE_LABELS: Record<keyof Toggles, string> = {
   hideEmptyCustomers: 'Hide empty Customers',
 }
 
+const ORDER_LABELS: Record<IssueOrder, string> = {
+  key: 'Key',
+  priority: 'Priority',
+  updated: 'Updated',
+  due: 'Due date',
+}
+
+const PROPERTY_LABELS: Record<RowProperty, string> = {
+  labels: 'Labels',
+  sprint: 'Sprint',
+  due: 'Due date',
+  created: 'Created',
+  updated: 'Updated',
+}
+
 /** The names of the toggles that are on, for the "No issues match" message. */
 export function activeToggleNames(toggles: Toggles): string[] {
   return (Object.keys(TOGGLE_LABELS) as (keyof Toggles)[])
@@ -40,6 +61,9 @@ export function activeToggleNames(toggles: Toggles): string[] {
 interface TreeToolbarProps {
   toggles: Toggles
   onToggle: (name: keyof Toggles) => void
+  /** The row properties and issue order the Tree shows. */
+  display: Display
+  onDisplay: (display: Display) => void
   filters: ViewFilters
   choices: Record<FilterField, Choice[]>
   onFilters: (filters: ViewFilters) => void
@@ -196,6 +220,8 @@ function onMenuToggle(event: ToggleEvent<HTMLElement>, onActed: () => void) {
 export function TreeToolbar({
   toggles,
   onToggle,
+  display,
+  onDisplay,
   filters,
   choices,
   onFilters,
@@ -376,6 +402,73 @@ export function TreeToolbar({
           >
             Expand all
           </button>
+        </div>
+
+        <button
+          type="button"
+          data-menu-button
+          popoverTarget="display-menu"
+          style={{ anchorName: '--display-menu' }}
+          className={BUTTON}
+        >
+          Display
+          <Chevron className="size-3 rotate-90" />
+        </button>
+        <div
+          id="display-menu"
+          popover="auto"
+          aria-label="Display"
+          role="group"
+          className="menu w-72"
+          style={{ positionAnchor: '--display-menu' }}
+          onToggle={(event) => {
+            onMenuToggle(event, onActed)
+          }}
+        >
+          <div role="group" aria-label="Ordering" className="px-2 pt-2">
+            <p className="mb-1 text-xs text-muted">Ordering</p>
+            <div className="flex flex-wrap gap-1">
+              {ISSUE_ORDERS.map((order) => (
+                <button
+                  key={order}
+                  type="button"
+                  aria-pressed={display.order === order}
+                  onClick={() => {
+                    onDisplay({ ...display, order })
+                  }}
+                  className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
+                >
+                  {ORDER_LABELS[order]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div role="group" aria-label="Display properties" className="px-2 pb-2 pt-3">
+            <p className="mb-1 text-xs text-muted">Display properties</p>
+            <div className="flex flex-wrap gap-1">
+              {ROW_PROPERTIES.map((property) => {
+                const on = display.properties.includes(property)
+                return (
+                  <button
+                    key={property}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => {
+                      onDisplay({
+                        ...display,
+                        properties: ROW_PROPERTIES.filter((p) =>
+                          p === property ? !on : display.properties.includes(p),
+                        ),
+                      })
+                    }}
+                    className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
+                  >
+                    {PROPERTY_LABELS[property]}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
 
         <input

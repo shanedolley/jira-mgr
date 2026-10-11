@@ -1,9 +1,13 @@
+import type { Issue } from '@jira-mgr/core'
+import type { RowProperty } from '@jira-mgr/core/display'
 import { memo, type ReactNode } from 'react'
 
 import { Avatar } from './Avatar'
+import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
+import { dueTone, localDay, rowSprint, shortDate } from './rowProps'
 import { StatusDot } from './StatusDot'
 import { TimerClock } from './TimerClock'
-import { ROW_HEIGHT, type TreeRow as Row } from './tree'
+import { HEADER_GAP, HEADER_HEIGHT, ROW_HEIGHT, type TreeRow as Row } from './tree'
 import { TypeIcon } from './TypeIcon'
 
 /** The DOM id of a row, which the Tree's `aria-activedescendant` points at. */
@@ -11,8 +15,20 @@ export const rowDomId = (id: string) => `tree-row-${id}`
 
 const plural = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`
 
-/** The accessible name of a row, in one format per kind. Its contents are presentation only. */
-export function rowName(row: Row): string {
+/** Whether a priority is drawn as a glyph: not the default level (Medium) and one the glyph knows. */
+const hasPriorityGlyph = (
+  priority: Issue['priority'],
+): priority is NonNullable<Issue['priority']> =>
+  priority !== null &&
+  priorityLevel(priority.name) !== 0 &&
+  priorityLevel(priority.name) !== priorityLevel('Medium')
+
+/**
+ * The accessible name of a row, in one format per kind. An issue's name ends with what the row
+ * shows only as a glyph or a column: its priority when not Medium, and its due date when the Due
+ * property is on. The rest of the contents are presentation only.
+ */
+export function rowName(row: Row, properties: readonly RowProperty[] = []): string {
   switch (row.kind) {
     case 'customer':
       return `${row.customer?.value ?? 'No Customer'}, ${plural(row.count, 'issue')}`
@@ -30,6 +46,8 @@ export function rowName(row: Row): string {
         issue.assignee?.displayName ?? 'unassigned',
         ...(customerMismatch === null ? [] : ['Customer differs from Epic']),
         ...(contextOnly ? ['context'] : []),
+        ...(hasPriorityGlyph(issue.priority) ? [`priority ${issue.priority.name}`] : []),
+        ...(properties.includes('due') && issue.dueDate !== null ? [`due ${issue.dueDate}`] : []),
       ].join(', ')
     }
   }
@@ -123,7 +141,144 @@ function mismatchTitle(mismatch: {
   return `Customer: ${mismatch.own?.value ?? 'none'}. Epic's Customer: ${mismatch.epic?.value ?? 'none'}.`
 }
 
-function Content({ row, timing, onAdd }: { row: Row; timing: boolean; onAdd: (row: Row) => void }) {
+/** The priority bars in a fixed slot, drawn only above or below the default (Medium), so the column lines up. */
+function PrioritySlot({ priority }: { priority: Issue['priority'] }) {
+  const shown = hasPriorityGlyph(priority)
+  return (
+    <span
+      data-slot="priority"
+      title={shown ? `Priority: ${priority.name}` : undefined}
+      className="inline-flex size-4 shrink-0 items-center justify-center"
+    >
+      {shown && <PriorityBars name={priority.name} />}
+    </span>
+  )
+}
+
+const DUE_TONES = {
+  overdue: 'text-danger',
+  soon: 'text-status-doing',
+  later: 'text-muted',
+} as const
+
+function DueDate({ issue, today }: { issue: Issue; today: string }) {
+  const due = issue.dueDate
+  const tone = due === null ? null : dueTone(due, today, issue.status.category === 'done')
+  return (
+    <span
+      data-prop="due"
+      data-tone={tone ?? undefined}
+      title={due === null ? undefined : `Due ${due}`}
+      className="inline-flex w-[6rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted"
+    >
+      {due !== null && tone !== null && (
+        <>
+          <svg
+            aria-hidden
+            viewBox="0 0 16 16"
+            className={`size-3.5 shrink-0 ${DUE_TONES[tone]}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2.5 3.5h11v10h-11ZM2.5 6.5h11M5.5 2v3M10.5 2v3" />
+          </svg>
+          {shortDate(due, today)}
+        </>
+      )}
+    </span>
+  )
+}
+
+function DateCell({ property, at, today }: { property: string; at: string; today: string }) {
+  return (
+    <span
+      data-prop={property}
+      title={`${property === 'created' ? 'Created' : 'Updated'} ${localDay(at)}`}
+      className="w-[4.5rem] shrink-0 whitespace-nowrap text-right text-xs text-muted"
+    >
+      {shortDate(at, today)}
+    </span>
+  )
+}
+
+/**
+ * The properties the Display menu chose, in the menu's order. Each keeps a fixed slot, so the
+ * columns line up down the Tree, and they show only while the Tree is wide, as the title needs the room.
+ */
+function Properties({
+  issue,
+  properties,
+  today,
+}: {
+  issue: Issue
+  properties: readonly RowProperty[]
+  today: string
+}) {
+  if (properties.length === 0) return null
+  const sprint = rowSprint(issue)
+  const [firstLabel, ...moreLabels] = issue.labels
+  return (
+    <span data-props className="hidden shrink-0 items-center gap-2 @2xl:flex">
+      {properties.map((property) => {
+        switch (property) {
+          case 'labels':
+            return (
+              <span
+                key={property}
+                data-prop="labels"
+                title={issue.labels.join(', ') || undefined}
+                className="flex w-24 shrink-0 items-center justify-end gap-1 text-xs text-muted"
+              >
+                {firstLabel !== undefined && (
+                  <>
+                    <span className="inline-flex min-w-0 items-center gap-1 rounded-md border border-line px-1.5 leading-4 text-ink">
+                      <LabelDot />
+                      <span className="truncate">{firstLabel}</span>
+                    </span>
+                    {moreLabels.length > 0 && <span>+{moreLabels.length}</span>}
+                  </>
+                )}
+              </span>
+            )
+          case 'sprint':
+            return (
+              <span
+                key={property}
+                data-prop="sprint"
+                title={sprint?.name}
+                className="w-24 shrink-0 truncate text-right text-xs text-muted"
+              >
+                {sprint?.name}
+              </span>
+            )
+          case 'due':
+            return <DueDate key={property} issue={issue} today={today} />
+          case 'created':
+            return <DateCell key={property} property={property} at={issue.created} today={today} />
+          case 'updated':
+            return <DateCell key={property} property={property} at={issue.updated} today={today} />
+        }
+      })}
+    </span>
+  )
+}
+
+function Content({
+  row,
+  timing,
+  properties,
+  today,
+  onAdd,
+}: {
+  row: Row
+  timing: boolean
+  properties: readonly RowProperty[]
+  today: string
+  onAdd: (row: Row) => void
+}) {
   switch (row.kind) {
     case 'customer':
       return (
@@ -162,10 +317,10 @@ function Content({ row, timing, onAdd }: { row: Row; timing: boolean; onAdd: (ro
           <Pick property="status" title="Change status">
             <StatusDot status={issue.status} />
           </Pick>
-          <span className="tree-key w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
-          <span className={`min-w-0 flex-1 truncate ${tone} ${isEpic ? 'font-medium' : ''}`}>
-            {issue.summary}
+          <span className="tree-key w-[5.5rem] min-w-fit shrink-0 text-xs font-[450] tabular-nums text-muted">
+            {issue.key}
           </span>
+          <span className={`min-w-0 flex-1 truncate font-medium ${tone}`}>{issue.summary}</span>
           {customerMismatch !== null && (
             <span
               title={mismatchTitle(customerMismatch)}
@@ -177,9 +332,8 @@ function Content({ row, timing, onAdd }: { row: Row; timing: boolean; onAdd: (ro
           )}
           {timing && <TimerClock issueKey={issue.key} className="shrink-0" />}
           {isEpic && <span className="shrink-0 text-xs text-muted">{row.count}</span>}
-          <span className="hidden w-14 shrink-0 truncate text-right text-xs text-muted @md:block">
-            {issue.issueType.name}
-          </span>
+          <PrioritySlot priority={issue.priority} />
+          <Properties issue={issue} properties={properties} today={today} />
           <Pick property="assignee" title="Change assignee">
             <Avatar person={issue.assignee} />
           </Pick>
@@ -191,12 +345,17 @@ function Content({ row, timing, onAdd }: { row: Row; timing: boolean; onAdd: (ro
 
 interface TreeRowProps {
   row: Row
-  index: number
+  /** Where the row's slot starts, in pixels from the top of the list. */
+  top: number
   active: boolean
   /** The row whose issue the Peek shows. */
   selected: boolean
   /** The shared timer runs on this row's issue. */
   timing: boolean
+  /** The row properties the Display menu chose, shown on issue rows while the Tree is wide. */
+  properties: readonly RowProperty[]
+  /** Today's local date, which the due date's colour and the short dates read. */
+  today: string
   onClick: (id: string, onChevron: boolean) => void
   /** A click on the row's status dot or avatar, after `onClick` has made the row active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
@@ -207,10 +366,12 @@ interface TreeRowProps {
 /** One row of any kind, positioned by the window. The Tree owns every key, so a row holds no button. */
 export const TreeRow = memo(function TreeRow({
   row,
-  index,
+  top,
   active,
   selected,
   timing,
+  properties,
+  today,
   onClick,
   onPick,
   onAdd,
@@ -219,7 +380,7 @@ export const TreeRow = memo(function TreeRow({
     <div
       id={rowDomId(row.id)}
       role="treeitem"
-      aria-label={rowName(row)}
+      aria-label={rowName(row, properties)}
       aria-level={row.level}
       aria-setsize={row.setSize}
       aria-posinset={row.posInSet}
@@ -234,15 +395,17 @@ export const TreeRow = memo(function TreeRow({
           onPick(row.node.issue.key, picked)
         }
       }}
+      data-band={row.kind === 'customer' ? '' : undefined}
       style={{
-        top: index * ROW_HEIGHT,
-        height: ROW_HEIGHT,
+        // A header's slot starts with the gap above it, so the band sits at the slot's foot.
+        top: row.kind === 'customer' ? top + HEADER_GAP : top,
+        height: row.kind === 'customer' ? HEADER_HEIGHT : ROW_HEIGHT,
         paddingLeft: 4 + (row.level - 1) * 16,
       }}
-      className={`tree-row group/row absolute inset-x-2 flex cursor-default items-center gap-2 rounded-lg pr-2 ${row.kind === 'customer' ? 'bg-sidebar' : ''}`}
+      className="tree-row group/row absolute inset-x-2 flex cursor-default items-center gap-2 rounded-lg pr-2"
     >
       <Chevron row={row} />
-      <Content row={row} timing={timing} onAdd={onAdd} />
+      <Content row={row} timing={timing} properties={properties} today={today} onAdd={onAdd} />
     </div>
   )
 })

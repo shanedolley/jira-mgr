@@ -3,6 +3,9 @@ import type { CustomerGroup, CustomerOption, HierarchyNode } from '@jira-mgr/cor
 
 /** Every row has this height, since summaries truncate to one line and the rest sits inline. */
 export const ROW_HEIGHT = 32
+/** A Customer group header is taller than a row, and sits below a gap that the previous group's last row leaves. */
+export const HEADER_HEIGHT = 36
+export const HEADER_GAP = 8
 /** Rows rendered beyond the window on each side, so a fast scroll never shows a gap. */
 export const OVERSCAN = 10
 
@@ -411,21 +414,56 @@ export function clickRow(
   return row.expandable ? toggle(row, active) : active
 }
 
+/** Where each row starts and how tall the list is. A header's slot holds its gap above it. */
+export interface RowLayout {
+  /** The top of each row's slot, in pixels from the top of the list. */
+  tops: readonly number[]
+  total: number
+}
+
+/** The layout of rows whose slots have these heights, top to bottom. */
+export function layoutOf(slots: readonly number[]): RowLayout {
+  const tops: number[] = []
+  let total = 0
+  for (const slot of slots) {
+    tops.push(total)
+    total += slot
+  }
+  return { tops, total }
+}
+
+/** Every row takes `ROW_HEIGHT`, a Customer header `HEADER_GAP` plus `HEADER_HEIGHT`. */
+export const layoutRows = (rows: readonly TreeRow[]): RowLayout =>
+  layoutOf(rows.map((r) => (r.kind === 'customer' ? HEADER_GAP + HEADER_HEIGHT : ROW_HEIGHT)))
+
+/** The index of the row whose slot holds `y`, clamped to the list. -1 when there are no rows. */
+export function rowAtOffset(layout: RowLayout, y: number): number {
+  let low = 0
+  let high = layout.tops.length - 1
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2)
+    if ((layout.tops[mid] ?? 0) <= y) low = mid
+    else high = mid - 1
+  }
+  return layout.tops.length === 0 ? -1 : low
+}
+
 /**
  * The indices to render: those in view plus `OVERSCAN` rows each side, and the active row
  * wherever it is, so `aria-activedescendant` never points at a missing element. Sorted.
  */
 export function windowRange(
+  layout: RowLayout,
   scrollTop: number,
   height: number,
-  count: number,
   activeIndex: number,
-  rowHeight: number = ROW_HEIGHT,
   overscan: number = OVERSCAN,
 ): number[] {
+  const count = layout.tops.length
   if (count === 0) return []
-  const first = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan)
-  const last = Math.min(count - 1, Math.ceil((scrollTop + height) / rowHeight) + overscan - 1)
+  const first = Math.max(0, rowAtOffset(layout, scrollTop) - overscan)
+  // A row that starts exactly at the bottom edge is out of view, so the last visible one ends there.
+  const last = Math.min(count - 1, rowAtOffset(layout, scrollTop + height - 1) + overscan)
   const indices: number[] = []
   for (let i = first; i <= last; i++) indices.push(i)
   if (activeIndex >= 0 && activeIndex < count && (activeIndex < first || activeIndex > last)) {

@@ -143,6 +143,7 @@ test('creates a view from the filter bar, and the file the CLI reads holds it', 
     name: 'Open bugs',
     filters: { type: ['Bug'] },
     toggles: { hideDone: false, assigneeMe: false, hideEmptyCustomers: true },
+    display: { properties: ['updated'], order: 'key' },
   })
 
   // Applying it from a clean bar brings the same filters back.
@@ -381,6 +382,7 @@ test('updates a view with the current filters, in place, and the file the CLI re
     name: 'Active',
     filters: { status: ['In Progress', 'Review'], type: ['Bug'] },
     toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
+    display: { properties: ['updated'], order: 'key' },
   })
 })
 

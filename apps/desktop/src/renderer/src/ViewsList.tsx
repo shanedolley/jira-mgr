@@ -1,7 +1,7 @@
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
-import type { SavedView, Toggles } from '../../shared/ipc'
+import type { Display, SavedView, Toggles } from '../../shared/ipc'
 import { Details, Failure } from './Failure'
 import { CHECK, COPY, Icon, PENCIL, PLUS, TRASH } from './Icon'
 import {
@@ -13,12 +13,14 @@ import {
   useUpdateView,
   useViews,
 } from './viewQueries'
-import { activeView, viewMatches } from './views'
+import { activeView, viewDisplayMatches, viewMatches } from './views'
 
 interface ViewsListProps {
   /** The filter bar and toggles as they are now: what "New view" saves, and what marks a view active. */
   filters: ViewFilters
   toggles: Toggles | undefined
+  /** The row properties and order as they are now: saved with a view, but not part of what marks it active. */
+  display: Display | undefined
   /** The view applied last: of twin views, the one that is lit. */
   applied: string | undefined
   onApply: (view: SavedView) => void
@@ -151,6 +153,7 @@ function dropEdge(
 export function ViewsList({
   filters,
   toggles,
+  display,
   applied,
   onApply,
   showCurrent = true,
@@ -262,14 +265,14 @@ export function ViewsList({
   }
 
   function submitCreate(name: string) {
-    if (toggles === undefined || create.isPending) return
+    if (toggles === undefined || display === undefined || create.isPending) return
     if (name.trim() === '') {
       setCreating(false)
       setRefocus('new')
       return
     }
     create.mutate(
-      { name, filters, toggles },
+      { name, filters, toggles, display },
       {
         onSuccess(created) {
           setCreating(false)
@@ -292,10 +295,10 @@ export function ViewsList({
   }
 
   function updateFromBar(view: SavedView) {
-    if (toggles === undefined) return
+    if (toggles === undefined || display === undefined) return
     resetFailures()
     update.mutate(
-      { id: view.id, filters, toggles },
+      { id: view.id, filters, toggles, display },
       {
         onSuccess() {
           // The Update button disables once the bar equals the view, and focus must not fall to the page.
@@ -346,8 +349,8 @@ export function ViewsList({
           ref={newButton}
           type="button"
           aria-label="New view"
-          title="Save the current filters and toggles as a view"
-          disabled={toggles === undefined}
+          title="Save the current filters, toggles and display as a view"
+          disabled={toggles === undefined || display === undefined}
           onClick={startCreate}
           className="btn btn-sm btn-icon btn-ghost"
         >
@@ -441,11 +444,12 @@ export function ViewsList({
                   <button
                     type="button"
                     aria-label={`Update view ${view.name}`}
-                    title="Replace this view's filters and toggles with the current ones"
+                    title="Replace this view's filters, toggles and display with the current ones"
                     disabled={
                       toggles === undefined ||
+                      display === undefined ||
                       update.isPending ||
-                      viewMatches(view, filters, toggles)
+                      (viewMatches(view, filters, toggles) && viewDisplayMatches(view, display))
                     }
                     onClick={() => {
                       updateFromBar(view)

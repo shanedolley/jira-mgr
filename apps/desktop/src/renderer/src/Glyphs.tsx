@@ -1,24 +1,6 @@
-/** Filled bars out of four for each priority name PSAPAC and a default Jira site use. */
-const LEVELS: Record<string, number> = {
-  highest: 4,
-  blocker: 4,
-  'business critical': 4,
-  p1: 4,
-  high: 3,
-  critical: 3,
-  'major problem': 3,
-  p2: 3,
-  medium: 2,
-  major: 2,
-  problem: 2,
-  low: 1,
-  minor: 1,
-  lowest: 1,
-  trivial: 1,
-}
+import { priorityLevel } from '@jira-mgr/core/display'
 
-/** How many of the four bars a priority fills; a name that is not listed fills none. */
-export const priorityLevel = (name: string): number => LEVELS[name.toLowerCase()] ?? 0
+export { priorityLevel }
 
 /** The priority as four rising bars, the level filled in ink and the rest muted. Text beside it names it. */
 export function PriorityBars({ name }: { name: string }) {

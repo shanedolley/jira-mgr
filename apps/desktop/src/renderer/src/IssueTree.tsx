@@ -1,3 +1,4 @@
+import type { RowProperty } from '@jira-mgr/core/display'
 import {
   useCallback,
   useEffect,
@@ -14,7 +15,9 @@ import { TreeRow, rowDomId } from './TreeRow'
 import {
   ROW_HEIGHT,
   clickRow,
+  layoutRows,
   moveActive,
+  rowAtOffset,
   windowRange,
   type MoveResult,
   type TreeRow as Row,
@@ -36,6 +39,10 @@ interface IssueTreeProps {
   peekedKey: string | null
   /** The key of the issue the shared timer runs on, or `null`. */
   timerKey: string | null
+  /** The row properties the Display menu chose. */
+  properties: readonly RowProperty[]
+  /** Today's local date, for the dates a row shows. */
+  today: string
   /** Every expandable row id, for Collapse all. */
   expandable: readonly string[]
   /** Called with the next state after a key or a click. */
@@ -56,9 +63,9 @@ interface Anchor {
 }
 
 /**
- * The virtual window over the flat rows. Every row is `ROW_HEIGHT` tall, so the window is
- * arithmetic: one inner element as tall as all the rows, and only the rows in view, plus overscan
- * and the active row, are mounted. The Tree is one focusable `role="tree"` that points at the
+ * The virtual window over the flat rows. A row is `ROW_HEIGHT` tall and a Customer header a little
+ * taller, so the window reads each row's top from one layout: an inner element as tall as all the
+ * rows, and only the rows in view, plus overscan and the active row, are mounted. The Tree is one focusable `role="tree"` that points at the
  * active row with `aria-activedescendant`, since the window unmounts rows.
  */
 export function IssueTree({
@@ -66,6 +73,8 @@ export function IssueTree({
   state,
   peekedKey,
   timerKey,
+  properties,
+  today,
   expandable,
   onChange,
   onPick,
@@ -78,6 +87,7 @@ export function IssueTree({
   const anchor = useRef<Anchor | null>(null)
   const ensured = useRef<string | null>(null)
 
+  const layout = useMemo(() => layoutRows(rows), [rows])
   const indexById = useMemo(() => new Map(rows.map((r, i) => [r.id, i])), [rows])
   const activeIndex = state.activeId === null ? -1 : (indexById.get(state.activeId) ?? -1)
   const pageSize = Math.max(1, Math.floor(height / ROW_HEIGHT))
@@ -107,11 +117,11 @@ export function IssueTree({
     if (tree === null || held === null) return
     const index = indexById.get(held.id)
     if (index === undefined) return
-    const wanted = index * ROW_HEIGHT - held.offset
+    const wanted = (layout.tops[index] ?? 0) - held.offset
     if (Math.abs(tree.scrollTop - wanted) > 0.5) tree.scrollTop = wanted
     // The scroll event comes after paint, so the window must not wait for it.
     setScrollTop(tree.scrollTop)
-  }, [indexById, treeRef])
+  }, [indexById, layout, treeRef])
 
   // A keyboard move scrolls the active row into view. Only a new active row does, so a rebuild
   // never pulls the view back from where the mouse wheel left it.
@@ -120,25 +130,27 @@ export function IssueTree({
     if (tree === null || state.activeId === ensured.current) return
     ensured.current = state.activeId
     if (activeIndex < 0) return
-    const top = activeIndex * ROW_HEIGHT
+    const top = layout.tops[activeIndex] ?? 0
+    const bottom = layout.tops[activeIndex + 1] ?? layout.total
     if (top < tree.scrollTop) tree.scrollTop = top
-    else if (top + ROW_HEIGHT > tree.scrollTop + tree.clientHeight) {
-      tree.scrollTop = top + ROW_HEIGHT - tree.clientHeight
+    else if (bottom > tree.scrollTop + tree.clientHeight) {
+      tree.scrollTop = bottom - tree.clientHeight
     }
     setScrollTop(tree.scrollTop)
-  }, [state.activeId, activeIndex, treeRef])
+  }, [state.activeId, activeIndex, layout, treeRef])
 
   const indices = useMemo(
-    () => windowRange(scrollTop, height, rows.length, activeIndex),
-    [scrollTop, height, rows.length, activeIndex],
+    () => windowRange(layout, scrollTop, height, activeIndex),
+    [layout, scrollTop, height, activeIndex],
   )
 
   function onScroll(event: React.UIEvent<HTMLDivElement>) {
     const top = event.currentTarget.scrollTop
     setScrollTop(top)
-    const first = Math.floor(top / ROW_HEIGHT)
+    const first = rowAtOffset(layout, top)
     const row = rows[first]
-    anchor.current = row === undefined ? null : { id: row.id, offset: first * ROW_HEIGHT - top }
+    anchor.current =
+      row === undefined ? null : { id: row.id, offset: (layout.tops[first] ?? 0) - top }
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -184,7 +196,7 @@ export function IssueTree({
         onScroll={onScroll}
         className="group absolute inset-0 overflow-y-auto overflow-x-hidden focus-visible:outline-none"
       >
-        <div className="relative" style={{ height: rows.length * ROW_HEIGHT }}>
+        <div className="relative" style={{ height: layout.total }}>
           {indices.map((index) => {
             const row = rows[index]
             if (row === undefined) return null
@@ -192,10 +204,12 @@ export function IssueTree({
               <TreeRow
                 key={row.id}
                 row={row}
-                index={index}
+                top={layout.tops[index] ?? 0}
                 active={row.id === state.activeId}
                 selected={row.id === selectedId}
                 timing={row.kind === 'issue' && row.node.issue.key === timerKey}
+                properties={properties}
+                today={today}
                 onClick={onRowClick}
                 onPick={onPick}
                 onAdd={onAdd}
