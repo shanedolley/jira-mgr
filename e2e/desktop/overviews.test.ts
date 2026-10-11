@@ -425,6 +425,9 @@ test.describe('Customers page', () => {
     await open()
     await loadDone()
     await link('Customers').click()
+    // The Customer list loads on the page's first show, so wait for the row.
+    await expect(customerRow('Acme')).toBeVisible()
+    await expect.poll(() => customerCells('Acme')).toEqual(['9', '18%'])
     const [open9] = await customerCells('Acme')
     await customersPage().getByRole('button', { name: 'Acme', exact: true }).click()
 
