@@ -46,7 +46,7 @@ interface QueryBodyProps<T> {
   query: UseQueryResult<T>
   /** Shown while the first read runs: "Loading comments". */
   loading: string
-  /** What the error names after "Could not load": "the comments". */
+  /** What failed to load: "the comments". */
   what: string
   children: (data: T) => ReactNode
 }

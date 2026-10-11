@@ -10,6 +10,7 @@ export function loadErrorCopy(what: string, error: JiraMgrError): string {
   if (error.code === 'permission_denied') return `Could not load ${what}. Retry, or log in again.`
   if (error.code === 'not_found') {
     const gone = what.charAt(0).toUpperCase() + what.slice(1)
+    // ponytail: a trailing "s" picks "exist", wrong for a singular such as "this status"; pass the verb if one appears
     return `${gone} no longer ${what.endsWith('s') ? 'exist' : 'exists'} in Jira.`
   }
   const status = statusOf(error)
