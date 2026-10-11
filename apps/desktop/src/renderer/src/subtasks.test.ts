@@ -1,4 +1,4 @@
-import type { Issue } from '@jira-mgr/core'
+import { JiraMgrError, type Issue } from '@jira-mgr/core'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { CreatedIssue } from '../../shared/ipc'
@@ -7,6 +7,7 @@ import {
   MAX_TITLE,
   bulkNotice,
   createInOrder,
+  landedKey,
   parentProblem,
   parseTitles,
   progressOf,
@@ -176,7 +177,7 @@ describe('createInOrder', () => {
     const result = await createInOrder(['a', 'b', 'c', 'd', 'e'], create)
     expect(create.mock.calls.map(([title]) => title)).toEqual(['a', 'b', 'c'])
     expect(result.created.map(({ title }) => title)).toEqual(['a', 'b'])
-    expect(result.failed).toEqual({ title: 'c', message: 'Jira said no.' })
+    expect(result.failed).toEqual({ title: 'c', message: 'Jira said no.', unconfirmed: false })
     expect(result.left).toEqual(['c', 'd', 'e'])
   })
 
@@ -206,10 +207,120 @@ describe('createInOrder', () => {
     expect(result.left).toEqual([])
   })
 
+  describe('after a create that may have reached Jira', () => {
+    const lost = new JiraMgrError('jira_error', 'Cannot reach Jira.')
+    const run = (
+      error: Error,
+      confirm: (title: string, made: ReadonlySet<string>) => Promise<string | null>,
+    ) => {
+      const create = vi.fn((title: string) =>
+        title === 'b' ? Promise.reject(error) : Promise.resolve(created(`K-${title}`)),
+      )
+      return { create, done: createInOrder(['a', 'b', 'c'], create, undefined, confirm) }
+    }
+
+    it('counts the title as created when the read finds it, and goes on to the next', async () => {
+      const confirm = vi.fn(() => Promise.resolve('K-b'))
+      const { create, done } = run(lost, confirm)
+      const result = await done
+      expect(confirm).toHaveBeenCalledWith('b', new Set(['K-a']))
+      expect(create.mock.calls.map(([title]) => title)).toEqual(['a', 'b', 'c'])
+      expect(result.failed).toBeNull()
+      expect(result.left).toEqual([])
+      expect(result.created.map(({ title, created: c }) => [title, c.key])).toEqual([
+        ['a', 'K-a'],
+        ['b', 'K-b'],
+        ['c', 'K-c'],
+      ])
+      expect(result.created[1]?.confirmed).toBe(true)
+      expect(result.created[0]?.confirmed).toBeUndefined()
+    })
+
+    it('hands a confirmed Subtask to onCreated and skips it for a repeated title', async () => {
+      const seen: string[] = []
+      const confirm = vi.fn((_title: string, made: ReadonlySet<string>) =>
+        Promise.resolve(made.has('K-b1') ? 'K-b2' : 'K-b1'),
+      )
+      const create = vi.fn(() => Promise.reject(lost))
+      const result = await createInOrder(
+        ['b', 'b'],
+        create,
+        (_title, made) => seen.push(made.key),
+        confirm,
+      )
+      expect(seen).toEqual(['K-b1', 'K-b2'])
+      expect(result.failed).toBeNull()
+    })
+
+    it('fails as a plain refusal, to be retried, when the read does not find it', async () => {
+      const { done } = run(lost, () => Promise.resolve(null))
+      const result = await done
+      expect(result.created.map(({ title }) => title)).toEqual(['a'])
+      expect(result.failed).toEqual({
+        title: 'b',
+        message: 'Cannot reach Jira.',
+        unconfirmed: false,
+      })
+      expect(result.left).toEqual(['b', 'c'])
+    })
+
+    it('keeps the title and marks it unconfirmed when the read fails too', async () => {
+      const { done } = run(lost, () => Promise.reject(new Error('Still no network.')))
+      const result = await done
+      expect(result.failed).toEqual({
+        title: 'b',
+        message: 'Cannot reach Jira.',
+        unconfirmed: true,
+      })
+      expect(result.left).toEqual(['b', 'c'])
+    })
+
+    it.each(['validation_failed', 'not_found', 'permission_denied'] as const)(
+      'does not read after a %s refusal',
+      async (code) => {
+        const confirm = vi.fn(() => Promise.resolve('K-b'))
+        const { done } = run(new JiraMgrError(code, 'No.'), confirm)
+        const result = await done
+        expect(confirm).not.toHaveBeenCalled()
+        expect(result.failed).toEqual({ title: 'b', message: 'No.', unconfirmed: false })
+      },
+    )
+
+    it('does not read after an error thrown before anything was sent', async () => {
+      const confirm = vi.fn(() => Promise.resolve('K-b'))
+      const { done } = run(new Error('Needs a Customer.'), confirm)
+      await done
+      expect(confirm).not.toHaveBeenCalled()
+    })
+
+    it('reads after an internal error, which may come after the send', async () => {
+      const confirm = vi.fn(() => Promise.resolve(null))
+      await run(new JiraMgrError('internal', 'Broke.'), confirm).done
+      expect(confirm).toHaveBeenCalledOnce()
+    })
+  })
+
   it('creates nothing for an empty list', async () => {
     const create = vi.fn()
     expect(await createInOrder([], create)).toEqual({ created: [], failed: null, left: [] })
     expect(create).not.toHaveBeenCalled()
+  })
+})
+
+describe('landedKey', () => {
+  const held = (key: string, summary: string) => ({ key, summary, status: 'To Do', done: false })
+  const list = [held('K-1', 'Plan'), held('K-2', 'Build'), held('K-3', 'Plan')]
+
+  it('finds the Subtask with the exact summary that is not in the skip set', () => {
+    expect(landedKey(list, 'Plan', new Set(['K-1']))).toBe('K-3')
+    expect(landedKey(list, 'Build', new Set())).toBe('K-2')
+  })
+
+  it('returns null when the only match was there before, or the summary differs', () => {
+    expect(landedKey(list, 'Build', new Set(['K-2']))).toBeNull()
+    expect(landedKey(list, 'build', new Set())).toBeNull()
+    expect(landedKey(list, 'Build ', new Set())).toBeNull()
+    expect(landedKey([], 'Plan', new Set())).toBeNull()
   })
 })
 
@@ -249,7 +360,7 @@ describe('bulkNotice', () => {
   it('names the title that failed, why, and how many were not tried', () => {
     const result: BulkResult = {
       created: [ok('a'), ok('b'), ok('c')],
-      failed: { title: 'd', message: 'Jira said no.' },
+      failed: { title: 'd', message: 'Jira said no.', unconfirmed: false },
       left: ['d', 'e'],
     }
     expect(bulkNotice('PSAPAC-4', result)).toEqual({
@@ -259,10 +370,35 @@ describe('bulkNotice', () => {
     })
   })
 
+  it('says a title may already exist when the read that would tell failed', () => {
+    const result: BulkResult = {
+      created: [ok('a')],
+      failed: { title: 'b', message: 'Cannot reach Jira.', unconfirmed: true },
+      left: ['b'],
+    }
+    expect(bulkNotice('PSAPAC-4', result).notes).toEqual([
+      'Could not create "b". Cannot reach Jira.',
+      '"b" may already exist. Check the Subtasks before creating it again.',
+    ])
+  })
+
+  it('notes a Subtask found after a lost reply and counts it as created', () => {
+    const result: BulkResult = {
+      created: [{ ...ok('a'), confirmed: true }],
+      failed: null,
+      left: [],
+    }
+    expect(bulkNotice('PSAPAC-4', result)).toEqual({
+      title: 'Created 1 sub-issue under PSAPAC-4',
+      notes: ['"a" reached Jira as K-a although its reply was lost.'],
+      warned: true,
+    })
+  })
+
   it('says nothing was created when the first title fails', () => {
     const result: BulkResult = {
       created: [],
-      failed: { title: 'a', message: 'No.' },
+      failed: { title: 'a', message: 'No.', unconfirmed: false },
       left: ['a'],
     }
     expect(bulkNotice('PSAPAC-4', result)).toEqual({

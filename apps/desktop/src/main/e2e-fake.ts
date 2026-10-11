@@ -9,6 +9,8 @@ export const FAKE_SITE = 'https://fake.atlassian.net'
 export const FAKE_TOKEN = 'good-token'
 /** A summary the fake Jira refuses, so a test can watch an optimistic edit roll back. */
 export const REJECTED_SUMMARY = 'reject me'
+/** A create with this summary lands in the fake, but the reply is a 500, as a lost response looks to the app. */
+export const LOST_SUMMARY = 'lose reply'
 /** The priority the fake Jira refuses, so a test can watch a picker edit roll back. */
 export const REJECTED_PRIORITY = 'Highest'
 /** The issue the fake refuses to delete, so a test can watch a delete roll back. */
@@ -1217,6 +1219,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       else setTimeout(automate, options.lateAutomationMs)
       issues.push(raw)
       counts.applied++
+      if (summary === LOST_SUMMARY)
+        return json({ errorMessages: ['The fake lost this reply.'] }, 500)
       return json({ id: raw.id, key: raw.key }, 201)
     }
 

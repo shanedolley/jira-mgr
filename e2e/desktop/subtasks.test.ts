@@ -4,7 +4,16 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, fieldsOf, launch, logIn, moveIssue, notices, releaseEdit } from './harness.js'
+import {
+  counts,
+  failRead,
+  fieldsOf,
+  launch,
+  logIn,
+  moveIssue,
+  notices,
+  releaseEdit,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -223,6 +232,46 @@ test('after a stopped run the box has focus, Cmd+Enter retries and Esc closes th
   await expect(rows()).toHaveCount(3)
   await expect(form()).toHaveCount(0)
   expect(await createdSummaries()).toEqual(['First', 'Second', 'Third'])
+})
+
+test('a create whose reply is lost is read back and counted, so nothing is created twice', async () => {
+  await openStory()
+  await addButton().click()
+  // The fake makes "lose reply" in Jira, then answers 500, as a dropped connection looks to the app.
+  await titles().fill('First\nlose reply\nThird')
+  await form().getByRole('button', { name: 'Create 3 sub-issues' }).click()
+  await settle(1)
+  await settle(2)
+
+  // The run read the parent, found the Subtask and went on to the third title.
+  await settle(3)
+  await expect(rows()).toHaveCount(3)
+  await expect(form()).toHaveCount(0)
+  await expect(rows().nth(1)).toContainText('lose reply')
+  await expect(subtasks().getByText('0/3')).toBeVisible()
+  const notice = notices(window).getByRole('alert')
+  await expect(notice).toContainText('Created 3 sub-issues under PSAPAC-32')
+  await expect(notice).toContainText('"lose reply" reached Jira as')
+  expect(await createdSummaries()).toEqual(['First', 'lose reply', 'Third'])
+  expect((await counts(app)).applied).toBe(3)
+})
+
+test('a lost reply whose read-back fails keeps the title in the box and says it may exist', async () => {
+  await openStory()
+  await addButton().click()
+  await titles().fill('First\nlose reply\nThird')
+  await form().getByRole('button', { name: 'Create 3 sub-issues' }).click()
+  await settle(1)
+  await expect(rows()).toHaveCount(1)
+  // The next read of the parent is the run's own, which the fake fails.
+  await failRead(app)
+  await settle(2)
+
+  const alert = notices(window).getByRole('alert')
+  await expect(alert).toContainText('Created 1 of 3 sub-issues under PSAPAC-32')
+  await expect(alert).toContainText('"lose reply" may already exist')
+  await expect(titles()).toHaveValue('lose reply\nThird')
+  expect((await counts(app)).edits).toBe(2)
 })
 
 test('the heading and the form fit in a wide font', async () => {
