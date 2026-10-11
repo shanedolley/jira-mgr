@@ -145,11 +145,7 @@ function NoMatch({
           </p>
         )}
         {filtered && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="mt-1 rounded-md bg-accent px-3 py-1 font-medium text-accent-ink"
-          >
+          <button type="button" onClick={onClear} className="btn btn-primary mt-1">
             Clear filters
           </button>
         )}
@@ -868,7 +864,7 @@ export function Shell({ session }: { session: Session }) {
               onClick={() => {
                 setHelping(true)
               }}
-              className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+              className="btn btn-sm gap-2"
             >
               Shortcuts
               <Kbd aria-hidden>?</Kbd>
@@ -879,7 +875,7 @@ export function Shell({ session }: { session: Session }) {
               onClick={() => {
                 setSearching(true)
               }}
-              className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+              className="btn btn-sm gap-2"
             >
               Search
               <Kbd aria-hidden>⌘K</Kbd>
@@ -889,7 +885,7 @@ export function Shell({ session }: { session: Session }) {
               disabled={!canCreate}
               aria-keyshortcuts="C"
               onClick={openCreate}
-              className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-50"
+              className="btn btn-sm gap-2"
             >
               New issue
               <Kbd aria-hidden>C</Kbd>

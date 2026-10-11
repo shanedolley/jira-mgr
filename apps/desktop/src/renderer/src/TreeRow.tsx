@@ -99,7 +99,7 @@ function AddButton({ row, onAdd }: { row: Row; onAdd: (row: Row) => void }) {
         event.stopPropagation()
         onAdd(row)
       }}
-      className="grid size-5 shrink-0 place-items-center rounded text-muted opacity-0 hover:bg-line hover:text-ink focus-visible:opacity-100 group-hover/row:opacity-100 group-data-[active=true]/row:opacity-100"
+      className="btn btn-sm btn-icon btn-ghost opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 group-data-[active=true]/row:opacity-100"
     >
       <svg
         aria-hidden
@@ -147,7 +147,7 @@ function Content({ row, timing, onAdd }: { row: Row; timing: boolean; onAdd: (ro
       )
     case 'chip':
       return (
-        <span className="rounded-full border border-line px-2 text-xs text-muted">
+        <span className="rounded-md border border-line px-2 text-xs text-muted">
           {row.expanded ? `Hide ${String(row.doneCount)} done` : `${String(row.doneCount)} done`}
         </span>
       )

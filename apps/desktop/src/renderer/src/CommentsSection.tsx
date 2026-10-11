@@ -17,7 +17,7 @@ import {
   putDraft,
 } from './drafts'
 import { conflictOf } from './queries'
-import { BUTTON, DANGER_BUTTON, QueryBody, Section } from './Section'
+import { QueryBody, Section } from './Section'
 
 interface CommentsSectionProps {
   issueKey: string
@@ -152,7 +152,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
   }
 
   return (
-    <li className="space-y-1">
+    <li className="group/row space-y-1">
       <div className="flex items-baseline gap-1.5 text-xs text-muted">
         <span className="font-medium text-ink">{who}</span>
         <span aria-hidden>&middot;</span>
@@ -194,13 +194,13 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
       {conflict !== null && (
         <div role="alert" className="space-y-2 rounded-md border border-danger p-3">
           <p>This comment changed in Jira while you edited.</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => {
                 saveMine(conflict)
               }}
-              className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink"
+              className="btn btn-primary"
             >
               Save mine anyway
             </button>
@@ -209,7 +209,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
               onClick={() => {
                 discardMine(conflict)
               }}
-              className={BUTTON}
+              className="btn"
             >
               Discard mine
             </button>
@@ -222,7 +222,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
         </p>
       )}
       {mine && phase === 'read' && !confirming && (
-        <div className="flex gap-2">
+        <div className="flex gap-1 opacity-0 focus-within:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
           {!unsupported && (
             <button
               type="button"
@@ -231,7 +231,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
                 setBase(comment.body)
                 setPhase('edit')
               }}
-              className={BUTTON}
+              className="btn btn-sm btn-ghost"
             >
               Edit comment
             </button>
@@ -241,7 +241,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
             onClick={() => {
               setConfirming(true)
             }}
-            className={BUTTON}
+            className="btn btn-sm btn-ghost btn-delete"
           >
             Delete comment
           </button>
@@ -252,10 +252,10 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
           role="group"
           aria-label="Delete comment"
           onKeyDown={onConfirmKey}
-          className="flex items-center gap-2 text-xs"
+          className="flex flex-wrap items-center gap-2 text-xs"
         >
           <span>Delete this comment?</span>
-          <button type="button" onClick={deleteComment} className={DANGER_BUTTON}>
+          <button type="button" onClick={deleteComment} className="btn btn-sm btn-danger">
             Delete
           </button>
           <button
@@ -264,7 +264,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
             onClick={() => {
               setConfirming(false)
             }}
-            className={BUTTON}
+            className="btn btn-sm"
           >
             Keep
           </button>
@@ -339,7 +339,7 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
         issueKey={issueKey}
         label="New comment"
         saveLabel="Comment"
-        cancelLabel="Clear"
+        cancelLabel={null}
         autoFocus={false}
         editing={!posting}
         frozen={posting}

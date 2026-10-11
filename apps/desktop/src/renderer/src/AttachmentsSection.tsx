@@ -7,7 +7,7 @@ import { useAttachments, useDownloadAttachment } from './activityQueries'
 import type { Notice } from './create'
 import { DropZone } from './DropZone'
 import { attachmentListKey } from './queries'
-import { BUTTON, QueryBody, Section } from './Section'
+import { AddAction, QueryBody, Section } from './Section'
 import { useDoneUploads } from './uploads'
 
 interface AttachmentsSectionProps {
@@ -69,15 +69,12 @@ export function AttachmentsSection({
         title="Attachments"
         actions={
           <>
-            <button
-              type="button"
+            <AddAction
+              label="Attach file"
               onClick={() => {
                 picker.current?.click()
               }}
-              className={`${BUTTON} ml-auto`}
-            >
-              Attach file
-            </button>
+            />
             <input
               ref={picker}
               type="file"
@@ -123,7 +120,7 @@ export function AttachmentsSection({
                       onClick={() => {
                         save(attachment)
                       }}
-                      className={BUTTON}
+                      className="btn btn-sm btn-ghost"
                     >
                       Download
                     </button>

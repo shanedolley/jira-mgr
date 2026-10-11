@@ -15,6 +15,7 @@ import { attachFiles } from './attach'
 import { Avatar, withAvatars } from './Avatar'
 import { Failure, Reason } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
+import { Icon, TRASH } from './Icon'
 import { Modal } from './Modal'
 import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
@@ -499,7 +500,7 @@ export function CreateIssueDialog({
             />
             {rules.estimates && (
               <label
-                className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${estimateBad ? 'border-danger' : 'border-field-border'}`}
+                className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${estimateBad ? 'border-danger' : 'border-field-border'}`}
               >
                 <ChipName>Estimate</ChipName>
                 <input
@@ -551,7 +552,7 @@ export function CreateIssueDialog({
                   // This button leaves the page once the assignee is me, so focus moves first.
                   assigneeTrigger.current?.focus()
                 }}
-                className="h-7 rounded-full px-2 text-xs text-muted hover:bg-hover"
+                className="btn btn-ghost px-2"
               >
                 +me
               </button>
@@ -602,6 +603,7 @@ export function CreateIssueDialog({
                 footer={
                   <button
                     type="button"
+                    data-row
                     aria-pressed={allSprints}
                     onClick={() => {
                       setAllSprints(!allSprints)
@@ -634,7 +636,7 @@ export function CreateIssueDialog({
                 onClick={() => {
                   filePicker.current?.click()
                 }}
-                className="h-7 rounded-full border border-field-border px-2.5 text-xs hover:bg-hover"
+                className="btn"
               >
                 Attach files
               </button>
@@ -654,7 +656,7 @@ export function CreateIssueDialog({
               {files.map((file, index) => (
                 <span
                   key={`${file.name}-${String(index)}`}
-                  className="flex h-7 max-w-full items-center gap-1.5 rounded-full border border-field-border pl-2.5 pr-1 text-xs"
+                  className="flex h-7 max-w-full items-center gap-1.5 rounded-md border border-field-border pl-2.5 pr-0.5 text-xs"
                 >
                   <span className="min-w-0 truncate">{file.name}</span>
                   <span className="shrink-0 text-muted">{formatSize(file.size)}</span>
@@ -664,9 +666,9 @@ export function CreateIssueDialog({
                     onClick={() => {
                       setFiles((held) => held.filter((_, at) => at !== index))
                     }}
-                    className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-hover"
+                    className="btn btn-sm btn-icon btn-ghost btn-delete"
                   >
-                    <span aria-hidden>×</span>
+                    <Icon path={TRASH} />
                   </button>
                 </span>
               ))}
@@ -685,19 +687,11 @@ export function CreateIssueDialog({
                 />
                 Create more
               </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-md border border-line px-3 py-1 hover:bg-hover"
-                >
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={onClose} className="btn">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={missing.length > 0}
-                  className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink disabled:opacity-50"
-                >
+                <button type="submit" disabled={missing.length > 0} className="btn btn-primary">
                   {attaching ? 'Attaching' : pending ? 'Creating' : 'Create issue'}
                 </button>
               </div>

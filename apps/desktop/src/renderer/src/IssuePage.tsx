@@ -127,6 +127,7 @@ function PageBody({
                       onClick={() => {
                         onOpen(subtask.key)
                       }}
+                      data-row
                       className="flex h-8 w-full items-center gap-3 px-3 text-left hover:bg-hover"
                     >
                       <span className="w-20 shrink-0 font-mono text-xs text-muted">
@@ -240,11 +241,7 @@ export function IssuePage({
         className="relative z-10 grid h-full min-h-0 grid-cols-[minmax(0,1fr)_21rem] grid-rows-[auto_minmax(0,1fr)] bg-canvas focus-visible:outline-none"
       >
         <header className="app-drag col-span-2 flex h-10 items-center gap-3 border-b border-line px-4">
-          <button
-            type="button"
-            onClick={onBack}
-            className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-          >
+          <button type="button" onClick={onBack} className="btn btn-sm app-no-drag">
             Back to issues
           </button>
           {parentKey !== null && (
@@ -255,6 +252,7 @@ export function IssuePage({
                 onClick={() => {
                   onOpen(parentKey)
                 }}
+                data-row
                 className="font-mono hover:text-ink"
               >
                 {parentKey}
@@ -272,7 +270,7 @@ export function IssuePage({
                     onClick={() => {
                       onTimer(issue.key)
                     }}
-                    className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+                    className="btn btn-sm"
                   >
                     {pressOf(timer, issue.key) === 'stop' ? 'Stop timer' : 'Start timer'}
                   </button>
@@ -283,7 +281,7 @@ export function IssuePage({
                 onClick={() => {
                   onDelete(issue)
                 }}
-                className="rounded-md border border-line px-2 py-0.5 text-xs text-danger hover:bg-hover"
+                className="btn btn-sm btn-delete"
               >
                 Delete
               </button>

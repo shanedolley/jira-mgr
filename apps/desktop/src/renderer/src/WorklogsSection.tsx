@@ -21,7 +21,7 @@ import {
   type WorklogInput,
 } from './activityQueries'
 import type { Notice } from './create'
-import { BUTTON, DANGER_BUTTON, FIELD, PRIMARY_BUTTON, QueryBody, Section } from './Section'
+import { AddAction, FIELD, QueryBody, Section } from './Section'
 
 interface WorklogsSectionProps {
   issueKey: string
@@ -137,11 +137,11 @@ function WorklogFormRow({
           {problem}
         </p>
       )}
-      <div className="flex gap-2">
-        <button type="submit" disabled={!request.ok || saving} className={PRIMARY_BUTTON}>
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" disabled={!request.ok || saving} className="btn btn-primary">
           {saving ? 'Saving' : submitLabel}
         </button>
-        <button type="button" onClick={onCancel} disabled={saving} className={BUTTON}>
+        <button type="button" onClick={onCancel} disabled={saving} className="btn">
           Cancel
         </button>
       </div>
@@ -214,7 +214,7 @@ function WorklogRow({
   }
 
   return (
-    <li className="space-y-1 py-1">
+    <li className="group/row space-y-1 py-1">
       <div className="flex flex-wrap items-baseline gap-1.5">
         <span className="font-medium">{who}</span>
         <span className="text-muted">logged</span>
@@ -226,8 +226,8 @@ function WorklogRow({
           {formatWhen(worklog.started)}
         </time>
         {mine && !confirming && (
-          <span className="ml-auto flex gap-2">
-            <button type="button" onClick={onEdit} className={BUTTON}>
+          <span className="ml-auto flex gap-1 self-center opacity-0 focus-within:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+            <button type="button" onClick={onEdit} className="btn btn-sm btn-ghost">
               Edit worklog
             </button>
             <button
@@ -235,7 +235,7 @@ function WorklogRow({
               onClick={() => {
                 setConfirming(true)
               }}
-              className={BUTTON}
+              className="btn btn-sm btn-ghost btn-delete"
             >
               Delete worklog
             </button>
@@ -253,10 +253,10 @@ function WorklogRow({
             event.stopPropagation()
             setConfirming(false)
           }}
-          className="flex items-center gap-2 text-xs"
+          className="flex flex-wrap items-center gap-2 text-xs"
         >
           <span>Delete this worklog? Its time returns to Time remaining.</span>
-          <button type="button" onClick={deleteWorklog} className={DANGER_BUTTON}>
+          <button type="button" onClick={deleteWorklog} className="btn btn-sm btn-danger">
             Delete
           </button>
           <button
@@ -265,7 +265,7 @@ function WorklogRow({
             onClick={() => {
               setConfirming(false)
             }}
-            className={BUTTON}
+            className="btn btn-sm"
           >
             Keep
           </button>
@@ -291,15 +291,12 @@ export function WorklogsSection({ issueKey, me, onNotice }: WorklogsSectionProps
             <span className="text-xs text-muted">Logged {formatEstimate(total)}</span>
           )}
           {!adding && (
-            <button
-              type="button"
+            <AddAction
+              label="Add worklog"
               onClick={() => {
                 setAdding(true)
               }}
-              className={`${BUTTON} ml-auto`}
-            >
-              Add worklog
-            </button>
+            />
           )}
         </>
       }

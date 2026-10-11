@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import type { SavedView, Toggles } from '../../shared/ipc'
 import { Details, Failure } from './Failure'
+import { Icon, PENCIL, PLUS, TRASH } from './Icon'
 import { useCreateView, useDeleteView, useRenameView, useViews } from './viewQueries'
 import { activeView } from './views'
 
@@ -12,30 +13,6 @@ interface ViewsListProps {
   toggles: Toggles | undefined
   onApply: (view: SavedView) => void
 }
-
-const ICON_BUTTON =
-  'grid size-6 shrink-0 place-items-center rounded text-muted hover:bg-hover hover:text-ink'
-
-function Icon({ path }: { path: string }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d={path} />
-    </svg>
-  )
-}
-
-const PLUS = 'M8 3.5v9M3.5 8h9'
-const PENCIL = 'm10.5 3.5 2 2-7 7H3.5v-2zM9 5l2 2'
-const TRASH = 'M3.5 4.5h9M6.5 4.5v-1h3v1M5 4.5l.5 8h5l.5-8'
 
 /**
  * A name field that commits on Enter or blur and cancels on Esc. `settled` stops the blur that
@@ -122,20 +99,11 @@ function ConfirmDelete({
       <p className="truncate" title={view.name}>
         Delete &ldquo;{view.name}&rdquo;?
       </p>
-      <div className="flex gap-1.5">
-        <button
-          type="button"
-          onClick={onConfirm}
-          className="h-6 rounded border border-danger px-2 text-xs text-danger hover:bg-canvas"
-        >
+      <div className="flex flex-wrap gap-1.5">
+        <button type="button" onClick={onConfirm} className="btn btn-sm btn-danger">
           Delete
         </button>
-        <button
-          ref={cancel}
-          type="button"
-          onClick={onCancel}
-          className="h-6 rounded border border-line px-2 text-xs hover:bg-canvas"
-        >
+        <button ref={cancel} type="button" onClick={onCancel} className="btn btn-sm">
           Cancel
         </button>
       </div>
@@ -277,7 +245,7 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
           title="Save the current filters and toggles as a view"
           disabled={toggles === undefined}
           onClick={startCreate}
-          className={`${ICON_BUTTON} disabled:opacity-50`}
+          className="btn btn-sm btn-icon btn-ghost"
         >
           <Icon path={PLUS} />
         </button>
@@ -287,11 +255,7 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
         <div role="alert" className="space-y-1 px-2 text-xs text-danger">
           <p>Could not load views. {viewsQuery.error.message}</p>
           <Details error={viewsQuery.error} />
-          <button
-            type="button"
-            onClick={() => void viewsQuery.refetch()}
-            className="rounded border border-line px-2 py-0.5 text-ink hover:bg-hover"
-          >
+          <button type="button" onClick={() => void viewsQuery.refetch()} className="btn btn-sm">
             Retry
           </button>
         </div>
@@ -336,6 +300,7 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
               >
                 <button
                   type="button"
+                  data-row
                   data-view-apply={view.id}
                   aria-current={active?.id === view.id ? 'true' : undefined}
                   onClick={() => {
@@ -353,7 +318,7 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
                     onClick={() => {
                       startRename(view.id)
                     }}
-                    className={ICON_BUTTON}
+                    className="btn btn-sm btn-icon btn-ghost"
                   >
                     <Icon path={PENCIL} />
                   </button>
@@ -363,7 +328,7 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
                     onClick={() => {
                       startDelete(view.id)
                     }}
-                    className={ICON_BUTTON}
+                    className="btn btn-sm btn-icon btn-ghost btn-delete"
                   >
                     <Icon path={TRASH} />
                   </button>

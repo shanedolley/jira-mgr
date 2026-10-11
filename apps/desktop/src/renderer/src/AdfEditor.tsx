@@ -62,8 +62,8 @@ export interface AdfEditorProps {
   label: string
   /** The Save button's name, such as "Comment". Defaults to "Save". */
   saveLabel?: string
-  /** The Cancel button's name, such as "Clear". Defaults to "Cancel". */
-  cancelLabel?: string
+  /** The Cancel button's name. Defaults to "Cancel"; `null` leaves the button out and keeps Esc. */
+  cancelLabel?: string | null
   /** False keeps the caret out of an editor that mounts already editing, such as the comment box. Defaults to true. */
   autoFocus?: boolean
   editing: boolean
@@ -370,28 +370,30 @@ export function AdfEditor(props: AdfEditorProps) {
           </p>
         )}
         {editing && !embedded && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={submit}
               disabled={!state.dirty || state.blocked}
               aria-keyshortcuts="Meta+Enter"
               title={`${props.saveLabel ?? 'Save'} (Cmd+Enter)`}
-              className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink disabled:opacity-50"
+              className="btn btn-primary"
             >
               {props.saveLabel ?? 'Save'}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                props.onCancel()
-              }}
-              aria-keyshortcuts="Escape"
-              title={`${props.cancelLabel ?? 'Cancel'} (Esc)`}
-              className="rounded-md border border-line px-3 py-1 hover:bg-hover"
-            >
-              {props.cancelLabel ?? 'Cancel'}
-            </button>
+            {props.cancelLabel !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  props.onCancel()
+                }}
+                aria-keyshortcuts="Escape"
+                title={`${props.cancelLabel ?? 'Cancel'} (Esc)`}
+                className="btn"
+              >
+                {props.cancelLabel ?? 'Cancel'}
+              </button>
+            )}
             {state.blocked && (
               <span className="text-xs text-muted">
                 An image is uploading or failed. Save is off until it is done or removed.

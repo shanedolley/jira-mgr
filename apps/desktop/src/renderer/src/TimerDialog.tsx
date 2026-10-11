@@ -8,7 +8,7 @@ import { adfFromText, formatWhen } from './activity'
 import type { Notice } from './create'
 import { Failure } from './Failure'
 import { Modal } from './Modal'
-import { BUTTON, FIELD } from './Section'
+import { FIELD } from './Section'
 import { formatClock } from './timer'
 import { useNow } from './TimerClock'
 import { useStopTimer, useSwitchTimer } from './timerQueries'
@@ -143,8 +143,8 @@ export function TimerDialog({ snapshot, to, onClose, onDone, returnFocus }: Time
           </p>
         )}
         {failure !== null && <Failure error={failure} className="text-danger" />}
-        <div className="flex justify-end gap-2 pt-1">
-          <button type="button" disabled={pending} onClick={onClose} className={BUTTON}>
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
+          <button type="button" disabled={pending} onClick={onClose} className="btn">
             Cancel
           </button>
           <button
@@ -153,15 +153,11 @@ export function TimerDialog({ snapshot, to, onClose, onDone, returnFocus }: Time
             onClick={() => {
               send({ expectRunning: timer.issueKey, discard: true })
             }}
-            className="rounded-md border border-danger px-3 py-1 text-danger hover:bg-hover disabled:opacity-60"
+            className="btn btn-delete"
           >
             {`Discard${start}`}
           </button>
-          <button
-            type="submit"
-            disabled={!validTime || pending}
-            className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink disabled:opacity-50"
-          >
+          <button type="submit" disabled={!validTime || pending} className="btn btn-primary">
             {to === null && flagged ? 'Confirm and log' : logLabel}
           </button>
         </div>

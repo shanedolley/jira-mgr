@@ -100,6 +100,7 @@ export function SummaryEditor({ issue, onEditingChange, onLeave, page }: Summary
       <h2 className={`font-semibold ${scale}`}>
         <button
           type="button"
+          data-row
           aria-keyshortcuts="E"
           aria-description="Edit summary"
           title="Edit summary (E)"

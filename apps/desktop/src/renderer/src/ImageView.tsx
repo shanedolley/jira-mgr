@@ -37,11 +37,7 @@ function LoadedImage({ single }: { single: AdfNode }) {
       <p role="alert" className="rounded-md border border-line p-2 text-muted">
         {REASONS[image.error.code] ?? 'Could not load this image.'}{' '}
         {REASONS[image.error.code] === undefined && (
-          <button
-            type="button"
-            onClick={() => void image.refetch()}
-            className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-          >
+          <button type="button" onClick={() => void image.refetch()} className="btn btn-sm">
             Retry
           </button>
         )}
@@ -90,23 +86,19 @@ function UploadingImage({
         <p className="text-danger">
           Could not upload {name}. {message}
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {upload !== undefined && (
             <button
               type="button"
               onClick={() => {
                 retryUpload(uploadId)
               }}
-              className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+              className="btn btn-sm"
             >
               Retry
             </button>
           )}
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-          >
+          <button type="button" onClick={onRemove} className="btn btn-sm btn-delete">
             Remove
           </button>
         </div>

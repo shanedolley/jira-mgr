@@ -18,11 +18,7 @@ export function App() {
         <div role="alert" className="max-w-md text-center">
           <h1 className="text-base font-semibold">Cannot read the saved login</h1>
           <p className="mt-2 text-muted">{session.error.message}</p>
-          <button
-            type="button"
-            className="mt-4 rounded-md border border-line px-3 py-1.5 hover:bg-hover"
-            onClick={() => void session.refetch()}
-          >
+          <button type="button" className="btn mt-4" onClick={() => void session.refetch()}>
             Try again
           </button>
         </div>

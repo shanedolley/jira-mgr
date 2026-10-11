@@ -43,7 +43,7 @@ export function ParentPrompt({ subject, parent, match, onChoose, onCancel }: Par
         event.preventDefault()
         onCancel()
       }}
-      className="m-auto w-[26rem] rounded-lg border border-line bg-panel p-5 text-ink shadow-[0_16px_48px_var(--dialog-shadow)] backdrop:bg-(--scrim)"
+      className="m-auto w-[26rem] rounded-xl border border-line bg-panel p-5 text-ink shadow-[0_16px_48px_var(--dialog-shadow)] backdrop:bg-(--scrim)"
     >
       <h2 id="parent-prompt-title" className="text-base font-semibold">
         Move {subject} under {parent.key}?
@@ -52,11 +52,7 @@ export function ParentPrompt({ subject, parent, match, onChoose, onCancel }: Par
         {parent.key} has {held}. Also set {words} to match?
       </p>
       <div className="mt-4 flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-line px-3 py-1 hover:bg-hover"
-        >
+        <button type="button" onClick={onCancel} className="btn">
           Cancel
         </button>
         <button
@@ -64,7 +60,7 @@ export function ParentPrompt({ subject, parent, match, onChoose, onCancel }: Par
           onClick={() => {
             onChoose(false)
           }}
-          className="rounded-md border border-line px-3 py-1 hover:bg-hover"
+          className="btn"
         >
           Move only
         </button>
@@ -74,7 +70,7 @@ export function ParentPrompt({ subject, parent, match, onChoose, onCancel }: Par
           onClick={() => {
             onChoose(true)
           }}
-          className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink"
+          className="btn btn-primary"
         >
           Move and set {words}
         </button>

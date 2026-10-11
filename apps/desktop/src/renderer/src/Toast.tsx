@@ -21,7 +21,7 @@ interface ToastProps {
   onDismissClick: () => void
 }
 
-const ACTION = 'rounded px-1.5 py-0.5 text-xs text-accent hover:bg-hover'
+const ACTION = 'btn btn-sm btn-ghost text-accent'
 
 function Icon({ warned }: { warned: boolean }) {
   return (
@@ -117,7 +117,7 @@ export function Toast({ notice, onOpen, onUndo, onRetry, onDismiss, onDismissCli
             type="button"
             aria-label="Dismiss"
             onClick={onDismissClick}
-            className="grid size-6 place-items-center rounded text-muted hover:bg-hover"
+            className="btn btn-sm btn-icon btn-ghost"
           >
             <svg
               aria-hidden

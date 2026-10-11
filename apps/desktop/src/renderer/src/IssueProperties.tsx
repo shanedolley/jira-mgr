@@ -423,6 +423,7 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
               footer={
                 <button
                   type="button"
+                  data-row
                   aria-pressed={allSprints}
                   onClick={() => {
                     setAllSprints(!allSprints)

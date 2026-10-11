@@ -26,11 +26,7 @@ export function LoadError({
         {denied ? 'Retry, or log in again.' : 'Retry, or check your connection.'}
       </p>
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onRetry}
-          className="rounded-md border border-line px-3 py-1 hover:bg-hover"
-        >
+        <button type="button" onClick={onRetry} className="btn">
           Retry
         </button>
         {denied && (
@@ -39,7 +35,7 @@ export function LoadError({
             onClick={() => {
               logout.mutate()
             }}
-            className="rounded-md border border-line px-3 py-1 hover:bg-hover"
+            className="btn"
           >
             Log in again
           </button>
