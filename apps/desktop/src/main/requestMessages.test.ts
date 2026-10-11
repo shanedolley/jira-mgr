@@ -125,4 +125,16 @@ describe('what the app shows of a request core names', () => {
     expect(ipc.message).not.toContain('/rest/')
     expect(ipc.detail).toContain('DELETE /rest/api/3/issue/PSAPAC-3')
   })
+
+  it('carries the status Jira answered with, and none when it did not answer', async () => {
+    for (const status of [404, 500]) {
+      answer(status, '{"errorMessages":["No."]}')
+      const error = await thrown(() => http.request('GET', '/rest/api/3/issue/PSAPAC-3'))
+      expect(toIpcError(error).status).toBe(status)
+    }
+    expect(toIpcError(new JiraMgrError('jira_error', 'Cannot reach Jira.'))).toEqual({
+      code: 'jira_error',
+      message: 'Cannot reach Jira.',
+    })
+  })
 })

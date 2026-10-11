@@ -6,6 +6,7 @@ import { expect, test, type ElectronApplication, type Locator, type Page } from 
 
 import {
   counts,
+  failComments,
   failRead,
   failTransitions,
   fieldsOf,
@@ -818,9 +819,8 @@ test('offers Retry when the page cannot read its issue, and shows the descriptio
   // The summary and properties come from the loaded lists, so the page still shows.
   await expect(heading('Kick off the engagement')).toBeVisible()
   const alert = issuePage().getByRole('alert')
-  await expect(alert).toContainText(
-    'Could not load the description. Retry, or check your connection.',
-  )
+  await expect(alert).toContainText('Jira had a problem. Retry in a minute.')
+  await expect(alert).not.toContainText('check your connection')
   // Jira's message, which names the request, stays behind Details.
   await expect(alert.getByText('The fake failed this read')).toBeHidden()
   await alert.getByText('Details', { exact: true }).click()
@@ -830,6 +830,36 @@ test('offers Retry when the page cannot read its issue, and shows the descriptio
   await issuePage().getByRole('button', { name: 'Retry' }).click()
   await expect(issuePage().getByText('Agree the scope with the sponsor.')).toBeVisible()
   await expect(issuePage().getByRole('alert')).toHaveCount(0)
+})
+
+test('says the comments no longer exist when Jira answers 404 to their load', async () => {
+  await open()
+  await item(/PSAPAC-1,/).click()
+  await failComments(app, 404)
+  await window.keyboard.press('Enter')
+  await expect(heading('Kick off the engagement')).toBeVisible()
+
+  const alert = issuePage().getByRole('alert').filter({ hasText: 'The comments' })
+  await expect(alert).toContainText('The comments no longer exist in Jira.')
+  await expect(alert).not.toContainText('check your connection')
+  // Jira's own words stay behind Details.
+  await expect(alert.getByText('The fake failed this comments read')).toBeHidden()
+  await alert.getByText('Details', { exact: true }).click()
+  await expect(alert.getByText('The fake failed this comments read')).toBeVisible()
+})
+
+test('says Jira had a problem when it answers 500 to the comments load, and Retry recovers', async () => {
+  await open()
+  await item(/PSAPAC-1,/).click()
+  await failComments(app, 500)
+  await window.keyboard.press('Enter')
+  await expect(heading('Kick off the engagement')).toBeVisible()
+
+  const alert = issuePage().getByRole('alert').filter({ hasText: 'Jira had a problem' })
+  await expect(alert).toContainText('Jira had a problem. Retry in a minute.')
+  await expect(alert).not.toContainText('check your connection')
+  await alert.getByRole('button', { name: 'Retry' }).click()
+  await expect(alert).toHaveCount(0)
 })
 
 test("shows no request path when a picker's lookup fails, until Details opens", async () => {
