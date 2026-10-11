@@ -300,9 +300,6 @@ export function CreateIssueDialog({
             },
           },
         )
-        // Held until now so the placeholders keep showing their upload while it runs. This takes
-        // every staged image, so one deleted from the editor meanwhile does not wait for the dialog to close.
-        removeUploadsOf(STAGED_KEY)
         const notes = imageNotes(result.key, embedded)
         if (notes.length > 0) {
           notice = { ...notice, notes: [...notice.notes, ...notes], warned: true }
@@ -321,6 +318,10 @@ export function CreateIssueDialog({
         failedFiles ||= failed.length > 0
       }
     } finally {
+      // Not before the files attach: the placeholders are still in the editor, and one whose
+      // entry is gone shows "The upload was lost." This also takes an image deleted from the text
+      // meanwhile. The form is cleared or closed in the same run, so no render sees one without the other.
+      removeUploadsOf(STAGED_KEY)
       setAttaching(false)
     }
     onCreated(result, notice, more, failedFiles)

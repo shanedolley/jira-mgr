@@ -96,7 +96,8 @@ function UploadingImage({
           Could not upload {name}. {message}
         </p>
         <div className="flex flex-wrap gap-2">
-          {upload !== undefined && (
+          {/* The create dialog is locked while its images upload, and its notice names a failure after. */}
+          {upload !== undefined && issueKey !== STAGED_KEY && (
             <button
               type="button"
               onClick={() => {

@@ -357,6 +357,7 @@ export function AdfEditor(props: AdfEditorProps) {
     reset: (doc) => {
       editor.commands.setContent(toEditor(doc), { emitUpdate: false })
       setProblem(null)
+      pastedCount.current = 0
     },
     adf: () => editorToAdf(editor.getJSON() as EditorDoc),
     json: () => editor.getJSON() as EditorDoc,
