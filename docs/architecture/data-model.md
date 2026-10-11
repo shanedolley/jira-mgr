@@ -13,6 +13,8 @@ Core reads Jira entities and maps them to plain domain types. Everything else ab
 | `status` | `status`: `id`, `name`, and `category` from `statusCategory.key` |
 | `parentKey` | `parent.key` |
 | `assignee`, `priority`, `resolution` | Same-named fields, `null` when empty |
+| `creator` | `creator`: `accountId` and `displayName`, `null` when empty |
+| `links` | `issuelinks`: per link the type name, the direction and the linked issue's key and status category |
 | `originalEstimateSeconds`, `remainingEstimateSeconds` | `timetracking` |
 | `dueDate` | `duedate` |
 | `customer`, `engagement` | The resolved custom fields, as `{ id, value }` |

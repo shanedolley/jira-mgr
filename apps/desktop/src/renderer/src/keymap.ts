@@ -24,6 +24,7 @@ export type Command =
   | 'create'
   | 'timer'
   | 'filter'
+  | 'filterMenu'
   | 'help'
   | 'palette'
   | 'undo'
@@ -80,6 +81,7 @@ const LETTERS = new Map<string, Command>([
   ['i', 'assignMe'],
   ['y', 'copyKey'],
   ['u', 'copyLink'],
+  ['f', 'filterMenu'],
 ])
 
 /** The key a command answers to as a keycap, such as `S`, or `undefined` for a command without one. */

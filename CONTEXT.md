@@ -42,6 +42,10 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Done chip** | The "N done" chip under an open parent that reveals its hidden Done children. | |
 | **Hide done** | The toggle that hides Done parents with their whole subtree, except a Done parent of an open issue, which stays as dimmed context. On at first launch. | archive |
 | **Saved view** | A named filter you create, rename and delete, stored as local JSON that the CLI also reads. | filter, query |
+| **Creator** | The person who created an issue. The Filter menu and a saved view's `creator` filter use it. | reporter, author |
+| **Relations** | The Filter menu's field for Link state: Blocked (a "Blocks" link into the issue from one not Done) and Blocking (one out of it). | dependencies |
+| **Is not** | The operator that leaves out the issues holding a value. A saved view stores it under `not`. | exclude, negate |
+| **Overdue** | An open issue with a due date before today. | late |
 | **Palette** | The Cmd+K menu: the issue in context and its actions, saved views, a search over loaded issues, and Jira text search below them. | command bar, omnibox |
 | **Peek** | The space-bar preview of an issue. | quick view |
 | **Issue page** | The full page of one issue, opened with Enter: summary, description and subtasks beside the properties sidebar. | detail view |

@@ -444,7 +444,7 @@ const BUGS = {
 describe('views shared with the CLI', () => {
   it('lists the starter views before any file exists', async () => {
     const views = await createBackend().listViews()
-    expect(views.map((v) => v.name)).toEqual(['My issues', 'Current sprint'])
+    expect(views.map((v) => v.name)).toEqual(['My issues', 'Created by me', 'Current sprint'])
   })
 
   it('a view made in the app is read by the CLI, by id and by name', async () => {
@@ -493,7 +493,7 @@ describe('views shared with the CLI', () => {
       backend.renameView({ id: 'current-sprint', name: 'Sprint now' }),
     ])
     const names = (await state.readViews()).map((v) => v.name).sort()
-    expect(names).toEqual(['One', 'Sprint now', 'Three', 'Two'])
+    expect(names).toEqual(['Created by me', 'One', 'Sprint now', 'Three', 'Two'])
   })
 
   it('keeps working after one call fails', async () => {

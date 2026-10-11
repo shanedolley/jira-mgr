@@ -2,6 +2,7 @@ import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
 import { adfDocSchema, type AdfDoc } from '@jira-mgr/core/adf'
 import { DURATION_PATTERN, SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { TEXT_QUERY_MAX } from '@jira-mgr/core/search'
+import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from '@jira-mgr/core/view-filter'
 import { z } from 'zod'
 
 import { ATTACHMENT_LIMIT_BYTES, CREATE_TYPES, IMAGE_LIMIT_BYTES, IMAGE_TYPES } from '../shared/ipc'
@@ -289,12 +290,22 @@ const togglesArgs: z.ZodType<Toggles> = z.strictObject({
 
 const filterValues = z.array(z.string().max(MAX_FILTER_VALUE)).max(MAX_FILTER_VALUES).optional()
 
+const filterLists = Object.fromEntries(
+  FILTER_LIST_FIELDS.map((field) => [field, filterValues]),
+) as Record<FilterListField, typeof filterValues>
+
+const datePreset = z.enum(DATE_WINDOWS)
+
 const viewFilters = z.strictObject({
-  assignee: filterValues,
-  status: filterValues,
-  label: filterValues,
-  type: filterValues,
-  sprint: filterValues,
+  ...filterLists,
+  dates: z
+    .strictObject({
+      due: z.enum(['overdue', ...DATE_WINDOWS]).optional(),
+      created: datePreset.optional(),
+      updated: datePreset.optional(),
+    })
+    .optional(),
+  not: z.strictObject(filterLists).optional(),
   text: z.string().max(MAX_FILTER_VALUE).optional(),
 })
 

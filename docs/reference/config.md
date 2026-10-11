@@ -27,8 +27,29 @@ An array of saved views. The app writes it; `jm` only reads it.
 |---|---|
 | `id`, `name` | non-empty string |
 | `filters.assignee`, `.status`, `.label`, `.type`, `.sprint` | optional array of strings |
+| `filters.statusType`, `.priority`, `.customer`, `.engagement`, `.epic`, `.creator`, `.relations` | optional array of strings |
+| `filters.dates.due` | optional `overdue`, `today`, `last-7-days`, `last-30-days` or `next-7-days` |
+| `filters.dates.created`, `.updated` | optional `today`, `last-7-days`, `last-30-days` or `next-7-days` |
+| `filters.not` | optional object holding any of the array keys above (every one but `text` and `dates`), the values to leave out |
 | `filters.text` | optional string |
 | `toggles` | the same three keys and defaults as `settings.json` |
+
+Values within a key are alternatives, and every key that is set must match. The values:
+
+| Key | Values |
+|---|---|
+| `assignee` | An account id, `me` or `unassigned` |
+| `creator` | An account id or `me` |
+| `status`, `type`, `priority` | A name in any case, or an id |
+| `statusType` | `new`, `indeterminate` or `done`, Jira's status categories |
+| `customer`, `engagement` | An option's name in any case, or its id |
+| `epic` | An Epic's key, which matches that Epic and every issue under it, Subtasks included. `jm issue list` and `jm issue tree` load every page of both phases for it, so a Subtask under a Done Story is found |
+| `relations` | `blocked` or `blocking`: a "Blocks" link with an issue that is not Done |
+| `label` | A label, exactly |
+| `sprint` | A sprint id or name, or `current` for any active sprint |
+| `dates` | One window per date, in the local time zone: `today`; `last-7-days`, today and the 6 days before it; `last-30-days`, today and the 29 before; `next-7-days`, today and the 6 days after. `overdue` is an open issue due before today |
+
+A `not` key excludes: `{ "status": ["Done"], "not": { "label": ["etl"] } }` keeps Done issues without the label `etl`. A view file written before these keys existed parses unchanged. An older build that reads a newer file drops the keys it does not know, and its next save loses them.
 
 ## Environment Variables
 

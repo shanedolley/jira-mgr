@@ -4,7 +4,14 @@ import { loadFixture } from '../test/msw.js'
 import { buildHierarchy, type CustomerGroup, type HierarchyNode } from './hierarchy.js'
 import { issueSchema, type Issue } from './issue.js'
 import type { SavedView } from './state.js'
-import { applyViewToggles, filterIssues, issueMatcher, type ViewFilters } from './view-filter.js'
+import {
+  applyViewToggles,
+  filterIssues,
+  filtersNeedMe,
+  type FilterContext,
+  issueMatcher,
+  type ViewFilters,
+} from './view-filter.js'
 
 const ME = 'acc-me'
 const ctx = { accountId: ME }
@@ -17,6 +24,14 @@ interface Spec {
   labels?: string[]
   sprints?: { id: number; name: string; state: string }[]
   parent?: string
+  creator?: string
+  priority?: string
+  customer?: string
+  engagement?: string
+  due?: string
+  created?: string
+  updated?: string
+  links?: Issue['links']
 }
 
 function issue(key: string, spec: Spec = {}): Issue {
@@ -38,18 +53,20 @@ function issue(key: string, spec: Spec = {}): Issue {
     assignee: spec.assignee
       ? { accountId: spec.assignee, displayName: spec.assignee, avatarUrl: null }
       : null,
+    creator: spec.creator ? { accountId: spec.creator, displayName: spec.creator } : null,
     labels: spec.labels ?? [],
-    priority: null,
-    customer: null,
-    engagement: null,
+    links: spec.links ?? [],
+    priority: spec.priority ? { id: `p-${spec.priority}`, name: spec.priority } : null,
+    customer: spec.customer ? { id: `c-${spec.customer}`, value: spec.customer } : null,
+    engagement: spec.engagement ? { id: `e-${spec.engagement}`, value: spec.engagement } : null,
     sprints: spec.sprints ?? [],
     startDate: null,
-    dueDate: null,
+    dueDate: spec.due ?? null,
     originalEstimateSeconds: null,
     remainingEstimateSeconds: null,
     timeRemainingHours: null,
-    created: '2026-01-01T00:00:00.000Z',
-    updated: '2026-01-01T00:00:00.000Z',
+    created: spec.created ?? '2026-01-01T00:00:00.000Z',
+    updated: spec.updated ?? '2026-01-01T00:00:00.000Z',
   }
 }
 
@@ -205,6 +222,184 @@ describe('issueMatcher', () => {
     expect(
       filter(all, { assignee: ['me'], status: ['To Do', 'In Progress'], text: 'login' }),
     ).toEqual(['P-1', 'P-5'])
+  })
+})
+
+describe('more fields', () => {
+  const NOW = new Date(2026, 9, 11, 12)
+  const at = (d: number) => new Date(2026, 9, 11 + d, 12).toISOString()
+  const day = (d: number) => at(d).slice(0, 10)
+  const dated = { accountId: ME, now: NOW }
+  const pick = (all: Issue[], filters: ViewFilters, context: FilterContext = ctx) =>
+    keys(filterIssues(all, filters, context))
+
+  it('matches Customer and Engagement by name in any case, or by id', () => {
+    const all = [
+      issue('P-1', { customer: 'BHP', engagement: 'ETL' }),
+      issue('P-2', { customer: 'Rio', engagement: 'Cloud' }),
+      issue('P-3'),
+    ]
+    expect(pick(all, { customer: ['bhp'] })).toEqual(['P-1'])
+    expect(pick(all, { customer: ['c-Rio'] })).toEqual(['P-2'])
+    expect(pick(all, { engagement: ['CLOUD', 'etl'] })).toEqual(['P-1', 'P-2'])
+  })
+
+  it('matches Priority by name in any case, or by id, and never an issue without one', () => {
+    const all = [
+      issue('P-1', { priority: 'High' }),
+      issue('P-2', { priority: 'Low' }),
+      issue('P-3'),
+    ]
+    expect(pick(all, { priority: ['high'] })).toEqual(['P-1'])
+    expect(pick(all, { priority: ['p-Low'] })).toEqual(['P-2'])
+  })
+
+  it('matches the Creator by accountId or "me"', () => {
+    const all = [issue('P-1', { creator: ME }), issue('P-2', { creator: 'other' }), issue('P-3')]
+    expect(pick(all, { creator: ['me'] })).toEqual(['P-1'])
+    expect(pick(all, { creator: ['other'] })).toEqual(['P-2'])
+  })
+
+  it('matches the Status type by Jira category', () => {
+    const all = [issue('P-1', { status: 'To Do' }), issue('P-2', { status: 'Done' })]
+    expect(pick(all, { statusType: ['done'] })).toEqual(['P-2'])
+    expect(pick(all, { statusType: ['New', 'done'] })).toEqual(['P-1', 'P-2'])
+  })
+
+  it('matches an Epic and the issues under it, Subtasks included', () => {
+    const all = [
+      issue('P-1', { type: 'Epic' }),
+      issue('P-2', { parent: 'P-1' }),
+      issue('P-3', { parent: 'P-2' }),
+      issue('P-4', { type: 'Epic' }),
+      issue('P-5', { parent: 'P-4' }),
+    ]
+    expect(pick(all, { epic: ['P-1'] }, { accountId: ME, issues: all })).toEqual([
+      'P-1',
+      'P-2',
+      'P-3',
+    ])
+    expect(pick(all, { epic: ['p-4'] }, { accountId: ME, issues: all })).toEqual(['P-4', 'P-5'])
+    // Without the loaded issues a Subtask's Epic is out of reach, but a direct child still matches.
+    expect(pick(all, { epic: ['P-1'] })).toEqual(['P-1', 'P-2'])
+  })
+
+  it('reads an Epic that arrives after the issue under it, as the CLI pages', () => {
+    const loaded: Issue[] = [issue('P-3', { parent: 'P-2' })]
+    const match = issueMatcher({ epic: ['P-1'] }, { accountId: ME, issues: loaded })
+    const child = loaded[0]
+    if (child === undefined || match === undefined) throw new Error('setup')
+    expect(match(child)).toBe(false)
+    loaded.push(issue('P-2', { parent: 'P-1' }), issue('P-1', { type: 'Epic' }))
+    expect(match(child)).toBe(true)
+  })
+
+  describe('relations', () => {
+    const link = (direction: 'inward' | 'outward', category: 'new' | 'done', type = 'Blocks') => ({
+      type,
+      direction,
+      key: 'P-9',
+      category,
+    })
+    const all = [
+      issue('P-1', { links: [link('inward', 'new')] }),
+      issue('P-2', { links: [link('outward', 'new')] }),
+      issue('P-3', { links: [link('inward', 'done'), link('outward', 'done')] }),
+      issue('P-4', { links: [link('inward', 'new', 'Relates')] }),
+      issue('P-5'),
+    ]
+
+    it('finds blocked and blocking issues, ignoring a Done end and other link types', () => {
+      expect(pick(all, { relations: ['blocked'] })).toEqual(['P-1'])
+      expect(pick(all, { relations: ['Blocking'] })).toEqual(['P-2'])
+      expect(pick(all, { relations: ['blocked', 'blocking'] })).toEqual(['P-1', 'P-2'])
+    })
+
+    it('matches nothing for a value it does not know', () => {
+      expect(pick(all, { relations: ['stuck'] })).toEqual([])
+    })
+  })
+
+  describe('dates', () => {
+    it('lists open issues due before today as overdue', () => {
+      const all = [
+        issue('P-1', { due: day(-1) }),
+        issue('P-2', { due: day(0) }),
+        issue('P-3', { due: day(-5), status: 'Done' }),
+        issue('P-4'),
+        issue('P-5', { due: day(-30) }),
+      ]
+      expect(pick(all, { dates: { due: 'overdue' } }, dated)).toEqual(['P-1', 'P-5'])
+    })
+
+    it('takes windows around today, edges included', () => {
+      const all = [
+        issue('P-1', { due: day(-7) }),
+        issue('P-2', { due: day(-6) }),
+        issue('P-3', { due: day(0) }),
+        issue('P-4', { due: day(6) }),
+        issue('P-5', { due: day(7) }),
+      ]
+      expect(pick(all, { dates: { due: 'today' } }, dated)).toEqual(['P-3'])
+      expect(pick(all, { dates: { due: 'last-7-days' } }, dated)).toEqual(['P-2', 'P-3'])
+      expect(pick(all, { dates: { due: 'next-7-days' } }, dated)).toEqual(['P-3', 'P-4'])
+    })
+
+    it('compares created and updated by their local day', () => {
+      const all = [
+        issue('P-1', { created: at(-40), updated: at(0) }),
+        issue('P-2', { created: at(-10), updated: at(-10) }),
+        issue('P-3', { created: at(0), updated: at(-40) }),
+      ]
+      expect(pick(all, { dates: { created: 'today' } }, dated)).toEqual(['P-3'])
+      expect(pick(all, { dates: { created: 'last-30-days' } }, dated)).toEqual(['P-2', 'P-3'])
+      expect(pick(all, { dates: { updated: 'today' } }, dated)).toEqual(['P-1'])
+    })
+
+    it('ANDs the dates with each other', () => {
+      const all = [issue('P-1', { due: day(-1), created: at(0) }), issue('P-2', { due: day(-1) })]
+      expect(pick(all, { dates: { due: 'overdue', created: 'today' } }, dated)).toEqual(['P-1'])
+    })
+  })
+
+  describe('not', () => {
+    const all = [
+      issue('P-1', { status: 'To Do', labels: ['etl'], assignee: ME }),
+      issue('P-2', { status: 'Hold', labels: ['etl'] }),
+      issue('P-3', { status: 'To Do', labels: ['ops'], assignee: 'other' }),
+    ]
+
+    it('leaves out the listed values of a field', () => {
+      expect(pick(all, { not: { status: ['hold'] } })).toEqual(['P-1', 'P-3'])
+      expect(pick(all, { not: { status: ['Hold', 'To Do'] } })).toEqual([])
+    })
+
+    it('ANDs the excluded fields, and with the included ones', () => {
+      expect(pick(all, { not: { status: ['Hold'], label: ['ops'] } })).toEqual(['P-1'])
+      expect(pick(all, { label: ['etl'], not: { status: ['Hold'] } })).toEqual(['P-1'])
+    })
+
+    it('excludes "me" and "unassigned", and ignores an empty list', () => {
+      expect(pick(all, { not: { assignee: ['me'] } })).toEqual(['P-2', 'P-3'])
+      expect(pick(all, { not: { assignee: ['unassigned'] } })).toEqual(['P-1', 'P-3'])
+      expect(issueMatcher({ not: { status: [] } }, ctx)).toBeUndefined()
+    })
+
+    it('excludes the issues of an Epic', () => {
+      const tree = [issue('P-1', { type: 'Epic' }), issue('P-2', { parent: 'P-1' }), issue('P-3')]
+      expect(pick(tree, { not: { epic: ['P-1'] } }, { accountId: ME, issues: tree })).toEqual([
+        'P-3',
+      ])
+    })
+  })
+
+  describe('filtersNeedMe', () => {
+    it('is true for "me" as assignee or creator, included or excluded', () => {
+      expect(filtersNeedMe({ assignee: ['Me'] })).toBe(true)
+      expect(filtersNeedMe({ creator: ['me'] })).toBe(true)
+      expect(filtersNeedMe({ not: { creator: ['me'] } })).toBe(true)
+      expect(filtersNeedMe({ status: ['me'], not: { assignee: ['x'] } })).toBe(false)
+    })
   })
 })
 

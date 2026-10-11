@@ -2,9 +2,9 @@
 
 Playwright tests that cross package boundaries. Unit and integration tests sit beside the code they test.
 
-| Suite      | Drives                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `desktop/` | The built desktop app, through Playwright's Electron driver, on a fake Jira and a fake Keychain: `shell.test.ts`, `tree.test.ts`, `page.test.ts`, `create.test.ts`, `delete.test.ts`, `keyboard.test.ts`, `properties.test.ts`, `editor.test.ts`, `avatars.test.ts`, `activity.test.ts`, `views.test.ts`, `lateRead.test.ts`, `package.test.ts`, `timer.test.ts`, `surfaces.test.ts`, `textSearch.test.ts`, `actions.test.ts`, `palette.test.ts`, `toast.test.ts`, `buttons.test.ts` |
+| Suite      | Drives                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `desktop/` | The built desktop app, through Playwright's Electron driver, on a fake Jira and a fake Keychain: `shell.test.ts`, `tree.test.ts`, `page.test.ts`, `create.test.ts`, `delete.test.ts`, `keyboard.test.ts`, `properties.test.ts`, `editor.test.ts`, `avatars.test.ts`, `activity.test.ts`, `views.test.ts`, `filters.test.ts`, `lateRead.test.ts`, `package.test.ts`, `timer.test.ts`, `surfaces.test.ts`, `textSearch.test.ts`, `actions.test.ts`, `palette.test.ts`, `toast.test.ts`, `buttons.test.ts` |
 
 ## Run
 
@@ -19,6 +19,8 @@ Run on one worker when hunting a flake or running beside other worktrees: `pnpm 
 Electron's `pnpm install` step downloads its binary. After `pnpm install` in a new worktree, see the Electron check in [AGENTS.md](../AGENTS.md).
 
 `desktop/views.test.ts` covers the sidebar's saved views. It reads `views.json` and `settings.json` in the temporary `JM_STATE_DIR`, the files `jm view list` and the app share, to check what the app wrote, and writes `views.json` itself to check what the app reads.
+
+`desktop/filters.test.ts` covers the Filter menu: the `F` key, the Project's Customers as choices, Overdue, "is not" and its chip, Creator, Epic, Relations and Status type, and a saved view that stores the new filters. The fake Jira gives PSAPAC-11, 31 and 32 another creator, PSAPAC-40 and 22 a past due date and PSAPAC-31 a far-future one, and PSAPAC-2 a "Blocks" link from PSAPAC-1.
 
 `desktop/lateRead.test.ts` covers the create toast's second read: it names what the automation changed after the create returned, and shows no second toast when the read finds nothing new.
 

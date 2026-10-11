@@ -1,7 +1,7 @@
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
 import type { SavedView, Toggles } from '../../shared/ipc'
-import { FILTER_FIELDS } from './filters'
+import { FILTER_FIELDS, OPERATORS, valuesOf } from './filters'
 
 const sameSet = (a: readonly string[] = [], b: readonly string[] = []) =>
   a.length === b.length && a.every((value) => b.includes(value))
@@ -9,8 +9,9 @@ const sameSet = (a: readonly string[] = [], b: readonly string[] = []) =>
 /** True when the filters select the same issues in the same way, ignoring the order of values. */
 function sameFilters(a: ViewFilters, b: ViewFilters): boolean {
   return (
-    FILTER_FIELDS.every((field) => sameSet(a[field], b[field])) &&
-    (a.text ?? '').trim() === (b.text ?? '').trim()
+    FILTER_FIELDS.every((field) =>
+      OPERATORS.every((op) => sameSet(valuesOf(a, field, op), valuesOf(b, field, op))),
+    ) && (a.text ?? '').trim() === (b.text ?? '').trim()
   )
 }
 

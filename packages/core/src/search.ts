@@ -59,6 +59,8 @@ function requestedFields(ids: FieldIds): string[] {
     'resolution',
     'parent',
     'assignee',
+    'creator',
+    'issuelinks',
     'labels',
     'priority',
     'timetracking',

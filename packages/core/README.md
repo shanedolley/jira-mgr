@@ -32,7 +32,7 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 - `findView(idOrName)` returns the view with that id, or failing that that name in any case. It throws `not_found` for an unknown view.
 - `createView(name, { filters, toggles })` returns the new view. Its id is the name as a slug (`Bugs this week` is `bugs-this-week`), with `-2`, `-3` and so on when taken.
 - `renameView(idOrName, name)` keeps the id, filters and toggles.
-- `deleteView(idOrName)` allows deleting the last view. The next `readViews()` then returns `[]`, not the starters: once `views.json` exists, "My issues" and "Current sprint" are ordinary views.
+- `deleteView(idOrName)` allows deleting the last view. The next `readViews()` then returns `[]`, not the starters: once `views.json` exists, "My issues", "Created by me" and "Current sprint" are ordinary views.
 - A name is trimmed, and an empty one or one that matches another view in any case throws `validation_failed`. Renaming a view to its own name in a new case is allowed.
 
 ## Credentials
@@ -83,7 +83,7 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 - `getIssue(http, key, { signal })` reads one issue with the same fields plus `description` (an ADF document, or `null`) and `subtasks` (`{ key, summary, status }`, the status as its name). An unknown key throws `not_found`.
 - `signal` goes to the HTTP client, so aborting stops the paging and rejects with the signal's reason.
 - An issue that fails the schema, or a page that is not last but sends no token or repeats one, throws `jira_error`.
-- `Issue` holds `id`, `key`, `summary`, `issueType`, `status` (with `category`), `resolution`, `parentKey`, `assignee`, `labels`, `priority`, `customer`, `engagement`, `sprints`, `startDate`, `dueDate`, `originalEstimateSeconds`, `remainingEstimateSeconds`, `timeRemainingHours`, `created` and `updated`. Times are UTC ISO strings, and a value Jira leaves empty is `null` (`[]` for `sprints`).
+- `Issue` holds `id`, `key`, `summary`, `issueType`, `status` (with `category`), `resolution`, `parentKey`, `assignee`, `creator`, `labels`, `links`, `priority`, `customer`, `engagement`, `sprints`, `startDate`, `dueDate`, `originalEstimateSeconds`, `remainingEstimateSeconds`, `timeRemainingHours`, `created` and `updated`. `creator` is `{ accountId, displayName }`. `links` holds one `{ type, direction, key, category }` per issue link, the `type` a link type's name, the `direction` `inward` or `outward` as Jira sends it, and the `category` the linked issue's status category. Times are UTC ISO strings, and a value Jira leaves empty is `null` (`[]` for `sprints` and `links`).
 
 ## Hierarchy
 
@@ -103,17 +103,25 @@ It returns `CustomerGroup[]`, each `{ customer, epics, noEpic }`, and `customer:
 
 `@jira-mgr/core/view-filter` is pure and imports nothing from `node:`. A view's `filters` select issues: values within a field are alternatives (OR), and every filtered field must match (AND). An absent or empty list, and a blank `text`, filter nothing.
 
-- `issueMatcher(filters, { accountId })` returns the predicate, or `undefined` when the filters select everything.
+- `issueMatcher(filters, { accountId, issues?, now? })` returns the predicate, or `undefined` when the filters select everything. `issues` is the loaded list, which `epic` reads to climb from a Subtask to its Epic; it may still be filling, and the matcher sees what has arrived. `now` sets "today" for the date filters and defaults to the current time.
 - `filterIssues(issues, filters, { accountId })` returns the matching issues in input order.
+- `filtersNeedMe(filters)` is true when `me` appears under `assignee` or `creator`, included or excluded, so a client knows to fetch the signed-in user first.
+- `filters.not` lists values to leave out, per field, and an issue must hold none of them. The new filters and `not` are optional keys, so a `views.json` from before them parses unchanged; see [config](../../docs/reference/config.md#viewsjson).
 - `applyViewToggles(settings.toggles, view)` returns the toggles to build the hierarchy with. The view's win, since a saved view always holds all three.
 
-| Filter           | Values                                                                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `assignee`       | An accountId, or `me` (the `accountId` passed in) or `unassigned` in any case                                                                           |
-| `status`, `type` | A name in any case, or an id                                                                                                                            |
-| `label`          | A label, matched exactly because Jira labels are case-sensitive                                                                                         |
-| `sprint`         | A sprint id, a name in any case, or `current` (any case) for any sprint whose state is `active`. `current` wins over a sprint literally named "Current" |
-| `text`           | A case-insensitive substring of the key or the summary, after trimming                                                                                  |
+| Filter                       | Values                                                                                                                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assignee`                   | An accountId, or `me` (the `accountId` passed in) or `unassigned` in any case                                                                                                     |
+| `creator`                    | An accountId, or `me`                                                                                                                                                             |
+| `status`, `type`, `priority` | A name in any case, or an id                                                                                                                                                      |
+| `statusType`                 | `new`, `indeterminate` or `done`                                                                                                                                                  |
+| `customer`, `engagement`     | An option's name in any case, or its id                                                                                                                                           |
+| `epic`                       | An Epic's key: the Epic and every issue under it                                                                                                                                  |
+| `relations`                  | `blocked` or `blocking`: a "Blocks" link to or from an issue that is not Done                                                                                                     |
+| `dates`                      | `due`, `created` and `updated`, each one window around today: `today`, `last-7-days`, `last-30-days` or `next-7-days`; `due` also takes `overdue`, an open issue due before today |
+| `label`                      | A label, matched exactly because Jira labels are case-sensitive                                                                                                                   |
+| `sprint`                     | A sprint id, a name in any case, or `current` (any case) for any sprint whose state is `active`. `current` wins over a sprint literally named "Current"                           |
+| `text`                       | A case-insensitive substring of the key or the summary, after trimming                                                                                                            |
 
 To show a view as a tree, pass the predicate to `buildHierarchy` as `match`, with no separate filtering pass. It works like "Assignee: me": the matching issues stay, with their ancestors as `contextOnly` context, so a matching Story keeps its Epic. Filtering first would orphan the Story into "No Epic". Leave `match` out when `issueMatcher` returns `undefined`, so an empty view hides exactly what the toggles hide.
 

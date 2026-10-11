@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 
 import { JiraMgrError } from './errors.js'
+import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from './view-filter.js'
 
 /** Non-secret state shared by the app and the CLI. Electron's default userData folder on macOS. */
 export function stateDir(): string {
@@ -54,15 +55,27 @@ const settingsSchema = z.object({
   toggles,
 })
 
+const filterLists = z.object(
+  Object.fromEntries(FILTER_LIST_FIELDS.map((f) => [f, z.array(z.string()).optional()])) as Record<
+    FilterListField,
+    z.ZodOptional<z.ZodArray<z.ZodString>>
+  >,
+)
+
+const dateWindow = z.enum(DATE_WINDOWS)
+
 const savedViewSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  filters: z.object({
-    assignee: z.array(z.string()).optional(),
-    status: z.array(z.string()).optional(),
-    label: z.array(z.string()).optional(),
-    type: z.array(z.string()).optional(),
-    sprint: z.array(z.string()).optional(),
+  filters: filterLists.extend({
+    dates: z
+      .object({
+        due: z.enum(['overdue', ...DATE_WINDOWS]).optional(),
+        created: dateWindow.optional(),
+        updated: dateWindow.optional(),
+      })
+      .optional(),
+    not: filterLists.optional(),
     text: z.string().optional(),
   }),
   toggles,
@@ -101,6 +114,12 @@ const STARTER_VIEWS: SavedView[] = [
     name: 'My issues',
     filters: {},
     toggles: { hideDone: true, assigneeMe: true, hideEmptyCustomers: true },
+  },
+  {
+    id: 'created-by-me',
+    name: 'Created by me',
+    filters: { creator: ['me'] },
+    toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
   },
   {
     id: 'current-sprint',
