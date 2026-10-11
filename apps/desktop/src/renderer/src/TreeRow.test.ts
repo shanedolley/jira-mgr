@@ -66,7 +66,9 @@ describe('rowName', () => {
       'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, 2 of 8 done',
     )
     const all = row({ priority: { id: '2', name: 'High' }, dueDate: '2026-10-14' })
-    expect(rowName(all, ['due'], undefined, progress)).toMatch(/, priority High, due 2026-10-14, 2 of 8 done$/)
+    expect(rowName(all, ['due'], undefined, progress)).toMatch(
+      /, priority High, due 2026-10-14, 2 of 8 done$/,
+    )
   })
 
   it('combines the blockers and the progress of an Epic: blockers before the priority, progress last', () => {
@@ -77,9 +79,7 @@ describe('rowName', () => {
       priority: { id: '2', name: 'High' },
       dueDate: '2026-10-14',
     })
-    expect(
-      rowName(epic, ['due'], { blockedBy: 2, blocking: 1 }, { done: 2, total: 8 }),
-    ).toBe(
+    expect(rowName(epic, ['due'], { blockedBy: 2, blocking: 1 }, { done: 2, total: 8 })).toBe(
       'PSAPAC-10, Epic, To Do, Customer onboarding, unassigned, blocked by 2 issues, blocking 1 issue, priority High, due 2026-10-14, 2 of 8 done',
     )
   })
