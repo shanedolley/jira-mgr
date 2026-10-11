@@ -55,6 +55,7 @@ import { useStartTimer, useTimer } from './timerQueries'
 import { rowDomId } from './TreeRow'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
+import { ViewTabs } from './ViewTabs'
 import {
   createContext,
   deleteFailureNotes,
@@ -992,6 +993,7 @@ export function Shell({ session }: { session: Session }) {
             </button>
           </div>
         </header>
+        <ViewTabs filters={filters} toggles={toggles} onApply={applyView} />
         {toggles !== undefined && (
           <TreeToolbar
             toggles={toggles}

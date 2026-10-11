@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises'
 
-import { writeViews } from '@jira-mgr/core/state'
+import { moveView, writeViews } from '@jira-mgr/core/state'
 import { describe, expect, it } from 'vitest'
 
 import { run } from '../../run.js'
@@ -31,6 +31,8 @@ describe('jm view list', () => {
       ['my-issues', 'My issues'],
       ['created-by-me', 'Created by me'],
       ['current-sprint', 'Current sprint'],
+      ['active', 'Active'],
+      ['backlog', 'Backlog'],
     ])
     expect(f.stderr).toBe('')
   })
@@ -40,6 +42,15 @@ describe('jm view list', () => {
     const f = fakeIo()
     expect(await run(['view', 'list'], f.io)).toBe(0)
     expect(JSON.parse(f.stdout)).toEqual({ data: [BUGS] })
+  })
+
+  it('lists the views in the order the app saved them', async () => {
+    await writeViews([{ ...BUGS, id: 'z-last', name: 'Z' }, BUGS])
+    await moveView('bugs', 0)
+    const f = fakeIo()
+    expect(await run(['view', 'list'], f.io)).toBe(0)
+    const { data } = JSON.parse(f.stdout) as { data: { id: string }[] }
+    expect(data.map((v) => v.id)).toEqual(['bugs', 'z-last'])
   })
 
   it('prints a table of id, name and what each view sets on a terminal', async () => {

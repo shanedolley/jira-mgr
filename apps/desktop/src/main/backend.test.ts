@@ -444,7 +444,13 @@ const BUGS = {
 describe('views shared with the CLI', () => {
   it('lists the starter views before any file exists', async () => {
     const views = await createBackend().listViews()
-    expect(views.map((v) => v.name)).toEqual(['My issues', 'Created by me', 'Current sprint'])
+    expect(views.map((v) => v.name)).toEqual([
+      'My issues',
+      'Created by me',
+      'Current sprint',
+      'Active',
+      'Backlog',
+    ])
   })
 
   it('a view made in the app is read by the CLI, by id and by name', async () => {
@@ -491,9 +497,38 @@ describe('views shared with the CLI', () => {
       backend.createView({ name: 'Three', ...BUGS }),
       backend.deleteView({ id: 'my-issues' }),
       backend.renameView({ id: 'current-sprint', name: 'Sprint now' }),
+      backend.updateView({ id: 'active', ...BUGS }),
+      backend.duplicateView({ id: 'backlog' }),
+      backend.moveView({ id: 'created-by-me', toIndex: 0 }),
     ])
     const names = (await state.readViews()).map((v) => v.name).sort()
-    expect(names).toEqual(['Created by me', 'One', 'Sprint now', 'Three', 'Two'])
+    expect(names).toEqual([
+      'Active',
+      'Backlog',
+      'Backlog copy',
+      'Created by me',
+      'One',
+      'Sprint now',
+      'Three',
+      'Two',
+    ])
+    expect((await state.findView('active')).filters).toEqual(BUGS.filters)
+    expect((await state.readViews())[0]?.id).toBe('created-by-me')
+  })
+
+  it('update, duplicate and move rewrite views.json, and the CLI reads the result', async () => {
+    const backend = createBackend()
+    const updated = await backend.updateView({ id: 'my-issues', ...BUGS })
+    expect(updated).toMatchObject({ id: 'my-issues', name: 'My issues', ...BUGS })
+    expect(await state.findView('my-issues')).toEqual(updated)
+
+    const copy = await backend.duplicateView({ id: 'my-issues' })
+    expect(copy).toMatchObject({ id: 'my-issues-copy', name: 'My issues copy', ...BUGS })
+    expect(await state.findView('My issues copy')).toEqual(copy)
+
+    const moved = await backend.moveView({ id: 'backlog', toIndex: 0 })
+    expect(moved[0]?.id).toBe('backlog')
+    expect(await state.readViews()).toEqual(moved)
   })
 
   it('keeps working after one call fails', async () => {

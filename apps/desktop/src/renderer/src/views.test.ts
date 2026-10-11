@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SavedView, Toggles } from '../../shared/ipc'
-import { activeView } from './views'
+import { activeView, movedView } from './views'
 
 const TOGGLES: Toggles = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
 const view = (id: string, filters: SavedView['filters'], toggles = TOGGLES): SavedView => ({
@@ -72,5 +72,20 @@ describe('activeView', () => {
     expect(activeView([sprint], { sprint: ['current'] }, undefined)).toBeUndefined()
     const twin = view('twin', { sprint: ['current'] })
     expect(activeView([sprint, twin], { sprint: ['current'] }, TOGGLES)).toBe(sprint)
+  })
+})
+
+describe('movedView', () => {
+  const list = [mine, sprint, bugs]
+  const ids = (views: SavedView[]) => views.map((v) => v.id)
+
+  it('moves a view down or up to the index it takes', () => {
+    expect(ids(movedView(list, 'mine', 2))).toEqual(['sprint', 'bugs', 'mine'])
+    expect(ids(movedView(list, 'bugs', 0))).toEqual(['bugs', 'mine', 'sprint'])
+  })
+
+  it('leaves the order alone for an unknown id and does not change its input', () => {
+    expect(ids(movedView(list, 'nope', 0))).toEqual(['mine', 'sprint', 'bugs'])
+    expect(ids(list)).toEqual(['mine', 'sprint', 'bugs'])
   })
 })

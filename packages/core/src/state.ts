@@ -127,6 +127,18 @@ const STARTER_VIEWS: SavedView[] = [
     filters: { sprint: ['current'] },
     toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
   },
+  {
+    id: 'active',
+    name: 'Active',
+    filters: { status: ['In Progress', 'Review'] },
+    toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
+  },
+  {
+    id: 'backlog',
+    name: 'Backlog',
+    filters: { status: ['Opportunity', 'To Do', 'Hold'] },
+    toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
+  },
 ]
 
 function describeIssues(error: z.ZodError): string {
@@ -267,6 +279,58 @@ export async function renameView(idOrName: string, name: string): Promise<SavedV
   const renamed = { ...old, name: cleanName(name, views, old.id) }
   await writeViews(views.map((v) => (v === old ? renamed : v)))
   return renamed
+}
+
+/**
+ * Replaces a view's filters and toggles, found by id or name; the id, name and place stay.
+ * Throws `not_found`.
+ */
+export async function updateView(
+  idOrName: string,
+  view: Pick<SavedView, 'filters' | 'toggles'>,
+): Promise<SavedView> {
+  const views = await readViews()
+  const old = locate(views, idOrName)
+  const updated = { ...old, filters: view.filters, toggles: view.toggles }
+  await writeViews(views.map((v) => (v === old ? updated : v)))
+  return updated
+}
+
+/**
+ * Copies a view, found by id or name, to just after it. The copy is named `<name> copy`, then
+ * `<name> copy 2` and so on when taken, and takes its id like `createView`. Throws `not_found`.
+ */
+export async function duplicateView(idOrName: string): Promise<SavedView> {
+  const views = await readViews()
+  const old = locate(views, idOrName)
+  let name = `${old.name} copy`
+  for (let n = 2; views.some((v) => sameName(v.name, name)); n++)
+    name = `${old.name} copy ${String(n)}`
+  const base = slug(name)
+  let id = base
+  for (let n = 2; views.some((v) => v.id === id); n++) id = `${base}-${String(n)}`
+  const copy = { ...structuredClone(old), id, name }
+  await writeViews(views.toSpliced(views.indexOf(old) + 1, 0, copy))
+  return copy
+}
+
+/**
+ * Moves a view, found by id or name, to a zero-based position and returns the new order. The
+ * order is the array in `views.json`. Throws `not_found`, or `validation_failed` when `toIndex`
+ * is not a position in the list.
+ */
+export async function moveView(idOrName: string, toIndex: number): Promise<SavedView[]> {
+  const views = await readViews()
+  const old = locate(views, idOrName)
+  if (!Number.isInteger(toIndex) || toIndex < 0 || toIndex >= views.length) {
+    throw new JiraMgrError(
+      'validation_failed',
+      `Position ${String(toIndex)} is outside the ${String(views.length)} views.`,
+    )
+  }
+  const moved = views.toSpliced(views.indexOf(old), 1).toSpliced(toIndex, 0, old)
+  await writeViews(moved)
+  return moved
 }
 
 /** Deletes a view, found by id or name, the last one included. Throws `not_found`. */

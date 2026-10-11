@@ -3,7 +3,15 @@ import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-qu
 import { describe, expect, it, vi } from 'vitest'
 
 import type { SavedView } from '../../shared/ipc'
-import { createViewMutation, deleteViewMutation, renameViewMutation, viewsKey } from './viewQueries'
+import {
+  createViewMutation,
+  deleteViewMutation,
+  duplicateViewMutation,
+  moveViewMutation,
+  renameViewMutation,
+  updateViewMutation,
+  viewsKey,
+} from './viewQueries'
 
 const TOGGLES = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
 const view = (id: string, name = id): SavedView => ({ id, name, filters: {}, toggles: TOGGLES })
@@ -247,6 +255,83 @@ describe('createViewMutation', () => {
     )
     await expect(failing.mutate(args)).rejects.toMatchObject({ code: 'validation_failed' })
     expect(cached(client)).toEqual(stored)
+    unsubscribe()
+  })
+})
+
+describe('moveViewMutation', () => {
+  it('shows the new order at once, before the write answers', async () => {
+    const { client, unsubscribe } = setup()
+    const write = held<SavedView[]>()
+    const done = new MutationObserver(
+      client,
+      moveViewMutation(client, () => write.promise),
+    ).mutate({ id: 'a', toIndex: 2 })
+    await expect.poll(() => cached(client)?.map((v) => v.id)).toEqual(['b', 'c', 'a'])
+    write.resolve([stored[1], stored[2], stored[0]] as SavedView[])
+    await done
+    unsubscribe()
+  })
+
+  it('puts the old order back when the write is refused', async () => {
+    const { client, read, unsubscribe } = setup()
+    const failing = new MutationObserver(
+      client,
+      moveViewMutation(client, () => Promise.reject(refusal())),
+    )
+    await expect(failing.mutate({ id: 'a', toIndex: 2 })).rejects.toMatchObject({
+      code: 'validation_failed',
+    })
+    expect(cached(client)).toEqual(stored)
+    await expect.poll(() => read.mock.calls.length).toBeGreaterThan(0)
+    unsubscribe()
+  })
+})
+
+describe('updateViewMutation', () => {
+  const args = { id: 'b', filters: { type: ['Bug'] }, toggles: TOGGLES }
+
+  it('shows the new filters once the write answers, without waiting for the refetch', async () => {
+    const updated = { ...view('b', 'Beta'), filters: { type: ['Bug'] } }
+    const gate = held<undefined>()
+    const { client, unsubscribe } = setup(
+      () => [stored[0], updated, stored[2]] as SavedView[],
+      gate.promise,
+    )
+    const done = new MutationObserver(
+      client,
+      updateViewMutation(client, () => Promise.resolve(updated)),
+    ).mutate(args)
+    await expect.poll(() => cached(client)?.[1]).toEqual(updated)
+    gate.resolve(undefined)
+    await done
+    unsubscribe()
+  })
+
+  it('leaves the list alone when the write is refused', async () => {
+    const { client, unsubscribe } = setup()
+    const failing = new MutationObserver(
+      client,
+      updateViewMutation(client, () => Promise.reject(refusal())),
+    )
+    await expect(failing.mutate(args)).rejects.toMatchObject({ code: 'validation_failed' })
+    expect(cached(client)).toEqual(stored)
+    unsubscribe()
+  })
+})
+
+describe('duplicateViewMutation', () => {
+  it('reads the file again to place the copy', async () => {
+    const copy = view('b-copy', 'Beta copy')
+    const file = [stored[0], stored[1], copy, stored[2]] as SavedView[]
+    const { client, unsubscribe } = setup(() => file)
+    await new MutationObserver(
+      client,
+      duplicateViewMutation(client, () => Promise.resolve(copy)),
+    ).mutate({
+      id: 'b',
+    })
+    await expect.poll(() => cached(client)?.map((v) => v.id)).toEqual(['a', 'b', 'b-copy', 'c'])
     unsubscribe()
   })
 })

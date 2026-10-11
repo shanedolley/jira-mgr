@@ -34,11 +34,16 @@ const stored = async () =>
 const storedOrAbsent = () => readState<StoredView[]>(stateDir, 'views.json')
 const settings = () => readState<{ toggles: Record<string, boolean> }>(stateDir, 'settings.json')
 
+const STARTERS = ['My issues', 'Created by me', 'Current sprint', 'Active', 'Backlog']
+
 const tree = () => window.getByRole('tree', { name: 'Issues' })
 const item = (name: RegExp) => tree().getByRole('treeitem', { name })
 const toggle = (name: string) => window.getByRole('button', { name, exact: true })
 const list = () => window.getByRole('list', { name: 'Saved views' })
+const tabs = () => window.getByRole('group', { name: 'View tabs' })
+const tab = (name: string) => tabs().getByRole('button', { name, exact: true })
 const apply = (name: string) => list().getByRole('button', { name, exact: true })
+const update = (name: string) => window.getByRole('button', { name: `Update view ${name}` })
 const chips = () => window.getByRole('list', { name: 'Active filters' })
 
 async function open() {
@@ -63,7 +68,7 @@ async function createView(name: string) {
 
 test('lists the starter views, and applying one sets the filters and the toggles', async () => {
   await open()
-  await expect(list().getByRole('listitem')).toHaveCount(3)
+  await expect(list().getByRole('listitem')).toHaveCount(5)
 
   await apply('Current sprint').click()
   await expect(chips()).toContainText('Sprint: Current sprint')
@@ -131,13 +136,8 @@ test('creates a view from the filter bar, and the file the CLI reads holds it', 
   await expect(apply('Open bugs')).toHaveAttribute('aria-current', 'true')
   // A create waits for main, which answers once the file is written, so the row means it landed.
   const views = await stored()
-  expect(views.map((v) => v.name)).toEqual([
-    'My issues',
-    'Created by me',
-    'Current sprint',
-    'Open bugs',
-  ])
-  expect(views[3]).toEqual({
+  expect(views.map((v) => v.name)).toEqual([...STARTERS, 'Open bugs'])
+  expect(views[5]).toEqual({
     id: 'open-bugs',
     name: 'Open bugs',
     filters: { type: ['Bug'] },
@@ -169,12 +169,7 @@ test('keeps the new view field open on a taken name, and Escape cancels it', asy
   await window.keyboard.press('Escape')
   await expect(window.getByLabel('New view name')).toHaveCount(0)
   await expect(window.getByRole('button', { name: 'New view' })).toBeFocused()
-  expect((await stored()).map((v) => v.name)).toEqual([
-    'My issues',
-    'Created by me',
-    'Current sprint',
-    'Fresh',
-  ])
+  expect((await stored()).map((v) => v.name)).toEqual([...STARTERS, 'Fresh'])
 })
 
 test('renames a view inline with Enter, cancels with Escape, and restores a refused name', async () => {
@@ -197,6 +192,8 @@ test('renames a view inline with Enter, cancels with Escape, and restores a refu
     'my-issues',
     'created-by-me',
     'current-sprint',
+    'active',
+    'backlog',
   ])
 
   await window.getByRole('button', { name: 'Rename view This sprint' }).click()
@@ -211,7 +208,13 @@ test('renames a view inline with Enter, cancels with Escape, and restores a refu
   await window.keyboard.press('Enter')
   await expect(window.getByRole('alert')).toContainText('already exists')
   await expect(apply('This sprint')).toBeVisible()
-  expect((await stored()).map((v) => v.name)).toEqual(['My issues', 'Created by me', 'This sprint'])
+  expect((await stored()).map((v) => v.name)).toEqual([
+    'My issues',
+    'Created by me',
+    'This sprint',
+    'Active',
+    'Backlog',
+  ])
 })
 
 test('ignores a blank rename, leaving the name and the file as they were', async () => {
@@ -226,7 +229,7 @@ test('ignores a blank rename, leaving the name and the file as they were', async
 
   await expect(apply('Keep me')).toBeFocused()
   await expect(window.getByRole('alert')).toHaveCount(0)
-  await expect(list().getByRole('listitem')).toHaveCount(4)
+  await expect(list().getByRole('listitem')).toHaveCount(6)
   expect(await stored()).toEqual(before)
 })
 
@@ -240,7 +243,7 @@ test('deletes a view only after an inline confirmation', async () => {
   await window.keyboard.press('Escape')
   await expect(confirm).toHaveCount(0)
   await expect(apply('My issues')).toBeFocused()
-  await expect(list().getByRole('listitem')).toHaveCount(3)
+  await expect(list().getByRole('listitem')).toHaveCount(5)
 
   await window.getByRole('button', { name: 'Delete view My issues' }).click()
   await confirm.getByRole('button', { name: 'Cancel' }).click()
@@ -252,9 +255,9 @@ test('deletes a view only after an inline confirmation', async () => {
   await expect(apply('Created by me')).toBeFocused()
   await expect
     .poll(async () => (await storedOrAbsent())?.map((v) => v.id))
-    .toEqual(['created-by-me', 'current-sprint'])
+    .toEqual(['created-by-me', 'current-sprint', 'active', 'backlog'])
 
-  for (const name of ['Created by me', 'Current sprint']) {
+  for (const name of ['Created by me', 'Current sprint', 'Active', 'Backlog']) {
     await window.getByRole('button', { name: `Delete view ${name}` }).click()
     await window
       .getByRole('group', { name: `Delete view ${name}` })
@@ -274,9 +277,11 @@ test('moves between views with the arrow keys and renames with F2', async () => 
   await window.keyboard.press('ArrowDown')
   await expect(apply('Current sprint')).toBeFocused()
   await window.keyboard.press('ArrowDown')
-  await expect(apply('Current sprint')).toBeFocused()
-  await window.keyboard.press('ArrowUp')
-  await window.keyboard.press('ArrowUp')
+  await window.keyboard.press('ArrowDown')
+  await expect(apply('Backlog')).toBeFocused()
+  await window.keyboard.press('ArrowDown')
+  await expect(apply('Backlog')).toBeFocused()
+  for (let i = 0; i < 4; i++) await window.keyboard.press('ArrowUp')
   await expect(apply('My issues')).toBeFocused()
 
   // Letters typed into a name field are text, never shortcuts.
@@ -311,4 +316,150 @@ test('shows a view that was added to the file by another program', async () => {
     win?.webContents.send('window:focus', true)
   })
   await expect(apply('From the CLI')).toBeVisible()
+})
+
+test('seeds Active and Backlog for a new user, and each filters by status', async () => {
+  await open()
+  await apply('Active').click()
+  await expect(chips()).toContainText('Status: In Progress, Review')
+  await expect(apply('Active')).toHaveAttribute('aria-current', 'true')
+
+  await apply('Backlog').click()
+  await expect(chips()).toContainText('Status: Opportunity, To Do, Hold')
+  await expect(apply('Backlog')).toHaveAttribute('aria-current', 'true')
+  expect(await storedOrAbsent()).toBeNull()
+})
+
+test('shows the views as tabs over the list, and a tab applies its view', async () => {
+  await open()
+  await expect(tabs().getByRole('button')).toHaveText(STARTERS)
+
+  await tab('Current sprint').click()
+  await expect(chips()).toContainText('Sprint: Current sprint')
+  await expect(tab('Current sprint')).toHaveAttribute('aria-current', 'true')
+  await expect(apply('Current sprint')).toHaveAttribute('aria-current', 'true')
+  await expect(tab('My issues')).not.toHaveAttribute('aria-current', 'true')
+  await expect(item(/PSAPAC-13,/)).toBeVisible()
+  await expect(tree()).toBeFocused()
+
+  // A view made in the sidebar joins the tabs, and a delete leaves them.
+  await createView('Fresh')
+  await expect(tab('Fresh')).toBeVisible()
+  await window.getByRole('button', { name: 'Delete view Fresh' }).click()
+  await window
+    .getByRole('group', { name: 'Delete view Fresh' })
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click()
+  await expect(tab('Fresh')).toHaveCount(0)
+})
+
+test('updates a view with the current filters, in place, and the file the CLI reads holds them', async () => {
+  await open()
+  await apply('Active').click()
+  await expect(update('Active')).toBeDisabled()
+
+  await filterToBugs()
+  await expect(apply('Active')).not.toHaveAttribute('aria-current', 'true')
+  await expect(update('Active')).toBeEnabled()
+  await update('Active').click()
+
+  await expect(apply('Active')).toHaveAttribute('aria-current', 'true')
+  await expect(update('Active')).toBeDisabled()
+  const views = await stored()
+  expect(views.map((v) => v.id)).toEqual([
+    'my-issues',
+    'created-by-me',
+    'current-sprint',
+    'active',
+    'backlog',
+  ])
+  expect(views[3]).toEqual({
+    id: 'active',
+    name: 'Active',
+    filters: { status: ['In Progress', 'Review'], type: ['Bug'] },
+    toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
+  })
+})
+
+test('duplicates a view to just after it, with the same filters', async () => {
+  await open()
+  await window.getByRole('button', { name: 'Duplicate view Active', exact: true }).click()
+
+  await expect(apply('Active copy')).toBeFocused()
+  await expect(tab('Active copy')).toBeVisible()
+  const views = await stored()
+  expect(views.map((v) => v.name)).toEqual([
+    'My issues',
+    'Created by me',
+    'Current sprint',
+    'Active',
+    'Active copy',
+    'Backlog',
+  ])
+  expect(views[4]).toEqual({ ...views[3], id: 'active-copy', name: 'Active copy' })
+
+  await window.getByRole('button', { name: 'Duplicate view Active', exact: true }).click()
+  await expect(apply('Active copy 2')).toBeVisible()
+})
+
+/** The view names in the sidebar, top to bottom. */
+const sidebarOrder = () =>
+  list().evaluate((ul) =>
+    [...ul.querySelectorAll<HTMLElement>('[data-view-apply]')].map((b) => b.dataset.viewApply),
+  )
+
+test('reorders with Alt and the arrow keys, and the order survives a restart', async () => {
+  await open()
+  await apply('Backlog').focus()
+  await window.keyboard.press('Alt+ArrowUp')
+  // Focus follows the view once the new order shows, and the next press moves it again.
+  await expect.poll(async () => (await sidebarOrder())[3]).toBe('backlog')
+  await expect(apply('Backlog')).toBeFocused()
+  await window.keyboard.press('Alt+ArrowUp')
+  await expect
+    .poll(sidebarOrder)
+    .toEqual(['my-issues', 'created-by-me', 'backlog', 'current-sprint', 'active'])
+  await expect(apply('Backlog')).toBeFocused()
+  await expect(tabs().getByRole('button')).toHaveText([
+    'My issues',
+    'Created by me',
+    'Backlog',
+    'Current sprint',
+    'Active',
+  ])
+  await expect
+    .poll(async () => (await storedOrAbsent())?.map((v) => v.id))
+    .toEqual(['my-issues', 'created-by-me', 'backlog', 'current-sprint', 'active'])
+
+  // The top view cannot go higher, and the bottom one cannot go lower.
+  await apply('My issues').focus()
+  await window.keyboard.press('Alt+ArrowUp')
+  await apply('Active').focus()
+  await window.keyboard.press('Alt+ArrowDown')
+  await expect(apply('Active')).toBeFocused()
+
+  await app.close()
+  ;({ app, window } = await launch(stateDir))
+  await open()
+  await expect
+    .poll(sidebarOrder)
+    .toEqual(['my-issues', 'created-by-me', 'backlog', 'current-sprint', 'active'])
+  await expect(tabs().getByRole('button').nth(2)).toHaveText('Backlog')
+})
+
+test('reorders by dragging a view onto another, and the file holds the order', async () => {
+  await open()
+  await apply('Backlog').dragTo(apply('My issues'))
+  await expect
+    .poll(sidebarOrder)
+    .toEqual(['backlog', 'my-issues', 'created-by-me', 'current-sprint', 'active'])
+  await expect
+    .poll(async () => (await storedOrAbsent())?.map((v) => v.id))
+    .toEqual(['backlog', 'my-issues', 'created-by-me', 'current-sprint', 'active'])
+
+  // Down the list the view lands on the row it was dropped on.
+  await apply('Backlog').dragTo(apply('Current sprint'))
+  await expect
+    .poll(async () => (await storedOrAbsent())?.map((v) => v.id))
+    .toEqual(['my-issues', 'created-by-me', 'current-sprint', 'backlog', 'active'])
 })

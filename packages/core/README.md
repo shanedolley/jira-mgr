@@ -18,7 +18,7 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 
 `readSettings`, `readViews`, `readTimer` and `readFields` (with matching `write` functions) own the non-secret state in `~/Library/Application Support/jira-mgr/`. Set `JM_STATE_DIR` to use another folder, as the tests do.
 
-- A missing file yields defaults: starter views for `views.json`, `null` for `timer.json` and `fields.json`.
+- A missing file yields defaults: starter views for `views.json` (My issues, Created by me, Current sprint, Active, Backlog), `null` for `timer.json` and `fields.json`.
 - A file that is not valid JSON or fails its schema throws `JiraMgrError` with code `validation_failed`, and the message names the file. Writes validate first, then write a temp file and rename it.
 
 ### Project Guard
@@ -32,7 +32,10 @@ The `exports` map points at `src/index.ts`. The package has no build step: tsup 
 - `findView(idOrName)` returns the view with that id, or failing that that name in any case. It throws `not_found` for an unknown view.
 - `createView(name, { filters, toggles })` returns the new view. Its id is the name as a slug (`Bugs this week` is `bugs-this-week`), with `-2`, `-3` and so on when taken.
 - `renameView(idOrName, name)` keeps the id, filters and toggles.
-- `deleteView(idOrName)` allows deleting the last view. The next `readViews()` then returns `[]`, not the starters: once `views.json` exists, "My issues", "Created by me" and "Current sprint" are ordinary views.
+- `updateView(idOrName, { filters, toggles })` replaces a view's filters and toggles and keeps its id, name and place.
+- `duplicateView(idOrName)` copies a view to just after it, named `<name> copy`, then `<name> copy 2` and so on.
+- `moveView(idOrName, toIndex)` moves a view to a zero-based position and returns the new order. A position outside the list throws `validation_failed`. The order is the array order in `views.json`, so a reorder rewrites the array and the file keeps its shape.
+- `deleteView(idOrName)` allows deleting the last view. The next `readViews()` then returns `[]`, not the starters: once `views.json` exists, "My issues", "Created by me", "Current sprint", "Active" and "Backlog" are ordinary views. A starter added later reaches only users with no `views.json`.
 - A name is trimmed, and an empty one or one that matches another view in any case throws `validation_failed`. Renaming a view to its own name in a new case is allowed.
 
 ### Inbox

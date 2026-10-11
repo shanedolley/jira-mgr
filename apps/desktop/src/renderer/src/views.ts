@@ -34,3 +34,11 @@ export function activeView(
       view.toggles.hideEmptyCustomers === toggles.hideEmptyCustomers,
   )
 }
+
+/** The views with `id` moved to `toIndex`, as core's `moveView` places it. Unchanged when `id` is unknown. */
+export function movedView(views: readonly SavedView[], id: string, toIndex: number): SavedView[] {
+  const from = views.findIndex((v) => v.id === id)
+  const view = views[from]
+  if (view === undefined) return [...views]
+  return views.toSpliced(from, 1).toSpliced(toIndex, 0, view)
+}

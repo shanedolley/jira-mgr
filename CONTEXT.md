@@ -41,7 +41,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Mismatch badge** | The mark on a child whose Customer differs from its Epic's, with a one-click fix that copies the Epic's Customer. | warning |
 | **Done chip** | The "N done" chip under an open parent that reveals its hidden Done children. | |
 | **Hide done** | The toggle that hides Done parents with their whole subtree, except a Done parent of an open issue, which stays as dimmed context. On at first launch. | archive |
-| **Saved view** | A named filter you create, rename and delete, stored as local JSON that the CLI also reads. | filter, query |
+| **Saved view** | A named filter and set of toggles you create, update with the current filters, duplicate, rename, reorder and delete, stored as local JSON that the CLI also reads. The array order is its place in the sidebar and the tabs over the list. | filter, query |
 | **Creator** | The person who created an issue. The Filter menu and a saved view's `creator` filter use it. | reporter, author |
 | **Relations** | The Filter menu's field for Link state: Blocked (a "Blocks" link into the issue from one not Done) and Blocking (one out of it). | dependencies |
 | **Is not** | The operator that leaves out the issues holding a value. A saved view stores it under `not`. | exclude, negate |

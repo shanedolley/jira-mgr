@@ -21,7 +21,7 @@ The state folder is `~/Library/Application Support/jira-mgr/`. `JM_STATE_DIR` re
 
 ## views.json
 
-An array of saved views. The app writes it; `jm` only reads it.
+An array of saved views. The app writes it; `jm` only reads it. The array order is the sidebar and tab order, so a reorder rewrites the array. With no file, the app and `jm` read the starters My issues, Created by me, Current sprint, Active (status In Progress, Review) and Backlog (status Opportunity, To Do, Hold). Once the file exists the starters are ordinary views, and a deleted one does not return.
 
 | Key | Type |
 |---|---|
