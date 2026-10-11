@@ -12,12 +12,15 @@ import { useTimer } from './timerQueries'
 export function Sidebar({
   session,
   count,
+  issuesCurrent,
   views,
   onOpenIssue,
   onStopTimer,
 }: {
   session: Session
   count: number | undefined
+  /** No saved view matches the filters, so Issues is the one highlighted item. */
+  issuesCurrent: boolean
   /** The saved views section, which sits under the main links. */
   views?: ReactNode
   /** Opens the page of the issue the timer runs on. */
@@ -45,11 +48,11 @@ export function Sidebar({
         <li>
           <a
             href="#issues"
-            aria-current="page"
+            aria-current={issuesCurrent ? 'page' : undefined}
             onClick={(event) => {
               event.preventDefault()
             }}
-            className="flex items-center justify-between rounded-md bg-selected px-2 py-1"
+            className={`flex items-center justify-between rounded-md px-2 py-1 ${issuesCurrent ? 'is-current' : 'hover:bg-hover'}`}
           >
             <span>Issues</span>
             {count !== undefined && <span className="text-xs text-muted">{count}</span>}

@@ -162,7 +162,7 @@ function Content({ row, timing, onAdd }: { row: Row; timing: boolean; onAdd: (ro
           <Pick property="status" title="Change status">
             <StatusDot status={issue.status} />
           </Pick>
-          <span className="w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
+          <span className="tree-key w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
           <span className={`min-w-0 flex-1 truncate ${tone} ${isEpic ? 'font-medium' : ''}`}>
             {issue.summary}
           </span>
@@ -237,9 +237,9 @@ export const TreeRow = memo(function TreeRow({
       style={{
         top: index * ROW_HEIGHT,
         height: ROW_HEIGHT,
-        paddingLeft: 12 + (row.level - 1) * 16,
+        paddingLeft: 4 + (row.level - 1) * 16,
       }}
-      className={`group/row absolute inset-x-0 flex cursor-default items-center gap-2 pr-4 hover:bg-hover ${row.kind === 'customer' ? 'bg-sidebar' : ''} aria-selected:bg-selected data-[active=true]:bg-hover group-focus:data-[active=true]:shadow-[inset_0_0_0_2px_var(--accent)]`}
+      className={`tree-row group/row absolute inset-x-2 flex cursor-default items-center gap-2 rounded-lg pr-2 ${row.kind === 'customer' ? 'bg-sidebar' : ''}`}
     >
       <Chevron row={row} />
       <Content row={row} timing={timing} onAdd={onAdd} />

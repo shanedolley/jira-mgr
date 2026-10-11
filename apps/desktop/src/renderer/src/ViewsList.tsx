@@ -296,7 +296,7 @@ export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
               </div>
             ) : (
               <div
-                className={`flex items-center rounded-md pr-1 ${active?.id === view.id ? 'bg-selected' : 'hover:bg-hover'}`}
+                className={`flex items-center rounded-md pr-1 ${active?.id === view.id ? 'is-current' : 'hover:bg-hover'}`}
               >
                 <button
                   type="button"

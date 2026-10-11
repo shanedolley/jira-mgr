@@ -88,6 +88,38 @@ test('lists the starter views, and applying one sets the filters and the toggles
   await expect(apply('My issues')).not.toHaveAttribute('aria-current', 'true')
 })
 
+test('highlights Issues only when no saved view matches', async () => {
+  await open()
+  const issues = window
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: /^Issues/ })
+  await expect(issues).toHaveAttribute('aria-current', 'page')
+  const current = await issues.evaluate((el) => getComputedStyle(el).backgroundColor)
+
+  await apply('My issues').click()
+  await expect(apply('My issues')).toHaveAttribute('aria-current', 'true')
+  await expect(issues).not.toHaveAttribute('aria-current')
+  await expect(issues).not.toHaveClass(/is-current/)
+  // One item is lit: the view, by fill and weight, with no edge or bar.
+  const lit = await apply('My issues')
+    .locator('xpath=..')
+    .evaluate((el) => {
+      const s = getComputedStyle(el)
+      return {
+        fill: s.backgroundColor,
+        weight: s.fontWeight,
+        shadow: s.boxShadow,
+        left: s.borderLeftWidth,
+      }
+    })
+  expect(lit).toEqual({ fill: current, weight: '500', shadow: 'none', left: '0px' })
+
+  // Leaving the view gives the highlight back to Issues.
+  await toggle('Assignee: me').click()
+  await expect(issues).toHaveAttribute('aria-current', 'page')
+  await expect(apply('My issues')).not.toHaveAttribute('aria-current', 'true')
+})
+
 test('creates a view from the filter bar, and the file the CLI reads holds it', async () => {
   await open()
   await filterToBugs()
