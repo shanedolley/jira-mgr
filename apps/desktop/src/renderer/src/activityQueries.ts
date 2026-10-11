@@ -12,7 +12,7 @@ import {
 import type { AddAttachmentArgs, CommentItem, LinksResult, WorklogItem } from '../../shared/ipc'
 import { commentDraftIds, dropOrphanedCommentDrafts } from './drafts'
 import { call } from './ipc'
-import { applyUnaskedRead, issueDetailKey, isEditing } from './optimistic'
+import { applyUnaskedRead, current, issueDetailKey, isEditing } from './optimistic'
 import {
   attachmentListKey,
   commentsKey,
@@ -69,14 +69,14 @@ interface Removal<D> {
 /**
  * A delete that shows at once. `without` drops the row from the cached data, a refusal puts the
  * data back as it was, and the list reads again once the write settles, so it shows what Jira
- * holds. `settled` runs after, for the reads that depend on the write.
+ * holds. `settled` runs after, for the reads that depend on the write, and says whether it failed.
  */
 export function removeMutation<D, A>(
   client: QueryClient,
   queryKey: QueryKey,
   send: (args: A) => Promise<unknown>,
   without: (data: D, args: A) => D,
-  settled?: (args: A) => void,
+  settled?: (args: A, failed: boolean) => void,
 ): MutationOptions<unknown, JiraMgrError, A, Removal<D>> {
   return {
     mutationFn: send,
@@ -89,9 +89,9 @@ export function removeMutation<D, A>(
     onError(_error, _args, removal) {
       if (removal?.previous !== undefined) client.setQueryData<D>(queryKey, removal.previous)
     },
-    onSettled(_data, _error, args) {
+    onSettled(_data, error, args) {
       void client.invalidateQueries({ queryKey })
-      settled?.(args)
+      settled?.(args, error !== null)
     },
   }
 }
@@ -230,22 +230,34 @@ export interface AddLinkInput {
 
 /**
  * After a link is added or removed: the link shows on both pages, and Jira answers with no body,
- * so both link lists read again. Both issues read again too, so the Tree's blocker pills and the
- * Relations filter, which read the links the lists hold, follow the change.
+ * so both link lists read again. Each end the Tree holds reads again too, so its blocker pills and
+ * the Relations filter, which read the links the lists hold, follow the change.
  */
-const linkSettled = (client: QueryClient, key: string, otherKey: string) =>
-  Promise.all([
+export function linkSettled(
+  client: QueryClient,
+  key: string,
+  otherKey: string,
+  failed: boolean,
+): Promise<unknown> {
+  // A refused write changed nothing to read. An end no cache holds, such as an issue of another
+  // project, has no row to refresh, and reading it would add one to the Tree.
+  const reads = failed
+    ? []
+    : [key, otherKey]
+        .filter((end) => current(client, end) !== undefined)
+        .map((end) => readIssue(client, end))
+  return Promise.all([
     client.invalidateQueries({ queryKey: linksKey(key) }),
     client.invalidateQueries({ queryKey: linksKey(otherKey) }),
-    readIssue(client, key),
-    readIssue(client, otherKey),
+    ...reads,
   ])
+}
 
 export function useAddLink(key: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (input: AddLinkInput) => call('links:add', { key, ...input }),
-    onSettled: (_data, _error, { otherKey }) => linkSettled(client, key, otherKey),
+    onSettled: (_data, error, { otherKey }) => linkSettled(client, key, otherKey, error !== null),
   })
 }
 
@@ -257,8 +269,8 @@ export function useRemoveLink(key: string) {
       linksKey(key),
       ({ linkId }) => call('links:remove', { key, linkId }),
       (data, { linkId }) => ({ ...data, links: data.links.filter((link) => link.id !== linkId) }),
-      ({ otherKey }) => {
-        void linkSettled(client, key, otherKey)
+      ({ otherKey }, failed) => {
+        void linkSettled(client, key, otherKey, failed)
       },
     ),
   )
