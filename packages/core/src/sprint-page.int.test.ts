@@ -20,52 +20,44 @@ const client = createHttpClient({
 
 usePsapacState()
 
-interface RawIssue {
-  key: string
-  fields: { status: { statusCategory: { key: string } } }
+interface IssuesPage {
+  startAt: number
+  total: number
+  issues: { key: string }[]
 }
 
-/** The 20 recorded issues: 8 To Do, 2 In Progress and 10 Done. */
-const recordedIssues = (): RawIssue[] => [
-  ...(loadFixture('search-unresolved-1') as unknown as { issues: RawIssue[] }).issues,
-  ...(loadFixture('search-done-1') as unknown as { issues: RawIssue[] }).issues,
-]
+/** The active sprint as PSAPAC sent it, and its 60 issues in the two pages Jira served. */
+const sprintFixture = () => loadFixture('sprint-psapac-10170') as unknown as { goal: string }
+const issuePages = () =>
+  [
+    loadFixture('sprint-issues-psapac-10170'),
+    loadFixture('sprint-issues-psapac-10170-2'),
+  ] as unknown as IssuesPage[]
 
-const ACTIVE = {
-  id: 10170,
-  name: 'PS Sprint 36 (05 Oct-18 Oct)',
-  state: 'active',
-  startDate: '2026-10-05T23:32:56.296Z',
-  endDate: '2026-10-18T14:00:00.000Z',
-  goal: 'Ship the onboarding flow',
-  originBoardId: 1706,
-}
-
-/** Answers the sprint, and its issues `perPage` at a time as the agile endpoint does. */
-function serveSprint(issues: RawIssue[], perPage = 7): Recorded[] {
+/** Answers the sprint, and its issues page by page as the recorded pages came: 50, then 10. */
+function serveSprint(pages: IssuesPage[] = issuePages()): Recorded[] {
   return serveRecorded(({ path }) => {
     const url = new URL(path, JIRA_SITE)
-    if (!url.pathname.endsWith('/issue')) return HttpResponse.json(ACTIVE)
+    if (!url.pathname.endsWith('/issue')) return HttpResponse.json(sprintFixture())
     const startAt = Number(url.searchParams.get('startAt'))
-    return HttpResponse.json({
-      startAt,
-      maxResults: perPage,
-      total: issues.length,
-      issues: issues.slice(startAt, startAt + perPage),
-    })
+    const page = pages.find((p) => p.startAt === startAt)
+    return HttpResponse.json(page ?? { ...pages[0], startAt, issues: [] })
   })
 }
 
+/** The sprint with no issues. */
+const emptySprint = (): IssuesPage[] => [{ startAt: 0, total: 0, issues: [] }]
+
 describe('getSprint', () => {
   it('reads one sprint with its goal', async () => {
-    const requests = serveSprint([])
+    const requests = serveSprint()
     expect(await getSprint(client, 10170)).toEqual({
       id: 10170,
       name: 'PS Sprint 36 (05 Oct-18 Oct)',
       state: 'active',
       startDate: '2026-10-05T23:32:56.296Z',
       endDate: '2026-10-18T14:00:00.000Z',
-      goal: 'Ship the onboarding flow',
+      goal: sprintFixture().goal,
     })
     expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual([
       'GET /rest/agile/1.0/sprint/10170',
@@ -116,15 +108,14 @@ describe('getSprint', () => {
 })
 
 describe('listSprintIssues', () => {
-  it('reads every page, asking for the fields Issue needs by their resolved ids', async () => {
-    const requests = serveSprint(recordedIssues(), 7)
+  it('reads both recorded pages, asking for the fields Issue needs by their resolved ids', async () => {
+    const requests = serveSprint()
     const issues = await listSprintIssues(client, 10170)
-    expect(issues).toHaveLength(20)
-    expect(new Set(issues.map((i) => i.key)).size).toBe(20)
+    expect(issues).toHaveLength(60)
+    expect(new Set(issues.map((i) => i.key)).size).toBe(60)
     expect(requests.map((r) => new URL(r.path, JIRA_SITE).searchParams.get('startAt'))).toEqual([
       '0',
-      '7',
-      '14',
+      '50',
     ])
     const first = new URL(requests[0]?.path ?? '', JIRA_SITE)
     expect(first.pathname).toBe('/rest/agile/1.0/sprint/10170/issue')
@@ -135,7 +126,7 @@ describe('listSprintIssues', () => {
   })
 
   it('reads an empty sprint as no issues', async () => {
-    serveSprint([])
+    serveSprint(emptySprint())
     expect(await listSprintIssues(client, 10170)).toEqual([])
   })
 
@@ -158,21 +149,23 @@ describe('listSprintIssues', () => {
 
 describe('readSprint', () => {
   it('counts exactly the issues the sprint holds, by status category', async () => {
-    serveSprint(recordedIssues(), 7)
+    serveSprint()
     const { sprint, issues, stats } = await readSprint(client, 10170)
     expect(sprint.name).toBe('PS Sprint 36 (05 Oct-18 Oct)')
     expect(stats.scope).toBe(issues.length)
-    expect(stats.scope).toBe(20)
-    expect(stats.started).toBe(2)
-    expect(stats.completed).toBe(10)
+    expect(stats.scope).toBe(60)
+    // Recorded: 23 To Do or Hold, 30 In Progress or Review, 7 Done.
+    expect(stats.started).toBe(30)
+    expect(stats.completed).toBe(7)
     // Every single-valued breakdown covers each issue once, so its groups add up to the scope.
     for (const groups of [stats.assignees, stats.priorities, stats.customers, stats.engagements]) {
       expect(groups.reduce((sum, g) => sum + g.total, 0)).toBe(stats.scope)
     }
+    expect(stats.assignees[0]).toMatchObject({ name: 'John Shea', total: 22 })
   })
 
   it('reads an empty sprint as zero counts', async () => {
-    serveSprint([])
+    serveSprint(emptySprint())
     const { issues, stats } = await readSprint(client, 10170)
     expect(issues).toEqual([])
     expect(stats).toMatchObject({ scope: 0, started: 0, completed: 0, assignees: [], labels: [] })

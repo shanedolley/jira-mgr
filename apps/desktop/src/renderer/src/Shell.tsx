@@ -1065,7 +1065,7 @@ export function Shell({ session }: { session: Session }) {
         </div>
       )}
       {sprintId !== null && (
-        <div className="[grid-column:2/-1] row-start-1 min-h-0">
+        <div inert={pageOpen} className="[grid-column:2/-1] row-start-1 min-h-0">
           <SprintPage
             sprintId={sprintId}
             pageRef={sprintRef}

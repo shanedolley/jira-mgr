@@ -1,0 +1,12 @@
+{
+  "id": 10170,
+  "self": "https://engineering-collibra.atlassian.net/rest/agile/1.0/sprint/10170",
+  "state": "active",
+  "name": "PS Sprint 36 (05 Oct-18 Oct)",
+  "startDate": "2026-10-05T23:32:56.296Z",
+  "endDate": "2026-10-18T14:00:00.000Z",
+  "createdDate": "2025-09-30T06:16:49.070Z",
+  "originBoardId": 1706,
+  "goal": "- BHP | Data Domain Owner forum attendances\n- BHP | Landing page roll out completed\n- BHP | Roadmap agreed with Christine for rest of FY\n- MBBE | Plans understood from Maybank and/or CG\n- MBBE | Operating Model Support required and process understood including where to log time for this effort\n- MBBE | Collibra Internally WoW bedded down\n- MBBE | Relationship with CG partner to bring problems directly to us\n- TLC | Decision making known and reset with new resources on both sides (Cynthia and Sarah TLC / Sharon Collibra)\n- TLC | AI Gov SoW understood and signed\n- TLC | Connector SoW or way forward understood\n- TLC | Glossary in Prod\n- SWC | LeanIX consultation in progress\n- TfNSW | On hold waiting for REA Renewal SoW signed / Jeannine away-Ben fill in for urgent matters\n- TfNSW | AI Metadata ingestion workflow scope identified\n- IAG | Technical Workshops kicked off and continuing for SAP Connector\n- WOW | New REA kicked off\n- PETRONAS | Ignite continues\n- EM | September Delivery Reports completed\n- Team | Corey back and team health improves!",
+  "autoManaged": "disabled"
+}

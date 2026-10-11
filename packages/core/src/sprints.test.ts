@@ -8,6 +8,8 @@ const STATUS = {
   Doing: { id: '2', name: 'Doing', category: 'indeterminate' },
   Review: { id: '3', name: 'Review', category: 'indeterminate' },
   Done: { id: '4', name: 'Done', category: 'done' },
+  Closed: { id: '5', name: 'Closed', category: 'done' },
+  Hold: { id: '6', name: 'Hold', category: 'new' },
 } as const
 
 interface Person {
@@ -55,6 +57,19 @@ const HIGH = { id: '2', name: 'High' }
 const LOW = { id: '4', name: 'Low' }
 
 describe('sprintStats', () => {
+  it('reads Completed from the status category, not the status name', () => {
+    const issues = [
+      issue('A-1', { status: 'Closed', assignee: ANN, labels: ['x'], priority: HIGH }),
+      issue('A-2', { status: 'Done', assignee: ANN, labels: ['x'], priority: HIGH }),
+      issue('A-3', { status: 'Hold', assignee: ANN, labels: ['x'], priority: HIGH }),
+    ]
+    const stats = sprintStats(issues)
+    expect(stats).toMatchObject({ scope: 3, started: 0, completed: 2 })
+    for (const groups of [stats.assignees, stats.labels, stats.priorities]) {
+      expect(groups[0]).toMatchObject({ total: 3, completed: 2, percent: 67 })
+    }
+  })
+
   it('counts the scope, the started issues (In Progress) and the completed ones (Done)', () => {
     const stats = sprintStats([
       issue('A-1', { status: 'To Do' }),

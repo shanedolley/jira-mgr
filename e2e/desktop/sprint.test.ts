@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { joinSprint, launch, logIn } from './harness.js'
+import { counts, joinSprint, launch, logIn, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -339,4 +339,89 @@ test('holds its layout with a wide font: no clipped row, tab or count', async ()
     )
     expect(Math.max(...heights), name).toBeLessThanOrEqual(20)
   }
+})
+
+/** Waits for the write to arrive at the fake, lets it answer, and waits for the answer to land. */
+async function settle(expected: number) {
+  await expect.poll(async () => (await counts(app)).edits).toBe(expected)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(expected)
+}
+
+test('counts an edit made on an issue opened from the sprint once the page is back', async () => {
+  await open()
+  await entry('Current').click()
+  expect(await count('Completed')).toBe('2 29%')
+  expect(await count('Started')).toBe('3 43%')
+
+  await sprintPage()
+    .getByRole('button', { name: /^PSAPAC-4 / })
+    .click()
+  await issuePage()
+    .getByRole('button', { name: /^Status:/ })
+    .click()
+  await window.getByRole('option', { name: 'Done' }).click()
+  await settle(1)
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
+
+  // PSAPAC-4 moved from In Progress to Done, so the page shows it there and counts it.
+  await expect(
+    sprintPage().getByRole('region', { name: 'Done' }).getByRole('listitem'),
+  ).toHaveCount(3)
+  await expect(
+    sprintPage().getByRole('region', { name: 'In Progress' }).getByRole('listitem'),
+  ).toHaveCount(2)
+  await expect.poll(() => count('Completed')).toBe('3 43%')
+  expect(await count('Started')).toBe('2 29%')
+  expect(await count('Scope')).toBe('7')
+  await expect(panel().getByRole('progressbar')).toHaveAttribute('aria-valuenow', '43')
+})
+
+test('drops an issue moved out of the sprint from its rows and its Scope', async () => {
+  await open()
+  await entry('Current').click()
+  await sprintPage()
+    .getByRole('button', { name: /^PSAPAC-13 / })
+    .click()
+  await issuePage().getByRole('button', { name: 'Sprint: Sprint 5' }).click()
+  await window.getByRole('option', { name: 'Backlog' }).click()
+  await settle(1)
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
+
+  await expect(sprintPage().getByRole('status')).toHaveText('6 issues')
+  await expect(sprintPage().getByRole('button', { name: /^PSAPAC-13 / })).toHaveCount(0)
+  await expect.poll(() => count('Scope')).toBe('6')
+  expect(await count('Started')).toBe('2 33%')
+})
+
+test('keeps focus out of the sprint page while an issue page is open over it', async () => {
+  await open()
+  await entry('Current').click()
+  await sprintPage()
+    .getByRole('button', { name: /^PSAPAC-13 / })
+    .click()
+  await expect(issuePage()).toBeFocused()
+  // The page is the sprint page's child in the layout only: nothing in it may take focus.
+  const inside = () =>
+    window.evaluate(() => document.activeElement?.closest('[aria-label="Sprint page"]') !== null)
+  // The sprint page comes before the issue page in the layout, so Shift+Tab walks back into it.
+  for (let i = 0; i < 12; i++) {
+    await window.keyboard.press('Shift+Tab')
+    expect(await inside(), `Shift+Tab ${String(i + 1)}`).toBe(false)
+  }
+  await issuePage().focus()
+  for (let i = 0; i < 40; i++) {
+    await window.keyboard.press('Tab')
+    expect(await inside(), `Tab ${String(i + 1)}`).toBe(false)
+  }
+  await expect(sprintPage().getByRole('button', { name: 'Back to issues' })).not.toBeFocused()
+
+  // Back on the sprint page, its own controls take focus again.
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
+  await expect(sprintPage()).toBeFocused()
+  await window.keyboard.press('Tab')
+  expect(await inside()).toBe(true)
 })
