@@ -73,7 +73,8 @@ const jiraFields = z.object({
       avatarUrls,
     })
     .nullish(),
-  creator: z.object({ accountId: z.string(), displayName: z.string() }).nullish(),
+  // A malformed creator reads as none, so it cannot fail the whole search page.
+  creator: z.object({ accountId: z.string(), displayName: z.string() }).nullish().catch(null),
   issuelinks: z.array(jiraLink).nullish(),
   labels: z.array(z.string()),
   priority: z.object({ id: z.string(), name: z.string() }).nullish(),

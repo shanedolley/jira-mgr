@@ -193,6 +193,18 @@ describe('searchIssues', () => {
     ])
   })
 
+  it('reads a malformed creator as none, and still maps the page', async () => {
+    const raw = recorded('search-unresolved-1').issues.find((i) => i.key === 'PSAPAC-3117')
+    if (raw === undefined) throw new Error('PSAPAC-3117 is missing from the fixture.')
+    const issue = structuredClone(raw)
+    Object.assign(issue.fields, { creator: { accountId: 5, displayName: null } })
+    serveRaw({ issues: [issue], isLast: true })
+
+    const [mapped] = await searchIssues(client)
+
+    expect(mapped).toMatchObject({ key: 'PSAPAC-3117', creator: null })
+  })
+
   it('maps an Epic with no parent, no sprint and no estimate to nulls and an empty list', async () => {
     serveSearch()
     const epic = (await searchIssues(client)).find((i) => i.key === 'PSAPAC-3116')

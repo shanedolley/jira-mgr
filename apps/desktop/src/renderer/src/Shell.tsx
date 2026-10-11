@@ -46,6 +46,7 @@ import { TimerDialog } from './TimerDialog'
 import { Toast } from './Toast'
 import { pushToast, spoken, type ToastItem } from './toasts'
 import { pressOf } from './timer'
+import { useToday } from './today'
 import { useStartTimer, useTimer } from './timerQueries'
 import { rowDomId } from './TreeRow'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
@@ -276,11 +277,17 @@ export function Shell({ session }: { session: Session }) {
     () => customersQuery.data?.map((c) => c.value) ?? [],
     [customersQuery.data],
   )
+  const today = useToday()
   const choices = useMemo(() => filterChoices(issues, customerNames), [issues, customerNames])
 
   const groups = useMemo(() => {
     if (!treeReady) return []
-    const match = issueMatcher(deferredFilters, { accountId: accountId ?? '', issues })
+    // Overdue and the date windows read `today`, so they rebuild at local midnight.
+    const match = issueMatcher(deferredFilters, {
+      accountId: accountId ?? '',
+      issues,
+      now: new Date(`${today}T12:00:00`),
+    })
     return buildHierarchy(issues, {
       ...toggles,
       // Without the Customer list, empty Customers stay hidden.
@@ -298,6 +305,7 @@ export function Shell({ session }: { session: Session }) {
     customersFailed,
     showEmptyCustomers,
     customersQuery.data,
+    today,
   ])
 
   const rows = useMemo(

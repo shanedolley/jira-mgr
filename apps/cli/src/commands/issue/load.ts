@@ -38,7 +38,10 @@ export interface Loaded {
 /**
  * Resolves the view and the flags into filters and toggles, then pages through the issues.
  * With Done hidden it skips the done phase. With `limit` it stops once that many
- * issues are wanted. The current user is read once, and only when something asks for `me`.
+ * issues are wanted. An `epic` filter climbs from a Subtask through its parents, which arrive in
+ * any page of either phase (a Story has a lower key than its Subtask, and may be Done), so it
+ * loads both phases to the end and `wanted` hides Done as the skipped phase would have. The
+ * current user is read once, and only when something asks for `me`.
  */
 export async function loadIssues(
   ctx: Context,
@@ -62,15 +65,18 @@ export async function loadIssues(
   // The matcher reads `issues` as it fills, to find the Epic of a Subtask.
   const issues: Issue[] = []
   const match = issueMatcher(filters, { accountId, issues })
+  const climbs = (filters.epic ?? []).length > 0 || (filters.not?.epic ?? []).length > 0
   const wanted = (issue: Issue) =>
-    (!toggles.assigneeMe || issue.assignee?.accountId === accountId) && (match?.(issue) ?? true)
+    (!toggles.assigneeMe || issue.assignee?.accountId === accountId) &&
+    (!(climbs && toggles.hideDone) || issue.status.category !== 'done') &&
+    (match?.(issue) ?? true)
 
   let matched = 0
-  const phases = toggles.hideDone ? (['unresolved'] as const) : undefined
+  const phases = toggles.hideDone && !climbs ? (['unresolved'] as const) : undefined
   for await (const page of searchIssuePages(ctx.http(), { signal: ctx.signal, phases })) {
     issues.push(...page.issues)
     matched += page.issues.filter(wanted).length
-    if (options.limit !== undefined && matched >= options.limit) break
+    if (!climbs && options.limit !== undefined && matched >= options.limit) break
   }
   if (ctx.io.stderrIsTTY) ctx.io.stderr.write(`Loaded ${String(issues.length)} issues\n`)
   return { issues, match, toggles, accountId, wanted }

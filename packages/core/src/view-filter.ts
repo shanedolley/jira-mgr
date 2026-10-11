@@ -58,7 +58,8 @@ export function filtersNeedMe(filters: ViewFilters): boolean {
   )
 }
 
-const dayKey = (d: Date) =>
+/** The local day of a date, as `YYYY-MM-DD`. */
+export const dayKey = (d: Date) =>
   [d.getFullYear(), d.getMonth() + 1, d.getDate()]
     .map((n, i) => String(n).padStart(i === 0 ? 4 : 2, '0'))
     .join('-')

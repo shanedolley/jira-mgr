@@ -39,32 +39,36 @@ const PATCHES: Record<string, Record<string, unknown>> = {
   'PSAPAC-3119': { duedate: '2999-01-01' },
 }
 
-/** Serves the recorded open issues with the patches applied and every other due date cleared. */
-function serveEnriched(): void {
+/**
+ * Serves the recorded issues, open and Done, with the patches applied (and `extra` over them) and
+ * every other due date cleared.
+ */
+function serveEnriched(extra: Record<string, Record<string, unknown>> = {}): void {
   const page = (name: string): Page => {
     const raw = structuredClone(loadFixture(name)) as unknown as Page
     for (const issue of raw.issues) {
       issue.fields.duedate = null
-      Object.assign(issue.fields, PATCHES[issue.key])
+      Object.assign(issue.fields, PATCHES[issue.key], extra[issue.key])
     }
     return raw
   }
   serveRecorded((request) => {
     if (request.path === '/rest/api/3/myself') return Response.json(loadFixture('myself'))
     if (request.path !== SEARCH_PATH) return new Response(null, { status: 500 })
-    const body = request.body as { nextPageToken?: string }
+    const body = request.body as { jql: string; nextPageToken?: string }
+    const phase = body.jql.includes('!= Done') ? 'unresolved' : 'done'
     return body.nextPageToken === undefined
-      ? Response.json(page('search-unresolved-1'))
-      : Response.json({ issues: page('search-unresolved-2').issues, isLast: true })
+      ? Response.json(page(`search-${phase}-1`))
+      : Response.json({ issues: page(`search-${phase}-2`).issues, isLast: true })
   })
 }
 
 const TOGGLES = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
 
-/** The keys `jm issue list --view` returns for these filters. */
-async function viaView(filters: object): Promise<string[]> {
+/** The keys `jm issue list --view` returns for these filters, with `args` after the view. */
+async function viaView(filters: object, ...args: string[]): Promise<string[]> {
   await writeViews([{ id: 'v', name: 'V', filters, toggles: TOGGLES }])
-  const { code, data } = await runJson(['issue', 'list', '--view', 'v'])
+  const { code, data } = await runJson(['issue', 'list', '--view', 'v', ...args])
   expect(code).toBe(0)
   return (data as { key: string }[]).map((i) => i.key)
 }
@@ -135,5 +139,64 @@ describe('jm issue list, reading the new view filters back', () => {
       'PSAPAC-3117',
       'PSAPAC-3116',
     ])
+  })
+
+  describe('the epic filter with a Subtask that arrives before its parents', () => {
+    // Search runs by key, newest first. PSAPAC-3122, a Subtask, comes on page 1 of the open issues,
+    // its Story PSAPAC-3112 on page 2 and the Epic PSAPAC-3107 after that.
+    const underStory = { 'PSAPAC-3122': { parent: { key: 'PSAPAC-3112' } } }
+    const EPIC_3107 = [
+      'PSAPAC-3122',
+      'PSAPAC-3115',
+      'PSAPAC-3114',
+      'PSAPAC-3113',
+      'PSAPAC-3112',
+      'PSAPAC-3111',
+      'PSAPAC-3110',
+      'PSAPAC-3109',
+      'PSAPAC-3108',
+      'PSAPAC-3107',
+    ]
+
+    it('finds the Subtask, whatever the page its Story is on', async () => {
+      serveEnriched(underStory)
+      expect(await viaView({ epic: ['PSAPAC-3107'] })).toEqual(EPIC_3107)
+    })
+
+    it('--limit takes the first matches in load order, the Subtask among them', async () => {
+      serveEnriched(underStory)
+      expect(await viaView({ epic: ['PSAPAC-3107'] }, '--limit', '1')).toEqual(['PSAPAC-3122'])
+      expect(await viaView({ epic: ['PSAPAC-3107'] }, '--limit', '3')).toEqual(
+        EPIC_3107.slice(0, 3),
+      )
+    })
+
+    it('leaves the Subtask out under not.epic, with or without --limit', async () => {
+      serveEnriched(underStory)
+      const kept = await viaView({ not: { epic: ['PSAPAC-3107'] } }, '--limit', '2')
+      expect(kept).toHaveLength(2)
+      expect(kept).not.toContain('PSAPAC-3122')
+      expect(await viaView({ not: { epic: ['PSAPAC-3107'] } })).not.toContain('PSAPAC-3122')
+    })
+
+    it('finds an open Subtask under a Done Story with Done hidden, and hides the Done Story', async () => {
+      // PSAPAC-3103 is a Done Story under the open Epic PSAPAC-3099.
+      serveEnriched({ 'PSAPAC-3122': { parent: { key: 'PSAPAC-3103' } } })
+      expect(await viaView({ epic: ['PSAPAC-3099'] })).toEqual([
+        'PSAPAC-3122',
+        'PSAPAC-3106',
+        'PSAPAC-3105',
+        'PSAPAC-3104',
+        'PSAPAC-3099',
+      ])
+      expect(await viaView({ epic: ['PSAPAC-3099'] }, '--limit', '1')).toEqual(['PSAPAC-3122'])
+    })
+
+    it('lists the Done issues of the Epic too under --show-done', async () => {
+      serveEnriched({ 'PSAPAC-3122': { parent: { key: 'PSAPAC-3103' } } })
+      expect(await viaView({ epic: ['PSAPAC-3099'] }, '--show-done')).toEqual(
+        expect.arrayContaining(['PSAPAC-3122', 'PSAPAC-3103', 'PSAPAC-3102', 'PSAPAC-3100']),
+      )
+    })
   })
 })
