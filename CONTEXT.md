@@ -56,6 +56,9 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Issue page** | The full page of one issue, opened with Enter: summary, description and subtasks beside the properties sidebar. | detail view |
 | **Sprint page** | The page of one sprint, opened from the sidebar's Current and Upcoming entries or the Sprint row of an Issue page: its issues by status beside the dates, goal, counts and breakdowns. | cycle page |
 | **Scope, Started, Completed** | The Sprint page's counts. Scope is every issue in the sprint, Started the issues whose status category is In Progress, and Completed the issues whose status category is Done, whatever the status is called. A breakdown row reads "N% of M": M issues share a value, and N percent of them are Completed. | done count |
+| **Progress** | Done over total of an issue's direct children, such as 2/8, Done by status category. An Epic's Tree row and the "Sub-issue of" line show it as a pill. | completion |
+| **Epics table** | The sidebar page listing every Epic with its Customer, Status, Priority, Assignee, Issues, Due date and percent done, sortable by each column. | projects list |
+| **Customers page** | The sidebar page listing every Customer of the Project with its open count and percent done. A row opens the Tree filtered to that Customer. | accounts |
 | **Properties sidebar** | The right column of the Issue page. Each property is a picker or a field that edits at once and rolls back if Jira refuses. | inspector |
 | **Customer prompt** | The question the parent picker asks when a new parent's Customer or Engagement differs: also set them to the parent's? | |
 | **Read-only block** | Content the description editor shows but cannot edit, such as a panel, a table or a macro, kept as the original ADF and saved unchanged. | unsupported node, macro |

@@ -19,6 +19,11 @@ function Badge({ count, what }: { count: number; what: string }) {
   )
 }
 
+const OVERVIEWS = [
+  { id: 'epics', label: 'Epics' },
+  { id: 'customers', label: 'Customers' },
+] as const
+
 export function Sidebar({
   session,
   count,
@@ -26,6 +31,8 @@ export function Sidebar({
   unread,
   inboxOpen,
   onShowInbox,
+  overview,
+  onShowOverview,
   onShowIssues,
   sprints,
   views,
@@ -39,7 +46,10 @@ export function Sidebar({
   unread: number | undefined
   inboxOpen: boolean
   onShowInbox: () => void
-  /** Leaves the Inbox or a sprint page for the issue list. */
+  /** The overview page that is open, if any. */
+  overview: 'epics' | 'customers' | null
+  onShowOverview: (overview: 'epics' | 'customers') => void
+  /** Leaves the Inbox, a sprint page or an overview for the issue list. */
   onShowIssues: () => void
   /** The Sprints section, under the main links. */
   sprints?: ReactNode
@@ -95,6 +105,21 @@ export function Sidebar({
             {count !== undefined && <span className="text-xs text-muted">{count}</span>}
           </a>
         </li>
+        {OVERVIEWS.map(({ id, label }) => (
+          <li key={id}>
+            <a
+              href={`#${id}`}
+              aria-current={overview === id ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault()
+                onShowOverview(id)
+              }}
+              className={`flex items-center rounded-md px-2 py-1 ${overview === id ? 'is-current' : 'hover:bg-hover'}`}
+            >
+              {label}
+            </a>
+          </li>
+        ))}
       </ul>
       {sprints}
       <div className="min-h-0 flex-1 overflow-y-auto">{views}</div>

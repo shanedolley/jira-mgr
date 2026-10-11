@@ -1,4 +1,5 @@
 import type { Issue, JiraMgrError } from '@jira-mgr/core'
+import type { Progress } from '@jira-mgr/core/hierarchy'
 import { propertyRules, type IssueDetail } from '@jira-mgr/core/issue'
 import { useEffect, type DragEvent, type KeyboardEvent, type RefObject } from 'react'
 
@@ -15,6 +16,7 @@ import { FileDragContext, useFileDrag } from './fileDrag'
 import { IssueProperties } from './IssueProperties'
 import { LinksSection } from './LinksSection'
 import { LoadError } from './LoadError'
+import { ProgressPill } from './Progress'
 import { SECTION_HEADING } from './Section'
 import { StatusDot } from './StatusDot'
 import { SubtasksSection } from './SubtasksSection'
@@ -31,6 +33,8 @@ interface IssuePageProps {
   issueKey: string
   /** Every loaded issue: the pickers draw recent assignees, labels and parents from them. */
   issues: readonly Issue[]
+  /** Done over total of each parent's children: the "Sub-issue of" line shows its parent's. */
+  progress: ReadonlyMap<string, Progress>
   me: CurrentUser | undefined
   /** Set when the issue's Customer differs from its Epic's. */
   mismatch: Mismatch | null
@@ -48,10 +52,47 @@ interface IssuePageProps {
   onTimer: (issueKey: string) => void
 }
 
+/** "Sub-issue of KEY Summary" with the parent's progress, which opens the parent. */
+function ParentLine({
+  parentKey,
+  parent,
+  progress,
+  onOpen,
+}: {
+  parentKey: string
+  /** `undefined` while the parent is not among the loaded issues. */
+  parent: Issue | undefined
+  progress: Progress | undefined
+  onOpen: (key: string) => void
+}) {
+  return (
+    <p className="flex min-w-0 items-center gap-2 text-muted">
+      <span className="shrink-0">Sub-issue of</span>
+      <button
+        type="button"
+        data-row
+        data-parent-line
+        onClick={() => {
+          onOpen(parentKey)
+        }}
+        className="flex min-w-0 items-center gap-1.5 rounded text-left hover:text-ink"
+      >
+        {parent !== undefined && <TypeIcon type={parent.issueType} />}
+        <span className="shrink-0 font-mono text-xs">{parentKey}</span>
+        {parent !== undefined && (
+          <span className="min-w-0 truncate text-ink">{parent.summary}</span>
+        )}
+      </button>
+      {progress !== undefined && <ProgressPill progress={progress} />}
+    </p>
+  )
+}
+
 function PageBody({
   issue,
   detail,
   issues,
+  progress,
   me,
   mismatch,
   onOpen,
@@ -62,7 +103,10 @@ function PageBody({
   onRetry,
   attach,
   uploading,
-}: Pick<IssuePageProps, 'issues' | 'me' | 'mismatch' | 'onOpen' | 'onOpenSprint' | 'onNotice'> & {
+}: Pick<
+  IssuePageProps,
+  'issues' | 'progress' | 'me' | 'mismatch' | 'onOpen' | 'onOpenSprint' | 'onNotice'
+> & {
   issue: Issue
   detail: IssueDetail | undefined
   /** Puts focus back on the page once an editor's controls are gone. */
@@ -90,6 +134,14 @@ function PageBody({
               {issue.key}
             </h1>
             <SummaryEditor issue={issue} onEditingChange={() => undefined} onLeave={onLeave} page />
+            {issue.parentKey !== null && (
+              <ParentLine
+                parentKey={issue.parentKey}
+                parent={issues.find((i) => i.key === issue.parentKey)}
+                progress={progress.get(issue.parentKey)}
+                onOpen={onOpen}
+              />
+            )}
           </div>
           {mismatch !== null && (
             <CustomerMismatch
@@ -151,6 +203,7 @@ function PageBody({
 export function IssuePage({
   issueKey,
   issues,
+  progress,
   me,
   mismatch,
   onBack,
@@ -301,6 +354,7 @@ export function IssuePage({
             attach={attach}
             uploading={uploading}
             issues={issues}
+            progress={progress}
             me={me}
             mismatch={mismatch}
             onOpen={onOpen}
