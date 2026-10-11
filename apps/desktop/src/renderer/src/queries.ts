@@ -547,6 +547,25 @@ export function saveDescription(client: QueryClient, args: DescriptionArgs): Pro
   return new MutationObserver(client, descriptionOptions(client, args.key)).mutate(args)
 }
 
+/**
+ * Writes the description of an issue the create dialog just made, once its pasted images have
+ * landed. It records no undo step, since Cmd+Z should not take the images back out of a new issue.
+ */
+export function saveCreatedDescription(
+  client: QueryClient,
+  args: SetDescriptionArgs,
+): Promise<unknown> {
+  return new MutationObserver(
+    client,
+    descriptionMutation(
+      client,
+      args.key,
+      (sent) => call('issues:setDescription', sent),
+      rereadIssue,
+    ),
+  ).mutate(args)
+}
+
 const IMAGE_RETRY_LIMIT = 2
 
 /** An image of the issue as an object URL. The URL is cached, never the bytes. */

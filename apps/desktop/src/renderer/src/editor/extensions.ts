@@ -58,8 +58,8 @@ export interface Behaviour {
   cancel(): boolean
   /** A click in read mode on plain text, at `pos`. The host may start editing there. */
   edit(pos: number): void
-  /** Dropped or pasted image files. True when the editor took the event. */
-  images(files: File[], pos: number | null): boolean
+  /** Dropped or pasted image files, `pasted` when they came from the clipboard. True when the editor took the event. */
+  images(files: File[], pos: number | null, pasted: boolean): boolean
 }
 
 /** The node views, which only the running editor has. The schema test passes none. */
@@ -274,13 +274,13 @@ const Clipboard = (behaviour: () => Behaviour) =>
               if (files.length === 0) return false
               const at = view.posAtCoords({ left: event.clientX, top: event.clientY })
               event.preventDefault()
-              return behaviour().images(files, at?.pos ?? null)
+              return behaviour().images(files, at?.pos ?? null, false)
             },
             handlePaste: (_view, event) => {
               const files = imageFiles(event.clipboardData?.files ?? null)
               if (files.length === 0) return false
               event.preventDefault()
-              return behaviour().images(files, null)
+              return behaviour().images(files, null, true)
             },
           },
         }),

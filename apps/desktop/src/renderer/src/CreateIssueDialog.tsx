@@ -1,9 +1,19 @@
 import type { Issue } from '@jira-mgr/core'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
-import { useEffect, useRef, useState, type SyntheticEvent, type KeyboardEvent } from 'react'
+import type { EditorDoc } from '@jira-mgr/core/adf'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type SyntheticEvent,
+  type KeyboardEvent,
+} from 'react'
 
 import {
   CREATE_TYPES,
+  IMAGE_TYPES,
   type CreatedIssue,
   type CreateType,
   type CurrentUser,
@@ -13,7 +23,9 @@ import { AdfEditor, type AdfEditorHandle } from './AdfEditor'
 import { formatSize } from './activity'
 import { attachFiles } from './attach'
 import { Avatar, withAvatars } from './Avatar'
+import { DropZone, isClaimed } from './DropZone'
 import { Failure, Reason } from './Failure'
+import { FileDragContext, useFileDrag } from './fileDrag'
 import { LabelDot, PriorityBars } from './Glyphs'
 import { Icon, TRASH } from './Icon'
 import { Modal } from './Modal'
@@ -22,6 +34,8 @@ import { Picker, type PickerOption } from './Picker'
 import {
   describeCreated,
   descriptionOf,
+  fillImages,
+  pastedImages,
   initialDraft,
   listWords,
   firstMissing,
@@ -51,7 +65,16 @@ import {
   type Person,
 } from './properties'
 import { useAttachFile } from './activityQueries'
-import { useCreateIssue, useFieldOptions, useSprints, useUsers } from './queries'
+import { embedPasted, imageNotes } from './createImages'
+import {
+  conflictOf,
+  saveCreatedDescription,
+  useCreateIssue,
+  useFieldOptions,
+  useSprints,
+  useUsers,
+} from './queries'
+import { commitUpload, getUpload, removeUploadsOf, STAGED_KEY } from './uploads'
 import { useDebounced } from './useDebounced'
 import { TypeIcon } from './TypeIcon'
 
@@ -65,12 +88,17 @@ interface CreateIssueDialogProps {
   issues: readonly Issue[]
   me: CurrentUser | undefined
   onClose: () => void
+  /**
+   * Called the moment the issue exists, before any image or file uploads. `notice` is what the
+   * form compared with Jira's first read, which a later read of the automation's changes is
+   * measured against, however long the uploads take.
+   */
+  onCreating: (result: CreatedIssue, notice: Notice, draft: CreateDraft) => void
   /** Called after each create. `more` is true when the modal stays open for the next one. */
   onCreated: (
     result: CreatedIssue,
     notice: Notice,
     more: boolean,
-    draft: CreateDraft,
     /** A chosen file did not attach, so the notice names it and must reach a toast even when `more` keeps the modal open. */
     failedFiles: boolean,
   ) => void
@@ -96,9 +124,12 @@ const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
  * selected issue, with that Epic's Customer and Engagement, and needs a summary, a Customer and an
  * Engagement. It also takes a description and files: the description goes in the create request,
  * and the files attach once the issue exists, where a failed one is named in the notice and leaves
- * the issue in place. Create keeps the modal open with "Create more", clearing the summary, the
- * description and the files. Every
- * picker is the page's own `Picker`, and a parent whose Customer or Engagement differs asks the
+ * the issue in place. A file chosen with Attach files or dropped on the dialog stages as a file to
+ * attach. An image pasted into the description, or dropped on it, stages too, with a preview in
+ * place: once the issue exists it uploads, and the description is written again with the image in
+ * it. A failed upload or write is named in the notice and leaves the issue and its text in place.
+ * Create keeps the modal open with "Create more", clearing the summary, the description and the
+ * files. Every picker is the page's own `Picker`, and a parent whose Customer or Engagement differs asks the
  * Q16 question first. Nothing is sent until Jira's answer is needed: the new issue joins the
  * lists from the read-back.
  */
@@ -109,6 +140,7 @@ export function CreateIssueDialog({
   issues,
   me,
   onClose,
+  onCreating,
   onCreated,
   returnFocus,
 }: CreateIssueDialogProps) {
@@ -122,6 +154,8 @@ export function CreateIssueDialog({
   const [touched, setTouched] = useState(false)
   const create = useCreateIssue()
   const attach = useAttachFile()
+  const client = useQueryClient()
+  const dragging = useFileDrag()
   const descriptionRef = useRef<AdfEditorHandle>(null)
   const filePicker = useRef<HTMLInputElement>(null)
   const summaryRef = useRef<HTMLInputElement>(null)
@@ -145,6 +179,14 @@ export function CreateIssueDialog({
   const [sprintOpen, setSprintOpen] = useState(false)
   const [allSprints, setAllSprints] = useState(false)
   const sprints = useSprints(allSprints, sprintOpen)
+
+  // Images still staged when the dialog closes would keep their previews for the session.
+  useEffect(
+    () => () => {
+      removeUploadsOf(STAGED_KEY)
+    },
+    [],
+  )
 
   function edit(changes: Partial<CreateDraft>) {
     create.reset()
@@ -186,36 +228,118 @@ export function CreateIssueDialog({
       if (first !== null) target[first].current?.focus()
       return
     }
+    // Read now: the images the description holds are still placeholders, which the editor keeps.
+    const doc = descriptionRef.current?.json() ?? null
     create.mutate(args, {
       onSuccess: (result) => {
-        void finish(result, draft, files)
+        const notice = describeCreated(draft, result)
+        onCreating(result, notice, draft)
+        void finish(result, draft, files, doc, notice)
       },
     })
   }
 
-  /** Attaches the files to the new issue, then tells the user and either closes or clears the form. */
-  async function finish(result: CreatedIssue, sent: CreateDraft, chosen: readonly File[]) {
-    let notice = describeCreated(sent, result)
+  /** Stages files to attach once the issue exists. A drop while the create is in flight is ignored. */
+  function stage(incoming: File[]) {
+    if (pending || incoming.length === 0) return
+    setFiles((held) => [...held, ...incoming])
+  }
+
+  const isImage = (file: File) => (IMAGE_TYPES as readonly string[]).includes(file.type)
+
+  /** Files dropped on the description: images go into it, anything else stages as an attachment. */
+  function dropOnDescription(dropped: File[], handled: boolean) {
+    stage(dropped.filter((file) => !isImage(file)))
+    // Images dropped on the editor are already in it; only the rest was left over.
+    const images = dropped.filter(isImage)
+    if (!handled && !pending && images.length > 0) descriptionRef.current?.addImages(images)
+  }
+
+  /** A file dropped where no zone took it, such as the title: it stages like one chosen with Attach files. */
+  function onDrop(event: DragEvent<HTMLElement>) {
+    if (isClaimed(event.nativeEvent) || !event.dataTransfer.types.includes('Files')) return
+    stage(Array.from(event.dataTransfer.files))
+  }
+
+  /**
+   * Uploads the pasted images and writes them into the description, attaches the files, then tells
+   * the user and either closes or clears the form. The issue exists, so no step here undoes it.
+   */
+  async function finish(
+    result: CreatedIssue,
+    sent: CreateDraft,
+    chosen: readonly File[],
+    doc: EditorDoc | null,
+    first: Notice,
+  ) {
+    let notice = first
     let failedFiles = false
-    if (chosen.length > 0) {
-      const failed: FailedFile[] = []
-      setAttaching(true)
-      await attachFiles(chosen, {
-        send: (file) => attach.mutateAsync({ key: result.key, ...file }),
-        start: () => undefined,
-        finish: () => undefined,
-        fail: ({ notes }, name) => failed.push({ name, reason: notes.join(' ') }),
-      })
+    const pasted = doc === null ? [] : pastedImages(doc)
+    if (chosen.length > 0 || pasted.length > 0) setAttaching(true)
+    try {
+      if (doc !== null && pasted.length > 0) {
+        const embedded = await embedPasted(
+          doc,
+          // Jira's copy of the description, which may differ from what was sent, such as in ids it adds.
+          result.issue?.description ?? sent.description,
+          {
+            upload: async (id) => {
+              const state = await commitUpload(id, result.key)
+              if (state.status === 'done') return { node: state.node }
+              return { failed: state.status === 'failed' ? state.message : 'It did not finish.' }
+            },
+            name: (id) => getUpload(id)?.filename ?? 'The pasted image',
+            save: async (description, base) => {
+              try {
+                await saveCreatedDescription(client, { key: result.key, description, base })
+                return 'saved'
+              } catch (error) {
+                if (conflictOf(error) !== null) return 'changed'
+                throw error
+              }
+            },
+          },
+        )
+        const notes = imageNotes(result.key, embedded)
+        if (notes.length > 0) {
+          notice = { ...notice, notes: [...notice.notes, ...notes], warned: true }
+          failedFiles = true
+        }
+      }
+      if (chosen.length > 0) {
+        const failed: FailedFile[] = []
+        await attachFiles(chosen, {
+          send: (file) => attach.mutateAsync({ key: result.key, ...file }),
+          start: () => undefined,
+          finish: () => undefined,
+          fail: ({ notes }, name) => failed.push({ name, reason: notes.join(' ') }),
+        })
+        notice = withUploadFailures(notice, result.key, failed)
+        failedFiles ||= failed.length > 0
+      }
+    } catch (error) {
+      // The issue exists, so a step that threw must still end the create: a second Create would
+      // make a duplicate.
+      const reason = error instanceof Error ? error.message : String(error)
+      notice = {
+        ...notice,
+        notes: [...notice.notes, `Something went wrong after ${result.key} was created. ${reason}`],
+        warned: true,
+      }
+      failedFiles = true
+    } finally {
+      // Not before the files attach: the placeholders are still in the editor, and one whose
+      // entry is gone shows "The upload was lost." The editor is cleared first, so no placeholder
+      // outlives its entry, even for a moment. The sweep also takes an image deleted from the text.
+      if (more) descriptionRef.current?.reset(null)
+      removeUploadsOf(STAGED_KEY)
       setAttaching(false)
-      notice = withUploadFailures(notice, result.key, failed)
-      failedFiles = failed.length > 0
     }
-    onCreated(result, notice, more, sent, failedFiles)
+    onCreated(result, notice, more, failedFiles)
     if (more) {
       setLast(notice)
       setDraft(nextDraft(sent))
       setFiles([])
-      descriptionRef.current?.reset(null)
       setTouched(false)
     }
   }
@@ -359,346 +483,359 @@ export function CreateIssueDialog({
       returnFocus={returnFocus}
       className="w-[min(42rem,calc(100vw-2rem))]"
     >
-      <form
-        onSubmit={submit}
-        onKeyDown={onFormKeyDown}
-        className="flex flex-col"
-        aria-describedby="create-needs"
-      >
-        <fieldset disabled={pending} className="contents">
-          <div className="space-y-3 px-5 pb-3 pt-5">
-            <h2 id="create-title" className="text-base font-semibold">
-              New issue
-            </h2>
-            <div className="flex gap-2">
-              <Picker
-                label="Type"
-                variant="icon"
-                valueText={draft.type}
-                leading={<TypeIcon type={{ name: draft.type }} decorative />}
-                options={CREATE_TYPES.map((t) => ({
-                  id: t,
-                  label: t,
-                  leading: <TypeIcon type={{ name: t }} decorative />,
-                }))}
-                selected={[draft.type]}
-                onSelect={(id) => {
-                  setDraft((d) => withType(d, id as CreateType, selected, issues))
-                }}
-              />
-              <input
-                ref={summaryRef}
-                type="text"
-                aria-label="Summary"
-                placeholder="Summary"
-                maxLength={255}
-                autoComplete="off"
-                value={draft.summary}
-                onChange={(event) => {
-                  edit({ summary: event.target.value })
-                }}
-                className={`${INPUT} h-10 text-base`}
-              />
-            </div>
-            {/* A contenteditable ignores `<fieldset disabled>`, so `inert` locks the editor while it sends. */}
-            <div
-              inert={pending}
-              className={`relative max-h-48 overflow-y-auto rounded-md border border-field-border bg-canvas px-2 py-1.5 focus-within:outline-2 focus-within:outline-accent [&_.ProseMirror]:min-h-16 ${pending ? 'opacity-60' : ''}`}
-            >
-              <AdfEditor
-                ref={descriptionRef}
-                embedded
-                value={null}
-                issueKey=""
-                label="Description"
-                autoFocus={false}
-                editing
-                onSave={() => undefined}
-                // Esc closes the dialog, as it does from the summary; the editor would otherwise keep the key.
-                onCancel={() => {
-                  if (!pending) onClose()
-                }}
-                onChange={(doc) => {
-                  edit({ description: descriptionOf(doc) })
-                  // Not `draft.description`: a blank line or an empty bullet shows, and sends nothing.
-                  setTouched(
-                    doc.content.length > 1 ||
-                      doc.content[0]?.type !== 'paragraph' ||
-                      (doc.content[0].content?.length ?? 0) > 0,
-                  )
-                }}
-                onEditRequest={() => undefined}
-                onUnsupported={() => undefined}
-              />
-              {!touched && (
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute left-2 top-1.5 text-muted"
-                >
-                  Add a description
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 border-y border-line px-5 py-3">
-            {rules.parent && (
-              <Picker
-                label="Parent"
-                variant={draft.type === 'Subtask' ? 'filled' : 'chip'}
-                leading={<ChipName>Parent</ChipName>}
-                triggerRef={parentTrigger}
-                valueText={
-                  draft.parent === null
-                    ? draft.type === 'Subtask'
-                      ? REQUIRED
-                      : 'None'
-                    : `${draft.parent.key} ${draft.parent.summary}`
-                }
-                options={parentOptions}
-                selected={draft.parent === null ? [] : [draft.parent.key]}
-                searchable
-                onQuery={setParentQuery}
-                onSelect={chooseParent}
-                note={
-                  parentList.total > parentList.shown.length
-                    ? `Showing ${String(parentList.shown.length)} of ${String(parentList.total)}. Keep typing to narrow.`
-                    : undefined
-                }
-              />
-            )}
-            <Picker
-              label="Customer"
-              variant="filled"
-              leading={<ChipName>Customer</ChipName>}
-              triggerRef={customerTrigger}
-              valueText={draft.customer?.name ?? REQUIRED}
-              options={fromChoices(customers.data)}
-              selected={draft.customer === null ? [] : [draft.customer.id]}
-              searchable
-              onSelect={(id) => {
-                const picked = customers.data?.find((c) => c.id === id)
-                if (picked !== undefined) edit({ customer: picked })
-              }}
-              onOpenChange={setCustomerOpen}
-              note={note(customers, 'Customers')}
-            />
-            <Picker
-              label="Engagement"
-              variant="filled"
-              leading={<ChipName>Engagement</ChipName>}
-              triggerRef={engagementTrigger}
-              valueText={draft.engagement?.name ?? REQUIRED}
-              options={fromChoices(engagements.data)}
-              selected={draft.engagement === null ? [] : [draft.engagement.id]}
-              searchable
-              onSelect={(id) => {
-                const picked = engagements.data?.find((c) => c.id === id)
-                if (picked !== undefined) edit({ engagement: picked })
-              }}
-              onOpenChange={setEngagementOpen}
-              note={note(engagements, 'Engagements')}
-            />
-            {rules.estimates && (
-              <label
-                className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${estimateBad ? 'border-danger' : 'border-field-border'}`}
-              >
-                <ChipName>Estimate</ChipName>
+      <FileDragContext value={dragging}>
+        <form
+          onSubmit={submit}
+          onKeyDown={onFormKeyDown}
+          onDrop={onDrop}
+          className="flex flex-col"
+          aria-describedby="create-needs"
+        >
+          <fieldset disabled={pending} className="contents">
+            <div className="space-y-3 px-5 pb-3 pt-5">
+              <h2 id="create-title" className="text-base font-semibold">
+                New issue
+              </h2>
+              <div className="flex gap-2">
+                <Picker
+                  label="Type"
+                  variant="icon"
+                  valueText={draft.type}
+                  leading={<TypeIcon type={{ name: draft.type }} decorative />}
+                  options={CREATE_TYPES.map((t) => ({
+                    id: t,
+                    label: t,
+                    leading: <TypeIcon type={{ name: t }} decorative />,
+                  }))}
+                  selected={[draft.type]}
+                  onSelect={(id) => {
+                    setDraft((d) => withType(d, id as CreateType, selected, issues))
+                  }}
+                />
                 <input
-                  ref={estimateRef}
+                  ref={summaryRef}
                   type="text"
-                  aria-label="Original estimate"
-                  placeholder="2h 30m"
+                  aria-label="Summary"
+                  placeholder="Summary"
+                  maxLength={255}
                   autoComplete="off"
-                  value={draft.estimate}
-                  aria-invalid={estimateBad || undefined}
+                  value={draft.summary}
                   onChange={(event) => {
-                    edit({ estimate: event.target.value })
+                    edit({ summary: event.target.value })
                   }}
-                  className="field-sizing-content min-w-12 max-w-40 bg-transparent focus-visible:outline-none"
+                  className={`${INPUT} h-10 text-base`}
                 />
-              </label>
-            )}
-            <Picker
-              label="Assignee"
-              variant="chip"
-              triggerRef={assigneeTrigger}
-              valueText={draft.assignee?.displayName ?? 'Unassigned'}
-              leading={
-                <>
-                  <ChipName>Assignee</ChipName>
-                  <Avatar person={draft.assignee} />
-                </>
-              }
-              options={withAvatars(assigneeOptions(choices, assigneeQuery, me?.accountId), people)}
-              selected={[draft.assignee?.accountId ?? NONE]}
-              searchable
-              onQuery={setAssigneeQuery}
-              onSelect={chooseAssignee}
-              onOpenChange={setAssigneeOpen}
-              note={
-                found.isError ? (
-                  <Reason lead="Could not search people." error={found.error} />
-                ) : found.isFetching ? (
-                  'Searching'
-                ) : undefined
-              }
-            />
-            {meUser !== undefined && draft.assignee?.accountId !== meUser.accountId && (
-              <button
-                type="button"
-                aria-label="Assign to me"
-                onClick={() => {
-                  edit({ assignee: meUser })
-                  // This button leaves the page once the assignee is me, so focus moves first.
-                  assigneeTrigger.current?.focus()
-                }}
-                className="btn btn-ghost px-2"
-              >
-                +me
-              </button>
-            )}
-            <Picker
-              label="Priority"
-              variant="chip"
-              leading={<ChipName>Priority</ChipName>}
-              valueText={draft.priority?.name ?? 'None'}
-              options={fromChoices(priorities.data).map((o) => ({
-                ...o,
-                leading: <PriorityBars name={o.label} />,
-              }))}
-              selected={draft.priority === null ? [] : [draft.priority.id]}
-              onSelect={(id) => {
-                const picked = priorities.data?.find((c) => c.id === id)
-                if (picked !== undefined) edit({ priority: picked })
-              }}
-              onOpenChange={setPriorityOpen}
-              note={note(priorities, 'priorities')}
-            />
-            <Picker
-              label="Labels"
-              variant="chip"
-              leading={<ChipName>Labels</ChipName>}
-              valueText={draft.labels.length === 0 ? 'None' : draft.labels.join(', ')}
-              options={labelOptions}
-              selected={draft.labels}
-              multiple
-              searchable
-              create={{ valid: isLabel, label: (text) => `Create "${text}"` }}
-              onSelect={toggleLabel}
-              onCreate={(text) => {
-                if (!draft.labels.includes(text)) toggleLabel(text)
-              }}
-            />
-            {rules.sprint && (
-              <Picker
-                label="Sprint"
-                variant="chip"
-                leading={<ChipName>Sprint</ChipName>}
-                valueText={draft.sprint?.name ?? 'Backlog'}
-                options={sprintOptions}
-                selected={[draft.sprint === null ? NONE : String(draft.sprint.id)]}
-                onSelect={chooseSprint}
-                onOpenChange={setSprintOpen}
-                note={note(sprints, 'sprints')}
-                footer={
-                  <button
-                    type="button"
-                    data-row
-                    aria-pressed={allSprints}
-                    onClick={() => {
-                      setAllSprints(!allSprints)
-                    }}
-                    className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-xs hover:bg-hover"
-                  >
-                    {allSprints ? 'Show fewer sprints' : 'Show all sprints'}
-                  </button>
-                }
-              />
-            )}
-          </div>
-          <div className="space-y-2 px-5 py-3">
-            {last !== null && (
-              <p role="status" className="text-xs">
-                <span className="font-medium">{last.title}.</span>{' '}
-                <span className="text-muted">{last.notes.join(' ')}</span>
-              </p>
-            )}
-            {create.isError && (
-              <Failure
-                lead="Could not create the issue."
-                error={create.error}
-                className="text-xs text-danger"
-              />
-            )}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  filePicker.current?.click()
-                }}
-                className="btn"
-              >
-                Attach files
-              </button>
-              <input
-                ref={filePicker}
-                type="file"
-                multiple
-                hidden
-                aria-label="Choose files to attach"
-                onChange={(event) => {
-                  const chosen = Array.from(event.target.files ?? [])
-                  setFiles((held) => [...held, ...chosen])
-                  // Chosen again, the same file must still raise a change.
-                  event.target.value = ''
-                }}
-              />
-              {files.map((file, index) => (
-                <span
-                  key={`${file.name}-${String(index)}`}
-                  className="flex h-7 max-w-full items-center gap-1.5 rounded-md border border-field-border pl-2.5 pr-0.5 text-xs"
-                >
-                  <span className="min-w-0 truncate">{file.name}</span>
-                  <span className="shrink-0 text-muted">{formatSize(file.size)}</span>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${file.name}`}
-                    onClick={() => {
-                      setFiles((held) => held.filter((_, at) => at !== index))
-                    }}
-                    className="btn btn-sm btn-icon btn-ghost btn-delete"
-                  >
-                    <Icon path={TRASH} />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <p id="create-needs" className="text-xs text-muted">
-              {missing.length === 0 ? 'Ready to create.' : `Add ${listWords(missing)} to create.`}
-            </p>
-            <div className="flex items-center justify-between gap-3">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={more}
-                  onChange={(event) => {
-                    setMore(event.target.checked)
-                  }}
-                />
-                Create more
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={onClose} className="btn">
-                  Cancel
-                </button>
-                <button type="submit" disabled={missing.length > 0} className="btn btn-primary">
-                  {attaching ? 'Attaching' : pending ? 'Creating' : 'Create issue'}
-                </button>
               </div>
+              <DropZone label="Add images into description" onFiles={dropOnDescription}>
+                {/* A contenteditable ignores `<fieldset disabled>`, so `inert` locks the editor while it sends. */}
+                <div
+                  inert={pending}
+                  className={`relative max-h-48 overflow-y-auto rounded-md border border-field-border bg-canvas px-2 py-1.5 focus-within:outline-2 focus-within:outline-accent [&_.ProseMirror]:min-h-16 ${pending ? 'opacity-60' : ''}`}
+                >
+                  <AdfEditor
+                    ref={descriptionRef}
+                    embedded
+                    value={null}
+                    issueKey=""
+                    label="Description"
+                    autoFocus={false}
+                    editing
+                    onSave={() => undefined}
+                    // Esc closes the dialog, as it does from the summary; the editor would otherwise keep the key.
+                    onCancel={() => {
+                      if (!pending) onClose()
+                    }}
+                    onChange={(doc) => {
+                      // Without the images: they are not uploaded yet, and the create sends only the text.
+                      edit({ description: descriptionOf(fillImages(doc, new Map())) })
+                      // Not `draft.description`: a blank line or an empty bullet shows, and sends nothing.
+                      setTouched(
+                        doc.content.length > 1 ||
+                          doc.content[0]?.type !== 'paragraph' ||
+                          (doc.content[0].content?.length ?? 0) > 0,
+                      )
+                    }}
+                    onEditRequest={() => undefined}
+                    onUnsupported={() => undefined}
+                  />
+                  {!touched && (
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute left-2 top-1.5 text-muted"
+                    >
+                      Add a description
+                    </span>
+                  )}
+                </div>
+              </DropZone>
             </div>
-          </div>
-        </fieldset>
-      </form>
+            <DropZone label="Attach files to the new issue" onFiles={stage}>
+              <div className="flex flex-wrap gap-2 border-y border-line px-5 py-3">
+                {rules.parent && (
+                  <Picker
+                    label="Parent"
+                    variant={draft.type === 'Subtask' ? 'filled' : 'chip'}
+                    leading={<ChipName>Parent</ChipName>}
+                    triggerRef={parentTrigger}
+                    valueText={
+                      draft.parent === null
+                        ? draft.type === 'Subtask'
+                          ? REQUIRED
+                          : 'None'
+                        : `${draft.parent.key} ${draft.parent.summary}`
+                    }
+                    options={parentOptions}
+                    selected={draft.parent === null ? [] : [draft.parent.key]}
+                    searchable
+                    onQuery={setParentQuery}
+                    onSelect={chooseParent}
+                    note={
+                      parentList.total > parentList.shown.length
+                        ? `Showing ${String(parentList.shown.length)} of ${String(parentList.total)}. Keep typing to narrow.`
+                        : undefined
+                    }
+                  />
+                )}
+                <Picker
+                  label="Customer"
+                  variant="filled"
+                  leading={<ChipName>Customer</ChipName>}
+                  triggerRef={customerTrigger}
+                  valueText={draft.customer?.name ?? REQUIRED}
+                  options={fromChoices(customers.data)}
+                  selected={draft.customer === null ? [] : [draft.customer.id]}
+                  searchable
+                  onSelect={(id) => {
+                    const picked = customers.data?.find((c) => c.id === id)
+                    if (picked !== undefined) edit({ customer: picked })
+                  }}
+                  onOpenChange={setCustomerOpen}
+                  note={note(customers, 'Customers')}
+                />
+                <Picker
+                  label="Engagement"
+                  variant="filled"
+                  leading={<ChipName>Engagement</ChipName>}
+                  triggerRef={engagementTrigger}
+                  valueText={draft.engagement?.name ?? REQUIRED}
+                  options={fromChoices(engagements.data)}
+                  selected={draft.engagement === null ? [] : [draft.engagement.id]}
+                  searchable
+                  onSelect={(id) => {
+                    const picked = engagements.data?.find((c) => c.id === id)
+                    if (picked !== undefined) edit({ engagement: picked })
+                  }}
+                  onOpenChange={setEngagementOpen}
+                  note={note(engagements, 'Engagements')}
+                />
+                {rules.estimates && (
+                  <label
+                    className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${estimateBad ? 'border-danger' : 'border-field-border'}`}
+                  >
+                    <ChipName>Estimate</ChipName>
+                    <input
+                      ref={estimateRef}
+                      type="text"
+                      aria-label="Original estimate"
+                      placeholder="2h 30m"
+                      autoComplete="off"
+                      value={draft.estimate}
+                      aria-invalid={estimateBad || undefined}
+                      onChange={(event) => {
+                        edit({ estimate: event.target.value })
+                      }}
+                      className="field-sizing-content min-w-12 max-w-40 bg-transparent focus-visible:outline-none"
+                    />
+                  </label>
+                )}
+                <Picker
+                  label="Assignee"
+                  variant="chip"
+                  triggerRef={assigneeTrigger}
+                  valueText={draft.assignee?.displayName ?? 'Unassigned'}
+                  leading={
+                    <>
+                      <ChipName>Assignee</ChipName>
+                      <Avatar person={draft.assignee} />
+                    </>
+                  }
+                  options={withAvatars(
+                    assigneeOptions(choices, assigneeQuery, me?.accountId),
+                    people,
+                  )}
+                  selected={[draft.assignee?.accountId ?? NONE]}
+                  searchable
+                  onQuery={setAssigneeQuery}
+                  onSelect={chooseAssignee}
+                  onOpenChange={setAssigneeOpen}
+                  note={
+                    found.isError ? (
+                      <Reason lead="Could not search people." error={found.error} />
+                    ) : found.isFetching ? (
+                      'Searching'
+                    ) : undefined
+                  }
+                />
+                {meUser !== undefined && draft.assignee?.accountId !== meUser.accountId && (
+                  <button
+                    type="button"
+                    aria-label="Assign to me"
+                    onClick={() => {
+                      edit({ assignee: meUser })
+                      // This button leaves the page once the assignee is me, so focus moves first.
+                      assigneeTrigger.current?.focus()
+                    }}
+                    className="btn btn-ghost px-2"
+                  >
+                    +me
+                  </button>
+                )}
+                <Picker
+                  label="Priority"
+                  variant="chip"
+                  leading={<ChipName>Priority</ChipName>}
+                  valueText={draft.priority?.name ?? 'None'}
+                  options={fromChoices(priorities.data).map((o) => ({
+                    ...o,
+                    leading: <PriorityBars name={o.label} />,
+                  }))}
+                  selected={draft.priority === null ? [] : [draft.priority.id]}
+                  onSelect={(id) => {
+                    const picked = priorities.data?.find((c) => c.id === id)
+                    if (picked !== undefined) edit({ priority: picked })
+                  }}
+                  onOpenChange={setPriorityOpen}
+                  note={note(priorities, 'priorities')}
+                />
+                <Picker
+                  label="Labels"
+                  variant="chip"
+                  leading={<ChipName>Labels</ChipName>}
+                  valueText={draft.labels.length === 0 ? 'None' : draft.labels.join(', ')}
+                  options={labelOptions}
+                  selected={draft.labels}
+                  multiple
+                  searchable
+                  create={{ valid: isLabel, label: (text) => `Create "${text}"` }}
+                  onSelect={toggleLabel}
+                  onCreate={(text) => {
+                    if (!draft.labels.includes(text)) toggleLabel(text)
+                  }}
+                />
+                {rules.sprint && (
+                  <Picker
+                    label="Sprint"
+                    variant="chip"
+                    leading={<ChipName>Sprint</ChipName>}
+                    valueText={draft.sprint?.name ?? 'Backlog'}
+                    options={sprintOptions}
+                    selected={[draft.sprint === null ? NONE : String(draft.sprint.id)]}
+                    onSelect={chooseSprint}
+                    onOpenChange={setSprintOpen}
+                    note={note(sprints, 'sprints')}
+                    footer={
+                      <button
+                        type="button"
+                        data-row
+                        aria-pressed={allSprints}
+                        onClick={() => {
+                          setAllSprints(!allSprints)
+                        }}
+                        className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-xs hover:bg-hover"
+                      >
+                        {allSprints ? 'Show fewer sprints' : 'Show all sprints'}
+                      </button>
+                    }
+                  />
+                )}
+              </div>
+              <div className="space-y-2 px-5 py-3">
+                {last !== null && (
+                  <p role="status" className="text-xs">
+                    <span className="font-medium">{last.title}.</span>{' '}
+                    <span className="text-muted">{last.notes.join(' ')}</span>
+                  </p>
+                )}
+                {create.isError && (
+                  <Failure
+                    lead="Could not create the issue."
+                    error={create.error}
+                    className="text-xs text-danger"
+                  />
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      filePicker.current?.click()
+                    }}
+                    className="btn"
+                  >
+                    Attach files
+                  </button>
+                  <input
+                    ref={filePicker}
+                    type="file"
+                    multiple
+                    hidden
+                    aria-label="Choose files to attach"
+                    onChange={(event) => {
+                      const chosen = Array.from(event.target.files ?? [])
+                      setFiles((held) => [...held, ...chosen])
+                      // Chosen again, the same file must still raise a change.
+                      event.target.value = ''
+                    }}
+                  />
+                  {files.map((file, index) => (
+                    <span
+                      key={`${file.name}-${String(index)}`}
+                      className="flex h-7 max-w-full items-center gap-1.5 rounded-md border border-field-border pl-2.5 pr-0.5 text-xs"
+                    >
+                      <span className="min-w-0 truncate">{file.name}</span>
+                      <span className="shrink-0 text-muted">{formatSize(file.size)}</span>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${file.name}`}
+                        onClick={() => {
+                          setFiles((held) => held.filter((_, at) => at !== index))
+                        }}
+                        className="btn btn-sm btn-icon btn-ghost btn-delete"
+                      >
+                        <Icon path={TRASH} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <p id="create-needs" className="text-xs text-muted">
+                  {missing.length === 0
+                    ? 'Ready to create.'
+                    : `Add ${listWords(missing)} to create.`}
+                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={more}
+                      onChange={(event) => {
+                        setMore(event.target.checked)
+                      }}
+                    />
+                    Create more
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={onClose} className="btn">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={missing.length > 0} className="btn btn-primary">
+                      {attaching ? 'Attaching' : pending ? 'Creating' : 'Create issue'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </DropZone>
+          </fieldset>
+        </form>
+      </FileDragContext>
       {prompt !== null && (
         <ParentPrompt
           subject="this issue"

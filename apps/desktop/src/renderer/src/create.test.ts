@@ -1,5 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
-import type { EditorDoc, EditorNode } from '@jira-mgr/core/adf'
+import type { AdfNode, EditorDoc, EditorNode } from '@jira-mgr/core/adf'
 import { describe, expect, it } from 'vitest'
 
 import type { CreatedIssue } from '../../shared/ipc'
@@ -10,12 +10,14 @@ import {
   describeCreated,
   describeLate,
   descriptionOf,
+  fillImages,
   firstMissing,
   missingKeys,
   initialDraft,
   listWords,
   missingFields,
   nextDraft,
+  pastedImages,
   toCreateArgs,
   withType,
   withUploadFailures,
@@ -330,6 +332,65 @@ describe('descriptionOf', () => {
       type: 'doc',
       content: [paragraph(), paragraph('Plan it')],
     })
+  })
+})
+
+describe('images pasted into the description', () => {
+  const text = (value: string): EditorNode => ({ type: 'text', text: value })
+  const paragraph = (value?: string): EditorNode => ({
+    type: 'paragraph',
+    ...(value !== undefined && { content: [text(value)] }),
+  })
+  const pending = (uploadId: string): EditorNode => ({
+    type: 'adfImage',
+    attrs: { node: null, uploadId },
+  })
+  const doc = (...content: EditorNode[]): EditorDoc => ({ type: 'doc', content })
+  const single: AdfNode = { type: 'mediaSingle', content: [] }
+  const held = (node: AdfNode): EditorNode => ({
+    type: 'adfImage',
+    attrs: { node, uploadId: null },
+  })
+
+  it('lists the upload ids in document order, each once, including images inside lists and quotes', () => {
+    const quoted: EditorNode = { type: 'blockquote', content: [paragraph('q'), pending('c')] }
+    const listed: EditorNode = {
+      type: 'bulletList',
+      content: [{ type: 'listItem', content: [paragraph('l'), pending('b')] }],
+    }
+    expect(pastedImages(doc(pending('a'), listed, quoted, pending('a')))).toEqual(['a', 'b', 'c'])
+    expect(pastedImages(doc(paragraph('none')))).toEqual([])
+  })
+
+  it('takes every image out for the create, which has no issue to hold them', () => {
+    const typed = doc(paragraph('Before'), pending('a'), paragraph('After'))
+    const stripped = fillImages(typed, new Map())
+    expect(stripped.content).toEqual([paragraph('Before'), paragraph('After')])
+    expect(descriptionOf(stripped)).toMatchObject({
+      content: [paragraph('Before'), paragraph('After')],
+    })
+    // Only an image: nothing is sent, as with an empty description.
+    expect(descriptionOf(fillImages(doc(pending('a'), paragraph()), new Map()))).toBeNull()
+  })
+
+  it('puts each uploaded image where it was pasted, and drops one that failed', () => {
+    const typed = doc(paragraph('Before'), pending('a'), pending('lost'), paragraph('After'))
+    const filled = fillImages(typed, new Map([['a', single]]))
+    expect(filled.content).toEqual([paragraph('Before'), held(single), paragraph('After')])
+    expect(descriptionOf(filled)).toEqual({
+      version: 1,
+      type: 'doc',
+      content: [paragraph('Before'), single, paragraph('After')],
+    })
+  })
+
+  it('removes a quote that held only an image, and leaves an image already in place alone', () => {
+    const typed = doc(
+      { type: 'blockquote', content: [pending('a')] },
+      held(single),
+      paragraph('Text'),
+    )
+    expect(fillImages(typed, new Map()).content).toEqual([held(single), paragraph('Text')])
   })
 })
 

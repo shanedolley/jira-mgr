@@ -1058,8 +1058,11 @@ export function Shell({ session }: { session: Session }) {
           onClose={() => {
             setCreating(null)
           }}
-          onCreated={(result, first, more, draft, failedFiles) => {
+          onCreating={(result, first, draft) => {
+            // Registered now, not when the uploads end: Jira's automation lands after about 10 s.
             created.current.set(result.key, { draft, notice: first })
+          }}
+          onCreated={(result, first, more, failedFiles) => {
             if (!more) setCreating(null)
             setPendingSelect(result.issue === null ? null : result.key)
             // With "Create more" the next create overwrites the line in the modal, so a file that failed to attach also takes a toast.

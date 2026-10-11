@@ -23,7 +23,7 @@ import { ReadOnlyBlock } from './ReadOnlyBlock'
 import { ReadOnlyInline } from './ReadOnlyInline'
 import { IssueKeyContext } from './editor/context'
 import { createExtensions, schemaAccepts, type Behaviour } from './editor/extensions'
-import { startUpload } from './uploads'
+import { pastedName, stageUpload, startUpload } from './uploads'
 
 const EMPTY: AdfDoc = { version: 1, type: 'doc', content: [] }
 
@@ -47,6 +47,8 @@ export interface AdfEditorHandle {
   addImages(files: File[]): void
   /** The document as ADF, or `null` when it holds no text. Throws `validation_failed` for an image still uploading. */
   adf(): AdfDoc | null
+  /** The editor's own document, which keeps an image not uploaded yet as a placeholder. */
+  json(): EditorDoc
 }
 
 export interface AdfEditorProps {
@@ -75,8 +77,9 @@ export interface AdfEditorProps {
   hidden?: boolean
   /**
    * For an editor inside its host's own frame and form, such as the create dialog's description:
-   * no border, no Save and Cancel row, and no embedded images, since the issue they would attach to
-   * does not exist yet. The host reads the document from `onChange`.
+   * no border and no Save and Cancel row. An image is staged, not uploaded, since the issue it
+   * would attach to does not exist yet, and the host uploads it later with `commitUpload`. The host
+   * reads the document from `onChange` or `json()`.
    */
   embedded?: boolean
   onSave: (doc: AdfDoc | null) => void
@@ -176,11 +179,9 @@ export function AdfEditor(props: AdfEditorProps) {
       edit(pos) {
         live.current.onEditRequest(pos)
       },
-      images(files, pos) {
-        if (!live.current.editing || live.current.embedded === true || editorRef.current === null) {
-          return false
-        }
-        embed(editorRef.current, files, pos)
+      images(files, pos, pasted) {
+        if (!live.current.editing || editorRef.current === null) return false
+        embed(editorRef.current, files, pos, pasted)
         return true
       },
     }),
@@ -191,6 +192,7 @@ export function AdfEditor(props: AdfEditorProps) {
     [],
   )
   const editorRef = useRef<Editor | null>(null)
+  const pastedCount = useRef(0)
   const caretRef = useRef<number | null>(null)
 
   const editor = useEditor(
@@ -300,7 +302,7 @@ export function AdfEditor(props: AdfEditorProps) {
   }
 
   /** Starts an upload for each image and puts its placeholder at the drop point. */
-  function embed(target: Editor, files: File[], pos: number | null) {
+  function embed(target: Editor, files: File[], pos: number | null, pasted = false) {
     const image = target.schema.nodes.adfImage
     if (image === undefined) return
     const nodes: PMNode[] = []
@@ -310,7 +312,11 @@ export function AdfEditor(props: AdfEditorProps) {
         tooBig.push(file.name)
         continue
       }
-      const uploadId = startUpload(live.current.issueKey, file)
+      // The clipboard names every screenshot alike, so the create dialog numbers them: a failure notice must say which.
+      const named = pasted && live.current.embedded ? pastedName(file, ++pastedCount.current) : file
+      const uploadId = live.current.embedded
+        ? stageUpload(named)
+        : startUpload(live.current.issueKey, named)
       nodes.push(image.create({ node: null, uploadId }))
     }
     setProblem(
@@ -351,8 +357,10 @@ export function AdfEditor(props: AdfEditorProps) {
     reset: (doc) => {
       editor.commands.setContent(toEditor(doc), { emitUpdate: false })
       setProblem(null)
+      pastedCount.current = 0
     },
     adf: () => editorToAdf(editor.getJSON() as EditorDoc),
+    json: () => editor.getJSON() as EditorDoc,
   }))
 
   return (

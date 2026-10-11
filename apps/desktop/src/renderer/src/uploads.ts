@@ -5,6 +5,8 @@ import { IMAGE_TYPES, type AddImageArgs, type ImageType } from '../../shared/ipc
 import { call } from './ipc'
 
 export type UploadState =
+  /** Pasted into the create dialog: it uploads once the issue exists, with `commitUpload`. */
+  | { status: 'staged' }
   | { status: 'uploading' }
   | { status: 'done'; node: AdfNode }
   | { status: 'failed'; message: string }
@@ -67,9 +69,10 @@ function setState(id: string, state: UploadState): void {
   emit()
 }
 
-async function run(id: string): Promise<void> {
+/** Uploads the entry and returns where it ended: `done` with its node, or `failed` with why. */
+async function run(id: string, key?: string): Promise<UploadState> {
   const entry = entries.get(id)
-  if (entry === undefined) return
+  if (entry === undefined) return { status: 'failed', message: 'The upload was lost.' }
   try {
     const bytes = new Uint8Array(await entry.file.arrayBuffer())
     const size = await deps.measure(entry.file)
@@ -77,19 +80,67 @@ async function run(id: string): Promise<void> {
     if (mimeType === undefined)
       throw new Error('Only PNG, JPEG, GIF and WebP images can be embedded.')
     const { node } = await deps.send({
-      key: entry.key,
+      key: key ?? entry.key,
       filename: entry.filename,
       mimeType,
       bytes,
       ...size,
     })
-    setState(id, { status: 'done', node })
+    const done: UploadState = { status: 'done', node }
+    setState(id, done)
+    return done
   } catch (error) {
-    setState(id, {
+    const failed: UploadState = {
       status: 'failed',
       message: error instanceof Error ? error.message : String(error),
-    })
+    }
+    setState(id, failed)
+    return failed
   }
+}
+
+/** `file` renamed `pasted-<n>` with its own extension, or one from its type. Its type and bytes are kept. */
+export function pastedName(file: File, n: number): File {
+  const dot = file.name.lastIndexOf('.')
+  const own = dot > 0 ? file.name.slice(dot + 1).toLowerCase() : ''
+  const extension = /^[a-z0-9]{1,5}$/.test(own)
+    ? own
+    : file.type.slice('image/'.length).replace('jpeg', 'jpg')
+  return new File([file], `pasted-${String(n)}.${extension}`, { type: file.type })
+}
+
+/** The key of an image pasted into the create dialog, whose issue does not exist yet. */
+export const STAGED_KEY = ''
+
+/**
+ * Holds `file` for the create dialog and returns the id its placeholder holds. Nothing is sent
+ * until `commitUpload` gives the new issue's key.
+ */
+export function stageUpload(file: File, override?: UploadDeps): string {
+  if (override !== undefined) deps = override
+  const id = crypto.randomUUID()
+  entries.set(id, {
+    key: STAGED_KEY,
+    filename: file.name,
+    file,
+    preview: deps.createUrl(file),
+    state: { status: 'staged' },
+  })
+  emit()
+  return id
+}
+
+/**
+ * Uploads a staged image to the issue just created and resolves when it has landed or failed. The
+ * entry keeps the staged key, so the create dialog's placeholder keeps showing it as it goes.
+ */
+export function commitUpload(id: string, key: string): Promise<UploadState> {
+  const entry = entries.get(id)
+  if (entry?.state.status !== 'staged') {
+    return Promise.resolve({ status: 'failed', message: 'The pasted image was lost.' })
+  }
+  setState(id, { status: 'uploading' })
+  return run(id, key)
 }
 
 /** Starts uploading `file` to the issue and returns the id the document holds meanwhile. */

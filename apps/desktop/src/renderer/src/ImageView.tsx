@@ -4,7 +4,14 @@ import { useContext, useEffect } from 'react'
 
 import { IssueKeyContext } from './editor/context'
 import { useAttachmentImage } from './queries'
-import { getUpload, releasePreview, removeUpload, retryUpload, useUpload } from './uploads'
+import {
+  getUpload,
+  releasePreview,
+  removeUpload,
+  retryUpload,
+  STAGED_KEY,
+  useUpload,
+} from './uploads'
 
 /** The sizes an image's ADF gives: a width the author chose in pixels, else the file's own. */
 function sizeOf(single: AdfNode | undefined, media: AdfNode | undefined) {
@@ -74,8 +81,10 @@ function UploadingImage({
   const upload = found?.key === issueKey ? found : undefined
   const done = upload?.state.status === 'done' ? upload.state.node : null
   useEffect(() => {
-    if (done !== null) onDone(done)
-  }, [done, onDone])
+    // The create dialog's image is no attachment of its own issue key: its finished node would
+    // load nothing. The placeholder stays as it is until the dialog removes it.
+    if (done !== null && issueKey !== STAGED_KEY) onDone(done)
+  }, [done, onDone, issueKey])
 
   if (upload === undefined || upload.state.status === 'failed') {
     const name = upload?.filename ?? 'the image'
@@ -87,7 +96,8 @@ function UploadingImage({
           Could not upload {name}. {message}
         </p>
         <div className="flex flex-wrap gap-2">
-          {upload !== undefined && (
+          {/* The create dialog is locked while its images upload, and its notice names a failure after. */}
+          {upload !== undefined && issueKey !== STAGED_KEY && (
             <button
               type="button"
               onClick={() => {
@@ -103,6 +113,28 @@ function UploadingImage({
           </button>
         </div>
       </div>
+    )
+  }
+  if (upload.state.status === 'staged') {
+    return (
+      <figure className="space-y-1">
+        {upload.preview !== '' && (
+          <img src={upload.preview} alt="" className="max-h-40 max-w-full object-contain" />
+        )}
+        <figcaption className="flex items-center gap-2 text-xs text-muted">
+          <span className="min-w-0 truncate">
+            {upload.filename} uploads when the issue is created
+          </span>
+          <button
+            type="button"
+            aria-label={`Remove ${upload.filename}`}
+            onClick={onRemove}
+            className="btn btn-sm btn-delete"
+          >
+            Remove
+          </button>
+        </figcaption>
+      </figure>
     )
   }
   return (

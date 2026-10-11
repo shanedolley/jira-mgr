@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, notices, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, releaseEdit, releaseUpload } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -80,4 +80,34 @@ test('no second toast when the second read finds nothing new', async () => {
     .toBe(2)
   await expect(toast('Created')).toContainText('Created PSAPAC-2000: Book the workshop')
   await expect(toast('Jira changed')).toHaveCount(0)
+})
+
+test('the second read is reported even when the uploads outlast it', async () => {
+  await start({ JM_E2E_LATE_AUTOMATION_MS: '600', JM_E2E_LATE_READ_MS: '1500' })
+  await item(/PSAPAC-2,/).click()
+  await window.keyboard.press('Escape')
+  await window.keyboard.press('c')
+  await dialog().getByLabel('Summary').fill('Book the workshop')
+  await dialog().getByRole('button', { name: 'Type: Story' }).click()
+  await window.getByRole('option', { name: 'Task', exact: true }).click()
+  await dialog()
+    .getByLabel('Choose files to attach')
+    .setInputFiles([{ name: 'slow.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') }])
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await expect.poll(async () => (await counts(app)).edits).toBe(1)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).uploads.length).toBe(1)
+
+  // The upload is held, so the dialog is still open when main reads the issue again.
+  await expect
+    .poll(async () => (await counts(app)).issueReads.filter((key) => key === 'PSAPAC-2000').length)
+    .toBe(2)
+  await expect(dialog().getByRole('button', { name: 'Attaching' })).toBeDisabled()
+  await releaseUpload(app)
+
+  await expect(dialog()).toHaveCount(0)
+  await expect(toast('Jira changed')).toContainText('Jira changed PSAPAC-2000 after it was created')
+  await expect(toast('Jira changed')).toContainText(
+    'Customer is Collibra (Internal team) (you chose Acme).',
+  )
 })
