@@ -16,8 +16,12 @@ The state folder is `~/Library/Application Support/jira-mgr/`. `JM_STATE_DIR` re
 | `toggles.hideDone` | boolean | `true` |
 | `toggles.assigneeMe` | boolean | `false` |
 | `toggles.hideEmptyCustomers` | boolean | `true` |
+| `display.properties` | array of `labels`, `sprint`, `due`, `created`, `updated` | `["updated"]` |
+| `display.order` | `key`, `priority`, `updated` or `due` | `key` |
 
 `fieldOverrides` is described under [Settings File](../architecture/auth-and-keychain.md#settings-file).
+
+`display` is what the Tree shows while no saved view is applied: the row properties after the title, and how issues sort within an Epic, among an Epic's children and in No Epic. `jm` ignores it, as it ignores `toggles`. Every Jira request reads this file, so a value the build does not know never fails it: unknown property names drop, an unknown `order` reads as `key`, and a `display` that is not an object reads as the defaults. The properties are kept once each, in the order above. An older build reads a file with `display` without error but drops the key, and its next write loses it.
 
 ## views.json
 
@@ -33,6 +37,7 @@ An array of saved views. The app writes it; `jm` only reads it. The array order 
 | `filters.not` | optional object holding any of the array keys above (every one but `text` and `dates`), the values to leave out |
 | `filters.text` | optional string |
 | `toggles` | the same three keys and defaults as `settings.json` |
+| `display` | optional, the same `properties` and `order` as `settings.json` and read as leniently. A view without it applies no display |
 
 Values within a key are alternatives, and every key that is set must match. The values:
 
@@ -48,6 +53,8 @@ Values within a key are alternatives, and every key that is set must match. The 
 | `label` | A label, exactly |
 | `sprint` | A sprint id or name, or `current` for any active sprint |
 | `dates` | One window per date, in the local time zone: `today`; `last-7-days`, today and the 6 days before it; `last-30-days`, today and the 29 before; `next-7-days`, today and the 6 days after. `overdue` is an open issue due before today |
+
+A view's `display` is not part of what makes it the active view: toggling a property keeps the view lit. Applying a view copies its `display`, when it has one, into `settings.json`, as it copies the toggles. Update view saves the current display into the view, and create and duplicate carry it. `jm view list --json` prints each view as stored, so a view with a display carries the key and one without has none.
 
 A `not` key excludes: `{ "status": ["Done"], "not": { "label": ["etl"] } }` keeps Done issues without the label `etl`. A view file written before these keys existed parses unchanged. An older build that reads a newer file drops the keys it does not know, and its next save loses them.
 

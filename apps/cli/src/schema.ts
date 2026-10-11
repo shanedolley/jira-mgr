@@ -1144,7 +1144,8 @@ export const COMMANDS = [
     summary: 'List saved views',
     examples: [{ command: 'jm view list', description: 'List the saved views and their ids.' }],
     output: {
-      summary: 'An array of saved views.',
+      summary:
+        'An array of saved views. A view the app saved with a display also holds `display`, its row properties and issue order: `{ "properties": ["updated"], "order": "key" }`. The key is absent from a view with none.',
       example: [
         {
           id: 'my-issues',

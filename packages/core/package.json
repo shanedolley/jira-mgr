@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./adf": "./src/adf.ts",
     "./auth": "./src/auth.ts",
+    "./display": "./src/display.ts",
     "./extras": "./src/extras.ts",
     "./fields": "./src/fields.ts",
     "./hierarchy": "./src/hierarchy.ts",

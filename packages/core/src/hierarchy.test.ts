@@ -32,6 +32,9 @@ interface Spec {
   parent?: string
   customer?: { id: string; value: string }
   assignee?: string
+  priority?: string
+  due?: string
+  updated?: string
 }
 
 function issue(key: string, spec: Spec = {}): Issue {
@@ -54,17 +57,17 @@ function issue(key: string, spec: Spec = {}): Issue {
     creator: null,
     labels: [],
     links: [],
-    priority: null,
+    priority: spec.priority === undefined ? null : { id: spec.priority, name: spec.priority },
     customer: spec.customer ?? null,
     engagement: null,
     sprints: [],
     startDate: null,
-    dueDate: null,
+    dueDate: spec.due ?? null,
     originalEstimateSeconds: null,
     remainingEstimateSeconds: null,
     timeRemainingHours: null,
     created: '2026-01-01T00:00:00.000Z',
-    updated: '2026-01-01T00:00:00.000Z',
+    updated: spec.updated ?? '2026-01-01T00:00:00.000Z',
   }
 }
 
@@ -467,6 +470,117 @@ describe('buildHierarchy', () => {
       expect(placed.toSorted()).toEqual(unique.map((i) => i.key).toSorted())
       expect(JSON.parse(JSON.stringify(tree))).toEqual(tree)
     })
+  })
+})
+
+describe('order', () => {
+  const epics = [
+    issue('P-1', { type: 'Epic', customer: ACME, priority: 'Low', due: '2026-03-01' }),
+    issue('P-2', {
+      type: 'Epic',
+      customer: ACME,
+      priority: 'Highest',
+      updated: '2026-02-01T00:00:00.000Z',
+    }),
+    issue('P-3', { type: 'Epic', customer: ACME, priority: 'Medium', due: '2026-02-01' }),
+    issue('P-4', { type: 'Epic', customer: ACME }),
+  ]
+  const children = [
+    issue('P-10', {
+      parent: 'P-1',
+      customer: ACME,
+      priority: 'Low',
+      due: '2026-05-01',
+      updated: '2026-02-01T00:00:00.000Z',
+    }),
+    issue('P-11', {
+      parent: 'P-1',
+      customer: ACME,
+      priority: 'High',
+      due: '2026-04-01',
+      updated: '2026-03-01T00:00:00.000Z',
+    }),
+    issue('P-12', {
+      parent: 'P-1',
+      customer: ACME,
+      priority: 'High',
+      updated: '2026-04-01T00:00:00.000Z',
+    }),
+    issue('P-13', {
+      parent: 'P-1',
+      customer: ACME,
+      status: 'In Progress',
+      priority: 'Lowest',
+      due: '2026-01-01',
+    }),
+    issue('P-14', { type: 'Subtask', parent: 'P-11', customer: ACME, priority: 'Low' }),
+    issue('P-15', { type: 'Subtask', parent: 'P-11', customer: ACME, priority: 'Highest' }),
+  ]
+  const loose = [
+    issue('P-20', { customer: ACME, priority: 'Low', due: '2026-06-01' }),
+    issue('P-21', { customer: ACME, priority: 'High', updated: '2026-06-01T00:00:00.000Z' }),
+    issue('P-22', { customer: ACME, priority: 'High', due: '2026-01-01' }),
+  ]
+  const all = [...epics, ...children, ...loose]
+  const group = (order?: HierarchyOptions['order']) => build(all, { order })[0]
+
+  it('keeps the key order when asked for it, and when not asked', () => {
+    expect(build(all, { order: 'key' })).toEqual(build(all))
+    expect(keys(group('key')?.epics ?? [])).toEqual(['P-4', 'P-3', 'P-2', 'P-1'])
+    expect(keys(group('key')?.epics[3]?.children ?? [])).toEqual(['P-12', 'P-11', 'P-10', 'P-13'])
+    expect(keys(group('key')?.noEpic ?? [])).toEqual(['P-22', 'P-21', 'P-20'])
+  })
+
+  it('sorts by priority, highest first and unrated last, ties by key', () => {
+    const g = group('priority')
+    expect(keys(g?.epics ?? [])).toEqual(['P-2', 'P-3', 'P-1', 'P-4'])
+    // P-10 and P-13 tie on Low and Lowest (one level), so status then key decide.
+    expect(keys(g?.epics[2]?.children ?? [])).toEqual(['P-12', 'P-11', 'P-10', 'P-13'])
+    expect(keys(g?.noEpic ?? [])).toEqual(['P-22', 'P-21', 'P-20'])
+  })
+
+  it('sorts a Subtask list too', () => {
+    const subtasks = group('priority')?.epics[2]?.children[1]?.children
+    expect(keys(subtasks ?? [])).toEqual(['P-15', 'P-14'])
+  })
+
+  it('sorts by updated, newest first', () => {
+    const g = group('updated')
+    expect(keys(g?.epics ?? [])).toEqual(['P-2', 'P-4', 'P-3', 'P-1'])
+    expect(keys(g?.epics[3]?.children ?? [])).toEqual(['P-12', 'P-11', 'P-10', 'P-13'])
+    expect(keys(g?.noEpic ?? [])).toEqual(['P-21', 'P-22', 'P-20'])
+  })
+
+  it('sorts by due date, soonest first and undated last', () => {
+    const g = group('due')
+    expect(keys(g?.epics ?? [])).toEqual(['P-3', 'P-1', 'P-4', 'P-2'])
+    expect(keys(g?.epics[1]?.children ?? [])).toEqual(['P-13', 'P-11', 'P-10', 'P-12'])
+    expect(keys(g?.noEpic ?? [])).toEqual(['P-22', 'P-20', 'P-21'])
+  })
+
+  it('keeps the Customer groups in their order, and every issue in its group', () => {
+    const grouped = [
+      ...all,
+      issue('P-30', { type: 'Epic', customer: BETA, priority: 'Highest' }),
+      issue('P-31', { type: 'Epic', priority: 'Highest' }),
+      issue('P-32', { type: 'Epic', customer: TEAM, priority: 'Highest' }),
+    ]
+    for (const order of ['key', 'priority', 'updated', 'due'] as const) {
+      const tree = build(grouped, { order })
+      expect(names(tree)).toEqual(['Acme', 'beta', null, 'Collibra (Internal team)'])
+      expect(keys(tree[0]?.epics ?? []).toSorted()).toEqual(['P-1', 'P-2', 'P-3', 'P-4'])
+    }
+  })
+
+  it('moves Done children behind the chip in the chosen order', () => {
+    const done = [
+      issue('P-1', { type: 'Epic', customer: ACME }),
+      issue('P-2', { parent: 'P-1', status: 'Done', priority: 'Low' }),
+      issue('P-3', { parent: 'P-1', status: 'Done', priority: 'High' }),
+      issue('P-4', { parent: 'P-1' }),
+    ]
+    const epic = build(done, { order: 'priority' })[0]?.epics[0]
+    expect(keys(epic?.doneChildren ?? [])).toEqual(['P-3', 'P-2'])
   })
 })
 

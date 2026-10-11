@@ -68,6 +68,7 @@ describe('absent files', () => {
       fieldOverrides: {},
       timer: { rounding: '5m', reminderThresholdHours: 8, reminderIntervalMinutes: 60 },
       toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
+      display: { properties: ['updated'], order: 'key' },
     })
   })
 
@@ -456,6 +457,97 @@ describe('view management', () => {
       await deleteView(id)
     }
     expect(await names()).toEqual(['Extra'])
+  })
+})
+
+describe('display', () => {
+  const toggles = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
+  const display = { properties: ['labels' as const, 'due' as const], order: 'priority' as const }
+
+  it('reads a settings file with no display as the defaults', async () => {
+    await writeFile(join(dir, 'settings.json'), JSON.stringify({ toggles }))
+    expect((await readSettings()).display).toEqual({ properties: ['updated'], order: 'key' })
+  })
+
+  it('keeps the properties it knows, in row order, and drops the rest', async () => {
+    const raw = { display: { properties: ['updated', 'wat', 'labels', 'updated'], order: 'due' } }
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
+    expect((await readSettings()).display).toEqual({
+      properties: ['labels', 'updated'],
+      order: 'due',
+    })
+  })
+
+  it('reads an unknown order as key and never fails the file', async () => {
+    const raw = { display: { properties: ['due'], order: 'rank' } }
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
+    expect((await readSettings()).display).toEqual({ properties: ['due'], order: 'key' })
+  })
+
+  it.each([
+    ['a string', 'wide'],
+    ['null', null],
+    ['properties as a number', { properties: 3 }],
+  ])('reads display as %s as the defaults for what it cannot read', async (_name, value) => {
+    await writeFile(join(dir, 'settings.json'), JSON.stringify({ display: value }))
+    expect((await readSettings()).display).toEqual({ properties: ['updated'], order: 'key' })
+  })
+
+  it('keeps display through a write and through a toggles write', async () => {
+    const settings = await readSettings()
+    await writeSettings({ ...settings, display })
+    await writeSettings({
+      ...(await readSettings()),
+      toggles: { ...toggles, hideDone: false },
+    })
+    expect((await readSettings()).display).toEqual(display)
+  })
+
+  it('reads a views file with no display unchanged, and gives a view none', async () => {
+    const old = [{ id: 'bugs', name: 'Bugs', filters: { type: ['Bug'] }, toggles }]
+    await writeFile(join(dir, 'views.json'), JSON.stringify(old))
+    expect(await readViews()).toEqual(old)
+    expect((await readViews())[0]).not.toHaveProperty('display')
+  })
+
+  it('reads a view display leniently, and a display it cannot read as none', async () => {
+    const view = (value: unknown) => ({ id: 'v', name: 'V', filters: {}, toggles, display: value })
+    await writeFile(
+      join(dir, 'views.json'),
+      JSON.stringify([view({ properties: ['due', 'x'], order: 'rank' })]),
+    )
+    expect((await readViews())[0]?.display).toEqual({ properties: ['due'], order: 'key' })
+    await writeFile(join(dir, 'views.json'), JSON.stringify([view('wide')]))
+    expect((await readViews())[0]?.display).toBeUndefined()
+  })
+
+  it('stores display on create and update, and keeps it through rename and duplicate', async () => {
+    const created = await createView('Triage', { filters: {}, toggles, display })
+    expect(created.display).toEqual(display)
+    expect((await findView('triage')).display).toEqual(display)
+
+    await renameView('triage', 'Triage 2')
+    expect((await findView('triage')).display).toEqual(display)
+
+    const copy = await duplicateView('triage')
+    expect(copy.display).toEqual(display)
+
+    const next = { properties: ['sprint' as const], order: 'updated' as const }
+    await updateView('triage', { filters: {}, toggles, display: next })
+    expect((await findView('triage')).display).toEqual(next)
+    expect((await findView('triage-2-copy')).display).toEqual(display)
+  })
+
+  it('keeps a view display when an update gives none', async () => {
+    await createView('Keep', { filters: {}, toggles, display })
+    await updateView('keep', { filters: { text: 'x' }, toggles, display: undefined })
+    expect((await findView('keep')).display).toEqual(display)
+  })
+
+  it('keeps a view display through a settings write', async () => {
+    await createView('Keep', { filters: {}, toggles, display })
+    await writeSettings({ ...(await readSettings()), display: { ...display, order: 'due' } })
+    expect((await findView('keep')).display).toEqual(display)
   })
 })
 

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 
 import { z } from 'zod'
 
+import { DEFAULT_ORDER, DEFAULT_PROPERTIES, ISSUE_ORDERS, keepKnownProperties } from './display.js'
 import { JiraMgrError } from './errors.js'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from './view-filter.js'
 
@@ -40,6 +41,25 @@ const toggles = z
   })
   .prefault({})
 
+/**
+ * Row properties and issue order. Every Jira request reads `settings.json`, so a value this build
+ * does not know must never fail the file: unknown properties drop, an unknown order reads as `key`
+ * and a `display` that is not an object reads as the defaults.
+ */
+const displayFields = z.object({
+  properties: z
+    .array(z.string())
+    .catch([...DEFAULT_PROPERTIES])
+    .transform(keepKnownProperties)
+    .default([...DEFAULT_PROPERTIES]),
+  order: z.enum(ISSUE_ORDERS).default(DEFAULT_ORDER).catch(DEFAULT_ORDER),
+})
+
+const settingsDisplay = displayFields.prefault({}).catch(() => displayFields.parse({}))
+
+/** A view's own display. A value this build cannot read reads as none, so the view applies no display. */
+const viewDisplay = displayFields.optional().catch(undefined)
+
 const settingsSchema = z.object({
   siteUrl: z.url().optional(),
   projectKey: z.string().min(1).optional(),
@@ -53,6 +73,7 @@ const settingsSchema = z.object({
     })
     .prefault({}),
   toggles,
+  display: settingsDisplay,
 })
 
 const filterLists = z.object(
@@ -79,6 +100,7 @@ const savedViewSchema = z.object({
     text: z.string().optional(),
   }),
   toggles,
+  display: viewDisplay,
 })
 
 const viewsSchema = z.array(savedViewSchema)
@@ -104,6 +126,7 @@ const fieldsSchema = z
 export type FieldIds = z.infer<typeof fieldIds>
 export type Settings = z.infer<typeof settingsSchema>
 export type SavedView = z.infer<typeof savedViewSchema>
+export type Display = z.infer<typeof displayFields>
 export type TimerState = z.infer<typeof timerSchema>
 export type ResolvedFields = z.infer<typeof fieldsSchema>
 
@@ -260,14 +283,20 @@ export async function findView(idOrName: string): Promise<SavedView> {
 // ponytail: read-modify-write with no lock, so the app and the CLI writing at once can lose an edit.
 export async function createView(
   name: string,
-  view: Pick<SavedView, 'filters' | 'toggles'>,
+  view: Pick<SavedView, 'filters' | 'toggles' | 'display'>,
 ): Promise<SavedView> {
   const views = await readViews()
   const clean = cleanName(name, views)
   const base = slug(clean)
   let id = base
   for (let n = 2; views.some((v) => v.id === id); n++) id = `${base}-${String(n)}`
-  const created = { id, name: clean, filters: view.filters, toggles: view.toggles }
+  const created: SavedView = {
+    id,
+    name: clean,
+    filters: view.filters,
+    toggles: view.toggles,
+    ...(view.display === undefined ? {} : { display: view.display }),
+  }
   await writeViews([...views, created])
   return created
 }
@@ -282,16 +311,21 @@ export async function renameView(idOrName: string, name: string): Promise<SavedV
 }
 
 /**
- * Replaces a view's filters and toggles, found by id or name; the id, name and place stay.
- * Throws `not_found`.
+ * Replaces a view's filters and toggles, and its display when one is given, found by id or name;
+ * the id, name and place stay. Throws `not_found`.
  */
 export async function updateView(
   idOrName: string,
-  view: Pick<SavedView, 'filters' | 'toggles'>,
+  view: Pick<SavedView, 'filters' | 'toggles' | 'display'>,
 ): Promise<SavedView> {
   const views = await readViews()
   const old = locate(views, idOrName)
-  const updated = { ...old, filters: view.filters, toggles: view.toggles }
+  const updated: SavedView = {
+    ...old,
+    filters: view.filters,
+    toggles: view.toggles,
+    ...(view.display === undefined ? {} : { display: view.display }),
+  }
   await writeViews(views.map((v) => (v === old ? updated : v)))
   return updated
 }

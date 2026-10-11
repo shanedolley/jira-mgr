@@ -41,7 +41,9 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Mismatch badge** | The mark on a child whose Customer differs from its Epic's, with a one-click fix that copies the Epic's Customer. | warning |
 | **Done chip** | The "N done" chip under an open parent that reveals its hidden Done children. | |
 | **Hide done** | The toggle that hides Done parents with their whole subtree, except a Done parent of an open issue, which stays as dimmed context. On at first launch. | archive |
-| **Saved view** | A named filter and set of toggles you create, update with the current filters, duplicate, rename, reorder and delete, stored as local JSON that the CLI also reads. The array order is its place in the sidebar and the tabs over the list. | filter, query |
+| **Row property** | A field a Tree row shows after its title, chosen from the Display menu: labels, sprint, due date, created date or updated date. Updated shows by default. The priority glyph is not one: it shows when the priority is not Medium. | column, field |
+| **Order** | How issues sort within an Epic, among an Epic's children and in No Epic: by key, priority, updated or due date. Customer groups keep their own order. A saved view may carry its row properties and order. | sort, rank |
+| **Saved view** | A named filter and set of toggles, and optionally its row properties and order, you create, update with the current filters, duplicate, rename, reorder and delete, stored as local JSON that the CLI also reads. The array order is its place in the sidebar and the tabs over the list. | filter, query |
 | **Creator** | The person who created an issue. The Filter menu and a saved view's `creator` filter use it. | reporter, author |
 | **Relations** | The Filter menu's field for Link state: Blocked (a "Blocks" link into the issue from one not Done) and Blocking (one out of it). | dependencies |
 | **Is not** | The operator that leaves out the issues holding a value. A saved view stores it under `not`. | exclude, negate |
