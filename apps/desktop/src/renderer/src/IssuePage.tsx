@@ -37,6 +37,8 @@ interface IssuePageProps {
   onBack: () => void
   /** Opens the page of another issue, such as the parent or a subtask. */
   onOpen: (key: string) => void
+  /** Opens the page of the issue's sprint. */
+  onOpenSprint: (id: number) => void
   /** Opens the delete confirmation for the issue. */
   onDelete: (issue: Issue) => void
   pageRef: RefObject<HTMLElement | null>
@@ -53,13 +55,14 @@ function PageBody({
   me,
   mismatch,
   onOpen,
+  onOpenSprint,
   onLeave,
   onNotice,
   detailError,
   onRetry,
   attach,
   uploading,
-}: Pick<IssuePageProps, 'issues' | 'me' | 'mismatch' | 'onOpen' | 'onNotice'> & {
+}: Pick<IssuePageProps, 'issues' | 'me' | 'mismatch' | 'onOpen' | 'onOpenSprint' | 'onNotice'> & {
   issue: Issue
   detail: IssueDetail | undefined
   /** Puts focus back on the page once an editor's controls are gone. */
@@ -135,7 +138,7 @@ function PageBody({
           />
         </div>
       </article>
-      <IssueProperties issue={issue} issues={issues} me={me} />
+      <IssueProperties issue={issue} issues={issues} me={me} onOpenSprint={onOpenSprint} />
     </>
   )
 }
@@ -152,6 +155,7 @@ export function IssuePage({
   mismatch,
   onBack,
   onOpen,
+  onOpenSprint,
   onDelete,
   pageRef,
   onNotice,
@@ -300,6 +304,7 @@ export function IssuePage({
             me={me}
             mismatch={mismatch}
             onOpen={onOpen}
+            onOpenSprint={onOpenSprint}
             onNotice={onNotice}
           />
         )}

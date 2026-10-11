@@ -212,7 +212,14 @@ const USERS = {
 /** The board's sprints: one active, a dated and an undated future one, and a closed one. */
 const SPRINTS = [
   { id: 4, name: 'Sprint 4', state: 'closed', startDate: '2026-09-01T00:00:00.000Z' },
-  { id: 5, name: 'Sprint 5', state: 'active', startDate: '2026-10-01T00:00:00.000Z' },
+  {
+    id: 5,
+    name: 'Sprint 5',
+    state: 'active',
+    startDate: '2026-10-01T00:00:00.000Z',
+    endDate: '2026-10-14T00:00:00.000Z',
+    goal: 'Ship the onboarding flow',
+  },
   { id: 6, name: 'Sprint 6', state: 'future', startDate: '2026-10-15T00:00:00.000Z' },
   { id: 7, name: 'PS TEMPLATES', state: 'future' },
 ]
@@ -627,6 +634,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failUpload: () => void
   /** Replaces an issue's description as if someone else did: no hold and no count. */
   setDescription: (key: string, description: unknown) => void
+  /** Puts issues into a sprint as if someone else did: no hold and no count. */
+  joinSprint: (keys: string[], sprintId: number) => void
   /** Makes Jira store every saved description with a `localId` on each paragraph, as it may. */
   normaliseDescriptions: () => void
   /** Replaces a comment's body as if someone else edited it: no hold and no count. */
@@ -1069,6 +1078,23 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const states = url.searchParams.get('state')?.split(',')
       const values = SPRINTS.filter((s) => states === undefined || states.includes(s.state))
       return json({ total: values.length, values })
+    }
+    const sprintPath = /^\/rest\/agile\/1\.0\/sprint\/(\d+)(\/issue)?$/.exec(path)
+    if (method === 'GET' && sprintPath !== null) {
+      const sprint = SPRINTS.find((s) => String(s.id) === sprintPath[1])
+      if (sprint === undefined) return json({ errorMessages: ['Sprint does not exist.'] }, 404)
+      if (sprintPath[2] === undefined) return json(sprint)
+      const inSprint = issues.filter((i) =>
+        (i.fields[FIELDS.sprint] as { id: number }[]).some((s) => s.id === sprint.id),
+      )
+      const startAt = Number(url.searchParams.get('startAt') ?? '0')
+      const maxResults = Number(url.searchParams.get('maxResults') ?? '50')
+      return json({
+        startAt,
+        maxResults,
+        total: inSprint.length,
+        issues: inSprint.slice(startAt, startAt + maxResults),
+      })
     }
     const sprintMove = /^\/rest\/agile\/1\.0\/sprint\/(\d+)\/issue$/.exec(path)
     if (method === 'POST' && (sprintMove !== null || path === '/rest/agile/1.0/backlog/issue')) {
@@ -1597,6 +1623,14 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failUpload: () => {
       failNextUpload = true
+    },
+    joinSprint: (keys, sprintId) => {
+      for (const key of keys) {
+        const target = find(key)
+        if (target === undefined) continue
+        target.fields[FIELDS.sprint] = SPRINTS.filter((s) => s.id === sprintId)
+        touch(target)
+      }
     },
     setDescription: (key, description) => {
       const target = find(key)

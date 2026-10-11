@@ -222,6 +222,28 @@ describe('sprints', () => {
     expect(error).toMatchObject({ code: 'not_found' })
   })
 
+  it('reads a sprint with its issues, and counts them, through core', async () => {
+    const { http, requests } = routedHttp(({ path }) =>
+      path === '/rest/agile/1.0/sprint/5'
+        ? { id: 5, name: 'Sprint 5', state: 'active', goal: 'Ship it' }
+        : { total: 0, issues: [] },
+    )
+    const report = await createBackend({ http }).getSprint({ id: 5 })
+    expect(report.sprint).toEqual({
+      id: 5,
+      name: 'Sprint 5',
+      state: 'active',
+      startDate: null,
+      endDate: null,
+      goal: 'Ship it',
+    })
+    expect(report.stats).toMatchObject({ scope: 0, started: 0, completed: 0 })
+    expect(requests.map((r) => `${r.method} ${r.path.split('?')[0] ?? ''}`).sort()).toEqual([
+      'GET /rest/agile/1.0/sprint/5',
+      'GET /rest/agile/1.0/sprint/5/issue',
+    ])
+  })
+
   it('moves an issue into a sprint and to the backlog', async () => {
     const { http, requests } = routedHttp()
     const backend = createBackend({ http })

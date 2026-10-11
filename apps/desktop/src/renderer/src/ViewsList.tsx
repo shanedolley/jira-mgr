@@ -12,6 +12,8 @@ interface ViewsListProps {
   filters: ViewFilters
   toggles: Toggles | undefined
   onApply: (view: SavedView) => void
+  /** False while a sprint page holds the sidebar's one highlight. */
+  showCurrent?: boolean
 }
 
 /**
@@ -115,13 +117,14 @@ function ConfirmDelete({
  * The saved views in the sidebar: apply, create from the current filters, rename and delete.
  * The list is `views.json`, the file `jm view list` reads. Arrow keys move between views.
  */
-export function ViewsList({ filters, toggles, onApply }: ViewsListProps) {
+export function ViewsList({ filters, toggles, onApply, showCurrent = true }: ViewsListProps) {
   const viewsQuery = useViews()
   const create = useCreateView()
   const rename = useRenameView()
   const remove = useDeleteView()
   const views = viewsQuery.data
-  const active = views === undefined ? undefined : activeView(views, filters, toggles)
+  const active =
+    views === undefined || !showCurrent ? undefined : activeView(views, filters, toggles)
 
   const [creating, setCreating] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)

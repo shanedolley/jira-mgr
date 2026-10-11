@@ -24,7 +24,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Customer** | The required field naming the customer an issue serves. Every issue type carries one. | client, account |
 | **Engagement** | The required field naming the workstream. | project |
 | **Status** | A state an issue sits in. The order is Opportunity, To Do, In Progress, Review, Hold, Done. | state, column |
-| **Sprint** | A Jira sprint an issue moves into or out of. Hidden on Epics and Subtasks. Closed and undated sprints sit behind "Show all". | iteration |
+| **Sprint** | A Jira sprint an issue moves into or out of. Hidden on Epics and Subtasks. Closed and undated sprints sit behind "Show all". | iteration, cycle |
 | **Link** | A relation between two issues, of one of Jira's 21 link types. | dependency (unless the type is Blocks) |
 | **Worklog** | A time entry on an issue. Created by hand or by stopping a Timer. Task, Bug, Story and Subtask take worklogs, Epics do not. | time log, timesheet |
 | **Timer** | The one running clock, on one issue, kept in a state file the app and `jm timer` share. It can pause and resume, and stopping it logs one Worklog with paused time excluded. | stopwatch, tracker |
@@ -51,6 +51,8 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Read mark** | The `updated` time of an issue when the user opened it, kept in `inbox.json`. An issue is unread when it changed after its read mark, or after the Inbox-wide mark set by Mark all read, and someone else made the change. | seen, last looked |
 | **Peek** | The space-bar preview of an issue. | quick view |
 | **Issue page** | The full page of one issue, opened with Enter: summary, description and subtasks beside the properties sidebar. | detail view |
+| **Sprint page** | The page of one sprint, opened from the sidebar's Current and Upcoming entries or the Sprint row of an Issue page: its issues by status beside the dates, goal, counts and breakdowns. | cycle page |
+| **Scope, Started, Completed** | The Sprint page's counts. Scope is every issue in the sprint, Started the issues whose status category is In Progress, and Completed the issues whose status category is Done, whatever the status is called. A breakdown row reads "N% of M": M issues share a value, and N percent of them are Completed. | done count |
 | **Properties sidebar** | The right column of the Issue page. Each property is a picker or a field that edits at once and rolls back if Jira refuses. | inspector |
 | **Customer prompt** | The question the parent picker asks when a new parent's Customer or Engagement differs: also set them to the parent's? | |
 | **Read-only block** | Content the description editor shows but cannot edit, such as a panel, a table or a macro, kept as the original ADF and saved unchanged. | unsupported node, macro |

@@ -64,6 +64,7 @@ interface FakeJira {
   failUpload: () => void
   failComments: (status: 404 | 500) => void
   setDescription: (key: string, description: unknown) => void
+  joinSprint: (keys: string[], sprintId: number) => void
   normaliseDescriptions: () => void
   setComment: (key: string, id: number, body: unknown) => void
   removeComment: (key: string, id: number) => void
@@ -208,6 +209,15 @@ export const setDescription = (app: ElectronApplication, key: string, descriptio
       ;(globalThis as unknown as WithFake).__fakeJira.setDescription(name as string, adf)
     },
     [key, description],
+  )
+
+/** Puts issues into a sprint of the fake Jira, as if someone else moved them. */
+export const joinSprint = (app: ElectronApplication, keys: string[], sprintId: number) =>
+  app.evaluate(
+    (_electron, [names, id]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.joinSprint(names as string[], id as number)
+    },
+    [keys, sprintId],
   )
 
 /** Makes the fake Jira store each saved description with a `localId` on every paragraph. */

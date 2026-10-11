@@ -93,13 +93,16 @@ describe.each<Theme>(['light', 'dark'])('%s row state fills', (theme) => {
 describe('no coloured edge marks a row or a sidebar item', () => {
   const edge = /\b(ring|border-[lrtb]|border-accent|outline-accent)\b|shadow-\[inset|--accent/
 
-  it.each(['./TreeRow.tsx', './Sidebar.tsx', './ViewsList.tsx'])('keeps %s free of one', (file) => {
-    const marks = read(file)
-      .split('\n')
-      .filter((line) => /aria-current|aria-selected|is-current|tree-row/.test(line))
-      .filter((line) => edge.test(line))
-    expect(marks).toEqual([])
-  })
+  it.each(['./TreeRow.tsx', './Sidebar.tsx', './ViewsList.tsx', './SprintsList.tsx'])(
+    'keeps %s free of one',
+    (file) => {
+      const marks = read(file)
+        .split('\n')
+        .filter((line) => /aria-current|aria-selected|is-current|tree-row/.test(line))
+        .filter((line) => edge.test(line))
+      expect(marks).toEqual([])
+    },
+  )
 
   it('draws the state rules in styles.css with a fill and a weight only', () => {
     const rules = [...css.matchAll(/([^{}]*(?:tree-row|is-current)[^{}]*)\{([^}]*)\}/g)]

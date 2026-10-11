@@ -76,6 +76,7 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     createIssue: record('createIssue', { key: 'PSAPAC-1', issue: null, warning: null }),
     deleteIssue: record('deleteIssue', { key: 'PSAPAC-1', deletedSubtasks: [] }),
     listSprints: record('listSprints', []),
+    getSprint: record('getSprint', {} as never),
     searchUsers: record('searchUsers', []),
     listFieldOptions: record('listFieldOptions', []),
     getMe: record('getMe', { accountId: 'u1', displayName: 'Me', avatarUrl: null }),
@@ -232,6 +233,11 @@ describe('issue edits', () => {
     ['issues:setSprint', { key: 'PSAPAC-1', sprintId: 0 }],
     ['issues:setSprint', { key: 'PSAPAC-1', sprintId: 1.5 }],
     ['sprints:list', {}],
+    ['sprints:get', {}],
+    ['sprints:get', { id: 0 }],
+    ['sprints:get', { id: 1.5 }],
+    ['sprints:get', { id: '5' }],
+    ['sprints:get', { id: 5, extra: 1 }],
     ['users:search', { query: 'x'.repeat(201) }],
     ['issues:searchText', { query: 'x'.repeat(201) }],
     ['issues:searchText', { query: 'a', extra: 1 }],
@@ -242,6 +248,13 @@ describe('issue edits', () => {
     const result = await createHandlers(backend)[channel](raw, noProgress)
     expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
     expect(calls).toEqual([])
+  })
+
+  it('passes a sprint read through', async () => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['sprints:get']({ id: 5 }, noProgress)
+    expect(result).toMatchObject({ ok: true })
+    expect(calls).toEqual([{ method: 'getSprint', args: [{ id: 5 }] }])
   })
 
   it('passes a backlog move and a user search through', async () => {

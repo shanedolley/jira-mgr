@@ -51,7 +51,7 @@ const textQuery = z
 const quote = (text: string) => `"${text.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
 
 /** Only the fields `Issue` needs, with the resolved custom field ids. */
-function requestedFields(ids: FieldIds): string[] {
+export function requestedFields(ids: FieldIds): string[] {
   return [
     'summary',
     'issuetype',

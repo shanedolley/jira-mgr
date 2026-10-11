@@ -234,6 +234,23 @@ test.describe('button system', () => {
     await expectSystem('delete dialog', 2)
   })
 
+  test('every button on the sprint page, its tabs and the Sprint link is 24 or 28px with a 6px radius', async () => {
+    // PSAPAC-13 sits in the active sprint, so its page carries the link that opens it.
+    await openPage(/PSAPAC-13,/, 'Book the kickoff')
+    const open = issuePage().getByRole('button', { name: 'Open sprint Sprint 5' })
+    await expect(open).toBeVisible()
+    await expectSystem('page with the Sprint link', 11)
+
+    await open.click()
+    const page = window.getByRole('region', { name: 'Sprint page' })
+    const tab = (name: string) => page.getByRole('tab', { name })
+    await expect(tab('Assignees')).toBeVisible()
+    await expectSystem('sprint page', 10)
+    await tab('Customer').click()
+    await expect(tab('Customer')).toHaveAttribute('aria-selected', 'true')
+    await expectSystem('sprint page, another tab', 10)
+  })
+
   test('every button on the issue page, its forms and its confirms is 24 or 28px with a 6px radius', async () => {
     await openStory()
     await expectSystem('page', 10)
