@@ -74,7 +74,8 @@ export interface BulkResult {
  * Creates `titles` one at a time, in order, and stops at the first refusal. Each create waits for
  * the one before it, so the Subtasks come out in the order pasted and a failure leaves nothing
  * half sent: what was created is never sent again, and what is left is exactly what to retry.
- * `onCreated` runs after each create, so the lists can show it at once.
+ * `onCreated` runs after each create, so the lists can show it at once; if it throws, the title
+ * still counts as created.
  */
 export async function createInOrder(
   titles: readonly string[],
@@ -83,14 +84,19 @@ export async function createInOrder(
 ): Promise<BulkResult> {
   const result: BulkResult = { created: [], failed: null, left: [] }
   for (const [index, title] of titles.entries()) {
+    let created: CreatedIssue
     try {
-      const created = await create(title)
-      result.created.push({ title, created })
-      onCreated(title, created, result.created.length)
+      created = await create(title)
     } catch (error) {
       result.failed = { title, message: error instanceof Error ? error.message : String(error) }
       result.left = titles.slice(index)
       break
+    }
+    result.created.push({ title, created })
+    try {
+      onCreated(title, created, result.created.length)
+    } catch {
+      // The Subtask exists. Showing it is the caller's affair, and must never turn it into a retry.
     }
   }
   return result

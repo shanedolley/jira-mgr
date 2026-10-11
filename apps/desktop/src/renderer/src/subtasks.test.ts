@@ -195,6 +195,17 @@ describe('createInOrder', () => {
     expect(sent).toEqual(['a', 'b', 'c', 'd'])
   })
 
+  it('still counts a title as created when showing it throws, and never retries it', async () => {
+    const create = vi.fn((title: string) => Promise.resolve(created(title)))
+    const result = await createInOrder(['a', 'b', 'c'], create, (title) => {
+      if (title === 'b') throw new Error('The cache refused it.')
+    })
+    expect(create).toHaveBeenCalledTimes(3)
+    expect(result.created.map(({ title }) => title)).toEqual(['a', 'b', 'c'])
+    expect(result.failed).toBeNull()
+    expect(result.left).toEqual([])
+  })
+
   it('creates nothing for an empty list', async () => {
     const create = vi.fn()
     expect(await createInOrder([], create)).toEqual({ created: [], failed: null, left: [] })

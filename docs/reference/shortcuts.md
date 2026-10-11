@@ -49,6 +49,8 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Rich-text editor, comment box | `Cmd+Enter` | Save or post; `Esc` cancels the editor |
 | Create dialog, summary or description | `Cmd+Enter` | Create the issue, or focus the first missing field |
 | Create dialog, description | `Esc` | Close the dialog, as it does from the summary |
+| Sub-issue form (the page's Subtasks "+"), anywhere in the form | `Cmd+Enter` | Create one Subtask per line of the titles box |
+| Sub-issue form, anywhere in the form | `Esc` | Close the form and stay on the page; ignored while the Subtasks are being created |
 | Text filter | `Enter`, `Down` | Move to the first issue row, skipping group headers, with the query kept |
 | Text filter | `Esc` | Clear the query; when empty, return to the Tree |
 | Summary and property fields | `Enter` | Save |

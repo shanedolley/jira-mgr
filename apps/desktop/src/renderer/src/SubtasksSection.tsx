@@ -1,6 +1,6 @@
 import type { Issue, JiraMgrError } from '@jira-mgr/core'
 import type { IssueDetail } from '@jira-mgr/core/issue'
-import { useState, type KeyboardEvent, type SyntheticEvent } from 'react'
+import { useRef, useState, type KeyboardEvent, type SyntheticEvent } from 'react'
 
 import type { Notice } from './create'
 import { AddAction, Section } from './Section'
@@ -38,6 +38,7 @@ interface AddSubtasksFormProps {
 function AddSubtasksForm({ parent, onNotice, onDone }: AddSubtasksFormProps) {
   const [text, setText] = useState('')
   const [sent, setSent] = useState(0)
+  const box = useRef<HTMLTextAreaElement>(null)
   const add = useAddSubtasks(parent, onNotice, setSent)
   const titles = parseTitles(text)
   const problem = parentProblem(parent) ?? titlesProblem(titles)
@@ -50,18 +51,23 @@ function AddSubtasksForm({ parent, onNotice, onDone }: AddSubtasksFormProps) {
     setSent(0)
     add.mutate(titles, {
       onSuccess: (result) => {
-        if (result.failed === null) onDone()
-        else setText(result.left.join('\n'))
+        if (result.failed === null) {
+          onDone()
+          return
+        }
+        setText(result.left.join('\n'))
+        // The Create button went disabled under the pointer, so focus fell to the page: bring it back.
+        box.current?.focus()
       },
     })
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLElement>) {
+  function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
     if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault()
-      event.currentTarget.closest('form')?.requestSubmit()
+      event.currentTarget.requestSubmit()
     } else if (event.key === 'Escape') {
-      // The page's own Esc leaves the page; this one closes the form, unless a run is under way.
+      // From anywhere in the form: the page's own Esc leaves the page, this one closes the form (not while a run is under way).
       event.preventDefault()
       event.stopPropagation()
       if (!add.isPending) onDone()
@@ -72,20 +78,21 @@ function AddSubtasksForm({ parent, onNotice, onDone }: AddSubtasksFormProps) {
     <form
       aria-label="Add sub-issues"
       onSubmit={submit}
+      onKeyDown={onKeyDown}
       className="space-y-2 rounded-md border border-line p-3"
     >
       <label className="block space-y-0.5">
         <span className="block text-xs text-muted">Titles, one per line</span>
         <textarea
+          ref={box}
           autoFocus
           value={text}
           rows={5}
-          disabled={add.isPending}
+          readOnly={add.isPending}
           placeholder={'Draft the plan\nReview it with the team'}
           onChange={(event) => {
             setText(event.target.value)
           }}
-          onKeyDown={onKeyDown}
           className="w-full resize-y rounded-md border border-field-border bg-panel px-2 py-1 text-ink"
         />
       </label>

@@ -192,6 +192,39 @@ test('a refused title stops the run, keeps what was created and retries only the
   expect(await createdSummaries()).toEqual(['First', 'Second', 'Third', 'Fourth', 'Fifth'])
 })
 
+test('after a stopped run the box has focus, Cmd+Enter retries and Esc closes the form, not the page', async () => {
+  await openStory()
+  await addButton().click()
+  await titles().fill('First\nreject me\nThird')
+  // A click on Create leaves focus on a button that then goes disabled.
+  await form().getByRole('button', { name: 'Create 3 sub-issues' }).click()
+  await settle(1)
+  await expect(notices(window).getByRole('alert')).toContainText('Created 1 of 3 sub-issues')
+  await expect(titles()).toHaveValue('reject me\nThird')
+  await expect(titles()).toBeFocused()
+
+  // Esc from the Cancel button closes the form and stays on the page.
+  await form().getByRole('button', { name: 'Cancel' }).focus()
+  await window.keyboard.press('Escape')
+  await expect(form()).toHaveCount(0)
+  await expect(issuePage()).toBeVisible()
+  await expect(rows()).toHaveCount(1)
+
+  // Reopened, a fresh run stopped by the same refusal leaves focus in the box for Cmd+Enter.
+  await addButton().click()
+  await titles().fill('reject me\nThird')
+  await form().getByRole('button', { name: 'Create 2 sub-issues' }).click()
+  await expect(notices(window).getByRole('alert')).toHaveCount(2)
+  await expect(titles()).toBeFocused()
+  await titles().fill('Second\nThird')
+  await window.keyboard.press('Meta+Enter')
+  await settle(2)
+  await settle(3)
+  await expect(rows()).toHaveCount(3)
+  await expect(form()).toHaveCount(0)
+  expect(await createdSummaries()).toEqual(['First', 'Second', 'Third'])
+})
+
 test('the heading and the form fit in a wide font', async () => {
   await openStory()
   await addButton().click()

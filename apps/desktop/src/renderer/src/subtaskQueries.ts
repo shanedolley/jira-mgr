@@ -31,12 +31,15 @@ export function useAddSubtasks(
         (_title, created, done) => {
           applyCreated(client, created)
           // A read of the parent that began before this lands keeps this copy (`useIssueDetail`).
-          if (created.issue === null) {
-            void client.invalidateQueries({ queryKey: issueDetailKey(parent.key) })
+          // With no copy of the parent yet (its read is out or failed), or no read-back to patch
+          // from, the parent reads again and shows what Jira holds.
+          const key = issueDetailKey(parent.key)
+          if (created.issue === null || client.getQueryData<IssueDetail>(key) === undefined) {
+            void client.invalidateQueries({ queryKey: key })
           } else {
             const { issue } = created
             client.setQueryData<IssueDetail>(
-              issueDetailKey(parent.key),
+              key,
               (held) => held && { ...held, subtasks: withSubtask(held.subtasks, issue) },
             )
           }
