@@ -1139,7 +1139,7 @@ export function Shell({ session }: { session: Session }) {
               notify(first, result.issue === null ? {} : { openKey: result.key })
             }
           }}
-          returnFocus={focusTree}
+          returnFocus={restoreFocus}
         />
       )}
       {deleting !== null && (
@@ -1150,7 +1150,7 @@ export function Shell({ session }: { session: Session }) {
             setDeleting(null)
           }}
           onConfirm={confirmDelete}
-          returnFocus={focusTree}
+          returnFocus={restoreFocus}
         />
       )}
       {timing !== null && (
