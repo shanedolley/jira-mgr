@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { keepsLetters, resolveKey, type KeyEvent, type KeyTarget } from './keymap'
+import { keepsLetters, keyOf, resolveKey, type KeyEvent, type KeyTarget } from './keymap'
 
 const key = (name: string, extra: Partial<KeyEvent> = {}): KeyEvent => ({
   key: name,
@@ -240,5 +240,17 @@ describe('Esc', () => {
   it('is not Esc with a modifier', () => {
     expect(resolveKey(key('Escape', { metaKey: true }), nowhere)).toBeNull()
     expect(resolveKey(key('Escape', { altKey: true }), nowhere)).toBeNull()
+  })
+})
+
+describe('keyOf', () => {
+  it('names the keycap of each command that has a letter, and nothing for the rest', () => {
+    expect(keyOf('status')).toBe('S')
+    expect(keyOf('assignee')).toBe('A')
+    expect(keyOf('assignMe')).toBe('I')
+    expect(keyOf('copyKey')).toBe('Y')
+    expect(keyOf('copyLink')).toBe('U')
+    expect(keyOf('sprint')).toBeUndefined()
+    expect(keyOf('openInJira')).toBeUndefined()
   })
 })

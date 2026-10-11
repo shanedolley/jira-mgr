@@ -20,7 +20,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `U` | Copy the link to the issue on the Jira site |
 | `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open page |
 | `?` | List every shortcut on this page; works from a sidebar or toolbar button too, not in a field or over a dialog |
-| `Cmd+K` | Open the search palette; it searches loaded issues and, below them, Jira text; it lists no commands. Not over a dialog or open picker |
+| `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo |
 | `Esc` | Close the page, then the Peek |
 | `Tab` | The first stop is a "Skip to issues" link, hidden until it has focus; `Enter` on it moves focus to the Tree |
@@ -59,7 +59,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Pickers without a search field | `Home`, `End` | First or last option; in a searchable picker they move the caret |
 | Pickers | `Enter` | Choose the highlighted option |
 | Status and Priority pickers | `1` to `9` | Choose the numbered option; the keycap on each option shows its number |
-| Palette | `Up`, `Down` | Move the highlight |
-| Palette | `Enter`, `Esc` | Open the issue page, or close |
+| Palette | `Up`, `Down` | Move the highlight; it starts on the first loaded issue, and `Up` reaches the actions and views above it; Jira text matches never take it |
+| Palette | `Enter`, `Esc` | Open the highlighted row (an issue's page, or run an action or view), or close; the first loaded issue is highlighted by default |
 
 Ctrl stands in for Cmd off the Mac.

@@ -1,6 +1,6 @@
 # Add a Shortcut
 
-A global shortcut is one letter in the keymap, handled in one `switch` in the Shell. The keymap decides whether a keystroke is a command, so every guard (text fields, dialogs, modifiers) sits in one place. The Cmd+K palette searches issues, loaded and in Jira text, and lists no commands, so a shortcut needs no palette entry.
+A global shortcut is one letter in the keymap, handled in one `switch` in the Shell. The keymap decides whether a keystroke is a command, so every guard (text fields, dialogs, modifiers) sits in one place. The Cmd+K palette lists the issue actions and shows each one's key, read from the keymap, so a key that a palette action shares needs no palette edit.
 
 ## Open a Property
 
@@ -21,6 +21,10 @@ For a key that does something else, such as `C` for create:
 1. Add its name to the `Command` union and its letter to `LETTERS` in `keymap.ts`.
 2. Add a `case` for it in the `onKey` switch in `Shell.tsx`. Call `event.preventDefault()` when the command acts, and return early when it cannot run, as `create` does with `canCreate`.
 3. Put `aria-keyshortcuts` on the button that does the same job with the mouse.
+
+## Show It in the Palette
+
+A key that acts on one issue can also be a palette action. Add a row to `ISSUE_ACTIONS` in `paletteActions.ts`, with the `allowed` test for the issue types that can take it, and a `case` for it in `runAction` in `Shell.tsx` that calls the code the key calls. Name the action's `id` as the key's command (`assignMe`, `copyKey`) and the palette shows the key beside it with no more code; an `id` with no key shows none.
 
 ## What the Keymap Guarantees
 
