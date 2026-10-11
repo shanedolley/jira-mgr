@@ -438,3 +438,31 @@ test('keeps a prior-year date inside the Created, Updated and Due slots in a wid
     { name: 'due', fits: true },
   ])
 })
+
+test('shows PS Sprint 62 before the ellipsis for a real sprint name in a wide font', async () => {
+  await open()
+  await inDisplayMenu(async () => {
+    await choice('Display properties', 'Sprint').click()
+  })
+  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('Sprint 5')
+  const style = await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  // The fake's only active sprint is "Sprint 5", so the cell takes a board name by hand.
+  const shown = await prop(/PSAPAC-13,/, 'sprint').evaluate((cell) => {
+    cell.textContent = 'PS Sprint 62 (04 Oct-17 Oct)'
+    // The ellipsis is not in the DOM, so measure what must fit: the lead and an ellipsis, in the cell's font.
+    const probe = document.createElement('span')
+    probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap'
+    probe.textContent = 'PS Sprint 62…'
+    cell.append(probe)
+    const lead = probe.getBoundingClientRect().width
+    probe.remove()
+    return { cell: cell.clientWidth, lead, truncated: cell.scrollWidth > cell.clientWidth }
+  })
+  await style.evaluate((node) => {
+    node.parentNode?.removeChild(node)
+  })
+  expect(shown.truncated).toBe(true)
+  expect(shown.cell).toBeGreaterThanOrEqual(shown.lead)
+})

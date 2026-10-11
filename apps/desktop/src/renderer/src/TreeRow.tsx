@@ -249,7 +249,7 @@ function Properties({
                 key={property}
                 data-prop="sprint"
                 title={sprint?.name}
-                className="w-20 shrink-0 truncate text-right text-xs text-muted"
+                className="w-24 shrink-0 truncate text-right text-xs text-muted"
               >
                 {sprint?.name}
               </span>
