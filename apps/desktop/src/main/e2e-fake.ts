@@ -862,7 +862,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         .filter((i) => i.fields.parent?.key === target.key && i.fields.issuetype.subtask)
         .map((i) => ({
           key: i.key,
-          fields: { summary: i.fields.summary, status: { name: i.fields.status.name } },
+          fields: {
+            summary: i.fields.summary,
+            status: { name: i.fields.status.name, statusCategory: i.fields.status.statusCategory },
+          },
         })),
     },
   })

@@ -257,6 +257,20 @@ test.describe('button system', () => {
     await expectSystem('discard dialog', 2)
   })
 
+  test('the Subtasks "+" and its add form follow the system', async () => {
+    // PSAPAC-11 holds a Subtask, so the heading shows its count beside the "+".
+    await openPage(/PSAPAC-11,/, 'Draft the runbook')
+    await expect(section('Subtasks').getByRole('button', { name: 'Add sub-issue' })).toBeVisible()
+    await expectSystem('subtasks heading', 8)
+
+    await section('Subtasks').getByRole('button', { name: 'Add sub-issue' }).click()
+    const add = section('Subtasks').getByRole('form', { name: 'Add sub-issues' })
+    await expect(add).toBeVisible()
+    await add.getByRole('textbox').fill('One\nTwo')
+    await expect(add.getByRole('button', { name: 'Create 2 sub-issues' })).toBeEnabled()
+    await expectSystem('add sub-issues form', 8)
+  })
+
   test('the worklog form, its confirm and the timer dialog follow the system', async () => {
     await openLogged()
     await section('Worklogs').getByRole('button', { name: 'Add worklog' }).click()

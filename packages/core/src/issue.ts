@@ -167,7 +167,8 @@ export type Issue = z.infer<ReturnType<typeof issueSchema>>
 export interface IssueDetail extends Issue {
   /** The description as Atlassian Document Format, or `null` when the issue has none. */
   description: AdfDoc | null
-  subtasks: { key: string; summary: string; status: string }[]
+  /** `done` is true when the subtask's status category is Done, so a count of them needs no status names. */
+  subtasks: { key: string; summary: string; status: string; done: boolean }[]
 }
 
 /** Q23: a type change is allowed only among these three, which share a hierarchy level. */

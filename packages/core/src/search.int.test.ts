@@ -414,10 +414,41 @@ describe('getIssue', () => {
       status: { name: 'Done', category: 'done' },
       customer: { id: '16120', value: 'BHP' },
       parentKey: 'PSAPAC-2832',
-      subtasks: [{ key: 'PSAPAC-3122', summary: 'test', status: 'To Do' }],
+      subtasks: [{ key: 'PSAPAC-3122', summary: 'test', status: 'To Do', done: false }],
     })
     expect(issue.description).toMatchObject({ type: 'doc', version: 1 })
     expect(JSON.stringify(issue.description)).toContain('Done when both forums have run.')
+  })
+
+  it('marks a subtask done by its status category, and not done when the category is missing', async () => {
+    const recorded = loadFixture('issue-psapac-3066') as {
+      fields: { subtasks: { key: string; fields: { status: Record<string, unknown> } }[] }
+    }
+    const [first] = recorded.fields.subtasks
+    if (first === undefined) throw new Error('The fixture has no subtask.')
+    const withStatus = (key: string, status: Record<string, unknown>) => ({
+      ...first,
+      key,
+      fields: { ...first.fields, status },
+    })
+    const named = { name: 'Done' }
+    serveIssue({
+      ...recorded,
+      fields: {
+        ...recorded.fields,
+        subtasks: [
+          withStatus('PSAPAC-1', { ...named, statusCategory: { key: 'done' } }),
+          withStatus('PSAPAC-2', { name: 'In Progress', statusCategory: { key: 'indeterminate' } }),
+          withStatus('PSAPAC-3', named),
+        ],
+      },
+    })
+    const { subtasks } = await getIssue(client, 'PSAPAC-3066')
+    expect(subtasks.map(({ key, done }) => [key, done])).toEqual([
+      ['PSAPAC-1', true],
+      ['PSAPAC-2', false],
+      ['PSAPAC-3', false],
+    ])
   })
 
   it('returns a null description and no subtasks when the issue has none', async () => {

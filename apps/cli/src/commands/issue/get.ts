@@ -12,7 +12,12 @@ import {
 import type { SpecOf } from '../../schema.js'
 import { siteUrl } from '../../site.js'
 
-export type IssueData = IssueDetail & { descriptionMarkdown: string | null; url: string }
+/** The shape `--json` has always had: a subtask's `done` flag serves the desktop app, not the CLI. */
+export type IssueData = Omit<IssueDetail, 'subtasks'> & {
+  subtasks: { key: string; summary: string; status: string }[]
+  descriptionMarkdown: string | null
+  url: string
+}
 
 /** The issue as `issue get` and `issue create` return it. */
 export function toIssueData(issue: IssueDetail, site: string): IssueData {
@@ -21,7 +26,7 @@ export function toIssueData(issue: IssueDetail, site: string): IssueData {
     ...rest,
     description,
     descriptionMarkdown: description === null ? null : adfToMarkdown(description),
-    subtasks,
+    subtasks: subtasks.map(({ key, summary, status }) => ({ key, summary, status })),
     url: `${site}/browse/${issue.key}`,
   }
 }

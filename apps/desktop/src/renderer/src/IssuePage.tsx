@@ -17,6 +17,7 @@ import { LinksSection } from './LinksSection'
 import { LoadError } from './LoadError'
 import { SECTION_HEADING } from './Section'
 import { StatusDot } from './StatusDot'
+import { SubtasksSection } from './SubtasksSection'
 import { SummaryEditor } from './SummaryEditor'
 import { pressOf } from './timer'
 import { TimerClock } from './TimerClock'
@@ -116,31 +117,13 @@ function PageBody({
               />
             )}
           </section>
-          {detail !== undefined && detail.subtasks.length > 0 && (
-            <section aria-label="Subtasks" className="space-y-1">
-              <h2 className={SECTION_HEADING}>Subtasks</h2>
-              <ul className="divide-y divide-line rounded-md border border-line">
-                {detail.subtasks.map((subtask) => (
-                  <li key={subtask.key}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onOpen(subtask.key)
-                      }}
-                      data-row
-                      className="flex h-8 w-full items-center gap-3 px-3 text-left hover:bg-hover"
-                    >
-                      <span className="w-20 shrink-0 font-mono text-xs text-muted">
-                        {subtask.key}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{subtask.summary}</span>
-                      <span className="shrink-0 text-xs text-muted">{subtask.status}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <SubtasksSection
+            issue={issue}
+            detail={detail}
+            detailError={detailError}
+            onOpen={onOpen}
+            onNotice={onNotice}
+          />
           <LinksSection issueKey={issue.key} issues={issues} onOpen={onOpen} onNotice={onNotice} />
           {worklogs && <WorklogsSection issueKey={issue.key} me={me} onNotice={onNotice} />}
           <CommentsSection issueKey={issue.key} me={me} onLeave={onLeave} onNotice={onNotice} />
