@@ -123,6 +123,12 @@ function ConfirmDelete({
   )
 }
 
+/**
+ * The drag payload's type. A custom one, so a row dropped on a text field inserts nothing and a
+ * drag of text or a file from outside is never taken for a view.
+ */
+const VIEW_DRAG = 'application/x-jm-view'
+
 /** A line on the edge of the row a drop would land beside: below when the view moves down, above when it moves up. */
 function dropEdge(
   views: SavedView[] | undefined,
@@ -307,10 +313,9 @@ export function ViewsList({ filters, toggles, applied, onApply, showCurrent = tr
     )
   }
 
-  function drop(toIndex: number) {
-    const id = drag?.id
+  function drop(id: string, toIndex: number) {
     setDrag(null)
-    if (id === undefined || views?.findIndex((v) => v.id === id) === toIndex) return
+    if (id === '' || views?.findIndex((v) => v.id === id) === toIndex) return
     resetFailures()
     move.mutate({ id, toIndex })
   }
@@ -370,7 +375,7 @@ export function ViewsList({ filters, toggles, applied, onApply, showCurrent = tr
             draggable={confirmingId !== view.id && renamingId !== view.id}
             onDragStart={(event) => {
               event.dataTransfer.effectAllowed = 'move'
-              event.dataTransfer.setData('text/plain', view.id)
+              event.dataTransfer.setData(VIEW_DRAG, view.id)
               setDrag({ id: view.id, over: null })
             }}
             onDragOver={(event) => {
@@ -380,7 +385,7 @@ export function ViewsList({ filters, toggles, applied, onApply, showCurrent = tr
             }}
             onDrop={(event) => {
               event.preventDefault()
-              drop(index)
+              drop(event.dataTransfer.getData(VIEW_DRAG), index)
             }}
             onDragEnd={() => {
               setDrag(null)

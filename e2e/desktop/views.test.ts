@@ -475,6 +475,12 @@ test('reorders with Alt and the arrow keys, and the order survives a restart', a
 
 test('reorders by dragging a view onto another, and the file holds the order', async () => {
   await open()
+  // A view dropped on a text field puts no text in it.
+  const filter = window.getByPlaceholder('Filter by key or summary')
+  await apply('Backlog').dragTo(filter)
+  await expect(filter).toHaveValue('')
+  await expect.poll(sidebarOrder).toEqual(STARTERS.map((n) => n.toLowerCase().replaceAll(' ', '-')))
+
   await apply('Backlog').dragTo(apply('My issues'))
   await expect
     .poll(sidebarOrder)
