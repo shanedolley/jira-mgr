@@ -426,3 +426,13 @@ input {
 .date-empty:not(:focus)::-webkit-datetime-edit {
   color: transparent;
 }
+
+/*
+ * Under 960px the Peek is a card over the Tree, so its header is no drag region. Unlayered like
+ * `.app-drag`, so it wins over the utility layer.
+ */
+@media (width < 60rem) {
+  aside[aria-label='Peek'] .app-drag {
+    -webkit-app-region: no-drag;
+  }
+}

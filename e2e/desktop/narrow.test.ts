@@ -65,12 +65,15 @@ interface Reached {
   right: number
   top: number
   bottom: number
+  /** Its whole box lies under the Peek card, so no part of it shows. */
+  covered: boolean
 }
 
 /**
  * Tabs through the whole page, from the first stop until the order comes round again, and returns
  * every element the focus landed on with its box. Focus scrolls an element into view, so a
- * control a scroll container holds counts as reachable when its box is in the window then.
+ * control a scroll container holds counts as reachable when its box is in the window then. A box
+ * is read again until it is inside the window, since content that loads late moves it.
  */
 async function tabThrough(): Promise<Reached[]> {
   await window.evaluate(() => {
@@ -80,18 +83,36 @@ async function tabThrough(): Promise<Reached[]> {
   const seen: Reached[] = []
   for (let step = 0; step < 160; step++) {
     await window.keyboard.press('Tab')
-    const reached = await window.evaluate(() => {
+    const reached = await window.evaluate(async () => {
       const el = document.activeElement
       if (el === null || el === document.body) return null
       if (el.hasAttribute('data-walked')) return 'again' as const
       el.setAttribute('data-walked', '')
-      const at = el.getBoundingClientRect()
+      const inside = (at: DOMRect) =>
+        at.left >= -0.5 &&
+        at.right <= globalThis.innerWidth + 0.5 &&
+        at.top >= -0.5 &&
+        at.bottom <= globalThis.innerHeight + 0.5
+      let at = el.getBoundingClientRect()
+      for (let tries = 0; tries < 15 && !inside(at); tries++) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        at = el.getBoundingClientRect()
+      }
+      const card = document.querySelector('aside[aria-label=Peek]')?.getBoundingClientRect()
+      const under =
+        card !== undefined &&
+        el.closest('aside[aria-label=Peek]') === null &&
+        at.left >= card.left - 0.5 &&
+        at.right <= card.right + 0.5 &&
+        at.top >= card.top - 0.5 &&
+        at.bottom <= card.bottom + 0.5
       return {
         name: el.getAttribute('aria-label') ?? (el.textContent.trim().slice(0, 30) || el.tagName),
         left: at.left,
         right: at.right,
         top: at.top,
         bottom: at.bottom,
+        covered: under,
       }
     })
     if (reached === 'again') return seen
@@ -146,6 +167,8 @@ test('at 720px no control lies outside the window and the keyboard focuses nothi
   const onTree = await tabThrough()
   expect(onTree.length).toBeGreaterThan(15)
   expect(await outside(onTree)).toEqual([])
+  // WCAG 2.4.11: no control the keyboard reaches lies wholly under the Peek card.
+  expect(onTree.filter((r) => r.covered).map((r) => r.name)).toEqual([])
   expect(onTree.map((r) => r.name)).toEqual(
     expect.arrayContaining(['Show sidebar', 'Close', 'Open', 'Hide done']),
   )
@@ -153,6 +176,12 @@ test('at 720px no control lies outside the window and the keyboard focuses nothi
   await pick(/PSAPAC-2,/)
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
+  // The page reads its description, links and activity after it opens, and they move its controls.
+  await expect(
+    issuePage()
+      .getByText(/^Loading/)
+      .filter({ visible: true }),
+  ).toHaveCount(0)
   expect(await unreachableNow()).toEqual([])
   const onPage = await tabThrough()
   expect(onPage.length).toBeGreaterThan(10)
@@ -490,4 +519,33 @@ test('the block pills and the Epic progress pill stay inside a narrow row', asyn
     expect(found.pillsOutside).toBe(0)
     expect(found.rowsOverflowing).toBe(0)
   }
+})
+
+test('the Peek header drags the window only while the Peek is a column', async () => {
+  await open()
+  await pick(/PSAPAC-2,/)
+  await expect(peek()).toBeVisible()
+  const region = () =>
+    peek()
+      .locator('.app-drag')
+      .evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region'))
+  await resize(1200)
+  expect(await region()).toBe('drag')
+  await resize(720)
+  expect(await region()).toBe('no-drag')
+})
+
+test('Esc after a click on bare sidebar overlay closes the overlay and leaves the Peek open', async () => {
+  await open()
+  await resize(720)
+  await pick(/PSAPAC-2,/)
+  await expect(peek()).toBeVisible()
+  await showSidebar().click()
+  await expect(window.getByRole('button', { name: 'Log out' })).toBeVisible()
+  // The Sprints heading takes no focus, so a click on it left focus on the body.
+  await window.getByRole('heading', { name: 'Sprints' }).click()
+  await window.keyboard.press('Escape')
+  await expect(window.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+  await expect(peek()).toBeVisible()
+  await expect(showSidebar()).toBeFocused()
 })

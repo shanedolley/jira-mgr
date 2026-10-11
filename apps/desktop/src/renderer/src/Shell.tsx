@@ -15,6 +15,7 @@ import {
 } from '@jira-mgr/core/view-filter'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  type CSSProperties,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -46,6 +47,7 @@ import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { Kbd } from './Kbd'
+import { useTreeTop } from './narrow'
 import { type OverviewLoad } from './OverviewFrame'
 import { unreadCount, useInbox } from './inboxQueries'
 import { LoadError } from './LoadError'
@@ -292,6 +294,7 @@ export function Shell({ session }: { session: Session }) {
   const editIssue = useEditIssue()
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
+  const listRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
   const inboxRef = useRef<HTMLElement>(null)
   const sprintRef = useRef<HTMLElement>(null)
@@ -1004,8 +1007,14 @@ export function Shell({ session }: { session: Session }) {
     onRetryDone: () => void done.refetch(),
   }
 
+  const treeTop = useTreeTop(listRef, peekOpen)
   const layout = (
     <div
+      style={
+        treeTop === null
+          ? undefined
+          : ({ '--peek-top': `${String(treeTop + 8)}px` } as CSSProperties)
+      }
       className={`relative grid h-full grid-rows-[minmax(0,1fr)] max-rail:grid-cols-[3rem_minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
     >
       <a
@@ -1060,6 +1069,7 @@ export function Shell({ session }: { session: Session }) {
         onStopTimer={stopFromSidebar}
       />
       <section
+        ref={listRef}
         id="issue-list"
         aria-label="Issue list"
         inert={listCovered}

@@ -117,7 +117,6 @@ export function Sidebar({
           ref={expandRef}
           type="button"
           aria-label="Show sidebar"
-          aria-expanded={false}
           title="Show sidebar"
           onClick={() => {
             setOpen(true)
@@ -201,12 +200,14 @@ export function Sidebar({
       <nav
         ref={navRef}
         aria-label="Main"
+        // Click-focusable only, so Esc after a click on bare overlay still reaches `close`.
+        tabIndex={overlay ? -1 : undefined}
         onKeyDown={close}
         onClick={chose}
         onBlur={leaving}
         className={
           overlay
-            ? 'absolute inset-y-0 left-0 z-40 flex min-h-0 w-[14.5rem] flex-col border-r border-line bg-sidebar shadow-[0_4px_40px_var(--dialog-shadow)]'
+            ? 'absolute inset-y-0 left-0 z-40 flex min-h-0 w-[14.5rem] outline-none flex-col border-r border-line bg-sidebar shadow-[0_4px_40px_var(--dialog-shadow)]'
             : 'col-start-1 row-start-1 flex min-h-0 flex-col border-r border-line bg-sidebar'
         }
       >

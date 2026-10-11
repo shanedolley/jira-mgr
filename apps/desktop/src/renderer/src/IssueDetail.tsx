@@ -70,13 +70,13 @@ const COPY_ICON = {
 } as const
 
 /**
- * A column right of the Tree. Under 960px it is a 360px card over the Tree, below the page header
- * so the header's buttons stay reachable, with a hairline all round and a soft shadow.
+ * A column right of the Tree. Under 960px it is a 360px card over the Tree's rows, below the
+ * toolbar and the view tabs (`--peek-top`, set by the Shell) so no control lies under it, with a hairline all round and a soft shadow.
  */
 const ASIDE =
   'col-start-3 row-start-1 min-h-0 overflow-y-auto border-l border-line bg-panel ' +
-  'max-rail:col-start-2 max-rail:z-[5] max-rail:m-2 max-rail:mt-12 max-rail:w-[min(22.5rem,calc(100%-1rem))] ' +
-  'max-rail:max-h-[calc(100%-3.5rem)] max-rail:justify-self-end max-rail:self-start ' +
+  'max-rail:col-start-2 max-rail:z-[5] max-rail:mx-2 max-rail:mb-2 max-rail:mt-[var(--peek-top,3rem)] max-rail:w-[min(22.5rem,calc(100%-1rem))] ' +
+  'max-rail:max-h-[calc(100%_-_var(--peek-top,3rem)_-_0.5rem)] max-rail:justify-self-end max-rail:self-start ' +
   'max-rail:rounded-xl max-rail:border max-rail:shadow-[0_4px_40px_var(--dialog-shadow)]'
 
 /** How long the Peek holds still on an issue before it reads the description. */
@@ -287,7 +287,7 @@ export function IssueDetail({
       aria-label="Peek"
       className={ASIDE}
     >
-      <div className="app-drag flex h-10 shrink-0 items-center justify-end gap-2 px-3 max-rail:[-webkit-app-region:no-drag]">
+      <div className="app-drag flex h-10 shrink-0 items-center justify-end gap-2 px-3">
         {issue !== undefined && (
           <>
             <button
