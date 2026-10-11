@@ -237,8 +237,20 @@ An array of issues.
         "displayName": "Shane Dolley",
         "avatarUrl": null
       },
+      "creator": {
+        "accountId": "5b10ac8d82e05b22cc7d4ef5",
+        "displayName": "Shane Dolley"
+      },
       "labels": [
         "etl"
+      ],
+      "links": [
+        {
+          "type": "Blocks",
+          "direction": "inward",
+          "key": "PSAPAC-9",
+          "category": "indeterminate"
+        }
       ],
       "priority": {
         "id": "3",
@@ -354,8 +366,20 @@ An array of Customer groups, each with its Epics and the issues under no Epic.
               "displayName": "Shane Dolley",
               "avatarUrl": null
             },
+            "creator": {
+              "accountId": "5b10ac8d82e05b22cc7d4ef5",
+              "displayName": "Shane Dolley"
+            },
             "labels": [
               "etl"
+            ],
+            "links": [
+              {
+                "type": "Blocks",
+                "direction": "inward",
+                "key": "PSAPAC-9",
+                "category": "indeterminate"
+              }
             ],
             "priority": {
               "id": "3",
@@ -465,8 +489,20 @@ The issue, its description as ADF and as Markdown, its subtasks and its URL.
       "displayName": "Shane Dolley",
       "avatarUrl": null
     },
+    "creator": {
+      "accountId": "5b10ac8d82e05b22cc7d4ef5",
+      "displayName": "Shane Dolley"
+    },
     "labels": [
       "etl"
+    ],
+    "links": [
+      {
+        "type": "Blocks",
+        "direction": "inward",
+        "key": "PSAPAC-9",
+        "category": "indeterminate"
+      }
     ],
     "priority": {
       "id": "3",
@@ -606,8 +642,20 @@ The new issue, read back after the create: the same object as `jm issue get`. It
       "displayName": "Shane Dolley",
       "avatarUrl": null
     },
+    "creator": {
+      "accountId": "5b10ac8d82e05b22cc7d4ef5",
+      "displayName": "Shane Dolley"
+    },
     "labels": [
       "etl"
+    ],
+    "links": [
+      {
+        "type": "Blocks",
+        "direction": "inward",
+        "key": "PSAPAC-9",
+        "category": "indeterminate"
+      }
     ],
     "priority": {
       "id": "3",

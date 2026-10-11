@@ -4,10 +4,18 @@ import type { Handler } from '../../context.js'
 import { renderTable } from '../../output.js'
 import type { SpecOf } from '../../schema.js'
 
-/** The filters and toggles a view sets, in one cell: `status=To Do; label=etl; mine`. */
+/** The filters and toggles a view sets, in one cell: `status=To Do; not.label=etl; due=overdue; mine`. */
 function describe(view: SavedView): string {
-  const { text, ...lists } = view.filters
-  const parts = Object.entries(lists).map(([field, values]) => `${field}=${values.join(',')}`)
+  const { text, dates = {}, not = {}, ...lists } = view.filters
+  const named = (prefix: string, fields: Record<string, string[] | undefined>) =>
+    Object.entries(fields).flatMap(([field, values]) =>
+      values === undefined ? [] : [`${prefix}${field}=${values.join(',')}`],
+    )
+  const parts = [
+    ...named('', lists),
+    ...named('not.', not),
+    ...Object.entries(dates).map(([field, preset]) => `${field}=${preset}`),
+  ]
   if (text !== undefined) parts.push(`text=${text}`)
   if (view.toggles.assigneeMe) parts.push('mine')
   if (!view.toggles.hideDone) parts.push('show done')

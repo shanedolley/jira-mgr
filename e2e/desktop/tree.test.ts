@@ -306,7 +306,7 @@ test('the Filter and Groups buttons show a chevron and the Filter fields show an
 
   await toggle('Filter').click()
   const fields = window.locator('#filter-menu summary')
-  await expect(fields).toHaveCount(5)
+  await expect(fields).toHaveCount(15)
   for (const field of await fields.all()) {
     await expect(field.locator('svg')).toHaveCount(2)
     expect((await field.boundingBox())?.height).toBe(32)

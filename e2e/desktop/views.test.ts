@@ -63,7 +63,7 @@ async function createView(name: string) {
 
 test('lists the starter views, and applying one sets the filters and the toggles', async () => {
   await open()
-  await expect(list().getByRole('listitem')).toHaveCount(2)
+  await expect(list().getByRole('listitem')).toHaveCount(3)
 
   await apply('Current sprint').click()
   await expect(chips()).toContainText('Sprint: Current sprint')
@@ -131,8 +131,13 @@ test('creates a view from the filter bar, and the file the CLI reads holds it', 
   await expect(apply('Open bugs')).toHaveAttribute('aria-current', 'true')
   // A create waits for main, which answers once the file is written, so the row means it landed.
   const views = await stored()
-  expect(views.map((v) => v.name)).toEqual(['My issues', 'Current sprint', 'Open bugs'])
-  expect(views[2]).toEqual({
+  expect(views.map((v) => v.name)).toEqual([
+    'My issues',
+    'Created by me',
+    'Current sprint',
+    'Open bugs',
+  ])
+  expect(views[3]).toEqual({
     id: 'open-bugs',
     name: 'Open bugs',
     filters: { type: ['Bug'] },
@@ -164,7 +169,12 @@ test('keeps the new view field open on a taken name, and Escape cancels it', asy
   await window.keyboard.press('Escape')
   await expect(window.getByLabel('New view name')).toHaveCount(0)
   await expect(window.getByRole('button', { name: 'New view' })).toBeFocused()
-  expect((await stored()).map((v) => v.name)).toEqual(['My issues', 'Current sprint', 'Fresh'])
+  expect((await stored()).map((v) => v.name)).toEqual([
+    'My issues',
+    'Created by me',
+    'Current sprint',
+    'Fresh',
+  ])
 })
 
 test('renames a view inline with Enter, cancels with Escape, and restores a refused name', async () => {
@@ -183,7 +193,11 @@ test('renames a view inline with Enter, cancels with Escape, and restores a refu
     .poll(async () => (await storedOrAbsent())?.map((v) => v.name))
     .toContain('This sprint')
   // The id stays, so `jm issue list --view current-sprint` keeps working.
-  expect((await stored()).map((v) => v.id)).toEqual(['my-issues', 'current-sprint'])
+  expect((await stored()).map((v) => v.id)).toEqual([
+    'my-issues',
+    'created-by-me',
+    'current-sprint',
+  ])
 
   await window.getByRole('button', { name: 'Rename view This sprint' }).click()
   await window.getByLabel('Rename view This sprint').fill('Discarded')
@@ -197,7 +211,7 @@ test('renames a view inline with Enter, cancels with Escape, and restores a refu
   await window.keyboard.press('Enter')
   await expect(window.getByRole('alert')).toContainText('already exists')
   await expect(apply('This sprint')).toBeVisible()
-  expect((await stored()).map((v) => v.name)).toEqual(['My issues', 'This sprint'])
+  expect((await stored()).map((v) => v.name)).toEqual(['My issues', 'Created by me', 'This sprint'])
 })
 
 test('ignores a blank rename, leaving the name and the file as they were', async () => {
@@ -212,7 +226,7 @@ test('ignores a blank rename, leaving the name and the file as they were', async
 
   await expect(apply('Keep me')).toBeFocused()
   await expect(window.getByRole('alert')).toHaveCount(0)
-  await expect(list().getByRole('listitem')).toHaveCount(3)
+  await expect(list().getByRole('listitem')).toHaveCount(4)
   expect(await stored()).toEqual(before)
 })
 
@@ -226,7 +240,7 @@ test('deletes a view only after an inline confirmation', async () => {
   await window.keyboard.press('Escape')
   await expect(confirm).toHaveCount(0)
   await expect(apply('My issues')).toBeFocused()
-  await expect(list().getByRole('listitem')).toHaveCount(2)
+  await expect(list().getByRole('listitem')).toHaveCount(3)
 
   await window.getByRole('button', { name: 'Delete view My issues' }).click()
   await confirm.getByRole('button', { name: 'Cancel' }).click()
@@ -235,16 +249,19 @@ test('deletes a view only after an inline confirmation', async () => {
   await window.getByRole('button', { name: 'Delete view My issues' }).click()
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect(apply('My issues')).toHaveCount(0)
-  await expect(apply('Current sprint')).toBeFocused()
+  await expect(apply('Created by me')).toBeFocused()
   await expect
     .poll(async () => (await storedOrAbsent())?.map((v) => v.id))
-    .toEqual(['current-sprint'])
+    .toEqual(['created-by-me', 'current-sprint'])
 
-  await window.getByRole('button', { name: 'Delete view Current sprint' }).click()
-  await window
-    .getByRole('group', { name: 'Delete view Current sprint' })
-    .getByRole('button', { name: 'Delete', exact: true })
-    .click()
+  for (const name of ['Created by me', 'Current sprint']) {
+    await window.getByRole('button', { name: `Delete view ${name}` }).click()
+    await window
+      .getByRole('group', { name: `Delete view ${name}` })
+      .getByRole('button', { name: 'Delete', exact: true })
+      .click()
+    await expect(apply(name)).toHaveCount(0)
+  }
   await expect(window.getByText('No saved views')).toBeVisible()
   await expect.poll(storedOrAbsent).toEqual([])
 })
@@ -253,9 +270,12 @@ test('moves between views with the arrow keys and renames with F2', async () => 
   await open()
   await apply('My issues').focus()
   await window.keyboard.press('ArrowDown')
+  await expect(apply('Created by me')).toBeFocused()
+  await window.keyboard.press('ArrowDown')
   await expect(apply('Current sprint')).toBeFocused()
   await window.keyboard.press('ArrowDown')
   await expect(apply('Current sprint')).toBeFocused()
+  await window.keyboard.press('ArrowUp')
   await window.keyboard.press('ArrowUp')
   await expect(apply('My issues')).toBeFocused()
 

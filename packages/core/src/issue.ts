@@ -30,6 +30,26 @@ export const jiraTime = z.string().transform((text, ctx) => {
 
 const option = z.object({ id: z.string(), value: z.string() })
 
+const statusCategoryKey = z.enum(['new', 'indeterminate', 'done', 'undefined'])
+
+/** One end of a link as an issue search carries it: the key, and the status category if sent. */
+const linkedIssue = z.object({
+  key: z.string(),
+  fields: z
+    .object({
+      status: z
+        .object({ statusCategory: z.object({ key: statusCategoryKey.catch('undefined') }) })
+        .optional(),
+    })
+    .optional(),
+})
+
+const jiraLink = z.object({
+  type: z.object({ name: z.string() }),
+  inwardIssue: linkedIssue.optional(),
+  outwardIssue: linkedIssue.optional(),
+})
+
 /** The fields core reads from a Jira issue. Unknown fields pass through unread. */
 const jiraFields = z.object({
   summary: z.string(),
@@ -42,7 +62,7 @@ const jiraFields = z.object({
   status: z.object({
     id: z.string(),
     name: z.string(),
-    statusCategory: z.object({ key: z.enum(['new', 'indeterminate', 'done', 'undefined']) }),
+    statusCategory: z.object({ key: statusCategoryKey }),
   }),
   resolution: z.object({ name: z.string() }).nullish(),
   parent: z.object({ key: z.string() }).nullish(),
@@ -53,6 +73,8 @@ const jiraFields = z.object({
       avatarUrls,
     })
     .nullish(),
+  creator: z.object({ accountId: z.string(), displayName: z.string() }).nullish(),
+  issuelinks: z.array(jiraLink).nullish(),
   labels: z.array(z.string()),
   priority: z.object({ id: z.string(), name: z.string() }).nullish(),
   timetracking: z
@@ -110,7 +132,20 @@ export function issueSchema(ids: FieldIds) {
               displayName: f.assignee.displayName,
               avatarUrl: f.assignee.avatarUrls?.['48x48'] ?? null,
             },
+      creator: f.creator ?? null,
       labels: f.labels,
+      links: (f.issuelinks ?? []).flatMap((link) => {
+        const end = link.outwardIssue ?? link.inwardIssue
+        if (end === undefined) return []
+        return [
+          {
+            type: link.type.name,
+            direction: link.outwardIssue === undefined ? ('inward' as const) : ('outward' as const),
+            key: end.key,
+            category: end.fields?.status?.statusCategory.key ?? ('undefined' as const),
+          },
+        ]
+      }),
       priority: f.priority ?? null,
       customer: f.customer ?? null,
       engagement: f.engagement ?? null,

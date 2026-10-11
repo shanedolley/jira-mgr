@@ -1,7 +1,12 @@
 import type { Issue } from '@jira-mgr/core'
 import { buildHierarchy } from '@jira-mgr/core/hierarchy'
 import { assertTimeable, type RunningTimer } from '@jira-mgr/core/timer-calc'
-import { applyViewToggles, issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
+import {
+  applyViewToggles,
+  filtersNeedMe,
+  issueMatcher,
+  type ViewFilters,
+} from '@jira-mgr/core/view-filter'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   useCallback,
@@ -250,12 +255,16 @@ export function Shell({ session }: { session: Session }) {
   const pageRef = useRef<HTMLElement>(null)
   const filterRef = useRef<HTMLInputElement>(null)
 
-  const customersQuery = useCustomers(toggles?.hideEmptyCustomers === false)
-  const customersFailed = customersQuery.isError && customersQuery.data === undefined
+  // The Customer list loads for empty Customers in the Tree, and once the Filter menu has opened,
+  // for its Customer choices.
+  const [filterMenuOpened, setFilterMenuOpened] = useState(false)
+  const showEmptyCustomers = toggles?.hideEmptyCustomers === false
+  const customersQuery = useCustomers(showEmptyCustomers || filterMenuOpened)
+  // Only the Tree needs the list to place empty Customers, so only then does a failure matter.
+  const customersFailed =
+    showEmptyCustomers && customersQuery.isError && customersQuery.data === undefined
   const accountId = meQuery.data?.accountId
-  const needsMe =
-    toggles?.assigneeMe === true ||
-    (deferredFilters.assignee ?? []).some((v) => v.toLowerCase() === 'me')
+  const needsMe = toggles?.assigneeMe === true || filtersNeedMe(deferredFilters)
   const treeReady =
     unresolved.data !== undefined && toggles !== undefined && (!needsMe || accountId !== undefined)
 
@@ -263,20 +272,33 @@ export function Shell({ session }: { session: Session }) {
     () => (unresolved.data === undefined ? [] : mergeIssues(unresolved.data, done.data ?? [])),
     [unresolved.data, done.data],
   )
-  const choices = useMemo(() => filterChoices(issues), [issues])
+  const customerNames = useMemo(
+    () => customersQuery.data?.map((c) => c.value) ?? [],
+    [customersQuery.data],
+  )
+  const choices = useMemo(() => filterChoices(issues, customerNames), [issues, customerNames])
 
   const groups = useMemo(() => {
     if (!treeReady) return []
-    const match = issueMatcher(deferredFilters, { accountId: accountId ?? '' })
+    const match = issueMatcher(deferredFilters, { accountId: accountId ?? '', issues })
     return buildHierarchy(issues, {
       ...toggles,
       // Without the Customer list, empty Customers stay hidden.
       hideEmptyCustomers: customersFailed || toggles.hideEmptyCustomers,
       accountId: accountId ?? '',
-      customers: customersQuery.data,
+      customers: showEmptyCustomers ? customersQuery.data : undefined,
       ...(match === undefined ? {} : { match }),
     })
-  }, [treeReady, issues, toggles, deferredFilters, accountId, customersFailed, customersQuery.data])
+  }, [
+    treeReady,
+    issues,
+    toggles,
+    deferredFilters,
+    accountId,
+    customersFailed,
+    showEmptyCustomers,
+    customersQuery.data,
+  ])
 
   const rows = useMemo(
     () => flattenTree(groups, { collapsed, revealed }),
@@ -636,6 +658,15 @@ export function Shell({ session }: { session: Session }) {
         field.select()
         return
       }
+      case 'filterMenu': {
+        // The toolbar is inert under an open page, so the menu cannot take focus there.
+        const menu = document.getElementById('filter-menu')
+        if (menu === null || pageOpen || menu.matches(':popover-open')) return
+        event.preventDefault()
+        menu.showPopover()
+        menu.querySelector('summary')?.focus()
+        return
+      }
       case 'timer': {
         const key = pageKey ?? activeKey
         if (key === null || !treeReady) return
@@ -905,6 +936,9 @@ export function Shell({ session }: { session: Session }) {
             filters={filters}
             choices={choices}
             onFilters={setFilters}
+            onFilterMenuOpen={() => {
+              setFilterMenuOpened(true)
+            }}
             onCollapseAll={() => {
               groupsKey('ArrowLeft')
             }}

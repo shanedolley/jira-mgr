@@ -141,7 +141,9 @@ describe('searchIssues', () => {
         displayName: 'Shane Dolley',
         avatarUrl: expect.stringContaining('/48') as string,
       },
+      creator: null,
       labels: ['PSAPAC'],
+      links: [],
       priority: { id: '4', name: 'Minor' },
       customer: { id: '16451', value: 'Collibra (Internal team)' },
       engagement: { id: '22264', value: 'Non Collibra Engagement' },
@@ -154,6 +156,41 @@ describe('searchIssues', () => {
       created: '2026-10-06T00:49:43.825Z',
       updated: '2026-10-06T01:56:17.325Z',
     })
+  })
+
+  it('requests and maps the Creator and the links, with the status category of each linked issue', async () => {
+    const requests = serveSearch()
+    await searchIssues(client)
+    expect(requests[0]?.fields).toEqual(expect.arrayContaining(['creator', 'issuelinks']))
+
+    const raw = recorded('search-unresolved-1').issues.find((i) => i.key === 'PSAPAC-3117')
+    if (raw === undefined) throw new Error('PSAPAC-3117 is missing from the fixture.')
+    const issue = structuredClone(raw)
+    const end = (key: string, category?: string) => ({
+      key,
+      fields: category === undefined ? {} : { status: { statusCategory: { key: category } } },
+    })
+    Object.assign(issue.fields, {
+      creator: { accountId: 'acc-1', displayName: 'Ada', emailAddress: 'ada@example.com' },
+      issuelinks: [
+        { type: { name: 'Blocks' }, inwardIssue: end('PSAPAC-1', 'indeterminate') },
+        { type: { name: 'Blocks' }, outwardIssue: end('PSAPAC-2', 'done') },
+        { type: { name: 'Relates' }, outwardIssue: end('PSAPAC-3') },
+        { type: { name: 'Blocks' }, outwardIssue: end('PSAPAC-4', 'surprise') },
+        { type: { name: 'Blocks' } },
+      ],
+    })
+    serveRaw({ issues: [issue], isLast: true })
+
+    const [mapped] = await searchIssues(client)
+
+    expect(mapped?.creator).toEqual({ accountId: 'acc-1', displayName: 'Ada' })
+    expect(mapped?.links).toEqual([
+      { type: 'Blocks', direction: 'inward', key: 'PSAPAC-1', category: 'indeterminate' },
+      { type: 'Blocks', direction: 'outward', key: 'PSAPAC-2', category: 'done' },
+      { type: 'Relates', direction: 'outward', key: 'PSAPAC-3', category: 'undefined' },
+      { type: 'Blocks', direction: 'outward', key: 'PSAPAC-4', category: 'undefined' },
+    ])
   })
 
   it('maps an Epic with no parent, no sprint and no estimate to nulls and an empty list', async () => {

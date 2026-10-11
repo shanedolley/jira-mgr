@@ -1,7 +1,7 @@
 import type { Issue } from '@jira-mgr/core'
 import { searchIssuePages } from '@jira-mgr/core/search'
 import { findView, type SavedView } from '@jira-mgr/core/state'
-import { issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
+import { filtersNeedMe, issueMatcher, type ViewFilters } from '@jira-mgr/core/view-filter'
 
 import type { Context } from '../../context.js'
 
@@ -57,14 +57,14 @@ export async function loadIssues(
   }
   if (input.search !== undefined) filters.text = input.search
 
-  const wantsMe =
-    toggles.assigneeMe || (filters.assignee ?? []).some((v) => v.toLowerCase() === 'me')
+  const wantsMe = toggles.assigneeMe || filtersNeedMe(filters)
   const accountId = wantsMe ? (await ctx.me()).accountId : ''
-  const match = issueMatcher(filters, { accountId })
+  // The matcher reads `issues` as it fills, to find the Epic of a Subtask.
+  const issues: Issue[] = []
+  const match = issueMatcher(filters, { accountId, issues })
   const wanted = (issue: Issue) =>
     (!toggles.assigneeMe || issue.assignee?.accountId === accountId) && (match?.(issue) ?? true)
 
-  const issues: Issue[] = []
   let matched = 0
   const phases = toggles.hideDone ? (['unresolved'] as const) : undefined
   for await (const page of searchIssuePages(ctx.http(), { signal: ctx.signal, phases })) {

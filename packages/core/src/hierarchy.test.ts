@@ -51,7 +51,9 @@ function issue(key: string, spec: Spec = {}): Issue {
     assignee: spec.assignee
       ? { accountId: spec.assignee, displayName: spec.assignee, avatarUrl: null }
       : null,
+    creator: null,
     labels: [],
+    links: [],
     priority: null,
     customer: spec.customer ?? null,
     engagement: null,

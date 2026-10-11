@@ -529,7 +529,31 @@ describe('saved views', () => {
     expect(calls).toHaveLength(1)
   })
 
+  it('views:create passes the new filter keys, the dates and the excluded values on', async () => {
+    const { backend, calls } = fakeBackend()
+    const wide = {
+      ...NEW_VIEW,
+      filters: {
+        customer: ['BHP'],
+        epic: ['PSAPAC-1'],
+        creator: ['me'],
+        relations: ['blocked'],
+        dates: { due: 'overdue', created: 'last-7-days' },
+        not: { status: ['Hold'], label: ['etl'] },
+      },
+    }
+    expect(await createHandlers(backend)['views:create'](wide, noProgress)).toMatchObject({
+      ok: true,
+    })
+    expect(calls).toEqual([{ method: 'createView', args: [wide] }])
+  })
+
   it.each([
+    ['an unknown date window', { ...NEW_VIEW, filters: { dates: { due: 'soon' } } }],
+    ['overdue on Created', { ...NEW_VIEW, filters: { dates: { created: 'overdue' } } }],
+    ['an unknown date field', { ...NEW_VIEW, filters: { dates: { closed: 'today' } } }],
+    ['an unknown excluded field', { ...NEW_VIEW, filters: { not: { text: ['x'] } } }],
+    ['an excluded value that is not a list', { ...NEW_VIEW, filters: { not: { status: 'Hold' } } }],
     ['an unknown filter field', { ...NEW_VIEW, filters: { owner: ['me'] } }],
     ['a filter value that is not a list', { ...NEW_VIEW, filters: { type: 'Bug' } }],
     ['a non-string filter value', { ...NEW_VIEW, filters: { type: [1] } }],

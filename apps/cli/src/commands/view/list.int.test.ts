@@ -29,6 +29,7 @@ describe('jm view list', () => {
     expectShape(data, spec?.output.example)
     expect(data.map((v) => [v.id, v.name])).toEqual([
       ['my-issues', 'My issues'],
+      ['created-by-me', 'Created by me'],
       ['current-sprint', 'Current sprint'],
     ])
     expect(f.stderr).toBe('')
@@ -59,6 +60,29 @@ describe('jm view list', () => {
       /^bugs +Bugs +status=To Do,In Progress; type=Bug; text=login; mine; show done; empty customers$/,
     )
     expect(lines[2]).toMatch(/^plain +Plain *$/)
+  })
+
+  it('keeps the new filter keys when it lists the file, and describes them in the table', async () => {
+    const wide = {
+      id: 'wide',
+      name: 'Wide',
+      filters: {
+        customer: ['BHP'],
+        creator: ['me'],
+        dates: { due: 'overdue' as const },
+        not: { status: ['Hold'], label: ['etl'] },
+      },
+      toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
+    }
+    await writeViews([wide])
+    const json = fakeIo()
+    expect(await run(['view', 'list'], json.io)).toBe(0)
+    expect(JSON.parse(json.stdout)).toEqual({ data: [wide] })
+    const tty = fakeIo({ stdoutIsTTY: true, env: { NO_COLOR: '1' } })
+    expect(await run(['view', 'list'], tty.io)).toBe(0)
+    expect(tty.stdout.split('\n')[1]).toMatch(
+      /^wide +Wide +customer=BHP; creator=me; not\.status=Hold; not\.label=etl; due=overdue$/,
+    )
   })
 
   it('prints a note to stderr when every view is deleted', async () => {

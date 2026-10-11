@@ -278,6 +278,10 @@ interface Seed {
   customer: keyof typeof CUSTOMERS
   engagement?: keyof typeof ENGAGEMENTS
   assignee?: keyof typeof USERS
+  /** Who created the issue. Defaults to u1, the signed-in user. */
+  creator?: keyof typeof USERS
+  /** The due date, as Jira sends it. */
+  due?: string
   labels?: string[]
   sprint?: number
   /** The original estimate in seconds. The remaining estimate starts equal. */
@@ -340,6 +344,7 @@ const SEEDS: Seed[] = [
     parent: 10,
     customer: 'acme',
     assignee: 'u2',
+    creator: 'u2',
     labels: ['docs'],
   },
   {
@@ -393,6 +398,7 @@ const SEEDS: Seed[] = [
     status: 'done',
     parent: 20,
     customer: 'beta',
+    due: '2020-01-02',
   },
   {
     n: 30,
@@ -409,6 +415,8 @@ const SEEDS: Seed[] = [
     status: 'todo',
     parent: 30,
     customer: 'acme',
+    creator: 'u2',
+    due: '2999-12-31',
   },
   {
     n: 32,
@@ -418,8 +426,16 @@ const SEEDS: Seed[] = [
     parent: 30,
     customer: 'beta',
     assignee: 'u2',
+    creator: 'u2',
   },
-  { n: 40, summary: 'Tidy the wiki', type: 'story', status: 'todo', customer: 'beta' },
+  {
+    n: 40,
+    summary: 'Tidy the wiki',
+    type: 'story',
+    status: 'todo',
+    customer: 'beta',
+    due: '2020-01-02',
+  },
   { n: 50, summary: 'Internal tooling', type: 'epic', status: 'todo', customer: 'internal' },
   {
     n: 51,
@@ -438,6 +454,7 @@ interface RawFields {
   labels: string[]
   updated: string
   assignee: (typeof USERS)[keyof typeof USERS] | null
+  creator: (typeof USERS)[keyof typeof USERS]
   parent: { key: string } | null
   priority: (typeof PRIORITIES)[number]
   duedate: string | null
@@ -513,9 +530,10 @@ function issue(seed: Seed): RawIssue {
       created: '2026-10-01T00:00:00.000+1000',
       updated: '2026-10-02T00:00:00.000+1000',
       assignee: seed.assignee === undefined ? null : USERS[seed.assignee],
+      creator: USERS[seed.creator ?? 'u1'],
       parent: seed.parent === undefined ? null : { key: `PSAPAC-${String(seed.parent)}` },
       priority: MEDIUM,
-      duedate: null,
+      duedate: seed.due ?? null,
       timetracking:
         seed.estimate === undefined
           ? {}
@@ -778,10 +796,36 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       )
 
   /** An issue as a read of one returns it: with the description and the subtasks. */
+  /** The links of an issue as a search carries them, seen from that issue. */
+  const issuelinksOf = (key: string) =>
+    links
+      .filter((l) => l.blocker === key || l.blocked === key)
+      .map((l) => {
+        const other = issues.find((i) => i.key === (l.blocker === key ? l.blocked : l.blocker))
+        const end = {
+          key: other?.key ?? '',
+          fields: {
+            summary: other?.fields.summary ?? '',
+            status: other?.fields.status ?? { name: '' },
+          },
+        }
+        return {
+          id: String(l.id),
+          type: LINK_TYPES.find((t) => t.id === l.typeId),
+          ...(l.blocker === key ? { outwardIssue: end } : { inwardIssue: end }),
+        }
+      })
+
+  const withLinks = (target: RawIssue) => ({
+    ...target,
+    fields: { ...target.fields, issuelinks: issuelinksOf(target.key) },
+  })
+
   const detail = (target: RawIssue) => ({
     ...target,
     fields: {
       ...target.fields,
+      issuelinks: issuelinksOf(target.key),
       subtasks: issues
         .filter((i) => i.fields.parent?.key === target.key && i.fields.issuetype.subtask)
         .map((i) => ({
@@ -940,7 +984,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
             return words.every((w) => haystack.includes(w))
           })
           .sort((a, b) => Date.parse(b.fields.updated) - Date.parse(a.fields.updated))
-        return json({ issues: found.slice(0, search.maxResults), isLast: true })
+        return json({ issues: found.slice(0, search.maxResults).map(withLinks), isLast: true })
       }
       // "!= Done" holds "= Done" as a substring, so test it first.
       const phase = search.jql.includes('statusCategory != Done') ? 'unresolved' : 'done'
@@ -961,7 +1005,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const end = start + search.maxResults
       if (phase === 'unresolved' && end >= matching.length) unresolvedComplete = true
       return json({
-        issues: matching.slice(start, end),
+        issues: matching.slice(start, end).map(withLinks),
         isLast: end >= matching.length,
         nextPageToken: String(end),
       })

@@ -49,6 +49,25 @@ describe('activeView', () => {
     expect(activeView([mine], { label: [] }, { ...TOGGLES, assigneeMe: true })).toBe(mine)
   })
 
+  it('tells a view apart by its excluded values and its dates', () => {
+    const wide = view('wide', {
+      status: ['Done'],
+      not: { status: ['Hold', 'Review'] },
+      dates: { due: 'overdue' },
+    })
+    const same: SavedView['filters'] = {
+      status: ['Done'],
+      not: { status: ['Review', 'Hold'] },
+      dates: { due: 'overdue' },
+    }
+    expect(activeView([wide], same, TOGGLES)).toBe(wide)
+    expect(activeView([wide], { ...same, not: { status: ['Hold'] } }, TOGGLES)).toBeUndefined()
+    expect(activeView([wide], { ...same, dates: { due: 'today' } }, TOGGLES)).toBeUndefined()
+    // "is Hold" and "is not Hold" are different views.
+    const hold = view('hold', { status: ['Hold'] })
+    expect(activeView([hold], { not: { status: ['Hold'] } }, TOGGLES)).toBeUndefined()
+  })
+
   it('finds none before the toggles load, and takes the first of two equal views', () => {
     expect(activeView([sprint], { sprint: ['current'] }, undefined)).toBeUndefined()
     const twin = view('twin', { sprint: ['current'] })
