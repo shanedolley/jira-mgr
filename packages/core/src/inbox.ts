@@ -4,6 +4,7 @@ import { JiraMgrError, type ErrorCode } from './errors.js'
 import type { HttpClient } from './http.js'
 import { jiraTime, type Issue } from './issue.js'
 import { getCurrentUser } from './lookups.js'
+import { inPool } from './pool.js'
 import { searchJqlPages } from './search.js'
 import { stateFile } from './state.js'
 import { issueKey, parseInput, parseResponse, projectKeyOrSettings } from './validate.js'
@@ -289,23 +290,6 @@ async function changeSince(facts: Facts, mark: number, me: string): Promise<Inbo
     summary: `Comment by ${writer?.displayName ?? 'Jira'}`,
     at: comment.updated,
   }
-}
-
-async function inPool<T, R>(
-  items: readonly T[],
-  size: number,
-  run: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results = new Array<R>(items.length)
-  let next = 0
-  const worker = async () => {
-    while (next < items.length) {
-      const at = next++
-      results[at] = await run(items[at] as T)
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(size, items.length) }, worker))
-  return results
 }
 
 export interface ListInboxOptions {
