@@ -49,10 +49,13 @@ import {
   assertInProject,
   createView,
   deleteView,
+  duplicateView,
+  moveView,
   readSettings,
   readTimer,
   readViews,
   renameView,
+  updateView,
   writeSettings,
   type SavedView,
 } from '@jira-mgr/core/state'
@@ -90,6 +93,7 @@ import type {
   DeleteViewArgs,
   DownloadAttachmentArgs,
   DownloadResult,
+  DuplicateViewArgs,
   EditCommentArgs,
   EditIssueArgs,
   AvatarArgs,
@@ -108,6 +112,7 @@ import type {
   LoginArgs,
   MarkInboxAllReadArgs,
   MarkInboxReadArgs,
+  MoveViewArgs,
   RemoveLinkArgs,
   RenameViewArgs,
   SearchTextArgs,
@@ -125,6 +130,7 @@ import type {
   TimerOutcome,
   TimerSnapshot,
   Toggles,
+  UpdateViewArgs,
   UserOption,
   WorklogIdArgs,
   WorklogItem,
@@ -232,6 +238,10 @@ export interface Backend {
   markInboxRead(args: MarkInboxReadArgs): Promise<void>
   /** Marks everything up to `through` read, in call order with every other Inbox write. */
   markInboxAllRead(args: MarkInboxAllReadArgs): Promise<void>
+  updateView(args: UpdateViewArgs): Promise<SavedView>
+  duplicateView(args: DuplicateViewArgs): Promise<SavedView>
+  /** Moves a view to a place in the saved order and answers with the whole list. */
+  moveView(args: MoveViewArgs): Promise<SavedView[]>
   /** The shared timer file and the timer settings, as `jm timer status` reads them. */
   getTimer(): Promise<TimerSnapshot>
   /** Starts a timer on a timeable issue, or resumes the one already running on it. Another running timer is refused. */
@@ -746,6 +756,10 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       inboxWrites++
       return inInboxOrder(() => markAllRead(through, new Date(deps.now?.() ?? Date.now())))
     },
+    updateView: ({ id, filters, toggles }) =>
+      inViewOrder(() => updateView(id, { filters, toggles })),
+    duplicateView: ({ id }) => inViewOrder(() => duplicateView(id)),
+    moveView: ({ id, toIndex }) => inViewOrder(() => moveView(id, toIndex)),
     getTimer: timerSnapshot,
     async startTimer({ key }) {
       await startCoreTimer(await timeableIssue(key), timerOptions)

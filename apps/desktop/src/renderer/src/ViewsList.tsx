@@ -3,14 +3,24 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 import type { SavedView, Toggles } from '../../shared/ipc'
 import { Details, Failure } from './Failure'
-import { Icon, PENCIL, PLUS, TRASH } from './Icon'
-import { useCreateView, useDeleteView, useRenameView, useViews } from './viewQueries'
-import { activeView } from './views'
+import { CHECK, COPY, Icon, PENCIL, PLUS, TRASH } from './Icon'
+import {
+  useCreateView,
+  useDeleteView,
+  useDuplicateView,
+  useMoveView,
+  useRenameView,
+  useUpdateView,
+  useViews,
+} from './viewQueries'
+import { activeView, viewMatches } from './views'
 
 interface ViewsListProps {
   /** The filter bar and toggles as they are now: what "New view" saves, and what marks a view active. */
   filters: ViewFilters
   toggles: Toggles | undefined
+  /** The view applied last: of twin views, the one that is lit. */
+  applied: string | undefined
   onApply: (view: SavedView) => void
   /** False while a sprint page holds the sidebar's one highlight. */
   showCurrent?: boolean
@@ -114,17 +124,47 @@ function ConfirmDelete({
 }
 
 /**
- * The saved views in the sidebar: apply, create from the current filters, rename and delete.
- * The list is `views.json`, the file `jm view list` reads. Arrow keys move between views.
+ * The drag payload's type. A custom one, so a row dropped on a text field inserts nothing and a
+ * drag of text or a file from outside is never taken for a view.
  */
-export function ViewsList({ filters, toggles, onApply, showCurrent = true }: ViewsListProps) {
+const VIEW_DRAG = 'application/x-jm-view'
+
+/** A line on the edge of the row a drop would land beside: below when the view moves down, above when it moves up. */
+function dropEdge(
+  views: SavedView[] | undefined,
+  drag: { id: string; over: number | null } | null,
+  index: number,
+) {
+  if (drag?.over !== index) return ''
+  const from = views?.findIndex((v) => v.id === drag.id) ?? -1
+  if (from === index) return ''
+  return from < index
+    ? 'shadow-[inset_0_-2px_0_var(--accent)]'
+    : 'shadow-[inset_0_2px_0_var(--accent)]'
+}
+
+/**
+ * The saved views in the sidebar: apply, create from the current filters, update with them,
+ * duplicate, rename, delete and reorder. The list is `views.json`, the file `jm view list` reads.
+ * Arrow keys move between views, and Alt with an arrow moves the focused view. A drag does the same.
+ */
+export function ViewsList({
+  filters,
+  toggles,
+  applied,
+  onApply,
+  showCurrent = true,
+}: ViewsListProps) {
   const viewsQuery = useViews()
   const create = useCreateView()
   const rename = useRenameView()
   const remove = useDeleteView()
+  const update = useUpdateView()
+  const duplicate = useDuplicateView()
+  const move = useMoveView()
   const views = viewsQuery.data
   const active =
-    views === undefined || !showCurrent ? undefined : activeView(views, filters, toggles)
+    views === undefined || !showCurrent ? undefined : activeView(views, filters, toggles, applied)
 
   const [creating, setCreating] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -133,8 +173,12 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
   const [draft, setDraft] = useState({ name: '', attempt: 0 })
   /** The view whose apply button takes focus once the row is back, or `new` for the New view button. */
   const [refocus, setRefocus] = useState<string | null>(null)
+  /** The view being dragged, and the row it hovers over (the drop position). */
+  const [drag, setDrag] = useState<{ id: string; over: number | null } | null>(null)
   const list = useRef<HTMLUListElement>(null)
   const newButton = useRef<HTMLButtonElement>(null)
+  /** The view a key press moved: reordering rows can drop focus, so it goes back once the list changes. */
+  const keepFocus = useRef<string | null>(null)
 
   useEffect(() => {
     if (refocus === null) return
@@ -150,6 +194,16 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
     setRefocus(null)
   }, [refocus, views])
 
+  useEffect(() => {
+    const id = keepFocus.current
+    if (id === null) return
+    keepFocus.current = null
+    const button = [
+      ...(list.current?.querySelectorAll<HTMLElement>('[data-view-apply]') ?? []),
+    ].find((b) => b.dataset.viewApply === id)
+    if (button !== undefined && document.activeElement !== button) button.focus()
+  }, [views])
+
   function onListKey(event: KeyboardEvent<HTMLUListElement>) {
     const target = event.target
     if (!(target instanceof HTMLElement) || target.dataset.viewApply === undefined) return
@@ -160,6 +214,15 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
     }
     const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
     if (step === 0) return
+    if (event.altKey) {
+      event.preventDefault()
+      const from = views?.findIndex((v) => v.id === target.dataset.viewApply) ?? -1
+      if (from >= 0 && views?.[from + step] !== undefined) {
+        keepFocus.current = target.dataset.viewApply
+        move.mutate({ id: target.dataset.viewApply, toIndex: from + step })
+      }
+      return
+    }
     const buttons = [...event.currentTarget.querySelectorAll<HTMLElement>('[data-view-apply]')]
     const next = buttons[buttons.indexOf(target) + step]
     if (next === undefined) return
@@ -167,9 +230,16 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
     next.focus()
   }
 
-  function startRename(id: string) {
+  function resetFailures() {
     rename.reset()
     remove.reset()
+    update.reset()
+    duplicate.reset()
+    move.reset()
+  }
+
+  function startRename(id: string) {
+    resetFailures()
     setCreating(false)
     setConfirmingId(null)
     setRenamingId(id)
@@ -177,8 +247,7 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
 
   function startCreate() {
     create.reset()
-    rename.reset()
-    remove.reset()
+    resetFailures()
     setDraft((d) => ({ name: '', attempt: d.attempt + 1 }))
     setRenamingId(null)
     setConfirmingId(null)
@@ -186,8 +255,7 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
   }
 
   function startDelete(id: string) {
-    rename.reset()
-    remove.reset()
+    resetFailures()
     setCreating(false)
     setRenamingId(null)
     setConfirmingId(id)
@@ -221,6 +289,39 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
     // A blank or unchanged name needs no write, and a blank one must never show as an empty row.
     if (name.trim() === '' || name.trim() === view.name) return
     rename.mutate({ id: view.id, name })
+  }
+
+  function updateFromBar(view: SavedView) {
+    if (toggles === undefined) return
+    resetFailures()
+    update.mutate(
+      { id: view.id, filters, toggles },
+      {
+        onSuccess() {
+          // The Update button disables once the bar equals the view, and focus must not fall to the page.
+          setRefocus(view.id)
+        },
+      },
+    )
+  }
+
+  function duplicateView(view: SavedView) {
+    resetFailures()
+    duplicate.mutate(
+      { id: view.id },
+      {
+        onSuccess(copy) {
+          setRefocus(copy.id)
+        },
+      },
+    )
+  }
+
+  function drop(id: string, toIndex: number) {
+    setDrag(null)
+    if (id === '' || views?.findIndex((v) => v.id === id) === toIndex) return
+    resetFailures()
+    move.mutate({ id, toIndex })
   }
 
   function confirmDelete(view: SavedView, index: number) {
@@ -272,7 +373,28 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
 
       <ul ref={list} aria-label="Saved views" onKeyDown={onListKey} className="space-y-0.5">
         {views?.map((view, index) => (
-          <li key={view.id} className="group/view">
+          <li
+            key={view.id}
+            className="group/view"
+            draggable={confirmingId !== view.id && renamingId !== view.id}
+            onDragStart={(event) => {
+              event.dataTransfer.effectAllowed = 'move'
+              event.dataTransfer.setData(VIEW_DRAG, view.id)
+              setDrag({ id: view.id, over: null })
+            }}
+            onDragOver={(event) => {
+              if (drag === null) return
+              event.preventDefault()
+              if (drag.over !== index) setDrag({ ...drag, over: index })
+            }}
+            onDrop={(event) => {
+              event.preventDefault()
+              drop(event.dataTransfer.getData(VIEW_DRAG), index)
+            }}
+            onDragEnd={() => {
+              setDrag(null)
+            }}
+          >
             {confirmingId === view.id ? (
               <ConfirmDelete
                 view={view}
@@ -299,7 +421,7 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
               </div>
             ) : (
               <div
-                className={`flex items-center rounded-md pr-1 ${active?.id === view.id ? 'is-current' : 'hover:bg-hover'}`}
+                className={`relative flex items-center rounded-md pr-1 ${active?.id === view.id ? 'is-current' : 'hover:bg-hover focus-within:bg-hover'} ${dropEdge(views, drag, index)}`}
               >
                 <button
                   type="button"
@@ -309,12 +431,40 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
                   onClick={() => {
                     onApply(view)
                   }}
+                  aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
                   className="h-7 min-w-0 flex-1 truncate rounded-md px-2 text-left"
                   title={view.name}
                 >
                   {view.name}
                 </button>
-                <span className="flex opacity-0 group-focus-within/view:opacity-100 group-hover/view:opacity-100">
+                <span className="absolute inset-y-0 right-1 flex items-center rounded-md bg-inherit opacity-0 group-focus-within/view:opacity-100 group-hover/view:opacity-100">
+                  <button
+                    type="button"
+                    aria-label={`Update view ${view.name}`}
+                    title="Replace this view's filters and toggles with the current ones"
+                    disabled={
+                      toggles === undefined ||
+                      update.isPending ||
+                      viewMatches(view, filters, toggles)
+                    }
+                    onClick={() => {
+                      updateFromBar(view)
+                    }}
+                    className="btn btn-sm btn-icon btn-ghost"
+                  >
+                    <Icon path={CHECK} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Duplicate view ${view.name}`}
+                    disabled={duplicate.isPending}
+                    onClick={() => {
+                      duplicateView(view)
+                    }}
+                    className="btn btn-sm btn-icon btn-ghost"
+                  >
+                    <Icon path={COPY} />
+                  </button>
                   <button
                     type="button"
                     aria-label={`Rename view ${view.name}`}
@@ -368,6 +518,27 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
         <Failure
           lead="Could not rename the view."
           error={rename.error}
+          className="px-2 pt-1 text-xs text-danger"
+        />
+      )}
+      {update.isError && (
+        <Failure
+          lead="Could not update the view."
+          error={update.error}
+          className="px-2 pt-1 text-xs text-danger"
+        />
+      )}
+      {duplicate.isError && (
+        <Failure
+          lead="Could not duplicate the view."
+          error={duplicate.error}
+          className="px-2 pt-1 text-xs text-danger"
+        />
+      )}
+      {move.isError && (
+        <Failure
+          lead="Could not reorder the views."
+          error={move.error}
           className="px-2 pt-1 text-xs text-danger"
         />
       )}

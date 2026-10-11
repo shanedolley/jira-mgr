@@ -85,6 +85,23 @@ export interface MarkInboxAllReadArgs {
 
 export type { InboxEntry }
 
+/** The view to overwrite, with the filters and toggles to put in it. */
+export interface UpdateViewArgs {
+  id: string
+  filters: ViewFilters
+  toggles: Toggles
+}
+
+export interface DuplicateViewArgs {
+  id: string
+}
+
+/** `toIndex` is the zero-based place the view takes in the saved order. */
+export interface MoveViewArgs {
+  id: string
+  toIndex: number
+}
+
 /** Every field `issues:edit` can change. Each is optional, and `null` clears the ones that can clear. */
 export interface IssueChanges {
   /** An account id, or `null` to unassign. */
@@ -453,6 +470,11 @@ export interface IpcContract {
   'inbox:markRead': { args: MarkInboxReadArgs; result: null }
   /** Marks every issue read up to `through`. */
   'inbox:markAllRead': { args: MarkInboxAllReadArgs; result: null }
+
+  'views:update': { args: UpdateViewArgs; result: SavedView }
+  'views:duplicate': { args: DuplicateViewArgs; result: SavedView }
+  /** The whole list in its new order. */
+  'views:move': { args: MoveViewArgs; result: SavedView[] }
   /** The shared timer file, which `jm timer` also writes. */
   'timer:get': { args: undefined; result: TimerSnapshot }
   /** Starts a timer on a Task, Bug, Story or Subtask. Another running timer is refused: switch instead. */
@@ -514,6 +536,9 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'inbox:list': true,
   'inbox:markRead': true,
   'inbox:markAllRead': true,
+  'views:update': true,
+  'views:duplicate': true,
+  'views:move': true,
   'timer:get': true,
   'timer:start': true,
   'timer:stop': true,

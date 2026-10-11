@@ -55,6 +55,7 @@ import { useStartTimer, useTimer } from './timerQueries'
 import { rowDomId } from './TreeRow'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
+import { ViewTabs } from './ViewTabs'
 import {
   createContext,
   deleteFailureNotes,
@@ -207,6 +208,16 @@ export function Shell({ session }: { session: Session }) {
   const done = useDoneIssues(unresolved.data !== undefined)
   const toggles = togglesQuery.data
   const savedViews = useViews().data
+  /** The view applied last, so a duplicate of the view the bar matches can be the lit one. */
+  const [appliedViewId, setAppliedViewId] = useState<string>()
+  // A deleted view's id can come back on a new view, so forget it as soon as it leaves the list.
+  if (
+    appliedViewId !== undefined &&
+    savedViews !== undefined &&
+    !savedViews.some((v) => v.id === appliedViewId)
+  ) {
+    setAppliedViewId(undefined)
+  }
 
   const [filters, setFilters] = useState<ViewFilters>({})
   const deferredFilters = useDeferredValue(filters)
@@ -418,6 +429,7 @@ export function Shell({ session }: { session: Session }) {
    * is inert, so applying a view closes the page, and focus then returns to the Tree.
    */
   function applyView(view: SavedView) {
+    setAppliedViewId(view.id)
     setFilters(view.filters)
     if (toggles !== undefined) setToggles.mutate(applyViewToggles(toggles, view))
     setInboxOpen(false)
@@ -918,7 +930,9 @@ export function Shell({ session }: { session: Session }) {
         session={session}
         count={unresolved.data?.length}
         issuesCurrent={
-          !inboxOpen && !sprintOpen && activeView(savedViews ?? [], filters, toggles) === undefined
+          !inboxOpen &&
+          !sprintOpen &&
+          activeView(savedViews ?? [], filters, toggles, appliedViewId) === undefined
         }
         unread={inboxQuery.data === undefined ? undefined : unreadCount(inboxQuery.data)}
         inboxOpen={inboxOpen}
@@ -939,8 +953,9 @@ export function Shell({ session }: { session: Session }) {
           <ViewsList
             filters={filters}
             toggles={toggles}
+            applied={appliedViewId}
             onApply={applyView}
-            showCurrent={!sprintOpen}
+            showCurrent={!inboxOpen && !sprintOpen}
           />
         }
         onOpenIssue={setPageKey}
@@ -992,6 +1007,7 @@ export function Shell({ session }: { session: Session }) {
             </button>
           </div>
         </header>
+        <ViewTabs filters={filters} toggles={toggles} applied={appliedViewId} onApply={applyView} />
         {toggles !== undefined && (
           <TreeToolbar
             toggles={toggles}

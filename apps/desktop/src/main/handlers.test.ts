@@ -91,6 +91,9 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     listInbox: record('listInbox', []),
     markInboxRead: record('markInboxRead', undefined),
     markInboxAllRead: record('markInboxAllRead', undefined),
+    updateView: record('updateView', VIEW),
+    duplicateView: record('duplicateView', VIEW),
+    moveView: record('moveView', []),
     getTimer: record('getTimer', { timer: null, settings: TIMER_SETTINGS }),
     startTimer: record('startTimer', OUTCOME),
     stopTimer: record('stopTimer', OUTCOME),
@@ -607,6 +610,43 @@ describe('saved views', () => {
     ['views:rename', { id: 'bugs', name: 'X', extra: 1 }],
     ['views:delete', {}],
     ['views:delete', { id: 'bugs', name: 'X' }],
+  ] as const)('%s refuses %j', async (channel, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)[channel](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('views:update, views:duplicate and views:move pass their arguments to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    const update = { id: 'bugs', filters: { type: ['Bug'] }, toggles: TOGGLES }
+    expect(await handlers['views:update'](update, noProgress)).toEqual({ ok: true, data: VIEW })
+    expect(await handlers['views:duplicate']({ id: 'bugs' }, noProgress)).toEqual({
+      ok: true,
+      data: VIEW,
+    })
+    expect(await handlers['views:move']({ id: 'bugs', toIndex: 0 }, noProgress)).toEqual({
+      ok: true,
+      data: [],
+    })
+    expect(calls).toEqual([
+      { method: 'updateView', args: [update] },
+      { method: 'duplicateView', args: [{ id: 'bugs' }] },
+      { method: 'moveView', args: [{ id: 'bugs', toIndex: 0 }] },
+    ])
+  })
+
+  it.each([
+    ['views:update', { id: 'bugs', filters: {} }],
+    ['views:update', { id: 'bugs', filters: {}, toggles: TOGGLES, name: 'X' }],
+    ['views:update', { filters: {}, toggles: TOGGLES }],
+    ['views:duplicate', { id: '' }],
+    ['views:duplicate', { id: 'bugs', name: 'X' }],
+    ['views:move', { id: 'bugs' }],
+    ['views:move', { id: 'bugs', toIndex: -1 }],
+    ['views:move', { id: 'bugs', toIndex: 1.5 }],
+    ['views:move', { id: 'bugs', toIndex: '1' }],
   ] as const)('%s refuses %j', async (channel, raw) => {
     const { backend, calls } = fakeBackend()
     const result = await createHandlers(backend)[channel](raw, noProgress)

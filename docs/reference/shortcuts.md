@@ -57,6 +57,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Summary and property fields | `Esc` | Cancel the edit |
 | Saved views list | `Up`, `Down` | Move between views |
 | Saved views list | `F2` | Rename the focused view |
+| Saved views list | `Alt+Up`, `Alt+Down` | Move the focused view up or down one place |
 | View name field | `Enter`, `Esc` | Save or cancel the rename |
 | Inbox list | `Up`, `Down` | Move between entries |
 | Inbox list | `Enter` | Open the entry's page and mark it read; `Esc` on the page returns to the list |

@@ -9,13 +9,16 @@ import {
   assertInProject,
   createView,
   deleteView,
+  duplicateView,
   findView,
+  moveView,
   readFields,
   readSettings,
   readTimer,
   readViews,
   renameView,
   stateDir,
+  updateView,
   writeFields,
   writeSettings,
   writeTimer,
@@ -70,7 +73,13 @@ describe('absent files', () => {
 
   it('yields the starter views', async () => {
     const views = await readViews()
-    expect(views.map((v) => v.name)).toEqual(['My issues', 'Created by me', 'Current sprint'])
+    expect(views.map((v) => v.name)).toEqual([
+      'My issues',
+      'Created by me',
+      'Current sprint',
+      'Active',
+      'Backlog',
+    ])
   })
 
   it('yields null for the timer and the resolved fields', async () => {
@@ -267,13 +276,19 @@ describe('view management', () => {
   it('starts from the starter views and finds them by id or name', async () => {
     expect((await findView('my-issues')).name).toBe('My issues')
     expect((await findView('CURRENT SPRINT')).id).toBe('current-sprint')
-    expect(await names()).toEqual(['My issues', 'Created by me', 'Current sprint'])
+    expect(await names()).toEqual([
+      'My issues',
+      'Created by me',
+      'Current sprint',
+      'Active',
+      'Backlog',
+    ])
   })
 
   it('creates a view that persists, with a slug id and a trimmed name', async () => {
     const created = await createView('  Bugs this week ', bugs)
     expect(created).toEqual({ id: 'bugs-this-week', name: 'Bugs this week', ...bugs })
-    expect(await readViews()).toEqual([...(await readViews()).slice(0, 3), created])
+    expect(await readViews()).toEqual([...(await readViews()).slice(0, 5), created])
     expect(await findView('bugs-this-week')).toEqual(created)
     expect(await findView('bugs THIS week')).toEqual(created)
   })
@@ -295,7 +310,13 @@ describe('view management', () => {
       expect(error.code).toBe('validation_failed')
       expect(error.message).toContain(message)
     }
-    expect(await names()).toEqual(['My issues', 'Created by me', 'Current sprint'])
+    expect(await names()).toEqual([
+      'My issues',
+      'Created by me',
+      'Current sprint',
+      'Active',
+      'Backlog',
+    ])
   })
 
   it('renames by id or name, keeps the id and filters, and refuses bad names', async () => {
@@ -304,20 +325,33 @@ describe('view management', () => {
     expect(renamed.name).toBe('Mine')
     expect(renamed.toggles.assigneeMe).toBe(true)
     await renameView('current sprint', 'Now')
-    expect(await names()).toEqual(['Mine', 'Created by me', 'Now'])
+    expect(await names()).toEqual(['Mine', 'Created by me', 'Now', 'Active', 'Backlog'])
     expect((await validationError(renameView('now', 'MINE'))).code).toBe('validation_failed')
     expect((await validationError(renameView('now', ' '))).message).toContain('cannot be empty')
-    expect(await names()).toEqual(['Mine', 'Created by me', 'Now'])
+    expect(await names()).toEqual(['Mine', 'Created by me', 'Now', 'Active', 'Backlog'])
   })
 
   it('allows a rename that only changes case', async () => {
     await renameView('my-issues', 'MY ISSUES')
-    expect(await names()).toEqual(['MY ISSUES', 'Created by me', 'Current sprint'])
+    expect(await names()).toEqual([
+      'MY ISSUES',
+      'Created by me',
+      'Current sprint',
+      'Active',
+      'Backlog',
+    ])
   })
 
   it('refuses an unknown view with not_found', async () => {
     // Thunks, so each promise starts only when awaited and none rejects unobserved.
-    const calls = [() => findView('nope'), () => renameView('nope', 'X'), () => deleteView('nope')]
+    const calls = [
+      () => findView('nope'),
+      () => renameView('nope', 'X'),
+      () => deleteView('nope'),
+      () => updateView('nope', bugs),
+      () => duplicateView('nope'),
+      () => moveView('nope', 0),
+    ]
     for (const call of calls) {
       expect((await validationError(call())).code).toBe('not_found')
     }
@@ -325,19 +359,102 @@ describe('view management', () => {
 
   it('deletes a view by id or name, down to none, and stays empty', async () => {
     await deleteView('my-issues')
-    expect(await names()).toEqual(['Created by me', 'Current sprint'])
-    await deleteView('Current Sprint')
-    await deleteView('created-by-me')
+    expect(await names()).toEqual(['Created by me', 'Current sprint', 'Active', 'Backlog'])
+    for (const id of ['current-sprint', 'created-by-me', 'active', 'backlog']) await deleteView(id)
     expect(await readViews()).toEqual([])
     await expect(createView('Fresh', bugs)).resolves.toMatchObject({ id: 'fresh' })
     expect(await names()).toEqual(['Fresh'])
   })
 
+  it('seeds Active and Backlog as starters, filtered by status', async () => {
+    expect((await findView('active')).filters).toEqual({ status: ['In Progress', 'Review'] })
+    expect((await findView('backlog')).filters).toEqual({
+      status: ['Opportunity', 'To Do', 'Hold'],
+    })
+  })
+
+  it('does not add new starters to a views.json that already exists', async () => {
+    await writeFile(join(dir, 'views.json'), JSON.stringify([]))
+    await createView('Mine', bugs)
+    expect(await names()).toEqual(['Mine'])
+  })
+
+  it('updates the filters and toggles in place, keeping the id, name and position', async () => {
+    const next = { filters: { text: 'x' }, toggles: { ...toggles, hideDone: false } }
+    const updated = await updateView('Current Sprint', next)
+    expect(updated).toEqual({ id: 'current-sprint', name: 'Current sprint', ...next })
+    expect(await readViews()).toEqual([
+      ...(await readViews()).slice(0, 2),
+      updated,
+      ...(await readViews()).slice(3),
+    ])
+    expect((await readViews()).findIndex((v) => v.id === 'current-sprint')).toBe(2)
+  })
+
+  it('refuses an update that fails the schema and leaves the file unchanged', async () => {
+    await createView('Keep', bugs)
+    const bad = { filters: { type: [1] as unknown as string[] }, toggles }
+    expect((await validationError(updateView('keep', bad))).code).toBe('validation_failed')
+    expect((await findView('keep')).filters).toEqual(bugs.filters)
+  })
+
+  it('duplicates a view to just after it, numbering a taken name and id', async () => {
+    const first = await duplicateView('my-issues')
+    expect(first).toMatchObject({ id: 'my-issues-copy', name: 'My issues copy' })
+    expect(first.filters).toEqual((await findView('my-issues')).filters)
+    expect(first.toggles).toEqual((await findView('my-issues')).toggles)
+    const second = await duplicateView('MY ISSUES')
+    expect(second).toMatchObject({ id: 'my-issues-copy-2', name: 'My issues copy 2' })
+    expect(await names()).toEqual([
+      'My issues',
+      'My issues copy 2',
+      'My issues copy',
+      'Created by me',
+      'Current sprint',
+      'Active',
+      'Backlog',
+    ])
+  })
+
+  it('moves a view to a position, by id or name, and the order persists', async () => {
+    expect((await moveView('backlog', 0)).map((v) => v.id)).toEqual([
+      'backlog',
+      'my-issues',
+      'created-by-me',
+      'current-sprint',
+      'active',
+    ])
+    await moveView('My Issues', 4)
+    expect((await readViews()).map((v) => v.id)).toEqual([
+      'backlog',
+      'created-by-me',
+      'current-sprint',
+      'active',
+      'my-issues',
+    ])
+    await moveView('active', 3)
+    expect((await readViews())[3]?.id).toBe('active')
+  })
+
+  it('refuses a position outside the list and leaves the order alone', async () => {
+    for (const to of [-1, 5, 1.5, Number.NaN]) {
+      expect((await validationError(moveView('active', to))).code).toBe('validation_failed')
+    }
+    expect(await names()).toEqual([
+      'My issues',
+      'Created by me',
+      'Current sprint',
+      'Active',
+      'Backlog',
+    ])
+  })
+
   it('treats the starters as ordinary views once views.json exists', async () => {
     await createView('Extra', bugs)
     await deleteView('my-issues')
-    await deleteView('created-by-me')
-    await deleteView('current-sprint')
+    for (const id of ['created-by-me', 'current-sprint', 'active', 'backlog']) {
+      await deleteView(id)
+    }
     expect(await names()).toEqual(['Extra'])
   })
 })

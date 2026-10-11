@@ -7,8 +7,17 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 
-import type { CreateViewArgs, DeleteViewArgs, RenameViewArgs, SavedView } from '../../shared/ipc'
+import type {
+  CreateViewArgs,
+  DeleteViewArgs,
+  DuplicateViewArgs,
+  MoveViewArgs,
+  RenameViewArgs,
+  SavedView,
+  UpdateViewArgs,
+} from '../../shared/ipc'
 import { call } from './ipc'
+import { movedView } from './views'
 
 export const viewsKey = ['views'] as const
 
@@ -112,6 +121,50 @@ export function deleteViewMutation(
   }
 }
 
+/** Replaces the view's filters and toggles once main has written them. Not optimistic: a refusal changes nothing. */
+export function updateViewMutation(
+  client: QueryClient,
+  send: (args: UpdateViewArgs) => Promise<SavedView>,
+): MutationOptions<SavedView, JiraMgrError, UpdateViewArgs> {
+  return {
+    mutationFn: send,
+    onSuccess(updated) {
+      client.setQueryData<SavedView[]>(viewsKey, (views) =>
+        views?.map((v) => (v.id === updated.id ? updated : v)),
+      )
+    },
+    onSettled: settle(client),
+  }
+}
+
+/** The copy waits for main, which makes its name and id, then the list is read again to place it. */
+export function duplicateViewMutation(
+  client: QueryClient,
+  send: (args: DuplicateViewArgs) => Promise<SavedView>,
+): MutationOptions<SavedView, JiraMgrError, DuplicateViewArgs> {
+  return { mutationFn: send, onSettled: settle(client) }
+}
+
+/** Shows the new order at once, then writes it. A refusal puts the old order back. */
+export function moveViewMutation(
+  client: QueryClient,
+  send: (args: MoveViewArgs) => Promise<SavedView[]>,
+): MutationOptions<SavedView[], JiraMgrError, MoveViewArgs, SavedView[] | undefined> {
+  return {
+    mutationFn: send,
+    async onMutate({ id, toIndex }) {
+      const before = await cachedViews(client)
+      if (before === undefined) return undefined
+      client.setQueryData<SavedView[]>(viewsKey, movedView(before, id, toIndex))
+      return before
+    },
+    onError(_error, _args, before) {
+      if (before !== undefined) client.setQueryData<SavedView[]>(viewsKey, before)
+    },
+    onSettled: settle(client),
+  }
+}
+
 export function useCreateView() {
   const client = useQueryClient()
   return useMutation(createViewMutation(client, (args) => call('views:create', args)))
@@ -125,4 +178,19 @@ export function useRenameView() {
 export function useDeleteView() {
   const client = useQueryClient()
   return useMutation(deleteViewMutation(client, (args) => call('views:delete', args)))
+}
+
+export function useUpdateView() {
+  const client = useQueryClient()
+  return useMutation(updateViewMutation(client, (args) => call('views:update', args)))
+}
+
+export function useDuplicateView() {
+  const client = useQueryClient()
+  return useMutation(duplicateViewMutation(client, (args) => call('views:duplicate', args)))
+}
+
+export function useMoveView() {
+  const client = useQueryClient()
+  return useMutation(moveViewMutation(client, (args) => call('views:move', args)))
 }

@@ -21,6 +21,7 @@ import type {
   DeleteIssueArgs,
   DeleteViewArgs,
   DownloadAttachmentArgs,
+  DuplicateViewArgs,
   EditCommentArgs,
   EditIssueArgs,
   EditWorklogArgs,
@@ -34,6 +35,7 @@ import type {
   LoginArgs,
   MarkInboxAllReadArgs,
   MarkInboxReadArgs,
+  MoveViewArgs,
   RemoveLinkArgs,
   RenameViewArgs,
   ResultOf,
@@ -46,6 +48,7 @@ import type {
   StopTimerArgs,
   SwitchTimerArgs,
   Toggles,
+  UpdateViewArgs,
   WorklogIdArgs,
 } from '../shared/ipc'
 import type { Backend, ProgressSender } from './backend'
@@ -338,6 +341,19 @@ const renameViewArgs: z.ZodType<RenameViewArgs> = z.strictObject({ id: viewId, n
 
 const deleteViewArgs: z.ZodType<DeleteViewArgs> = z.strictObject({ id: viewId })
 
+const updateViewArgs: z.ZodType<UpdateViewArgs> = z.strictObject({
+  id: viewId,
+  filters: viewFilters,
+  toggles: togglesArgs,
+})
+
+const duplicateViewArgs: z.ZodType<DuplicateViewArgs> = z.strictObject({ id: viewId })
+
+const moveViewArgs: z.ZodType<MoveViewArgs> = z.strictObject({
+  id: viewId,
+  toIndex: z.number().int().nonnegative(),
+})
+
 const startTimerArgs: z.ZodType<StartTimerArgs> = z.strictObject({ key: issueKey })
 
 const stopTimerArgs: z.ZodType<StopTimerArgs> = z.strictObject({
@@ -404,6 +420,9 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'inbox:list': z.undefined(),
   'inbox:markRead': markInboxReadArgs,
   'inbox:markAllRead': markInboxAllReadArgs,
+  'views:update': updateViewArgs,
+  'views:duplicate': duplicateViewArgs,
+  'views:move': moveViewArgs,
   'timer:get': z.undefined(),
   'timer:start': startTimerArgs,
   'timer:stop': stopTimerArgs,
@@ -577,6 +596,9 @@ export function createHandlers(
       await backend.markInboxAllRead(args)
       return null
     }),
+    'views:update': handle('views:update', (args) => backend.updateView(args)),
+    'views:duplicate': handle('views:duplicate', (args) => backend.duplicateView(args)),
+    'views:move': handle('views:move', (args) => backend.moveView(args)),
     'timer:get': handle('timer:get', () => backend.getTimer()),
     'timer:start': handle('timer:start', (args) => backend.startTimer(args)),
     'timer:stop': handle('timer:stop', (args) => backend.stopTimer(args)),
