@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, notices, releaseEdit } from './harness.js'
+import { counts, inboxChange, launch, logIn, notices, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -175,6 +175,16 @@ const danger = () =>
   })
 
 test.describe('button system', () => {
+  test('the Inbox page and its Mark all read are 24 or 28px with a 6px radius', async () => {
+    await inboxChange(app, 'PSAPAC-2', 'other', [
+      { field: 'status', fromString: 'To Do', toString: 'In Progress' },
+    ])
+    await open()
+    await window.getByRole('link', { name: /^Inbox/ }).click()
+    await expect(window.getByRole('button', { name: 'Mark all read' })).toBeEnabled()
+    await expectSystem('inbox', 1)
+  })
+
   test('the login button is 28px high with a 6px radius', async () => {
     await expect(window.getByRole('button', { name: 'Log in' })).toBeVisible()
     await expectSystem('login', 1)

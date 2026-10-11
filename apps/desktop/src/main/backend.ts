@@ -26,6 +26,14 @@ import {
   type Attachment,
 } from '@jira-mgr/core/extras'
 import { createHttpClient, type HttpClient } from '@jira-mgr/core/http'
+import {
+  createInboxCache,
+  listInbox,
+  markAllRead,
+  markRead,
+  readInbox,
+  type InboxEntry,
+} from '@jira-mgr/core/inbox'
 import { assertTypeChangeAllowed, type IssueDetail } from '@jira-mgr/core/issue'
 import { getFieldOptions, getProfile, searchAssignableUsers } from '@jira-mgr/core/lookups'
 import { getIssue, searchIssuePages, searchText } from '@jira-mgr/core/search'
@@ -91,6 +99,8 @@ import type {
   KeyArgs,
   LinksResult,
   LoginArgs,
+  MarkInboxAllReadArgs,
+  MarkInboxReadArgs,
   RemoveLinkArgs,
   RenameViewArgs,
   SearchTextArgs,
@@ -203,6 +213,16 @@ export interface Backend {
   createView(args: CreateViewArgs): Promise<SavedView>
   renameView(args: RenameViewArgs): Promise<SavedView>
   deleteView(args: DeleteViewArgs): Promise<void>
+  /**
+   * The Inbox: the issues the user is assigned to, reported or watches that changed in 14 days,
+   * each read or unread by `inbox.json`. A call made while another runs shares its answer. A
+   * logout aborts the load, which answers with no entries.
+   */
+  listInbox(): Promise<InboxEntry[]>
+  /** Marks one issue read, in call order with every other Inbox write. */
+  markInboxRead(args: MarkInboxReadArgs): Promise<void>
+  /** Marks everything up to `through` read, in call order with every other Inbox write. */
+  markInboxAllRead(args: MarkInboxAllReadArgs): Promise<void>
   /** The shared timer file and the timer settings, as `jm timer status` reads them. */
   getTimer(): Promise<TimerSnapshot>
   /** Starts a timer on a timeable issue, or resumes the one already running on it. Another running timer is refused. */
@@ -320,6 +340,56 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     return call
   }
 
+  /**
+   * Inbox reads and writes in call order. Core reads, changes and rewrites `inbox.json`, so two
+   * overlapping marks would drop one. The CLI does not touch the file yet; a command that writes
+   * it must take a lock first.
+   */
+  let inboxCalls: Promise<unknown> = Promise.resolve()
+  function inInboxOrder<T>(run: () => Promise<T>): Promise<T> {
+    const call = inboxCalls.then(run)
+    inboxCalls = call.catch(() => undefined)
+    return call
+  }
+  /** What the Inbox read for the signed-in account, so a poll of an unchanged issue asks Jira nothing. */
+  let inboxCache = createInboxCache()
+  /** Inbox writes called so far. A load that began before the latest one holds a stale file. */
+  let inboxWrites = 0
+  /**
+   * The Inbox load running, which a second call shares instead of starting another, unless an
+   * Inbox write came after it read `inbox.json`: that load would answer with the old marks.
+   */
+  let inboxLoad:
+    { promise: Promise<InboxEntry[]>; controller: AbortController; writes: number } | undefined
+  function loadInbox(): Promise<InboxEntry[]> {
+    if (inboxLoad?.writes === inboxWrites) return inboxLoad.promise
+    const controller = new AbortController()
+    const promise = (async () => {
+      const inbox = await inInboxOrder(readInbox)
+      try {
+        return await listInbox(http, {
+          inbox,
+          cache: inboxCache,
+          signal: controller.signal,
+          now: new Date(deps.now?.() ?? Date.now()),
+        })
+      } catch (error) {
+        // A logout aborted it, and nobody reads the answer.
+        if (controller.signal.aborted) return []
+        throw error
+      }
+    })().finally(() => {
+      if (inboxLoad?.controller === controller) inboxLoad = undefined
+    })
+    inboxLoad = { promise, controller, writes: inboxWrites }
+    return promise
+  }
+  function dropInbox() {
+    inboxLoad?.controller.abort()
+    inboxLoad = undefined
+    inboxCache = createInboxCache()
+  }
+
   async function listIssues(
     { phase, loadId }: ListIssuesArgs,
     progress: ProgressSender,
@@ -369,6 +439,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     getSession,
     async login(args) {
       await login(args, { keychain })
+      dropInbox()
       avatars.clear()
       return getSession()
     },
@@ -379,6 +450,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       textSearch?.abort()
       media.clear()
       clearLateReads()
+      dropInbox()
       await logout({ keychain })
       avatars.clear()
       return getSession()
@@ -655,6 +727,15 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       inViewOrder(() => createView(name, { filters, toggles })),
     renameView: ({ id, name }) => inViewOrder(() => renameView(id, name)),
     deleteView: ({ id }) => inViewOrder(() => deleteView(id)),
+    listInbox: loadInbox,
+    markInboxRead({ key, updated }) {
+      inboxWrites++
+      return inInboxOrder(() => markRead(key, updated, new Date(deps.now?.() ?? Date.now())))
+    },
+    markInboxAllRead({ through }) {
+      inboxWrites++
+      return inInboxOrder(() => markAllRead(through, new Date(deps.now?.() ?? Date.now())))
+    },
     getTimer: timerSnapshot,
     async startTimer({ key }) {
       await startCoreTimer(await timeableIssue(key), timerOptions)

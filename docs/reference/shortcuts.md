@@ -56,6 +56,8 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Saved views list | `Up`, `Down` | Move between views |
 | Saved views list | `F2` | Rename the focused view |
 | View name field | `Enter`, `Esc` | Save or cancel the rename |
+| Inbox list | `Up`, `Down` | Move between entries |
+| Inbox list | `Enter` | Open the entry's page and mark it read; `Esc` on the page returns to the list |
 | Pickers | `Up`, `Down` | Move the highlight |
 | Pickers without a search field | `Home`, `End` | First or last option; in a searchable picker they move the caret |
 | Pickers | `Enter` | Choose the highlighted option |

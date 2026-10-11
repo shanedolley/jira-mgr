@@ -130,6 +130,8 @@ export interface FakeJiraCounts {
   textSearches: { query: string; aborted: boolean }[]
   /** Every timer reminder, as the e2e entry's stand-in for a native notification saw it. */
   notifications: { title: string; body: string }[]
+  /** The Inbox's search, and each changelog and newest-comment read it made, as path and query. */
+  inbox: { searches: number; reads: string[] }
 }
 
 export interface FakeJiraOptions {
@@ -245,6 +247,20 @@ interface Comment {
   body: unknown
   created: string
   updated: string
+}
+
+/** One field of a changelog history, as Jira's changelog endpoint sends it. */
+export interface InboxItem {
+  field: string
+  fromString: string | null
+  toString: string | null
+}
+
+interface History {
+  id: string
+  created: string
+  author: typeof ME
+  items: InboxItem[]
 }
 
 interface Worklog {
@@ -623,6 +639,15 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   holdReads: () => void
   /** Answers every held list read, and stops holding. */
   releaseReads: () => void
+  /**
+   * Adds the issue to the Inbox's search and records one changelog history on it, made by the
+   * signed-in user or by someone else, moving the issue's `updated` on.
+   */
+  inboxChange: (key: string, by: 'me' | 'other', items: InboxItem[]) => void
+  /** Adds the issue to the Inbox's search and a comment on it, moving the issue's `updated` on. */
+  inboxComment: (key: string, by: 'me' | 'other') => void
+  /** Adds the issue to the Inbox's search with no change. */
+  inboxWatch: (key: string) => void
   /** Makes the stand-in save dialog answer "cancelled" the next time it opens. */
   cancelNextDownload: () => void
   /** Reads and clears the cancel request. The e2e entry's save dialog calls it. */
@@ -667,6 +692,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     downloads: [],
     textSearches: [],
     notifications: [],
+    inbox: { searches: 0, reads: [] },
   }
   // Attachments by issue key. PSAPAC-1 starts with the image its description embeds.
   const attachments = new Map<string, Attachment[]>([
@@ -741,6 +767,12 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     { id: 9901, typeId: '2', blocker: 'PSAPAC-3', blocked: 'PSAPAC-1' },
   ]
   let commentIds = 0
+  // The Inbox: the issues its search returns, and the changelog of each.
+  const inboxKeys = new Set<string>()
+  // The Inbox forgets read marks older than 14 days by the real clock, so its changes are recent.
+  let inboxTick = 0
+  const recently = () => new Date(Date.now() - 3_600_000 + ++inboxTick * 1000).toISOString()
+  const histories = new Map<string, History[]>()
   let worklogIds = 0
   let linkIds = 0
   let cancelDownload = false
@@ -952,6 +984,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     }
     if (method === 'POST' && path === '/rest/api/3/search/jql') {
       const search = body() as { jql: string; maxResults: number; nextPageToken?: string }
+      if (search.jql.includes('currentUser()')) {
+        counts.inbox.searches++
+        const found = issues
+          .filter((i) => inboxKeys.has(i.key))
+          .sort((a, b) => Date.parse(b.fields.updated) - Date.parse(a.fields.updated))
+        return json({ issues: found.slice(0, search.maxResults), isLast: true })
+      }
       const textClause = TEXT_CLAUSE.exec(search.jql)
       if (textClause !== null) {
         const entry = { query: unescapeJql(textClause[1] ?? ''), aborted: false }
@@ -1236,6 +1275,20 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       return refusal('body', 'The fake refuses this write.')
     }
     const missing = (what: string) => json({ errorMessages: [`${what} does not exist.`] }, 404)
+    const changelog = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)\/changelog$/.exec(path)
+    if (method === 'GET' && changelog !== null) {
+      counts.inbox.reads.push(`${path}${url.search}`)
+      const all = histories.get(changelog[1] ?? '') ?? []
+      const startAt = Number(url.searchParams.get('startAt') ?? '0')
+      const maxResults = Number(url.searchParams.get('maxResults') ?? '100')
+      return json({
+        startAt,
+        maxResults,
+        total: all.length,
+        isLast: startAt + maxResults >= all.length,
+        values: all.slice(startAt, startAt + maxResults),
+      })
+    }
     const commentCollection = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)\/comment(?:\/(\d+))?$/.exec(
       path,
     )
@@ -1246,6 +1299,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const shownComment = (c: Comment) => ({ ...c, id: String(c.id) })
       const found = list.find((c) => String(c.id) === commentCollection[2])
       if (method === 'GET' && commentCollection[2] === undefined) {
+        // The Inbox asks for the newest comment alone, and is never held with the page's reads.
+        if (url.searchParams.get('orderBy') === '-created') {
+          counts.inbox.reads.push(`${path}${url.search}`)
+          const newest = [...list].sort((a, b) => Date.parse(b.created) - Date.parse(a.created))
+          const count = Number(url.searchParams.get('maxResults') ?? list.length)
+          return json({ total: list.length, comments: newest.slice(0, count).map(shownComment) })
+        }
         if (failNextComments !== null) {
           const status = failNextComments
           failNextComments = null
@@ -1577,6 +1637,40 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     releaseReads: () => {
       readsHeld = false
       for (const release of heldReads.splice(0)) release()
+    },
+    inboxChange: (key, by, items) => {
+      const target = find(key)
+      if (target === undefined) return
+      target.fields.updated = recently()
+      inboxKeys.add(key)
+      const list = histories.get(key) ?? []
+      list.push({
+        id: String(10000 + list.length),
+        created: target.fields.updated,
+        author: by === 'me' ? ME : OTHER,
+        items,
+      })
+      histories.set(key, list)
+    },
+    inboxComment: (key, by) => {
+      const target = find(key)
+      if (target === undefined) return
+      target.fields.updated = recently()
+      inboxKeys.add(key)
+      const when = target.fields.updated
+      comments.set(key, [
+        ...(comments.get(key) ?? []),
+        {
+          id: FIRST_COMMENT + 900 + commentIds++,
+          author: by === 'me' ? ME : OTHER,
+          body: doc('A comment for the Inbox'),
+          created: when,
+          updated: when,
+        },
+      ])
+    },
+    inboxWatch: (key) => {
+      if (find(key) !== undefined) inboxKeys.add(key)
     },
     cancelNextDownload: () => {
       cancelDownload = true

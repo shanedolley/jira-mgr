@@ -87,6 +87,9 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     createView: record('createView', VIEW),
     renameView: record('renameView', VIEW),
     deleteView: record('deleteView', undefined),
+    listInbox: record('listInbox', []),
+    markInboxRead: record('markInboxRead', undefined),
+    markInboxAllRead: record('markInboxAllRead', undefined),
     getTimer: record('getTimer', { timer: null, settings: TIMER_SETTINGS }),
     startTimer: record('startTimer', OUTCOME),
     stopTimer: record('stopTimer', OUTCOME),
@@ -603,6 +606,42 @@ describe('saved views', () => {
     const handlers = createHandlers(backend)
     expect(await handlers['views:list'](undefined, noProgress)).toEqual({ ok: true, data: [] })
     expect(await handlers['views:list']({ x: 1 }, noProgress)).toMatchObject({ ok: false })
+  })
+
+  it('inbox:list takes no argument', async () => {
+    const { backend } = fakeBackend()
+    const handlers = createHandlers(backend)
+    expect(await handlers['inbox:list'](undefined, noProgress)).toEqual({ ok: true, data: [] })
+    expect(await handlers['inbox:list']({ x: 1 }, noProgress)).toMatchObject({ ok: false })
+  })
+
+  it('inbox:markRead and inbox:markAllRead pass their times to the backend and answer null', async () => {
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    const read = { key: 'PSAPAC-3066', updated: '2026-10-10T23:02:41.517Z' }
+    expect(await handlers['inbox:markRead'](read, noProgress)).toEqual({ ok: true, data: null })
+    expect(
+      await handlers['inbox:markAllRead']({ through: '2026-10-10T22:30:00.000Z' }, noProgress),
+    ).toEqual({ ok: true, data: null })
+    expect(calls).toEqual([
+      { method: 'markInboxRead', args: [read] },
+      { method: 'markInboxAllRead', args: [{ through: '2026-10-10T22:30:00.000Z' }] },
+    ])
+  })
+
+  it.each([
+    ['inbox:markRead', { key: 'psapac-1', updated: '2026-10-10T23:02:41.517Z' }],
+    ['inbox:markRead', { key: 'PSAPAC-1', updated: 'yesterday' }],
+    ['inbox:markRead', { key: 'PSAPAC-1' }],
+    ['inbox:markRead', { key: 'PSAPAC-1', updated: '2026-10-10T23:02:41.517Z', extra: 1 }],
+    ['inbox:markAllRead', {}],
+    ['inbox:markAllRead', { through: 'soon' }],
+    ['inbox:markAllRead', { through: '2026-10-10T22:30:00.000Z', key: 'PSAPAC-1' }],
+  ] as const)('%s refuses %j', async (channel, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)[channel](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
   })
 
   it('maps a core refusal to the IPC error shape', async () => {

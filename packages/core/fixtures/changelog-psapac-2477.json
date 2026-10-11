@@ -1,0 +1,257 @@
+{
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/PSAPAC-2477/changelog?maxResults=100&startAt=0",
+  "maxResults": 100,
+  "startAt": 0,
+  "total": 8,
+  "isLast": true,
+  "values": [
+    {
+      "id": "10045917",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3A16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+        "accountId": "712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+        "emailAddress": "shane.dolley@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/48",
+          "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/24",
+          "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/16",
+          "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/32"
+        },
+        "displayName": "Shane Dolley",
+        "active": true,
+        "timeZone": "Australia/Brisbane",
+        "accountType": "atlassian"
+      },
+      "created": "2026-06-27T14:19:18.786+0000",
+      "items": [
+        {
+          "field": "IssueParentAssociation",
+          "fieldtype": "jira",
+          "from": null,
+          "fromString": null,
+          "to": "1383542",
+          "toString": "PSAPAC-2448"
+        }
+      ]
+    },
+    {
+      "id": "10045920",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+        "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+        },
+        "displayName": "Automation for Jira",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "app"
+      },
+      "created": "2026-06-27T14:19:21.977+0000",
+      "items": [
+        {
+          "field": "labels",
+          "fieldtype": "jira",
+          "fieldId": "labels",
+          "from": null,
+          "fromString": "",
+          "to": null,
+          "toString": "PSAPAC"
+        }
+      ],
+      "historyMetadata": {}
+    },
+    {
+      "id": "10045955",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3A16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+        "accountId": "712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+        "emailAddress": "shane.dolley@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/48",
+          "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/24",
+          "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/16",
+          "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/32"
+        },
+        "displayName": "Shane Dolley",
+        "active": true,
+        "timeZone": "Australia/Brisbane",
+        "accountType": "atlassian"
+      },
+      "created": "2026-06-27T14:20:22.906+0000",
+      "items": [
+        {
+          "field": "labels",
+          "fieldtype": "jira",
+          "fieldId": "labels",
+          "from": null,
+          "fromString": "PSAPAC",
+          "to": null,
+          "toString": "PSAPAC TLC-REA phase-1 s8 theme-governance"
+        }
+      ]
+    },
+    {
+      "id": "10046068",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3A16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+        "accountId": "712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+        "emailAddress": "shane.dolley@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/48",
+          "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/24",
+          "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/16",
+          "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/32"
+        },
+        "displayName": "Shane Dolley",
+        "active": true,
+        "timeZone": "Australia/Brisbane",
+        "accountType": "atlassian"
+      },
+      "created": "2026-06-27T16:03:18.072+0000",
+      "items": [
+        {
+          "field": "Sprint",
+          "fieldtype": "custom",
+          "fieldId": "customfield_10600",
+          "from": "",
+          "fromString": "",
+          "to": "10175",
+          "toString": "PS Sprint 41,42(14 Dec-08 Jan)"
+        }
+      ]
+    },
+    {
+      "id": "10867799",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3Ae741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "accountId": "712020:e741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "emailAddress": "sharon.warner@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png"
+        },
+        "displayName": "Sharon Warner",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "atlassian"
+      },
+      "created": "2026-09-30T01:01:03.922+0000",
+      "items": [
+        {
+          "field": "Sprint",
+          "fieldtype": "custom",
+          "fieldId": "customfield_10600",
+          "from": "10175",
+          "fromString": "PS Sprint 41,42(14 Dec-08 Jan)",
+          "to": "10169",
+          "toString": "PS Sprint 35 (21 Sep-04 Oct)"
+        },
+        {
+          "field": "Contacts",
+          "fieldtype": "custom",
+          "fieldId": "customfield_14851",
+          "from": null,
+          "fromString": null,
+          "to": null,
+          "toString": "David Inglewood"
+        }
+      ]
+    },
+    {
+      "id": "10867802",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3Ae741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "accountId": "712020:e741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "emailAddress": "sharon.warner@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png"
+        },
+        "displayName": "Sharon Warner",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "atlassian"
+      },
+      "created": "2026-09-30T01:01:04.301+0000",
+      "items": [
+        {
+          "field": "status",
+          "fieldtype": "jira",
+          "fieldId": "status",
+          "from": "11822",
+          "fromString": "To Do",
+          "to": "11823",
+          "toString": "In Progress"
+        }
+      ]
+    },
+    {
+      "id": "10929247",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3Ae741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "accountId": "712020:e741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "emailAddress": "sharon.warner@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png"
+        },
+        "displayName": "Sharon Warner",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "atlassian"
+      },
+      "created": "2026-10-05T22:53:44.335+0000",
+      "items": [
+        {
+          "field": "summary",
+          "fieldtype": "jira",
+          "fieldId": "summary",
+          "from": null,
+          "fromString": "Business terms and acronyms lifecycle process design",
+          "to": null,
+          "toString": "TLC | Business terms and acronyms lifecycle process design"
+        }
+      ]
+    },
+    {
+      "id": "10929324",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3Ae741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "accountId": "712020:e741f0cf-583b-48aa-8b81-6bc8e44cd370",
+        "emailAddress": "sharon.warner@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/a95af562c8e3c3e361d462da334851e2?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FSW-0.png"
+        },
+        "displayName": "Sharon Warner",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "atlassian"
+      },
+      "created": "2026-10-05T23:31:53.125+0000",
+      "items": [
+        {
+          "field": "Sprint",
+          "fieldtype": "custom",
+          "fieldId": "customfield_10600",
+          "from": "10169",
+          "fromString": "PS Sprint 35 (21 Sep-04 Oct)",
+          "to": "10169, 10170",
+          "toString": "PS Sprint 35 (21 Sep-04 Oct), PS Sprint 36 (05 Oct-18 Oct)"
+        }
+      ]
+    }
+  ]
+}

@@ -35,6 +35,15 @@ export interface Counts {
   textSearches: { query: string; aborted: boolean }[]
   /** Every timer reminder the app raised, in order. */
   notifications: { title: string; body: string }[]
+  /** The Inbox's searches, and each changelog and newest-comment read it made, as path and query. */
+  inbox: { searches: number; reads: string[] }
+}
+
+/** One field of a changelog history. */
+export interface InboxItem {
+  field: string
+  fromString: string | null
+  toString: string | null
 }
 
 interface FakeJira {
@@ -62,6 +71,9 @@ interface FakeJira {
   holdReads: () => void
   releaseReads: () => void
   cancelNextDownload: () => void
+  inboxChange: (key: string, by: 'me' | 'other', items: InboxItem[]) => void
+  inboxComment: (key: string, by: 'me' | 'other') => void
+  inboxWatch: (key: string) => void
 }
 
 interface WithFake {
@@ -276,3 +288,36 @@ export const moveIssue = (
     },
     [key, status],
   )
+
+/** Records a change to an issue in the fake Jira's changelog, by the signed-in user or by someone else, and adds it to the Inbox search. */
+export const inboxChange = (
+  app: ElectronApplication,
+  key: string,
+  by: 'me' | 'other',
+  items: InboxItem[],
+) =>
+  app.evaluate(
+    (_electron, [name, who, changed]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.inboxChange(
+        name as string,
+        who as 'me',
+        changed as InboxItem[],
+      )
+    },
+    [key, by, items],
+  )
+
+/** Adds a comment to an issue in the fake Jira, by the signed-in user or by someone else, and adds it to the Inbox search. */
+export const inboxComment = (app: ElectronApplication, key: string, by: 'me' | 'other') =>
+  app.evaluate(
+    (_electron, [name, who]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.inboxComment(name ?? '', who as 'me')
+    },
+    [key, by],
+  )
+
+/** Adds an issue to the Inbox search with no change on it. */
+export const inboxWatch = (app: ElectronApplication, key: string) =>
+  app.evaluate((_electron, name) => {
+    ;(globalThis as unknown as WithFake).__fakeJira.inboxWatch(name)
+  }, key)

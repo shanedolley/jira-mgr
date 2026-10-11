@@ -12,6 +12,7 @@
     "./fields": "./src/fields.ts",
     "./hierarchy": "./src/hierarchy.ts",
     "./http": "./src/http.ts",
+    "./inbox": "./src/inbox.ts",
     "./issue": "./src/issue.ts",
     "./lookups": "./src/lookups.ts",
     "./search": "./src/search.ts",

@@ -133,7 +133,8 @@ function describeIssues(error: z.ZodError): string {
   return error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ')
 }
 
-function stateFile<S extends z.ZodType>(name: string, schema: S, absent: () => z.output<S>) {
+/** One JSON file in the state folder: validated on read, written atomically, `absent()` when missing. */
+export function stateFile<S extends z.ZodType>(name: string, schema: S, absent: () => z.output<S>) {
   const path = () => join(stateDir(), name)
 
   function parse(raw: unknown, file: string, advice: string): z.output<S> {

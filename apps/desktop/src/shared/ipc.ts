@@ -2,6 +2,7 @@ import type { ErrorCode, Issue } from '@jira-mgr/core'
 import type { AdfDoc, AdfNode } from '@jira-mgr/core/adf'
 import type { Attachment, IssueComment, IssueLink, LinkType, Worklog } from '@jira-mgr/core/extras'
 import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
+import type { InboxEntry } from '@jira-mgr/core/inbox'
 import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
 import type { SavedView } from '@jira-mgr/core/state'
 import type { RunningTimer, TimerSettings, WorklogDraft } from '@jira-mgr/core/timer-calc'
@@ -69,6 +70,19 @@ export interface RenameViewArgs {
 export interface DeleteViewArgs {
   id: string
 }
+
+/** The issue the user opened in the Inbox, with the `updated` time of the entry they saw. */
+export interface MarkInboxReadArgs {
+  key: string
+  updated: string
+}
+
+/** Everything updated up to `through`, the newest `updated` in the list the user saw, is read. */
+export interface MarkInboxAllReadArgs {
+  through: string
+}
+
+export type { InboxEntry }
 
 /** Every field `issues:edit` can change. Each is optional, and `null` clears the ones that can clear. */
 export interface IssueChanges {
@@ -430,6 +444,12 @@ export interface IpcContract {
   'views:create': { args: CreateViewArgs; result: SavedView }
   'views:rename': { args: RenameViewArgs; result: SavedView }
   'views:delete': { args: DeleteViewArgs; result: null }
+  /** The Inbox: issues the user is assigned to, reported or watches that changed in 14 days, with their read state. */
+  'inbox:list': { args: undefined; result: InboxEntry[] }
+  /** Marks one issue read up to the `updated` time the user saw. */
+  'inbox:markRead': { args: MarkInboxReadArgs; result: null }
+  /** Marks every issue read up to `through`. */
+  'inbox:markAllRead': { args: MarkInboxAllReadArgs; result: null }
   /** The shared timer file, which `jm timer` also writes. */
   'timer:get': { args: undefined; result: TimerSnapshot }
   /** Starts a timer on a Task, Bug, Story or Subtask. Another running timer is refused: switch instead. */
@@ -487,6 +507,9 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'views:create': true,
   'views:rename': true,
   'views:delete': true,
+  'inbox:list': true,
+  'inbox:markRead': true,
+  'inbox:markAllRead': true,
   'timer:get': true,
   'timer:start': true,
   'timer:stop': true,
