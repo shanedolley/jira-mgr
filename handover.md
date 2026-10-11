@@ -80,7 +80,7 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests. Core 1310 pass and 5 skip, desktop 1074, CLI 602 (run in the docs sweep worktree, 2026-10-12) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests. Core 1310 pass and 5 skip, desktop 1074, CLI 602 (main CI run 38168966611 on 756de54; check with `gh run view 38168966611 --log`) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | The same plus `*.live.test.ts`, with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only |
 | `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38168966611 on 756de54: 503 passed, 4 skipped (`gh run view 38168966611 --log`, 2026-10-12). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -107,8 +107,9 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 | 2026-10-10 | Whether to build Favourites and recents (gap 13) | Shane |
 | 2026-10-12 | #151's three narrow-width items (see Where Work Stands) | Shane |
 
-Settled, with the sources for the rest:
+Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
+- #131: the light-theme fills stay as built, and the active-only row keeps its fill alone.
 - Review decisions: [docs/discovery/2026-10-10-review-decisions.md](docs/discovery/2026-10-10-review-decisions.md). Shane's answers on #128 to #149 (2026-10-11) sit under his login in `gh issue view <n> --json comments`, as agents post through his account. The ones that shape code: #128 option B (branch on not found and server fault); #131 option C (the bold key); #139 option A (sibling keys plus a `not` object); #142 upload a pasted image after the create and patch the description, and drop onto the dialog; #145 the "No subtasks" section always shows, the UI says "sub-issue", and a lost create is read to confirm before a retry; #146 option A; #147 option B (cap 50); #148 option C (keep the reporter clause); #138 option B (row properties and order persist per view).
 - 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors as dimmed context; internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review; Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10; zod is core's validation library and `marked` its Markdown lexer; view filters are multi-value arrays; `internal` errors exit 1.
 - CLI (Shane, 2026-10-07): JSON envelope `{"data"}` or `{"error"}`; a timer stop needing confirmation exits 2 without `--confirm` or `--time`; JSON carries `descriptionMarkdown` and `bodyMarkdown` beside the ADF; write commands and `--parent` refuse keys outside the configured project.
@@ -124,6 +125,7 @@ Each re-read at its source on 2026-10-12 unless it says otherwise.
 - **Wait out ProseMirror's focus timer before a caret key in e2e.** `focusSettled()` in `e2e/desktop/editor.test.ts` does it (#103).
 - **Single-file e2e runs test stale code.** `npx playwright test desktop/<file>` inside `e2e/` runs the last build in `apps/desktop/out`. Run `pnpm build` first; `pnpm e2e` builds first.
 - **Parallel e2e runs starve Electron.** Several worktrees at once make 5 to 25 tests time out in `beforeEach`. Use `--workers=1` and the shared `lockf` lock, and rerun on a quiet machine before treating a `beforeEach` timeout as real.
+- **Read the failing test's name and assertion before rerunning.** A rerun that passes can hide a real bug (a date committed twice failed 15 of 40 runs before its fix; the caret bug was another).
 - **Delete hover colour flake** (once, 2026-10-11): `e2e/desktop/buttons.test.ts` failed once and passed 60 of 60 on rerun. If it recurs, re-hover inside the `expect.poll`.
 - **The Electron dist can be missing in a new worktree** (nine or more times). The check and fix are in [AGENTS.md](AGENTS.md). Absent in the docs sweep worktree, 2026-10-12, which needs no e2e.
 - **A conditional `border-danger` never wins over another border colour.** In the built CSS `.border-danger` sorts first. Use `aria-invalid:border-danger`, as `IssueProperties.tsx` does.
