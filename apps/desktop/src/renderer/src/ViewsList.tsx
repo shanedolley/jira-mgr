@@ -148,7 +148,13 @@ function dropEdge(
  * duplicate, rename, delete and reorder. The list is `views.json`, the file `jm view list` reads.
  * Arrow keys move between views, and Alt with an arrow moves the focused view. A drag does the same.
  */
-export function ViewsList({ filters, toggles, applied, onApply, showCurrent = true }: ViewsListProps) {
+export function ViewsList({
+  filters,
+  toggles,
+  applied,
+  onApply,
+  showCurrent = true,
+}: ViewsListProps) {
   const viewsQuery = useViews()
   const create = useCreateView()
   const rename = useRenameView()
@@ -158,9 +164,7 @@ export function ViewsList({ filters, toggles, applied, onApply, showCurrent = tr
   const move = useMoveView()
   const views = viewsQuery.data
   const active =
-    views === undefined || !showCurrent
-      ? undefined
-      : activeView(views, filters, toggles, applied)
+    views === undefined || !showCurrent ? undefined : activeView(views, filters, toggles, applied)
 
   const [creating, setCreating] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
