@@ -83,9 +83,20 @@ describe('avatar initials', () => {
   })
 })
 
+/** Every fill a Tree row takes: rest, hover, the active row, the open row and both (#131). */
+const ROW_SURFACES = [
+  'canvas',
+  'panel',
+  'hover',
+  'selected',
+  'row-focus',
+  'row-selected',
+  'row-selected-focus',
+]
+
 describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
   it('keeps placeholders (muted) at 4.5:1 on every surface a field sits on', () => {
-    for (const surface of ['canvas', 'panel', 'sidebar', 'hover', 'selected']) {
+    for (const surface of ['canvas', 'panel', 'sidebar', 'hover', 'selected', 'row-focus']) {
       expect(
         contrast(token('muted', theme), token(surface, theme)),
         surface,
@@ -98,7 +109,7 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
   })
 
   it('keeps the grey type icon (--type-rest) at 3:1 on every row background', () => {
-    for (const surface of ['canvas', 'panel', 'hover', 'selected']) {
+    for (const surface of ROW_SURFACES) {
       expect(
         contrast(token('type-rest', theme), token(surface, theme)),
         surface,
@@ -108,7 +119,18 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
 
   it('keeps the status glyphs at 3:1 on every row background', () => {
     for (const glyph of ['status-new', 'status-doing', 'status-done']) {
-      for (const surface of ['canvas', 'panel', 'hover', 'selected']) {
+      for (const surface of ROW_SURFACES) {
+        expect(
+          contrast(token(glyph, theme), token(surface, theme)),
+          `${glyph} on ${surface}`,
+        ).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  it('keeps the type colours shown on hover and on Bug at 3:1 on every row background', () => {
+    for (const glyph of ['type-epic', 'type-story', 'type-bug', 'type-task']) {
+      for (const surface of ROW_SURFACES) {
         expect(
           contrast(token(glyph, theme), token(surface, theme)),
           `${glyph} on ${surface}`,
