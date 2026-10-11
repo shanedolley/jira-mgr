@@ -37,6 +37,8 @@ function issue(key: string, spec: Spec): Issue {
     status: STATUS[spec.status],
     resolution: null,
     parentKey: null,
+    creator: null,
+    links: [],
     assignee: spec.assignee ?? null,
     labels: spec.labels ?? [],
     priority: spec.priority ?? null,
