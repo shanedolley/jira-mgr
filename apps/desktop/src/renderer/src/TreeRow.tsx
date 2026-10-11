@@ -15,8 +15,20 @@ export const rowDomId = (id: string) => `tree-row-${id}`
 
 const plural = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`
 
-/** The accessible name of a row, in one format per kind. Its contents are presentation only. */
-export function rowName(row: Row): string {
+/** Whether a priority is drawn as a glyph: not the default level (Medium) and one the glyph knows. */
+const hasPriorityGlyph = (
+  priority: Issue['priority'],
+): priority is NonNullable<Issue['priority']> =>
+  priority !== null &&
+  priorityLevel(priority.name) !== 0 &&
+  priorityLevel(priority.name) !== priorityLevel('Medium')
+
+/**
+ * The accessible name of a row, in one format per kind. An issue's name ends with what the row
+ * shows only as a glyph or a column: its priority when not Medium, and its due date when the Due
+ * property is on. The rest of the contents are presentation only.
+ */
+export function rowName(row: Row, properties: readonly RowProperty[] = []): string {
   switch (row.kind) {
     case 'customer':
       return `${row.customer?.value ?? 'No Customer'}, ${plural(row.count, 'issue')}`
@@ -34,6 +46,8 @@ export function rowName(row: Row): string {
         issue.assignee?.displayName ?? 'unassigned',
         ...(customerMismatch === null ? [] : ['Customer differs from Epic']),
         ...(contextOnly ? ['context'] : []),
+        ...(hasPriorityGlyph(issue.priority) ? [`priority ${issue.priority.name}`] : []),
+        ...(properties.includes('due') && issue.dueDate !== null ? [`due ${issue.dueDate}`] : []),
       ].join(', ')
     }
   }
@@ -129,8 +143,7 @@ function mismatchTitle(mismatch: {
 
 /** The priority bars in a fixed slot, drawn only above or below the default (Medium), so the column lines up. */
 function PrioritySlot({ priority }: { priority: Issue['priority'] }) {
-  const level = priority === null ? 0 : priorityLevel(priority.name)
-  const shown = priority !== null && level !== 0 && level !== priorityLevel('Medium')
+  const shown = hasPriorityGlyph(priority)
   return (
     <span
       data-slot="priority"
@@ -156,7 +169,7 @@ function DueDate({ issue, today }: { issue: Issue; today: string }) {
       data-prop="due"
       data-tone={tone ?? undefined}
       title={due === null ? undefined : `Due ${due}`}
-      className="inline-flex w-[4.75rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted"
+      className="inline-flex w-[6rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted"
     >
       {due !== null && tone !== null && (
         <>
@@ -184,7 +197,7 @@ function DateCell({ property, at, today }: { property: string; at: string; today
     <span
       data-prop={property}
       title={`${property === 'created' ? 'Created' : 'Updated'} ${localDay(at)}`}
-      className="w-14 shrink-0 whitespace-nowrap text-right text-xs text-muted"
+      className="w-[4.5rem] shrink-0 whitespace-nowrap text-right text-xs text-muted"
     >
       {shortDate(at, today)}
     </span>
@@ -208,7 +221,7 @@ function Properties({
   const sprint = rowSprint(issue)
   const [firstLabel, ...moreLabels] = issue.labels
   return (
-    <span data-props className="hidden shrink-0 items-center gap-3 @2xl:flex">
+    <span data-props className="hidden shrink-0 items-center gap-2 @2xl:flex">
       {properties.map((property) => {
         switch (property) {
           case 'labels':
@@ -217,7 +230,7 @@ function Properties({
                 key={property}
                 data-prop="labels"
                 title={issue.labels.join(', ') || undefined}
-                className="flex w-28 shrink-0 items-center justify-end gap-1 text-xs text-muted"
+                className="flex w-24 shrink-0 items-center justify-end gap-1 text-xs text-muted"
               >
                 {firstLabel !== undefined && (
                   <>
@@ -236,7 +249,7 @@ function Properties({
                 key={property}
                 data-prop="sprint"
                 title={sprint?.name}
-                className="w-24 shrink-0 truncate text-right text-xs text-muted"
+                className="w-20 shrink-0 truncate text-right text-xs text-muted"
               >
                 {sprint?.name}
               </span>
@@ -367,7 +380,7 @@ export const TreeRow = memo(function TreeRow({
     <div
       id={rowDomId(row.id)}
       role="treeitem"
-      aria-label={rowName(row)}
+      aria-label={rowName(row, properties)}
       aria-level={row.level}
       aria-setsize={row.setSize}
       aria-posinset={row.posInSet}

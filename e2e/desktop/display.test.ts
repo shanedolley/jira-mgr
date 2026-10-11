@@ -116,6 +116,8 @@ test('shows Updated by default, and each property appears on the rows and surviv
   await expect(prop(/PSAPAC-31,/, 'due')).toHaveAttribute('data-tone', 'later')
   await expect(prop(/PSAPAC-31,/, 'due')).toContainText('Dec 31')
   await expect(prop(/PSAPAC-40,/, 'due')).toHaveAttribute('data-tone', 'overdue')
+  // The name carries the due date while the property is on, at its end.
+  await expect(item(/PSAPAC-40,/)).toHaveAccessibleName(/, due 2020-01-02$/)
   await expect(prop(row, 'due')).not.toHaveAttribute('data-tone', /.+/)
   await expect.poll(savedDisplay).toEqual({
     properties: ['labels', 'sprint', 'due', 'created'],
@@ -399,4 +401,40 @@ test('fits PSAPAC-12345 and every property in a wide font, with no row overflowi
     node.parentNode?.removeChild(node)
   })
   expect(fits).toEqual({ keyFits: true, titleClear: true, overflowing: 0, titles: true })
+})
+
+test('keeps a prior-year date inside the Created, Updated and Due slots in a wide font', async () => {
+  await open()
+  await inDisplayMenu(async () => {
+    for (const name of ['Due date', 'Created']) await choice('Display properties', name).click()
+  })
+  // PSAPAC-40 fell due in 2020, so its Due cell holds a prior-year date. The fake's Created and
+  // Updated are this year's, so each of the three cells gets the widest short date by hand.
+  await expect(prop(/PSAPAC-40,/, 'due')).toContainText("'20")
+  const style = await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  const slots = await item(/PSAPAC-40,/).evaluate((row) =>
+    ['created', 'updated', 'due'].map((name) => {
+      const cell = row.querySelector(`[data-prop=${name}]`)
+      const text = cell?.lastChild
+      if (!(cell instanceof HTMLElement) || text === null || text === undefined)
+        return { name, fits: false }
+      text.textContent = "May 30 '25"
+      const range = document.createRange()
+      range.selectNodeContents(cell)
+      const inner = range.getBoundingClientRect()
+      const box = cell.getBoundingClientRect()
+      // The whole content, icon included: the Due cell is right-aligned, so it spills leftwards.
+      return { name, fits: inner.left >= box.left - 0.5 && inner.right <= box.right + 0.5 }
+    }),
+  )
+  await style.evaluate((node) => {
+    node.parentNode?.removeChild(node)
+  })
+  expect(slots).toEqual([
+    { name: 'created', fits: true },
+    { name: 'updated', fits: true },
+    { name: 'due', fits: true },
+  ])
 })
