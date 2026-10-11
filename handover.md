@@ -2,9 +2,9 @@
 
 ## Where Work Stands
 
-Checked 2026-10-12. Head `756de54` (`git log --oneline -1 origin/main`, PR [#191](https://github.com/shanedolley/jira-mgr/pull/191), a handover update); main CI run 38168966611 succeeded on it (`gh run view <id> --json headSha,conclusion`). Every story from #126 to #151 is built and merged except #143. #143 needs Shane present for one live bulk write, so an autonomous session has no unblocked story and stops. Open issues: #138, #143, #144, #150, #151 and #184.
+Checked 2026-10-12. Head `df420cf` (`git log --oneline -1 origin/main`, PR [#192](https://github.com/shanedolley/jira-mgr/pull/192), the docs sweep); main CI run 38175877383 succeeded on it (`gh run view <id> --json headSha,conclusion`). Every story from #126 to #151 is built and merged except #143. #143 needs Shane present for one live bulk write, so an autonomous session has no unblocked story and stops. Open issues: #138, #143, #144, #150, #151 and #184.
 
-Shane closes only issues carrying `status:hil-review` and finds his questions by the `question` label. #138, #144, #150, #151 and #184 are merged and wait in HIL Review; only #151 carries `question` (the Peek card over the rows, the rail's contents and the traffic-light padding). Everything else in #9 to #151 is closed (65 closed issues, 2026-10-12).
+Shane closes only issues carrying `status:hil-review` and finds his questions by the `question` label. #138, #144, #150, #151 and #184 are merged and wait in HIL Review. Two carry `question`: #144 (the pill style; its question was posted 2026-10-11 without the label, which was added 2026-10-12) and #151 (the Peek card over the rows, the rail's contents and the traffic-light padding). Everything else in #9 to #151 is closed (65 closed issues, 2026-10-12).
 
 ## Stories
 
@@ -34,7 +34,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #148 | Inbox | [#179](https://github.com/shanedolley/jira-mgr/pull/179) | `inbox.json` is not per account, so a second Jira account on one machine shares the read marks; a swallowed 401 on the Inbox query is theoretical |
 | #149 | Sprint page | [#182](https://github.com/shanedolley/jira-mgr/pull/182) | Lows: the progress bar rounds each share separately and can read 101% in `aria-valuetext`; status groups sort by key number across projects; every issue re-read refetches an open Sprint page. The burndown is not built |
 | #138 | Tree row anatomy, row properties, ordering | [#187](https://github.com/shanedolley/jira-mgr/pull/187) | HIL. Row properties persist per view in `views.json` (option B). Row properties hide below 700px of Tree width, so a toggle can seem to do nothing while the Peek is open. `jm view list --json` gains an optional `display` field |
-| #144 | Blocked and blocking pills | [#188](https://github.com/shanedolley/jira-mgr/pull/188) | HIL. The hook wiring is untested |
+| #144 | Blocked and blocking pills | [#188](https://github.com/shanedolley/jira-mgr/pull/188) | HIL with `question` (the pill style). The hook wiring is untested |
 | #150 | Epic progress, Epics table, Customers page | [#189](https://github.com/shanedolley/jira-mgr/pull/189) | HIL. Open Lows L4 and L5 (see the #150 review comments). No "No Customer" row; progress counts direct children |
 | #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | HIL with `question`. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
 | #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | HIL. Found by 149-sprint-review |
@@ -68,11 +68,11 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 | Closed | 65 | `gh issue list --state closed --limit 300` | 2026-10-12 |
 | In progress | none | `--label status:in-progress` | 2026-10-12 |
 | In HIL Review | #138, #144, #150, #151, #184 | `--label status:hil-review` | 2026-10-12 |
-| With `question` | #151 | `--label question` | 2026-10-12 |
+| With `question` | #144, #151 | `--label question` | 2026-10-12 |
 | Open blockers of #143 | #138 | `gh api repos/shanedolley/jira-mgr/issues/143/dependencies/blocked_by --jq '[.[]\|select(.state=="open")\|.number]'` | 2026-10-12 |
 | Open pull requests | none | `gh pr list --state open` | 2026-10-12 |
 
-`git worktree list` shows the main tree only, plus the docs sweep worktree while it exists. Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree only (2026-10-12). Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
@@ -80,9 +80,9 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests. Core 1310 pass and 5 skip, desktop 1074, CLI 602 (main CI run 38168966611 on 756de54; check with `gh run view 38168966611 --log`) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests. Core 1310 pass and 5 skip, desktop 1074, CLI 602 (main CI run 38175877383 on df420cf; check with `gh run view 38175877383 --log`) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | The same plus `*.live.test.ts`, with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only |
-| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38168966611 on 756de54: 503 passed, 4 skipped (`gh run view 38168966611 --log`, 2026-10-12). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
+| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38175877383 on df420cf: 503 passed, 4 skipped (`gh run view 38175877383 --log`, 2026-10-12). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
 | `pnpm -s jm -- <args>` | The built CLI. Use `-s`: plain `pnpm jm --` prints pnpm's banner and breaks JSON | Live Jira at the site in `settings.json`, as the logged-in user. Writes from L4 on. Set `JM_STATE_DIR` to a scratch folder first |
 | `pnpm package` | Builds `apps/desktop/dist/jira-mgr.app`; macOS only | Nothing external. The packaged app, like `pnpm dev`, uses the real state folder and Keychain item unless `JM_STATE_DIR` is set |
@@ -105,6 +105,7 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 |---|---|---|
 | 2026-10-10 | A Shane-present real bulk POST before #143 relies on it | Shane |
 | 2026-10-10 | Whether to build Favourites and recents (gap 13) | Shane |
+| 2026-10-11 | #144's pill style: keep the neutral capsule with a red icon, or another style (options in the issue) | Shane |
 | 2026-10-12 | #151's three narrow-width items (see Where Work Stands) | Shane |
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
@@ -127,7 +128,7 @@ Each re-read at its source on 2026-10-12 unless it says otherwise.
 - **Parallel e2e runs starve Electron.** Several worktrees at once make 5 to 25 tests time out in `beforeEach`. Use `--workers=1` and the shared `lockf` lock, and rerun on a quiet machine before treating a `beforeEach` timeout as real.
 - **Read the failing test's name and assertion before rerunning.** A rerun that passes can hide a real bug (a date committed twice failed 15 of 40 runs before its fix; the caret bug was another).
 - **Delete hover colour flake** (once, 2026-10-11): `e2e/desktop/buttons.test.ts` failed once and passed 60 of 60 on rerun. If it recurs, re-hover inside the `expect.poll`.
-- **The Electron dist can be missing in a new worktree** (nine or more times). The check and fix are in [AGENTS.md](AGENTS.md). Absent in the docs sweep worktree, 2026-10-12, which needs no e2e.
+- **The Electron dist can be missing in a new worktree** (nine or more times). The check and fix are in [AGENTS.md](AGENTS.md).
 - **A conditional `border-danger` never wins over another border colour.** In the built CSS `.border-danger` sorts first. Use `aria-invalid:border-danger`, as `IssueProperties.tsx` does.
 - **ship-it** (the merge automation) behaves inconsistently. It merged #38, #40, #42 to #45, #47, #68 and #154 on green, and left #46, #62 to #65, #88 to #95 and #98 alone. It tries to merge a draft and posts "Pull Request is still a draft" failures; the draft is deliberate while a story waits on Shane, so ignore them and do not push. A second merge then reports "merge conflicts" or "already in progress": check `gh pr view <n> --json state` first.
 - **The hooks refuse some command shapes.** A `gh pr create` body quoting test counts the session did not run is refused (attribute counts to the builder or reviewer, or omit them). `gh pr create` takes `--body-file -` with a quoted heredoc; a body file on disk is refused. `gh pr edit` takes `--body "$(cat <<'EOF' ... EOF)"` only, and the claim-check refuses any sentence it cannot verify, a restated review verdict included. `gh issue comment --body` refuses `$(...)` except a quoted heredoc. The ticket guard refuses Bash text that names the Collibra host, shell variables inside a `kj` path and `>|` redirects; run `kj` alone with a plain `>` redirect, then parse the file in a second command. Write commit messages to a file and pass `git commit -F`.
@@ -136,7 +137,7 @@ Each re-read at its source on 2026-10-12 unless it says otherwise.
 - **Two PRs on shared desktop files conflict in sequence.** Merge one, rebase the other onto `main`, and trust only a CI run from after the rebase. Land pull requests one at a time.
 - **Squash merges and `git branch -d`.** After a squash merge `-d` refuses. Confirm `git diff <branch-tip> origin/main` is empty, then `KOTHAR_ALLOW_DESTRUCTIVE=1 git branch -D`.
 - **A copied worktree folder moves the original's HEAD.** Make scratch copies with `git worktree add` or `git clone`, never `cp`. Give each agent its own worktree; one left the main tree on its own branch and the commit guard then blocked a commit on `main`.
-- **Node 22 is the default shell node** (`~/.local/share/mise/shims/node -v` gave v22.22.0 on 2026-10-11, not re-run). CI uses `.nvmrc` (24) and `engines` requires `>=24`. Put `~/.local/share/mise/installs/node/24.16.0/bin` first on PATH (v24.16.0 confirmed 2026-10-12).
+- **Node 22 is the default shell node** (2026-10-12: `node` on PATH resolves `~/.local/share/mise/installs/node/22.22.0`; the mise shim gives v24.16.0 inside the repository, from `.nvmrc`, and v22.22.0 outside it). CI uses `.nvmrc` (24) and `engines` requires `>=24`. Put `~/.local/share/mise/installs/node/24.16.0/bin` first on PATH (v24.16.0 confirmed 2026-10-12).
 - **pnpm forwards `--`.** `pnpm jm -- --help` passes a literal `--`; `scripts/jm.ts` strips it.
 - **Pinned toolchain** (re-read in the package files, 2026-10-12). ESLint stays on 9 for `eslint-plugin-react`. Every package is on TypeScript `~7.0.2` except `packages/config-lint`, which keeps `~6.0.0` for `typescript-eslint`.
 - **msw 3 breaks Vitest's peer range.** `pnpm add -D msw` resolves 3.x; `@jira-mgr/core` pins `msw@^2`.
