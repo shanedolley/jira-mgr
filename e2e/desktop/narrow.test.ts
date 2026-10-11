@@ -408,7 +408,9 @@ test('the page stacks its Properties under 760px and puts them beside the conten
       ),
     ).toBe(true)
     expect(props.x).toBe(48)
-    expect(props.width).toBe(width - 48)
+    // The stacked page scrolls, so a classic scrollbar (Linux) takes its gutter from the width.
+    const gutter = await issuePage().evaluate((el) => el.offsetWidth - el.clientWidth)
+    expect(props.width).toBe(width - 48 - gutter)
     // The whole page scrolls, and Status is one Tab or a scroll away, never out of the window.
     await expect(properties().getByRole('button', { name: /^Status:/ })).toBeAttached()
     await properties()
