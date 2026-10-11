@@ -188,7 +188,7 @@ Reading the binary's JSON, not importing `schema.ts`, keeps scripts from importi
 
 Root `package.json` gains `"docs:reference": "pnpm --filter @jira-mgr/cli build && node scripts/gen-reference.ts"`. `docs/` is in `.prettierignore`, so generated tables need no formatting pass. CI's `checks` job adds, after `pnpm build`, `pnpm docs:reference && git diff --exit-code -- docs/reference`.
 
-`docs/reference/core.md` (TypeDoc) stays out of L1: it needs a new dev dependency and nothing waits on it. The AGENTS.md row says so until a story adds it.
+`docs/reference/core.md` (TypeDoc) stays out of L1: it needs a new dev dependency and nothing waits on it. Shane dropped it on 2026-10-10, so the package README is the core reference.
 
 ### Output
 
