@@ -8,7 +8,7 @@ export const TH = 'h-9 px-3 text-left text-[13px] font-normal text-muted'
 
 /**
  * The page an overview table sits in: a header with the title and a status line, the table below.
- * The Epics and Customers pages share it. Esc and Back leave for the Tree. Like the Inbox it places
+ * The Epics and Customers pages share it. Back leaves for the Tree, and so does Esc, through the Shell's key handler. Like the Inbox it places
  * its own focus: on the row last used, else the first, else the page, whenever it comes to the front.
  */
 export function OverviewFrame({
@@ -55,11 +55,6 @@ export function OverviewFrame({
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.defaultPrevented) return
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      onBack()
-      return
-    }
     const target = event.target
     if (!(target instanceof HTMLElement)) return
     const all = rows()

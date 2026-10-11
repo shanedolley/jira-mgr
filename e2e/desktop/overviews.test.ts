@@ -556,15 +556,31 @@ test.describe('surfaces', () => {
     await expect(issuePage()).toBeFocused()
     const inside = () =>
       window.evaluate(() => document.activeElement?.closest('[aria-label="Epics"]') !== null)
+    // The overview comes before the issue page in the layout, so Shift+Tab walks back into it.
+    for (let i = 0; i < 12; i++) {
+      await window.keyboard.press('Shift+Tab')
+      expect(await inside(), `Shift+Tab ${String(i + 1)}`).toBe(false)
+    }
     await issuePage().focus()
     for (let i = 0; i < 40; i++) {
       await window.keyboard.press('Tab')
       expect(await inside(), `Tab ${String(i + 1)}`).toBe(false)
     }
-    for (let i = 0; i < 12; i++) {
-      await window.keyboard.press('Shift+Tab')
-      expect(await inside(), `Shift+Tab ${String(i + 1)}`).toBe(false)
-    }
+  })
+
+  test('a sidebar link opens its page in place of an issue page open over another', async () => {
+    await open()
+    await link('Epics').click()
+    await epicsPage()
+      .getByRole('button', { name: /^PSAPAC-50 / })
+      .click()
+    await expect(issuePage()).toBeVisible()
+
+    await link('Customers').click()
+    await expect(issuePage()).toHaveCount(0)
+    await expect(epicsPage()).toHaveCount(0)
+    await expect(customersPage()).toBeVisible()
+    await expect(customersPage().getByRole('button', { name: 'Acme', exact: true })).toBeFocused()
   })
 
   test('the Customers page loads the Customer list on its own', async () => {

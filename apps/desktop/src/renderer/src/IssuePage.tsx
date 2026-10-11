@@ -238,8 +238,6 @@ export function IssuePage({
   }, [gone])
   const issue: Issue | undefined = detail.data ?? issues.find((i) => i.key === issueKey)
 
-  const parentKey = issue?.parentKey ?? null
-
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== 'Escape' || event.defaultPrevented) return
     // Esc inside a picker, a field, an editor or a dialog belongs to that control.
@@ -284,21 +282,6 @@ export function IssuePage({
           <button type="button" onClick={onBack} className="btn btn-sm app-no-drag">
             Back to issues
           </button>
-          {parentKey !== null && (
-            <span className="app-no-drag flex items-center gap-1.5 text-xs text-muted">
-              <span aria-hidden>in</span>
-              <button
-                type="button"
-                onClick={() => {
-                  onOpen(parentKey)
-                }}
-                data-row
-                className="font-mono hover:text-ink"
-              >
-                {parentKey}
-              </button>
-            </span>
-          )}
           {issue !== undefined && (
             <div className="app-no-drag ml-auto flex items-center gap-2">
               {propertyRules(issue.issueType).estimates && (
