@@ -1,0 +1,1 @@
+{"editedFieldsInput":{"priority":{"priorityId":"3"},"labelsFields":[{"bulkEditMultiSelectFieldOption":"ADD","fieldId":"labels","labels":[{"name":"jm-bulk-probe"}]}]},"selectedActions":["priority","labels"],"selectedIssueIdsOrKeys":["PSAPAC-3141","PSAPAC-3142"],"sendBulkNotification":false}
