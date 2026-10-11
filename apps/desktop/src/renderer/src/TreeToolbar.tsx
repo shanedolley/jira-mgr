@@ -83,13 +83,16 @@ interface TreeToolbarProps {
   showClear: boolean
 }
 
-/** Always laid out, so a toggle keeps its width; `invisible` while the toggle is off. */
+/**
+ * Always laid out, so a toggle keeps its width; `invisible` while the toggle is off. The icon
+ * button of a narrow Tree shows its pressed state by fill instead.
+ */
 function Check({ on }: { on: boolean }) {
   return (
     <svg
       aria-hidden
       viewBox="0 0 16 16"
-      className={`size-3.5 ${on ? '' : 'invisible'}`}
+      className={`size-3.5 @max-tree:hidden ${on ? '' : 'invisible'}`}
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -200,8 +203,43 @@ const FIELD_ICONS: Record<FilterField, ReactNode> = {
   ),
 }
 
-/** The toolbar keeps the 8px padding its wrap points were measured with. */
-const BUTTON = 'btn px-2'
+/** The 16px icon of a toolbar button in a Tree under 700px wide, where the label is not shown. */
+const TOOL_ICONS = {
+  hideDone: (
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="m5.5 8 1.8 1.8 3.2-3.6" />
+    </>
+  ),
+  assigneeMe: FIELD_ICONS.assignee,
+  hideEmptyCustomers: FIELD_ICONS.customer,
+  filter: <path d="M2.5 3.5h11L9.5 8.5v4l-3 1v-5Z" />,
+  groups: FIELD_ICONS.statusType,
+  display: <path d="M3 5h6M12 5h1M3 11h1M7 11h6M9 3.5v3M5 9.5v3" />,
+} satisfies Record<string, ReactNode>
+
+function ToolIcon({ name }: { name: keyof typeof TOOL_ICONS }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className="hidden size-4 shrink-0 @max-tree:block"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {TOOL_ICONS[name]}
+    </svg>
+  )
+}
+
+/**
+ * The toolbar keeps the 8px padding its wrap points were measured with. In a Tree under 700px
+ * wide the button is a 28px square and its label reads only to a screen reader (`title` shows it).
+ */
+const BUTTON = 'btn px-2 @max-tree:w-7 @max-tree:px-0'
 
 /**
  * Closing a menu hands focus back to the Tree, unless the user already moved it to another
@@ -254,291 +292,301 @@ export function TreeToolbar({
   }
 
   return (
-    <div className="shrink-0 space-y-2 border-b border-line px-4 py-2">
-      <div className="flex flex-wrap items-center gap-2">
-        {(Object.keys(TOGGLE_LABELS) as (keyof Toggles)[]).map((name) => (
+    <div className="@container shrink-0">
+      <div className="space-y-2 border-b border-line px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {(Object.keys(TOGGLE_LABELS) as (keyof Toggles)[]).map((name) => (
+            <button
+              key={name}
+              type="button"
+              aria-pressed={toggles[name]}
+              title={TOGGLE_LABELS[name]}
+              onClick={() => {
+                onToggle(name)
+                onActed()
+              }}
+              className={`${BUTTON} aria-pressed:border-accent/40 aria-pressed:bg-selected`}
+            >
+              <Check on={toggles[name]} />
+              <ToolIcon name={name} />
+              <span className="@max-tree:sr-only">{TOGGLE_LABELS[name]}</span>
+            </button>
+          ))}
+
           <button
-            key={name}
             type="button"
-            aria-pressed={toggles[name]}
-            onClick={() => {
-              onToggle(name)
-              onActed()
+            data-menu-button
+            popoverTarget="filter-menu"
+            aria-keyshortcuts="F"
+            title="Filter"
+            style={{ anchorName: '--filter-menu' }}
+            className={BUTTON}
+          >
+            <ToolIcon name="filter" />
+            <span className="@max-tree:sr-only">Filter</span>
+            <Chevron className="size-3 rotate-90 @max-tree:hidden" />
+          </button>
+          <div
+            id="filter-menu"
+            popover="auto"
+            aria-label="Filter"
+            role="group"
+            className="menu max-h-[min(36rem,calc(100vh-6rem))] w-64 overflow-y-auto"
+            style={{ positionAnchor: '--filter-menu' }}
+            onToggle={(event) => {
+              if (event.newState === 'open') onFilterMenuOpen()
+              onMenuToggle(event, onActed)
             }}
-            className={`${BUTTON} aria-pressed:border-accent/40 aria-pressed:bg-selected`}
           >
-            <Check on={toggles[name]} />
-            {TOGGLE_LABELS[name]}
-          </button>
-        ))}
-
-        <button
-          type="button"
-          data-menu-button
-          popoverTarget="filter-menu"
-          aria-keyshortcuts="F"
-          style={{ anchorName: '--filter-menu' }}
-          className={BUTTON}
-        >
-          Filter
-          <Chevron className="size-3 rotate-90" />
-        </button>
-        <div
-          id="filter-menu"
-          popover="auto"
-          aria-label="Filter"
-          role="group"
-          className="menu max-h-[min(36rem,calc(100vh-6rem))] w-64 overflow-y-auto"
-          style={{ positionAnchor: '--filter-menu' }}
-          onToggle={(event) => {
-            if (event.newState === 'open') onFilterMenuOpen()
-            onMenuToggle(event, onActed)
-          }}
-        >
-          {FILTER_FIELDS.map((field) => {
-            const op = operators[field] ?? 'is'
-            const held = valuesOf(filters, field, op)
-            const total = OPERATORS.reduce((n, o) => n + valuesOf(filters, field, o).length, 0)
-            return (
-              <details key={field} className="group/field">
-                <summary className="flex h-8 cursor-default items-center gap-2 rounded px-2 hover:bg-hover">
-                  <svg
-                    aria-hidden
-                    viewBox="0 0 16 16"
-                    className="size-4 shrink-0 text-muted"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    {FIELD_ICONS[field]}
-                  </svg>
-                  <span className="flex-1">{FIELD_LABELS[field]}</span>
-                  <span className="text-xs text-muted">{total === 0 ? '' : total}</span>
-                  <Chevron className="size-3 group-open/field:rotate-90" />
-                </summary>
-                {hasNot(field) && (
-                  <div
-                    role="group"
-                    aria-label={`${FIELD_LABELS[field]} operator`}
-                    className="flex gap-1 px-2 pb-1"
-                  >
-                    {OPERATORS.map((o) => (
-                      <button
-                        key={o}
-                        type="button"
-                        aria-pressed={op === o}
-                        onClick={() => {
-                          setOperators((held) => ({ ...held, [field]: o }))
-                        }}
-                        className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
-                      >
-                        {o === 'is' ? 'is' : 'is not'}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <ul className="max-h-56 overflow-y-auto pb-1">
-                  {choices[field].map((choice) => (
-                    <li key={choice.value}>
-                      <label className="flex h-7 cursor-default items-center gap-2 rounded px-2 hover:bg-hover">
-                        <input
-                          type="checkbox"
-                          checked={held.includes(choice.value)}
-                          onChange={() => {
-                            onFilters(toggleChoice(filters, field, choice.value, op))
+            {FILTER_FIELDS.map((field) => {
+              const op = operators[field] ?? 'is'
+              const held = valuesOf(filters, field, op)
+              const total = OPERATORS.reduce((n, o) => n + valuesOf(filters, field, o).length, 0)
+              return (
+                <details key={field} className="group/field">
+                  <summary className="flex h-8 cursor-default items-center gap-2 rounded px-2 hover:bg-hover">
+                    <svg
+                      aria-hidden
+                      viewBox="0 0 16 16"
+                      className="size-4 shrink-0 text-muted"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      {FIELD_ICONS[field]}
+                    </svg>
+                    <span className="flex-1">{FIELD_LABELS[field]}</span>
+                    <span className="text-xs text-muted">{total === 0 ? '' : total}</span>
+                    <Chevron className="size-3 group-open/field:rotate-90" />
+                  </summary>
+                  {hasNot(field) && (
+                    <div
+                      role="group"
+                      aria-label={`${FIELD_LABELS[field]} operator`}
+                      className="flex gap-1 px-2 pb-1"
+                    >
+                      {OPERATORS.map((o) => (
+                        <button
+                          key={o}
+                          type="button"
+                          aria-pressed={op === o}
+                          onClick={() => {
+                            setOperators((held) => ({ ...held, [field]: o }))
                           }}
-                          className="accent-accent"
-                        />
-                        <span className="min-w-0 truncate">{choice.label}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )
-          })}
-        </div>
-
-        <button
-          type="button"
-          data-menu-button
-          popoverTarget="groups-menu"
-          style={{ anchorName: '--groups-menu' }}
-          className={BUTTON}
-        >
-          Groups
-          <Chevron className="size-3 rotate-90" />
-        </button>
-        <div
-          id="groups-menu"
-          popover="auto"
-          aria-label="Groups"
-          role="group"
-          className="menu w-44"
-          style={{ positionAnchor: '--groups-menu' }}
-          onToggle={(event) => {
-            onMenuToggle(event, onActed)
-          }}
-        >
-          <button
-            type="button"
-            popoverTarget="groups-menu"
-            popoverTargetAction="hide"
-            onClick={onCollapseAll}
-            data-row
-            className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover"
-          >
-            Collapse all
-          </button>
-          <button
-            type="button"
-            popoverTarget="groups-menu"
-            popoverTargetAction="hide"
-            onClick={onExpandAll}
-            data-row
-            className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover"
-          >
-            Expand all
-          </button>
-        </div>
-
-        <button
-          type="button"
-          data-menu-button
-          popoverTarget="display-menu"
-          style={{ anchorName: '--display-menu' }}
-          className={BUTTON}
-        >
-          Display
-          <Chevron className="size-3 rotate-90" />
-        </button>
-        <div
-          id="display-menu"
-          popover="auto"
-          aria-label="Display"
-          role="group"
-          className="menu w-72"
-          style={{ positionAnchor: '--display-menu' }}
-          onToggle={(event) => {
-            onMenuToggle(event, onActed)
-          }}
-        >
-          <div role="group" aria-label="Ordering" className="px-2 pt-2">
-            <p className="mb-1 text-xs text-muted">Ordering</p>
-            <div className="flex flex-wrap gap-1">
-              {ISSUE_ORDERS.map((order) => (
-                <button
-                  key={order}
-                  type="button"
-                  aria-pressed={display.order === order}
-                  onClick={() => {
-                    onDisplay({ ...display, order })
-                  }}
-                  className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
-                >
-                  {ORDER_LABELS[order]}
-                </button>
-              ))}
-            </div>
+                          className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
+                        >
+                          {o === 'is' ? 'is' : 'is not'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <ul className="max-h-56 overflow-y-auto pb-1">
+                    {choices[field].map((choice) => (
+                      <li key={choice.value}>
+                        <label className="flex h-7 cursor-default items-center gap-2 rounded px-2 hover:bg-hover">
+                          <input
+                            type="checkbox"
+                            checked={held.includes(choice.value)}
+                            onChange={() => {
+                              onFilters(toggleChoice(filters, field, choice.value, op))
+                            }}
+                            className="accent-accent"
+                          />
+                          <span className="min-w-0 truncate">{choice.label}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )
+            })}
           </div>
-          <div role="group" aria-label="Display properties" className="px-2 pb-2 pt-3">
-            <p className="mb-1 text-xs text-muted">Display properties</p>
-            <div className="flex flex-wrap gap-1">
-              {ROW_PROPERTIES.map((property) => {
-                const on = display.properties.includes(property)
-                return (
+
+          <button
+            type="button"
+            data-menu-button
+            popoverTarget="groups-menu"
+            title="Groups"
+            style={{ anchorName: '--groups-menu' }}
+            className={BUTTON}
+          >
+            <ToolIcon name="groups" />
+            <span className="@max-tree:sr-only">Groups</span>
+            <Chevron className="size-3 rotate-90 @max-tree:hidden" />
+          </button>
+          <div
+            id="groups-menu"
+            popover="auto"
+            aria-label="Groups"
+            role="group"
+            className="menu w-44"
+            style={{ positionAnchor: '--groups-menu' }}
+            onToggle={(event) => {
+              onMenuToggle(event, onActed)
+            }}
+          >
+            <button
+              type="button"
+              popoverTarget="groups-menu"
+              popoverTargetAction="hide"
+              onClick={onCollapseAll}
+              data-row
+              className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover"
+            >
+              Collapse all
+            </button>
+            <button
+              type="button"
+              popoverTarget="groups-menu"
+              popoverTargetAction="hide"
+              onClick={onExpandAll}
+              data-row
+              className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover"
+            >
+              Expand all
+            </button>
+          </div>
+
+          <button
+            type="button"
+            data-menu-button
+            popoverTarget="display-menu"
+            title="Display"
+            style={{ anchorName: '--display-menu' }}
+            className={BUTTON}
+          >
+            <ToolIcon name="display" />
+            <span className="@max-tree:sr-only">Display</span>
+            <Chevron className="size-3 rotate-90 @max-tree:hidden" />
+          </button>
+          <div
+            id="display-menu"
+            popover="auto"
+            aria-label="Display"
+            role="group"
+            className="menu w-72"
+            style={{ positionAnchor: '--display-menu' }}
+            onToggle={(event) => {
+              onMenuToggle(event, onActed)
+            }}
+          >
+            <div role="group" aria-label="Ordering" className="px-2 pt-2">
+              <p className="mb-1 text-xs text-muted">Ordering</p>
+              <div className="flex flex-wrap gap-1">
+                {ISSUE_ORDERS.map((order) => (
                   <button
-                    key={property}
+                    key={order}
                     type="button"
-                    aria-pressed={on}
+                    aria-pressed={display.order === order}
                     onClick={() => {
-                      onDisplay({
-                        ...display,
-                        properties: ROW_PROPERTIES.filter((p) =>
-                          p === property ? !on : display.properties.includes(p),
-                        ),
-                      })
+                      onDisplay({ ...display, order })
                     }}
                     className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
                   >
-                    {PROPERTY_LABELS[property]}
+                    {ORDER_LABELS[order]}
                   </button>
-                )
-              })}
+                ))}
+              </div>
+            </div>
+            <div role="group" aria-label="Display properties" className="px-2 pb-2 pt-3">
+              <p className="mb-1 text-xs text-muted">Display properties</p>
+              <div className="flex flex-wrap gap-1">
+                {ROW_PROPERTIES.map((property) => {
+                  const on = display.properties.includes(property)
+                  return (
+                    <button
+                      key={property}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => {
+                        onDisplay({
+                          ...display,
+                          properties: ROW_PROPERTIES.filter((p) =>
+                            p === property ? !on : display.properties.includes(p),
+                          ),
+                        })
+                      }}
+                      className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
+                    >
+                      {PROPERTY_LABELS[property]}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
+
+          <input
+            ref={inputRef}
+            type="text"
+            aria-keyshortcuts="/"
+            aria-label="Filter by key or summary"
+            placeholder="Filter by key or summary"
+            value={filters.text ?? ''}
+            onChange={(event) => {
+              onFilters(withText(filters, event.target.value))
+            }}
+            onKeyDown={onTextKey}
+            className="h-7 min-w-40 flex-1 rounded-md border border-field-border bg-panel px-2 text-xs placeholder:text-muted @max-tree:basis-full"
+          />
+
+          {doneProgress !== null && (
+            <span aria-hidden className="text-xs text-muted">
+              {doneProgress}
+            </span>
+          )}
         </div>
 
-        <input
-          ref={inputRef}
-          type="text"
-          aria-keyshortcuts="/"
-          aria-label="Filter by key or summary"
-          placeholder="Filter by key or summary"
-          value={filters.text ?? ''}
-          onChange={(event) => {
-            onFilters(withText(filters, event.target.value))
-          }}
-          onKeyDown={onTextKey}
-          className="h-7 min-w-40 flex-1 rounded-md border border-field-border bg-panel px-2 text-xs placeholder:text-muted"
-        />
-
-        {doneProgress !== null && (
-          <span aria-hidden className="text-xs text-muted">
-            {doneProgress}
-          </span>
+        {(chips.length > 0 || (showClear && hasFilters(filters))) && (
+          <ul aria-label="Active filters" className="flex flex-wrap items-center gap-2">
+            {chips.map((chip) => (
+              <li
+                key={`${chip.field}:${chip.op}`}
+                className="inline-flex items-center gap-1 rounded-md border border-line pl-2.5 text-xs"
+              >
+                {chip.text}
+                <button
+                  type="button"
+                  aria-label={`Remove ${FIELD_LABELS[chip.field]}${chip.op === 'not' ? ' is not' : ''} filter`}
+                  onClick={() => {
+                    onFilters(clearField(filters, chip.field, chip.op))
+                    onActed()
+                  }}
+                  className="btn btn-sm btn-icon btn-ghost"
+                >
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 16 16"
+                    className="size-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                  >
+                    <path d="m4.5 4.5 7 7m0-7-7 7" />
+                  </svg>
+                </button>
+              </li>
+            ))}
+            {showClear && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onFilters({})
+                    onActed()
+                  }}
+                  className="btn btn-sm btn-ghost"
+                >
+                  Clear
+                </button>
+              </li>
+            )}
+          </ul>
         )}
       </div>
-
-      {(chips.length > 0 || (showClear && hasFilters(filters))) && (
-        <ul aria-label="Active filters" className="flex flex-wrap items-center gap-2">
-          {chips.map((chip) => (
-            <li
-              key={`${chip.field}:${chip.op}`}
-              className="inline-flex items-center gap-1 rounded-md border border-line pl-2.5 text-xs"
-            >
-              {chip.text}
-              <button
-                type="button"
-                aria-label={`Remove ${FIELD_LABELS[chip.field]}${chip.op === 'not' ? ' is not' : ''} filter`}
-                onClick={() => {
-                  onFilters(clearField(filters, chip.field, chip.op))
-                  onActed()
-                }}
-                className="btn btn-sm btn-icon btn-ghost"
-              >
-                <svg
-                  aria-hidden
-                  viewBox="0 0 16 16"
-                  className="size-3"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                >
-                  <path d="m4.5 4.5 7 7m0-7-7 7" />
-                </svg>
-              </button>
-            </li>
-          ))}
-          {showClear && (
-            <li>
-              <button
-                type="button"
-                onClick={() => {
-                  onFilters({})
-                  onActed()
-                }}
-                className="btn btn-sm btn-ghost"
-              >
-                Clear
-              </button>
-            </li>
-          )}
-        </ul>
-      )}
     </div>
   )
 }

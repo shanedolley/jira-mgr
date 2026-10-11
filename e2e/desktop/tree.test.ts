@@ -301,9 +301,10 @@ test('toggling a toolbar button moves no neighbour', async () => {
 
 test('the Filter and Groups buttons show a chevron and the Filter fields show an icon and a chevron', async () => {
   await open()
-  await expect(toggle('Filter').locator('svg')).toHaveCount(1)
-  await expect(toggle('Groups').locator('svg')).toHaveCount(1)
-  await expect(toggle('Hide done').locator('svg')).toHaveCount(1)
+  // Each button also holds the icon it shows in a narrow Tree, which is hidden at this width.
+  await expect(toggle('Filter').locator('svg:visible')).toHaveCount(1)
+  await expect(toggle('Groups').locator('svg:visible')).toHaveCount(1)
+  await expect(toggle('Hide done').locator('svg:visible')).toHaveCount(1)
 
   await toggle('Filter').click()
   const fields = window.locator('#filter-menu summary')

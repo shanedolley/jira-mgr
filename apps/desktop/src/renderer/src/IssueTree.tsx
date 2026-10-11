@@ -192,7 +192,10 @@ export function IssueTree({
   const selectedId = peekedKey === null ? null : `i:${peekedKey}`
 
   return (
-    <div className={`@container relative min-h-0 flex-1 ${rows.length === 0 ? RING : ''}`}>
+    <div
+      data-tree-pane
+      className={`@container relative min-h-0 flex-1 ${rows.length === 0 ? RING : ''}`}
+    >
       <div
         ref={treeRef}
         role="tree"

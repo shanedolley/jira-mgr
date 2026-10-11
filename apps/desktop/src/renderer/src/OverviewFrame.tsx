@@ -1,11 +1,26 @@
 import type { JiraMgrError } from '@jira-mgr/core'
-import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import {
+  useEffect,
+  useRef,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 
 import { Banner } from './Banner'
 import { LoadError } from './LoadError'
 
 /** Marks the control that opens a row, which the arrow keys move between and focus returns to. */
 export const OVERVIEW_ROW = { 'data-overview-row': '' } as const
+
+/**
+ * Puts a focused control wholly in view in the table's scroll region. The browser leaves a control
+ * that shows in part where it is, which in a narrow window is a sort header cut by the window's edge.
+ */
+export function keepInView(event: FocusEvent<HTMLElement>) {
+  event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
 
 /** One column header, for a table that does not sort. */
 export const TH = 'h-9 px-3 text-left text-[13px] font-normal text-muted'
@@ -119,7 +134,7 @@ export function OverviewFrame({
       }}
       className="relative z-10 flex h-full min-h-0 min-w-0 flex-col bg-canvas outline-none"
     >
-      <header className="app-drag flex h-10 shrink-0 items-center gap-3 border-b border-line px-4">
+      <header className="app-drag flex h-10 shrink-0 items-center gap-3 border-b border-line px-4 max-rail:pl-6">
         <button type="button" onClick={onBack} className="btn btn-sm app-no-drag">
           Back to issues
         </button>

@@ -124,7 +124,7 @@ function PageBody({
   const worklogs = propertyRules(issue.issueType).estimates
   return (
     <>
-      <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px]">
+      <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px] max-stack:min-h-auto max-stack:overflow-y-visible max-stack:px-4">
         <div className="max-w-[40rem] space-y-8">
           {/* Closer to the description than the sections are to each other, so it starts by y=140. */}
           <div className="mb-6 space-y-1">
@@ -276,9 +276,9 @@ export function IssuePage({
         aria-label="Issue page"
         onKeyDown={onKeyDown}
         onDrop={onDrop}
-        className="relative z-10 grid h-full min-h-0 grid-cols-[minmax(0,1fr)_21rem] grid-rows-[auto_minmax(0,1fr)] bg-canvas focus-visible:outline-none"
+        className="relative z-10 grid h-full min-h-0 grid-cols-[minmax(0,1fr)_21rem] grid-rows-[auto_minmax(0,1fr)] bg-canvas focus-visible:outline-none max-stack:grid-cols-[minmax(0,1fr)] max-stack:grid-rows-[auto] max-stack:content-start max-stack:overflow-y-auto"
       >
-        <header className="app-drag col-span-2 flex h-10 items-center gap-3 border-b border-line px-4">
+        <header className="app-drag col-span-2 flex h-10 items-center gap-3 border-b border-line px-4 max-rail:pl-6 max-stack:sticky max-stack:top-0 max-stack:z-10 max-stack:col-span-1 max-stack:bg-canvas">
           <button type="button" onClick={onBack} className="btn btn-sm app-no-drag">
             Back to issues
           </button>
@@ -312,7 +312,7 @@ export function IssuePage({
           )}
         </header>
         {issue === undefined ? (
-          <div className="col-span-2">
+          <div className="col-span-2 max-stack:col-span-1">
             {detail.isError ? (
               <LoadError
                 what="this issue"

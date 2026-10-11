@@ -3,7 +3,7 @@ import { customerTotals, type CustomerOption } from '@jira-mgr/core/hierarchy'
 import { useMemo, type RefObject } from 'react'
 
 import { Banner } from './Banner'
-import { OVERVIEW_ROW, OverviewFrame, TH, type OverviewLoad } from './OverviewFrame'
+import { OVERVIEW_ROW, OverviewFrame, TH, keepInView, type OverviewLoad } from './OverviewFrame'
 import { NotLoaded, PercentDone } from './Progress'
 
 /**
@@ -64,7 +64,7 @@ export function CustomersPage({
       ) : rows.length === 0 ? (
         <p className="p-4 text-muted">No Customers.</p>
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto px-4 text-sm">
+        <div onFocus={keepInView} className="min-h-0 flex-1 overflow-auto px-4 text-sm">
           <table className="w-full min-w-[28rem] border-collapse">
             <thead>
               <tr>

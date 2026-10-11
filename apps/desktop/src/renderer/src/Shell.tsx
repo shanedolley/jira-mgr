@@ -15,6 +15,7 @@ import {
 } from '@jira-mgr/core/view-filter'
 import { useQueryClient } from '@tanstack/react-query'
 import {
+  type CSSProperties,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -46,6 +47,7 @@ import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { Kbd } from './Kbd'
+import { useTreeTop } from './narrow'
 import { type OverviewLoad } from './OverviewFrame'
 import { unreadCount, useInbox } from './inboxQueries'
 import { LoadError } from './LoadError'
@@ -292,6 +294,7 @@ export function Shell({ session }: { session: Session }) {
   const editIssue = useEditIssue()
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
+  const listRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
   const inboxRef = useRef<HTMLElement>(null)
   const sprintRef = useRef<HTMLElement>(null)
@@ -1004,9 +1007,15 @@ export function Shell({ session }: { session: Session }) {
     onRetryDone: () => void done.refetch(),
   }
 
+  const treeTop = useTreeTop(listRef, peekOpen)
   const layout = (
     <div
-      className={`relative grid h-full grid-rows-[minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
+      style={
+        treeTop === null
+          ? undefined
+          : ({ '--peek-top': `${String(treeTop + 8)}px` } as CSSProperties)
+      }
+      className={`relative grid h-full grid-rows-[minmax(0,1fr)] max-rail:grid-cols-[3rem_minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
     >
       <a
         href="#issue-list"
@@ -1060,12 +1069,13 @@ export function Shell({ session }: { session: Session }) {
         onStopTimer={stopFromSidebar}
       />
       <section
+        ref={listRef}
         id="issue-list"
         aria-label="Issue list"
         inert={listCovered}
         className="col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
       >
-        <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4">
+        <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4 max-rail:pl-6">
           <h1 className="font-semibold">Issues</h1>
           <div className="flex items-center gap-3">
             <span role="status" className="text-xs text-muted">
@@ -1334,7 +1344,7 @@ export function Shell({ session }: { session: Session }) {
       {toasts.length > 0 && (
         <ul
           aria-label="Notices"
-          className="fixed bottom-4 left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2"
+          className="fixed bottom-4 left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2 max-rail:left-16 max-rail:max-w-[min(28rem,calc(100vw-5rem))]"
         >
           {toasts.map((toast) => (
             <Toast
