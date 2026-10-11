@@ -147,7 +147,7 @@ function Content({ row, timing, onAdd }: { row: Row; timing: boolean; onAdd: (ro
       )
     case 'chip':
       return (
-        <span className="rounded-full border border-line px-2 text-xs text-muted">
+        <span className="rounded-md border border-line px-2 text-xs text-muted">
           {row.expanded ? `Hide ${String(row.doneCount)} done` : `${String(row.doneCount)} done`}
         </span>
       )

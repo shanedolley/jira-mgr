@@ -194,7 +194,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
       {conflict !== null && (
         <div role="alert" className="space-y-2 rounded-md border border-danger p-3">
           <p>This comment changed in Jira while you edited.</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => {
@@ -252,7 +252,7 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
           role="group"
           aria-label="Delete comment"
           onKeyDown={onConfirmKey}
-          className="flex items-center gap-2 text-xs"
+          className="flex flex-wrap items-center gap-2 text-xs"
         >
           <span>Delete this comment?</span>
           <button type="button" onClick={deleteComment} className="btn btn-sm btn-danger">

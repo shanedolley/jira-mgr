@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -89,6 +89,12 @@ const audit = (): Promise<Audit> =>
         if (![24, 28].some((height) => Math.abs(box.height - height) < 0.5))
           bad.push(`${name}: ${String(box.height)}px high`)
         if (radii.some((radius) => radius !== '6px')) bad.push(`${name}: radius ${radii.join(' ')}`)
+        // A button never sits outside its dialog (which clips sideways) or the window.
+        const frame = button.closest('dialog, [role="alertdialog"]')?.getBoundingClientRect()
+        const left = Math.max(0, frame?.left ?? 0)
+        const right = Math.min(document.documentElement.clientWidth, frame?.right ?? Infinity)
+        if (box.left < left - 0.5 || box.right > right + 0.5)
+          bad.push(`${name}: outside its surface (${String(box.left)} to ${String(box.right)})`)
       }
       // Only a toast's Dismiss and a filter chip's Remove draw a cross: neither deletes data.
       for (const button of document.querySelectorAll('button')) {
@@ -104,6 +110,32 @@ const audit = (): Promise<Audit> =>
     },
     [NOT_CHROME, CROSS] as const,
   )
+
+/** A fixed-offset zone in which it is now about noon, so a timer that ran 9h is not read as crossing midnight. */
+function noonZone(): string {
+  const behind = (new Date().getUTCHours() - 12 + 24) % 24
+  return behind <= 12 ? `Etc/GMT+${String(behind)}` : `Etc/GMT-${String(24 - behind)}`
+}
+
+/** Starts the app again with a timer on PSAPAC-2 begun `hoursAgo` back, and opens the Switch dialog from PSAPAC-3. */
+async function openSwitchDialog(hoursAgo: number) {
+  await app.close()
+  const started = new Date(Date.now() - hoursAgo * 3_600_000).toISOString()
+  await writeFile(
+    join(stateDir, 'timer.json'),
+    JSON.stringify({ issueKey: 'PSAPAC-2', segments: [{ start: started, end: null }] }),
+  )
+  ;({ app, window } = await launch(stateDir, { TZ: noonZone() }))
+  await open()
+  await item(/PSAPAC-3,/).click()
+  await expect(peek()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(tree()).toBeFocused()
+  await window.keyboard.press('t')
+  const dialog = window.getByRole('dialog', { name: 'Switch to PSAPAC-3' })
+  await expect(dialog).toBeVisible()
+  return dialog
+}
 
 /** Checks the buttons on screen now, and again with every font swapped for a wide one. */
 async function expectSystem(where: string, minimum: number) {
@@ -235,6 +267,19 @@ test.describe('button system', () => {
     await expectSystem('timer dialog', 3)
   })
 
+  test('the Switch timer dialog keeps Cancel, Discard and Log inside it, unflagged and flagged', async () => {
+    const plain = await openSwitchDialog(1)
+    await expect(plain.getByRole('button', { name: 'Log and start PSAPAC-3' })).toBeVisible()
+    await expectSystem('switch dialog', 3)
+
+    const flagged = await openSwitchDialog(9)
+    await expect(
+      flagged.getByRole('button', { name: 'Confirm, log and start PSAPAC-3' }),
+    ).toBeVisible()
+    await expect(flagged.getByRole('note')).toContainText('run a long time')
+    await expectSystem('switch dialog, flagged', 3)
+  })
+
   test('a toast and its buttons follow the system, and the toast takes the 8px radius', async () => {
     await open()
     await item(/PSAPAC-4,/).click()
@@ -284,6 +329,26 @@ test.describe('button system', () => {
     })
     expect([fill, text]).toEqual([true, true])
     expect(await opacityOf(post)).toBe(1)
+  })
+
+  test('a disabled ghost button reads as disabled: its text fades and the pointer says no', async () => {
+    await open()
+    const [enabled, disabled] = await window.evaluate(() => {
+      const make = (off: boolean) => {
+        const button = document.createElement('button')
+        button.className = 'btn btn-ghost'
+        button.disabled = off
+        button.textContent = 'Probe'
+        document.body.append(button)
+        const { color, cursor, backgroundColor } = getComputedStyle(button)
+        button.remove()
+        return { color, cursor, backgroundColor }
+      }
+      return [make(false), make(true)]
+    })
+    expect(disabled.color).not.toBe(enabled.color)
+    expect(disabled.cursor).toBe('not-allowed')
+    expect(disabled.backgroundColor).toBe(enabled.backgroundColor)
   })
 })
 

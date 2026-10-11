@@ -180,8 +180,14 @@ input {
     color: var(--muted);
   }
 
+  /* A ghost has no fill to lose, so its disabled text fades and the pointer says no. */
   .btn-ghost:disabled {
     background: transparent;
+    color: color-mix(in oklch, var(--muted) 55%, transparent);
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
   }
 }
 

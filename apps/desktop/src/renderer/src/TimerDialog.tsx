@@ -143,7 +143,7 @@ export function TimerDialog({ snapshot, to, onClose, onDone, returnFocus }: Time
           </p>
         )}
         {failure !== null && <Failure error={failure} className="text-danger" />}
-        <div className="flex justify-end gap-2 pt-1">
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
           <button type="button" disabled={pending} onClick={onClose} className="btn">
             Cancel
           </button>

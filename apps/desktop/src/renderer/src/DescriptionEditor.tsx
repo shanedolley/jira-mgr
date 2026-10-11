@@ -231,7 +231,7 @@ export function DescriptionEditor({
       {conflict !== null && (
         <div role="alert" className="space-y-2 rounded-md border border-danger p-3">
           <p>{issueKey}&apos;s description changed in Jira while you edited.</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => {

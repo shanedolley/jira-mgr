@@ -99,7 +99,7 @@ function ConfirmDelete({
       <p className="truncate" title={view.name}>
         Delete &ldquo;{view.name}&rdquo;?
       </p>
-      <div className="flex gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
         <button type="button" onClick={onConfirm} className="btn btn-sm btn-danger">
           Delete
         </button>

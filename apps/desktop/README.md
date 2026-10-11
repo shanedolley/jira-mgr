@@ -271,6 +271,10 @@ One `keydown` listener on the document, in the Shell, asks `resolveKey` (`keymap
 - Delete is never red at rest. `btn-delete` turns the text red on hover only; `btn-danger`, the solid red fill, belongs to a confirm (the delete dialog and the inline comment, worklog and view confirms). A delete icon is the bin (`TRASH` in `Icon.tsx`) with an accessible name. The two crosses left, a toast's Dismiss and a filter chip's Remove, do not delete data.
 - Row actions show on row hover and `:focus-within`, by opacity so keyboard focus still reaches them: a link's bin, Edit and Delete on a comment or worklog, a saved view's rename and bin, a group header's "+".
 - A section adds with `AddAction` in its heading: a 24px "+" named "Add link", "Add worklog" or "Attach file".
+- Rows of buttons wrap (`flex-wrap`), because a `.btn` neither wraps its text nor shrinks: a dialog's button row must not clip one. The test checks that every button sits inside its dialog.
+- A chrome button never takes `data-row`; the marker is only for row-shaped and bare link buttons.
+- The 4px `rounded` that remains (Kbd keycaps, the "Customer differs" badge, the Tree chevron, option and menu rows, the focus ring) is inline decoration, not a control.
+- A disabled ghost button fades its text and shows a not-allowed pointer, since it has no fill to lose.
 - A picker (`aria-haspopup="listbox"`) is a field, like a select, and a button marked `data-row` fills a row or is a bare text link (subtask rows, menu rows, the summary title). Neither is button chrome, and `e2e/desktop/buttons.test.ts` skips them. It measures every other rendered button: 24 or 28px high, a 6px radius, the `btn` class, no drawn cross, also in Verdana.
 
 ## Known Limits

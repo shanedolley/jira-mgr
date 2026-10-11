@@ -46,7 +46,7 @@ export function DiscardDialog({
         <p id="discard-title" className="font-medium">
           {title}
         </p>
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <button type="button" autoFocus onClick={onKeep} className="btn btn-primary">
             {keepLabel}
           </button>

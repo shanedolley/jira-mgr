@@ -137,7 +137,7 @@ function WorklogFormRow({
           {problem}
         </p>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={!request.ok || saving} className="btn btn-primary">
           {saving ? 'Saving' : submitLabel}
         </button>
@@ -253,7 +253,7 @@ function WorklogRow({
             event.stopPropagation()
             setConfirming(false)
           }}
-          className="flex items-center gap-2 text-xs"
+          className="flex flex-wrap items-center gap-2 text-xs"
         >
           <span>Delete this worklog? Its time returns to Time remaining.</span>
           <button type="button" onClick={deleteWorklog} className="btn btn-sm btn-danger">
