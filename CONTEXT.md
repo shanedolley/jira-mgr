@@ -20,7 +20,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Issue** | The unit of work. Issues nest through a parent. | ticket, item |
 | **Epic** | An issue that groups Stories, Tasks and Bugs. | initiative |
 | **Story**, **Task**, **Bug** | The issue types that sit under an Epic. Type changes among them are allowed if Jira accepts them. | |
-| **Subtask** | A child of a Story, Task or Bug. | child task |
+| **Subtask** | A child of a Story, Task or Bug. The desktop app's "Add sub-issue" and "Create sub-issue" make one. | child task |
 | **Customer** | The required field naming the customer an issue serves. Every issue type carries one. | client, account |
 | **Engagement** | The required field naming the workstream. | project |
 | **Status** | A state an issue sits in. The order is Opportunity, To Do, In Progress, Review, Hold, Done. | state, column |

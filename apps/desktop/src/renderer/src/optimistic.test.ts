@@ -391,7 +391,7 @@ describe('issueMutation', () => {
     client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
     client.setQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'), {
       ...detail(issue('PSAPAC-1', 'One')),
-      subtasks: [{ key: 'PSAPAC-9', summary: 'Sub', status: 'To Do' }],
+      subtasks: [{ key: 'PSAPAC-9', summary: 'Sub', status: 'To Do', done: false }],
     })
     const request = deferred<null>()
     const { read } = reader({ 'PSAPAC-1': detail(issue('PSAPAC-1', 'One', { labels: ['a'] })) })
@@ -563,7 +563,7 @@ describe('applyFreshIssue', () => {
     client.setQueryData<Issue[]>(unresolvedKey, [issue('PSAPAC-1', 'One')])
     const fresh: IssueDetail = {
       ...detail(issue('PSAPAC-1', 'One')),
-      subtasks: [{ key: 'PSAPAC-2', summary: 'Sub', status: 'To Do' }],
+      subtasks: [{ key: 'PSAPAC-2', summary: 'Sub', status: 'To Do', done: false }],
     }
     applyFreshIssue(client, fresh)
     expect(client.getQueryData<Issue[]>(unresolvedKey)?.[0]).not.toHaveProperty('subtasks')

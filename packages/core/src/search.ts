@@ -197,7 +197,13 @@ const detailSchema = z.object({
       .array(
         z.object({
           key: z.string(),
-          fields: z.object({ summary: z.string(), status: z.object({ name: z.string() }) }),
+          fields: z.object({
+            summary: z.string(),
+            status: z.object({
+              name: z.string(),
+              statusCategory: z.object({ key: z.string() }).nullish(),
+            }),
+          }),
         }),
       )
       .nullish(),
@@ -226,6 +232,7 @@ export async function getIssue(
       key: s.key,
       summary: s.fields.summary,
       status: s.fields.status.name,
+      done: s.fields.status.statusCategory?.key === 'done',
     })),
   }
 }

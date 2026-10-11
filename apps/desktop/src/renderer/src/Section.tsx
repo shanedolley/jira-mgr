@@ -8,6 +8,8 @@ interface SectionProps {
   title: string
   /** Buttons that sit beside the heading. */
   actions?: ReactNode
+  /** Drops the rule above, for a section that follows the description as part of its body. */
+  plain?: boolean
   children: ReactNode
 }
 
@@ -30,9 +32,12 @@ export function AddAction({ label, onClick }: { label: string; onClick: () => vo
 }
 
 /** One block of the issue page: its heading, a 1px rule above, and what it holds. */
-export function Section({ title, actions, children }: SectionProps) {
+export function Section({ title, actions, plain = false, children }: SectionProps) {
   return (
-    <section aria-label={title} className="space-y-1.5 border-t border-line pt-4">
+    <section
+      aria-label={title}
+      className={plain ? 'space-y-1.5' : 'space-y-1.5 border-t border-line pt-4'}
+    >
       <div className="flex min-h-6 items-center gap-2">
         <h2 className={SECTION_HEADING}>{title}</h2>
         {actions}
