@@ -317,10 +317,21 @@ export function CreateIssueDialog({
         notice = withUploadFailures(notice, result.key, failed)
         failedFiles ||= failed.length > 0
       }
+    } catch (error) {
+      // The issue exists, so a step that threw must still end the create: a second Create would
+      // make a duplicate.
+      const reason = error instanceof Error ? error.message : String(error)
+      notice = {
+        ...notice,
+        notes: [...notice.notes, `Something went wrong after ${result.key} was created. ${reason}`],
+        warned: true,
+      }
+      failedFiles = true
     } finally {
       // Not before the files attach: the placeholders are still in the editor, and one whose
-      // entry is gone shows "The upload was lost." This also takes an image deleted from the text
-      // meanwhile. The form is cleared or closed in the same run, so no render sees one without the other.
+      // entry is gone shows "The upload was lost." The editor is cleared first, so no placeholder
+      // outlives its entry, even for a moment. The sweep also takes an image deleted from the text.
+      if (more) descriptionRef.current?.reset(null)
       removeUploadsOf(STAGED_KEY)
       setAttaching(false)
     }
@@ -329,7 +340,6 @@ export function CreateIssueDialog({
       setLast(notice)
       setDraft(nextDraft(sent))
       setFiles([])
-      descriptionRef.current?.reset(null)
       setTouched(false)
     }
   }

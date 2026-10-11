@@ -1356,3 +1356,36 @@ test('Create more starts the pasted names again at pasted-1', async () => {
   await pasteImage(description())
   await expect(staged('pasted-1.png')).toBeVisible()
 })
+
+test('Create more never inserts a lost-upload node while it clears a pasted image', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Create more').check()
+  await fillDescribed('Watched', ['notes.txt'])
+  await pasteImage(description())
+  // Records every node added to the dialog whose text says an upload was lost, even for one frame.
+  await dialog().evaluate((element) => {
+    const seen: string[] = []
+    ;(window as unknown as { __lost: string[] }).__lost = seen
+    new MutationObserver((records) => {
+      for (const record of records) {
+        for (const added of record.addedNodes) {
+          if (added.textContent?.includes('was lost')) seen.push(added.textContent)
+        }
+      }
+    }).observe(element, { childList: true, subtree: true })
+  })
+  await createNow()
+  await expect.poll(async () => (await uploads()).length).toBe(1)
+  await releaseUpload(app)
+  await expect.poll(writes).toBe(2)
+  await releaseEdit(app)
+  await expect.poll(async () => (await uploads()).length).toBe(2)
+  await releaseUpload(app)
+  await expect(dialog().getByRole('status')).toContainText('Created PSAPAC-2000')
+  await expect(dialog().locator('figure')).toHaveCount(0)
+
+  expect(await window.evaluate(() => (window as unknown as { __lost: string[] }).__lost)).toEqual(
+    [],
+  )
+})
