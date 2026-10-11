@@ -8,7 +8,7 @@ jira-mgr holds one secret, the Atlassian API token, and reads one project's issu
 |---|---|
 | API token | Keychain item, service `jira-mgr`, account is the login email ([ADR-0003](../adr/0003-token-in-own-keychain-item.md)) |
 | Issue data | The Jira site, and in memory in the app and each CLI run. No replica on disk ([ADR-0002](../adr/0002-live-fetch-without-replica.md)) |
-| State files | `settings.json`, `fields.json`, `views.json`, `timer.json` in `~/Library/Application Support/jira-mgr/`. They hold no secret |
+| State files | `settings.json`, `fields.json`, `views.json`, `timer.json`, `inbox.json` in `~/Library/Application Support/jira-mgr/`. They hold no secret |
 | Recorded fixtures | The 61 files in `packages/core/fixtures/` are PSAPAC responses as recorded, with customer text, committed to the repository. The repository must stay private |
 | Recorder environment | `JM_JIRA_TOKEN`, `JM_JIRA_EMAIL` and `JM_JIRA_SITE` while `packages/core/scripts/record-fixture.ts` runs |
 

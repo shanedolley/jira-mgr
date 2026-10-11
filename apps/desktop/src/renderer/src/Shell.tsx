@@ -33,10 +33,12 @@ import { copyText } from './clipboard'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
 import { DeleteIssueDialog } from './DeleteIssueDialog'
+import { InboxPage } from './InboxPage'
 import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { Kbd } from './Kbd'
+import { unreadCount, useInbox } from './inboxQueries'
 import { LoadError } from './LoadError'
 import { ShortcutHelp } from './ShortcutHelp'
 import { Sidebar } from './Sidebar'
@@ -215,6 +217,9 @@ export function Shell({ session }: { session: Session }) {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   // The issue whose full page is open. The Tree stays mounted under it, so its scroll survives.
   const [pageKey, setPageKey] = useState<string | null>(null)
+  // The Inbox page, over the Tree like an issue page and under any issue page opened from it.
+  const [inboxOpen, setInboxOpen] = useState(false)
+  const inboxQuery = useInbox()
   // The create modal, opened by `C` or the New issue button, with the selection it started from
   // and, from the palette's Create sub-issue, the type it starts as.
   const [creating, setCreating] = useState<
@@ -254,6 +259,7 @@ export function Shell({ session }: { session: Session }) {
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
+  const inboxRef = useRef<HTMLElement>(null)
   const filterRef = useRef<HTMLInputElement>(null)
 
   // The Customer list loads for empty Customers in the Tree, and once the Filter menu has opened,
@@ -386,12 +392,16 @@ export function Shell({ session }: { session: Session }) {
   // Focus follows the page: into it whenever it opens or shows another issue, whose controls
   // replace the last page's, and back to the Tree when it closes.
   const pageOpen = pageKey !== null
-  const wasPageOpen = useRef(false)
+  // The list is out of reach under either page.
+  const listCovered = pageOpen || inboxOpen
+  const surface = pageOpen ? 'page' : inboxOpen ? 'inbox' : 'tree'
+  const wasSurface = useRef<typeof surface>('tree')
   useEffect(() => {
-    if (pageKey !== null) pageRef.current?.focus()
-    else if (wasPageOpen.current) treeRef.current?.focus()
-    wasPageOpen.current = pageKey !== null
-  }, [pageKey])
+    if (surface === 'page') pageRef.current?.focus()
+    else if (wasSurface.current !== surface)
+      (surface === 'inbox' ? inboxRef : treeRef).current?.focus()
+    wasSurface.current = surface
+  }, [surface, pageKey])
 
   /**
    * A view replaces the bar's filters and sets the toggles. The toggles go through the same write
@@ -402,6 +412,7 @@ export function Shell({ session }: { session: Session }) {
   function applyView(view: SavedView) {
     setFilters(view.filters)
     if (toggles !== undefined) setToggles.mutate(applyViewToggles(toggles, view))
+    setInboxOpen(false)
     if (pageOpen) setPageKey(null)
     else focusTree()
   }
@@ -439,7 +450,8 @@ export function Shell({ session }: { session: Session }) {
     setCreating(
       pageKey === null
         ? createContext(
-            rows.find((r) => r.id === activeId),
+            // The Tree is out of sight under the Inbox, so its active row says nothing of the user's intent.
+            inboxOpen ? undefined : rows.find((r) => r.id === activeId),
             issues,
           )
         : { selected: issues.find((i) => i.key === pageKey) ?? null, group: null },
@@ -660,7 +672,7 @@ export function Shell({ session }: { session: Session }) {
       case 'filter': {
         // The list is inert under an open page, so the field cannot take focus there.
         const field = filterRef.current
-        if (field === null || pageOpen) return
+        if (field === null || listCovered) return
         event.preventDefault()
         field.focus()
         field.select()
@@ -676,7 +688,7 @@ export function Shell({ session }: { session: Session }) {
         return
       }
       case 'timer': {
-        const key = pageKey ?? activeKey
+        const key = pageKey ?? (inboxOpen ? null : activeKey)
         if (key === null || !treeReady) return
         event.preventDefault()
         pressTimer(key)
@@ -688,13 +700,13 @@ export function Shell({ session }: { session: Session }) {
         if (pageOpen) {
           event.preventDefault()
           setPageKey(null)
-        } else if (peekOpen) {
+        } else if (peekOpen && !inboxOpen) {
           event.preventDefault()
           closePeek()
         }
         return
       default: {
-        const key = pageKey ?? activeKey
+        const key = pageKey ?? (inboxOpen ? null : activeKey)
         if (key === null || !treeReady || creating !== null || deleting !== null || timing !== null)
           return
         event.preventDefault()
@@ -884,7 +896,16 @@ export function Shell({ session }: { session: Session }) {
       <Sidebar
         session={session}
         count={unresolved.data?.length}
-        issuesCurrent={activeView(savedViews ?? [], filters, toggles) === undefined}
+        issuesCurrent={!inboxOpen && activeView(savedViews ?? [], filters, toggles) === undefined}
+        unread={inboxQuery.data === undefined ? undefined : unreadCount(inboxQuery.data)}
+        inboxOpen={inboxOpen}
+        onShowInbox={() => {
+          setInboxOpen(true)
+        }}
+        onShowIssues={() => {
+          setInboxOpen(false)
+          setPageKey(null)
+        }}
         views={<ViewsList filters={filters} toggles={toggles} onApply={applyView} />}
         onOpenIssue={setPageKey}
         onStopTimer={stopFromSidebar}
@@ -892,7 +913,7 @@ export function Shell({ session }: { session: Session }) {
       <section
         id="issue-list"
         aria-label="Issue list"
-        inert={pageOpen}
+        inert={listCovered}
         className="col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
       >
         <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4">
@@ -998,9 +1019,14 @@ export function Shell({ session }: { session: Session }) {
             setEditingKey(editing ? lastIssueKey : null)
           }}
           onLeave={focusTree}
-          inert={pageOpen}
+          inert={listCovered}
           asideRef={peekRef}
         />
+      )}
+      {inboxOpen && (
+        <div className="[grid-column:2/-1] row-start-1 min-h-0">
+          <InboxPage onOpen={setPageKey} pageRef={inboxRef} />
+        </div>
       )}
       {pageKey !== null && (
         <div className="[grid-column:2/-1] row-start-1 min-h-0">

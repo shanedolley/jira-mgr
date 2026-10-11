@@ -11,7 +11,7 @@ Two clients share one core. The CLI and the desktop app's main process both impo
 | Desktop main (`apps/desktop/src/main`) | Electron main process | IPC handlers and `backend.ts`, the only desktop file that calls core |
 | Desktop preload (`apps/desktop/src/preload/index.ts`) | The renderer's isolated bridge | `window.jm`, one function per IPC channel |
 | Desktop renderer (`apps/desktop/src/renderer/src`) | A sandboxed Chromium page | React UI and the in-memory TanStack Query cache |
-| State folder | Disk | `settings.json`, `fields.json`, `views.json`, `timer.json` |
+| State folder | Disk | `settings.json`, `fields.json`, `views.json`, `timer.json`, `inbox.json` |
 | Keychain item | macOS Keychain | The API token |
 
 ## CLI Path

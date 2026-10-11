@@ -51,6 +51,26 @@ Values within a key are alternatives, and every key that is set must match. The 
 
 A `not` key excludes: `{ "status": ["Done"], "not": { "label": ["etl"] } }` keeps Done issues without the label `etl`. A view file written before these keys existed parses unchanged. An older build that reads a newer file drops the keys it does not know, and its next save loses them.
 
+## inbox.json
+
+The Inbox's read marks. The app writes it; `jm` neither reads nor writes it. A missing file reads as nothing read, so the last 14 days show as unread.
+
+```json
+{
+  "version": 1,
+  "allReadAt": "2026-10-10T22:30:00.000Z",
+  "reads": { "PSAPAC-3066": "2026-10-10T23:02:41.517Z" }
+}
+```
+
+| Key | Type |
+|---|---|
+| `version` | `1`; any other value fails validation |
+| `allReadAt` | ISO date-time. Every issue updated at or before it is read |
+| `reads` | Issue key to ISO date-time: the `updated` time of the issue when the user opened it |
+
+An issue's read mark is the later of `allReadAt` and its own `reads` entry, and the issue is unread when Jira's `updated` is later than the mark and someone else made the change. Opening an entry sets its `reads` entry to the `updated` time the user saw. Mark all read sets `allReadAt` to the newest `updated` time in the list. Every write drops the `reads` entries that `allReadAt` covers and those older than 14 days, so the file holds at most the issues read in the last 14 days.
+
 ## Environment Variables
 
 | Variable | Effect |
@@ -60,4 +80,4 @@ A `not` key excludes: `{ "status": ["Done"], "not": { "label": ["etl"] } }` keep
 | `JM_LIVE_JIRA=1` | Opts in to the read-only live PSAPAC tests; `pnpm test:live` sets it |
 | `JM_LIVE_KEYCHAIN=1` | Opts in to `auth.live.test.ts`, which uses the real macOS Keychain |
 | `JM_JIRA_SITE`, `JM_JIRA_EMAIL`, `JM_JIRA_TOKEN` | Read only by `pnpm fixture:record` |
-| `JM_E2E_*`, `JM_AVATAR_SHOT` | Test-only; see [e2e/README.md](../../e2e/README.md) |
+| `JM_E2E_*`, `JM_AVATAR_SHOT`, `JM_INBOX_SHOT` | Test-only; see [e2e/README.md](../../e2e/README.md) |

@@ -228,6 +228,15 @@ One `keydown` listener on the document, in the Shell, asks `resolveKey` (`keymap
 - Main runs every views call through one promise chain, since core reads, changes and rewrites the whole file and two overlapping calls would drop an edit. There is no lock file: the CLI only reads `views.json`. A CLI command that writes views must lock the file first, as core's timer does for `timer.json`.
 - A view is read again on window focus, so a hand edit of the file shows up when the window regains focus.
 
+## Inbox
+
+- The sidebar's Inbox link opens a page over the Tree, as an issue page does, and shows a count of unread entries beside it. The link is `aria-current` while the page is open, and the Issues link, a saved view or the palette's Go to view leaves it. While it is open the Tree is inert and the Tree's letter keys do nothing.
+- The page lists the issues the user is assigned to, reported or watches that changed in the last 14 days (core's `listInbox`), newest first. An unread entry has a dot, a bold title and a second line naming the newest change by someone else after the read mark: `PSAPAC-3139 · Status: To Do to In Progress · Sharon Warner`, or `PSAPAC-2477 · Comment by John Shea`. A read entry is muted and says where the issue stands: `PSAPAC-3139 · In Progress`. The age on the right is the change's, or the issue's `updated` when it is read. The ages are as of the last read of Jira.
+- Opening an entry (click or Enter) marks it read up to the `updated` time the entry showed, and opens the issue page above the Inbox. Back returns to the Inbox. A change that lands after that time leaves the entry unread. Mark all read marks everything up to the newest `updated` in the list; the button is disabled with nothing unread. Both show the result at once and write `inbox.json` through `inbox:markRead` and `inbox:markAllRead`; a refused write puts the marks back and says so. Up and Down move between entries.
+- The marks are `inbox.json`, whose shape is in [Config](../../docs/reference/config.md#inboxjson). An issue whose changes since its mark are all the user's own is read, so editing an issue in the app never makes it unread.
+- Main reads and writes the file through one promise chain, as it does for views, since core reads, changes and rewrites the whole file. The CLI neither reads nor writes `inbox.json`, so there is no lock; a `jm inbox` command that writes it must lock first. A second `inbox:list` while one runs shares its answer. Core's cache keeps each issue's changelog while its `updated` stays the same, so a poll sends one search and nothing more when nothing changed. Logout aborts the load and drops the cache.
+- The Inbox is read on login, on window focus (through the same focus bridge as the Tree) and every five minutes (`INBOX_POLL_MS`). TanStack Query starts no second fetch while one runs, so a poll that falls on a running read is skipped. The badge needs the Inbox loaded, so it appears a moment after the Tree.
+
 ## Activity
 
 - The page shows, under the subtasks: Links, Worklogs (not on an Epic), Activity (the comments and the comment box) and Attachments last. Each reads on its own (`comments:list`, `worklogs:list`, `links:list`, `attachments:list`), so one failing shows its error and Retry and leaves the others. They load when the page opens and again on window focus. Logout removes them.
@@ -254,6 +263,7 @@ One `keydown` listener on the document, in the Shell, asks `resolveKey` (`keymap
 - Activity channels: `comments:list|add|edit|delete`, `worklogs:list|add|edit|delete`, `links:list|add|remove` and `attachments:list|add|download`. Ids are digits, bodies and comments are ADF of at most 1 MB, `timeSpent` matches `DURATION_PATTERN`, `started` is an ISO date-time, a file is 1 byte to 100 MB, and no argument carries a path. Every write calls `assertInProject` first; a link calls it for both ends.
 - Main rewrites the CLI wording in a core error message before it crosses IPC (`src/main/messages.ts`), so "Run `jm auth login`" reads "Log in again." in the app. The error code and every other word stay as core wrote them, and the CLI never passes through it. It also drops the request a message names ("Jira answered 500 to GET <path>" reads "Jira answered 500"), so no request path reaches the window: toasts, notices and form errors show the short text, and an error shown with Details (`LoadError`, `Failure`, `Reason`) keeps the full text in `IpcError.detail`. `IpcError.status` carries the HTTP status Jira answered with (absent when it did not answer), so `LoadError` can tell a 5xx from a lost connection (`statusOf` in `ipc.ts`). A notice, a create warning or a toast carries only the short text. `core`'s message and `details` are untouched, since the CLI's `--json` output is a public contract.
 - `settings:setToggles` writes through a promise chain, so two quick presses write in order. It replaces only `toggles` and keeps the rest of the settings.
+- `inbox:list` takes nothing and answers `{ issue, unread, change }` per entry. `inbox:markRead` takes an issue key and its `updated` time, and `inbox:markAllRead` the `through` time; both are ISO date-times and answer `null`.
 - `views:list`, `views:create`, `views:rename` and `views:delete` take strict objects: a name of at most 80 characters, filters in core's shape (lists of strings, a text string) and the three toggles. Core owns the name rules (trimmed, not empty, unique in any case) and answers `validation_failed` or `not_found`.
 - Window focus travels the other way: main sends `window:focus`, and the renderer hands it to TanStack Query's focus manager. Chromium raises `visibilitychange` only when a window hides, so the default would miss a switch back from another app.
 
@@ -285,6 +295,10 @@ One `keydown` listener on the document, in the Shell, asks `resolveKey` (`keymap
 
 ## Known Limits
 
+- A new issue shows as read until someone changes or comments on it: a creation writes no changelog history, so nothing names it.
+- The Inbox names the newest change by someone else but not how many came after the mark. An issue with over 100 own changes after its mark can hide an older change by someone else.
+- A comment is found only when it is the newest comment by creation time, so an edit of an older comment is missed.
+- The Inbox has no filter, no snooze and no per-entry "mark unread".
 - The Tree shows nothing until a whole phase has loaded, since a partial phase can hold a Story whose Epic is on a later page.
 - The renderer cannot cancel a load by itself. A newer load of a phase and logout abort the one running; an unmounted query otherwise runs to the end.
 - Filter choices other than statuses, Customers and the fixed lists (Status type, Relations, the date windows) come from the loaded issues, so an issue that is not loaded cannot be filtered for.

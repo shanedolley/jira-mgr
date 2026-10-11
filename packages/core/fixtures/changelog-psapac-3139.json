@@ -1,0 +1,137 @@
+{
+  "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/PSAPAC-3139/changelog?maxResults=100&startAt=0",
+  "maxResults": 100,
+  "startAt": 0,
+  "total": 4,
+  "isLast": true,
+  "values": [
+    {
+      "id": "10980038",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=712020%3A16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+        "accountId": "712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34",
+        "emailAddress": "shane.dolley@collibra.com",
+        "avatarUrls": {
+          "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/48",
+          "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/24",
+          "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/16",
+          "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:16f8dbe7-f120-4043-bcaf-e06ef7156d34/6ab8151a-c741-4f8b-9869-4671e4d38fce/32"
+        },
+        "displayName": "Shane Dolley",
+        "active": true,
+        "timeZone": "Australia/Brisbane",
+        "accountType": "atlassian"
+      },
+      "created": "2026-10-10T08:59:50.183+0000",
+      "items": [
+        {
+          "field": "IssueParentAssociation",
+          "fieldtype": "jira",
+          "from": null,
+          "fromString": null,
+          "to": "1449957",
+          "toString": "PSAPAC-3116"
+        }
+      ]
+    },
+    {
+      "id": "10980040",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+        "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+        },
+        "displayName": "Automation for Jira",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "app"
+      },
+      "created": "2026-10-10T08:59:52.939+0000",
+      "items": [
+        {
+          "field": "timeestimate",
+          "fieldtype": "jira",
+          "fieldId": "timeestimate",
+          "from": null,
+          "fromString": null,
+          "to": "0",
+          "toString": "0"
+        },
+        {
+          "field": "timeoriginalestimate",
+          "fieldtype": "jira",
+          "fieldId": "timeoriginalestimate",
+          "from": null,
+          "fromString": null,
+          "to": "14400",
+          "toString": "14400"
+        }
+      ],
+      "historyMetadata": {}
+    },
+    {
+      "id": "10980041",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+        "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+        },
+        "displayName": "Automation for Jira",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "app"
+      },
+      "created": "2026-10-10T08:59:53.268+0000",
+      "items": [
+        {
+          "field": "labels",
+          "fieldtype": "jira",
+          "fieldId": "labels",
+          "from": null,
+          "fromString": "",
+          "to": null,
+          "toString": "PSAPAC"
+        }
+      ],
+      "historyMetadata": {}
+    },
+    {
+      "id": "10980042",
+      "author": {
+        "self": "https://engineering-collibra.atlassian.net/rest/api/3/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+        "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+        "avatarUrls": {
+          "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+          "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+        },
+        "displayName": "Automation for Jira",
+        "active": true,
+        "timeZone": "Etc/GMT",
+        "accountType": "app"
+      },
+      "created": "2026-10-10T08:59:53.900+0000",
+      "items": [
+        {
+          "field": "Time remaining (h)",
+          "fieldtype": "custom",
+          "fieldId": "customfield_21785",
+          "from": null,
+          "fromString": null,
+          "to": null,
+          "toString": "0"
+        }
+      ],
+      "historyMetadata": {}
+    }
+  ]
+}

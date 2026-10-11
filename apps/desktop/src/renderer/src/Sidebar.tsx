@@ -9,10 +9,24 @@ import { draftCount, subscribeDrafts } from './drafts'
 import { useLogout, useMe } from './queries'
 import { useTimer } from './timerQueries'
 
+/** The count that sits beside a sidebar link, and what a screen reader hears after it. */
+function Badge({ count, what }: { count: number; what: string }) {
+  return (
+    <span className="rounded bg-accent px-1.5 text-[11px] font-medium leading-5 text-accent-ink">
+      {count}
+      <span className="sr-only"> {what}</span>
+    </span>
+  )
+}
+
 export function Sidebar({
   session,
   count,
   issuesCurrent,
+  unread,
+  inboxOpen,
+  onShowInbox,
+  onShowIssues,
   views,
   onOpenIssue,
   onStopTimer,
@@ -21,6 +35,12 @@ export function Sidebar({
   count: number | undefined
   /** No saved view matches the filters, so Issues is the one highlighted item. */
   issuesCurrent: boolean
+  /** Inbox entries nobody has read. `undefined` until the Inbox has loaded. */
+  unread: number | undefined
+  inboxOpen: boolean
+  onShowInbox: () => void
+  /** Leaves the Inbox for the issue list. */
+  onShowIssues: () => void
   /** The saved views section, which sits under the main links. */
   views?: ReactNode
   /** Opens the page of the issue the timer runs on. */
@@ -44,13 +64,28 @@ export function Sidebar({
         <p className="font-semibold">{session.projectKey}</p>
         <p className="truncate text-xs text-muted">{site}</p>
       </div>
-      <ul className="px-2">
+      <ul className="space-y-0.5 px-2">
+        <li>
+          <a
+            href="#inbox"
+            aria-current={inboxOpen ? 'page' : undefined}
+            onClick={(event) => {
+              event.preventDefault()
+              onShowInbox()
+            }}
+            className={`flex items-center justify-between rounded-md px-2 py-1 ${inboxOpen ? 'bg-selected' : 'hover:bg-hover'}`}
+          >
+            <span>Inbox</span>
+            {unread !== undefined && unread > 0 && <Badge count={unread} what="unread" />}
+          </a>
+        </li>
         <li>
           <a
             href="#issues"
             aria-current={issuesCurrent ? 'page' : undefined}
             onClick={(event) => {
               event.preventDefault()
+              if (inboxOpen) onShowIssues()
             }}
             className={`flex items-center justify-between rounded-md px-2 py-1 ${issuesCurrent ? 'is-current' : 'hover:bg-hover'}`}
           >

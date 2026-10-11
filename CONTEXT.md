@@ -47,6 +47,8 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Is not** | The operator that leaves out the issues holding a value. A saved view stores it under `not`. | exclude, negate |
 | **Overdue** | An open issue with a due date before today. | late |
 | **Palette** | The Cmd+K menu: the issue in context and its actions, saved views, a search over loaded issues, and Jira text search below them. | command bar, omnibox |
+| **Inbox** | The sidebar page listing the issues the user is assigned to, reported or watches that changed in the last 14 days, each marked read or unread, with a badge in the sidebar. | notifications, activity feed |
+| **Read mark** | The `updated` time of an issue when the user opened it, kept in `inbox.json`. An issue is unread when it changed after its read mark, or after the Inbox-wide mark set by Mark all read, and someone else made the change. | seen, last looked |
 | **Peek** | The space-bar preview of an issue. | quick view |
 | **Issue page** | The full page of one issue, opened with Enter: summary, description and subtasks beside the properties sidebar. | detail view |
 | **Properties sidebar** | The right column of the Issue page. Each property is a picker or a field that edits at once and rolls back if Jira refuses. | inspector |

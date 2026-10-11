@@ -76,6 +76,49 @@ function requestedFields(ids: FieldIds): string[] {
 }
 
 /**
+ * Pages through one JQL query, yielding each page's issues. Jira sends a token with every page
+ * but the last, and a token it already sent is an error, so the loop always ends. Aborting
+ * `signal` stops the paging.
+ */
+export async function* searchJqlPages(
+  http: HttpClient,
+  jql: string,
+  options: { pageSize?: number; signal?: AbortSignal } = {},
+): AsyncGenerator<Issue[]> {
+  const ids = await getFieldIds()
+  const fields = requestedFields(ids)
+  const pageSchema = z.object({
+    issues: z.array(issueSchema(ids)),
+    nextPageToken: z.string().optional(),
+    isLast: z.boolean(),
+  })
+  let nextPageToken: string | undefined
+  const seen = new Set<string>()
+  for (;;) {
+    const raw = await http.request('POST', '/rest/api/3/search/jql', {
+      body: { jql, fields, maxResults: options.pageSize ?? PAGE_SIZE, nextPageToken },
+      signal: options.signal,
+    })
+    const page = pageSchema.safeParse(raw)
+    if (!page.success) {
+      throw new JiraMgrError('jira_error', 'Jira sent an unexpected search response.', {
+        details: { issues: page.error.issues },
+      })
+    }
+    yield page.data.issues
+    if (page.data.isLast) return
+    nextPageToken = page.data.nextPageToken
+    if (nextPageToken === undefined) {
+      throw new JiraMgrError('jira_error', 'Jira sent another page but no token to fetch it.')
+    }
+    if (seen.has(nextPageToken)) {
+      throw new JiraMgrError('jira_error', 'Jira sent a page token it had already sent.')
+    }
+    seen.add(nextPageToken)
+  }
+}
+
+/**
  * Pages through the project's issues, unresolved first and then Done, yielding each page with the
  * running count. Each phase orders by key, which never changes, so an edit made mid-load cannot
  * shift an issue across a page boundary as `updated` would. Aborting `signal` stops the paging.
@@ -88,42 +131,14 @@ export async function* searchIssuePages(
   if (settings.projectKey === undefined) {
     throw new JiraMgrError('permission_denied', 'No project is set. Run `jm auth login`.')
   }
-  const ids = await getFieldIds()
-  const fields = requestedFields(ids)
-  const pageSchema = z.object({
-    issues: z.array(issueSchema(ids)),
-    nextPageToken: z.string().optional(),
-    isLast: z.boolean(),
-  })
 
   let loaded = 0
   for (const [phase, condition] of PHASES) {
     if (options.phases?.includes(phase) === false) continue
     const jql = `project = ${quote(settings.projectKey)} AND ${condition} ORDER BY key DESC`
-    let nextPageToken: string | undefined
-    const seen = new Set<string>()
-    for (;;) {
-      const raw = await http.request('POST', '/rest/api/3/search/jql', {
-        body: { jql, fields, maxResults: options.pageSize ?? PAGE_SIZE, nextPageToken },
-        signal: options.signal,
-      })
-      const page = pageSchema.safeParse(raw)
-      if (!page.success) {
-        throw new JiraMgrError('jira_error', 'Jira sent an unexpected search response.', {
-          details: { issues: page.error.issues },
-        })
-      }
-      loaded += page.data.issues.length
-      yield { phase, issues: page.data.issues, loaded }
-      if (page.data.isLast) break
-      nextPageToken = page.data.nextPageToken
-      if (nextPageToken === undefined) {
-        throw new JiraMgrError('jira_error', 'Jira sent another page but no token to fetch it.')
-      }
-      if (seen.has(nextPageToken)) {
-        throw new JiraMgrError('jira_error', 'Jira sent a page token it had already sent.')
-      }
-      seen.add(nextPageToken)
+    for await (const issues of searchJqlPages(http, jql, options)) {
+      loaded += issues.length
+      yield { phase, issues, loaded }
     }
   }
 }

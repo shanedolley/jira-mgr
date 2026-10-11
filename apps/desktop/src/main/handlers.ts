@@ -32,6 +32,8 @@ import type {
   KeyArgs,
   ListIssuesArgs,
   LoginArgs,
+  MarkInboxAllReadArgs,
+  MarkInboxReadArgs,
   RemoveLinkArgs,
   RenameViewArgs,
   ResultOf,
@@ -282,6 +284,15 @@ const searchTextArgs: z.ZodType<SearchTextArgs> = z.strictObject({
   query: z.string().max(TEXT_QUERY_MAX),
 })
 
+const instant = z.iso.datetime({ offset: true })
+
+const markInboxReadArgs: z.ZodType<MarkInboxReadArgs> = z.strictObject({
+  key: issueKey,
+  updated: instant,
+})
+
+const markInboxAllReadArgs: z.ZodType<MarkInboxAllReadArgs> = z.strictObject({ through: instant })
+
 const togglesArgs: z.ZodType<Toggles> = z.strictObject({
   hideDone: z.boolean(),
   assigneeMe: z.boolean(),
@@ -387,6 +398,9 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'views:create': createViewArgs,
   'views:rename': renameViewArgs,
   'views:delete': deleteViewArgs,
+  'inbox:list': z.undefined(),
+  'inbox:markRead': markInboxReadArgs,
+  'inbox:markAllRead': markInboxAllReadArgs,
   'timer:get': z.undefined(),
   'timer:start': startTimerArgs,
   'timer:stop': stopTimerArgs,
@@ -548,6 +562,15 @@ export function createHandlers(
     'views:rename': handle('views:rename', (args) => backend.renameView(args)),
     'views:delete': handle('views:delete', async (args) => {
       await backend.deleteView(args)
+      return null
+    }),
+    'inbox:list': handle('inbox:list', () => backend.listInbox()),
+    'inbox:markRead': handle('inbox:markRead', async (args) => {
+      await backend.markInboxRead(args)
+      return null
+    }),
+    'inbox:markAllRead': handle('inbox:markAllRead', async (args) => {
+      await backend.markInboxAllRead(args)
       return null
     }),
     'timer:get': handle('timer:get', () => backend.getTimer()),
