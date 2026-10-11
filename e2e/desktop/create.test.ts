@@ -943,7 +943,7 @@ const png = (name = 'shot.png'): Dropped => ({ name, type: 'image/png', data: PN
 const text = (name: string): Dropped => ({ name, type: 'text/plain', data: btoa('hello') })
 
 /** Pastes a PNG into the element, as the clipboard hands over a screenshot. */
-async function pasteImage(target: Locator, name = 'shot.png') {
+async function pasteImage(target: Locator, name = 'image.png') {
   await target.evaluate(
     (element, [data, filename]) => {
       const bytes = Uint8Array.from(atob(data ?? ''), (c) => c.charCodeAt(0))
@@ -992,7 +992,7 @@ test('a pasted image stages in the description, uploads after the create and is 
   await openCreate(/PSAPAC-2,/)
   await fillDescribed('With a screenshot')
   await pasteImage(description())
-  await expect(staged('shot.png')).toBeVisible()
+  await expect(staged('pasted-1.png')).toBeVisible()
   await expect(dialog().locator('figure img')).toBeVisible()
   expect(await uploads()).toEqual([])
 
@@ -1014,7 +1014,7 @@ test('a pasted image stages in the description, uploads after the create and is 
   await expect.poll(async () => (await uploads()).length).toBe(1)
   expect((await uploads())[0]).toMatchObject({
     key: 'PSAPAC-2000',
-    filename: 'shot.png',
+    filename: 'pasted-1.png',
     type: 'image/png',
   })
   await expect(dialog().getByRole('button', { name: 'Attaching' })).toBeDisabled()
@@ -1034,13 +1034,16 @@ test('a pasted image stages in the description, uploads after the create and is 
           attrs: expect.objectContaining({
             type: 'file',
             id: expect.stringMatching(/^aaaaaaaa-0000-4000-8000-/),
-            alt: 'shot.png',
+            alt: 'pasted-1.png',
           }) as unknown,
         },
       ],
     },
     { type: 'paragraph' },
   ])
+  // The finished image shows no error while the dialog waits: nothing loads it under the dialog's key.
+  await window.waitForTimeout(500)
+  await expect(dialog().getByRole('alert')).toHaveCount(0)
   await releaseEdit(app)
 
   await expect(dialog()).toHaveCount(0)
@@ -1057,8 +1060,8 @@ test('a pasted image that is removed before the create uploads nothing', async (
   await openCreate(/PSAPAC-2,/)
   await fillDescribed('Changed my mind')
   await pasteImage(description())
-  await dialog().getByRole('button', { name: 'Remove shot.png' }).click()
-  await expect(staged('shot.png')).toHaveCount(0)
+  await dialog().getByRole('button', { name: 'Remove pasted-1.png' }).click()
+  await expect(staged('pasted-1.png')).toHaveCount(0)
   await createNow()
 
   await expect(dialog()).toHaveCount(0)
@@ -1076,7 +1079,7 @@ test('a failed image upload leaves the issue and its text, and the notice names 
 
   await expect(dialog()).toHaveCount(0)
   await expect(toast()).toContainText('Created PSAPAC-2000: Image refused')
-  await expect(toast()).toContainText('Could not attach shot.png to PSAPAC-2000.')
+  await expect(toast()).toContainText('Could not attach pasted-1.png to PSAPAC-2000.')
   await expect(toast()).toContainText('It is not in the description.')
   await expect(toast()).not.toContainText('/rest/')
   // Nothing was written again, and the issue is there.
@@ -1092,8 +1095,8 @@ test('one image failing does not stop the next from landing in the description',
   await open()
   await openCreate(/PSAPAC-2,/)
   await fillDescribed('Two images')
-  await pasteImage(description(), 'first.png')
-  await pasteImage(description(), 'second.png')
+  await pasteImage(description())
+  await pasteImage(description())
   await failUpload(app)
   await createNow()
   // The fake fails the first upload to arrive, in document order.
@@ -1105,6 +1108,8 @@ test('one image failing does not stop the next from landing in the description',
   expect(written.fields.description.content.filter((n) => n.type === 'mediaSingle')).toHaveLength(1)
   await releaseEdit(app)
 
+  // Each pasted image has its own name, so the notice says which one failed.
+  expect([failed, landed].sort()).toEqual(['pasted-1.png', 'pasted-2.png'])
   await expect(toast()).toContainText(`Could not attach ${failed} to PSAPAC-2000.`)
   await expect(toast()).not.toContainText(`Could not attach ${landed} `)
 })
@@ -1259,7 +1264,8 @@ test('Create more clears a pasted image, and the dialog stays within its width i
   })
   await dialog().getByLabel('Create more').check()
   await fillDescribed('Wide and staged')
-  await pasteImage(description(), `${'y'.repeat(80)}.png`)
+  await pasteImage(description())
+  await dragFiles(description(), 'drop', [png(`${'y'.repeat(80)}.png`)])
   await dragFiles(title(), 'drop', [
     text('a-very-long-file-name-for-the-quarterly-engagement-report-final.pdf'),
     text(`${'x'.repeat(80)}.pdf`),
@@ -1282,12 +1288,12 @@ test('Create more clears a pasted image, and the dialog stays within its width i
 
   await dialog().getByRole('button', { name: 'Create issue' }).click()
   await settle(1)
-  // The image, then the two files, each held until released.
-  for (let sent = 1; sent <= 3; sent++) {
+  // The two images, the description write, then the two files, each held until released.
+  for (let sent = 1; sent <= 4; sent++) {
     await expect.poll(async () => (await uploads()).length).toBe(sent)
     await releaseUpload(app)
-    if (sent === 1) await expect.poll(writes).toBe(2)
-    if (sent === 1) await releaseEdit(app)
+    if (sent === 2) await expect.poll(writes).toBe(2)
+    if (sent === 2) await releaseEdit(app)
   }
   await expect(dialog().getByRole('status')).toContainText('Created PSAPAC-2000')
   await expect(dialog().locator('figure')).toHaveCount(0)

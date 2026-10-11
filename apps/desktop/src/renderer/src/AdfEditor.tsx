@@ -23,7 +23,7 @@ import { ReadOnlyBlock } from './ReadOnlyBlock'
 import { ReadOnlyInline } from './ReadOnlyInline'
 import { IssueKeyContext } from './editor/context'
 import { createExtensions, schemaAccepts, type Behaviour } from './editor/extensions'
-import { stageUpload, startUpload } from './uploads'
+import { pastedName, stageUpload, startUpload } from './uploads'
 
 const EMPTY: AdfDoc = { version: 1, type: 'doc', content: [] }
 
@@ -179,9 +179,9 @@ export function AdfEditor(props: AdfEditorProps) {
       edit(pos) {
         live.current.onEditRequest(pos)
       },
-      images(files, pos) {
+      images(files, pos, pasted) {
         if (!live.current.editing || editorRef.current === null) return false
-        embed(editorRef.current, files, pos)
+        embed(editorRef.current, files, pos, pasted)
         return true
       },
     }),
@@ -192,6 +192,7 @@ export function AdfEditor(props: AdfEditorProps) {
     [],
   )
   const editorRef = useRef<Editor | null>(null)
+  const pastedCount = useRef(0)
   const caretRef = useRef<number | null>(null)
 
   const editor = useEditor(
@@ -301,7 +302,7 @@ export function AdfEditor(props: AdfEditorProps) {
   }
 
   /** Starts an upload for each image and puts its placeholder at the drop point. */
-  function embed(target: Editor, files: File[], pos: number | null) {
+  function embed(target: Editor, files: File[], pos: number | null, pasted = false) {
     const image = target.schema.nodes.adfImage
     if (image === undefined) return
     const nodes: PMNode[] = []
@@ -311,9 +312,11 @@ export function AdfEditor(props: AdfEditorProps) {
         tooBig.push(file.name)
         continue
       }
+      // The clipboard names every screenshot alike, so the create dialog numbers them: a failure notice must say which.
+      const named = pasted && live.current.embedded ? pastedName(file, ++pastedCount.current) : file
       const uploadId = live.current.embedded
-        ? stageUpload(file)
-        : startUpload(live.current.issueKey, file)
+        ? stageUpload(named)
+        : startUpload(live.current.issueKey, named)
       nodes.push(image.create({ node: null, uploadId }))
     }
     setProblem(

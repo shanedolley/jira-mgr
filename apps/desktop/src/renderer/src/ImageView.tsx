@@ -4,7 +4,14 @@ import { useContext, useEffect } from 'react'
 
 import { IssueKeyContext } from './editor/context'
 import { useAttachmentImage } from './queries'
-import { getUpload, releasePreview, removeUpload, retryUpload, useUpload } from './uploads'
+import {
+  getUpload,
+  releasePreview,
+  removeUpload,
+  retryUpload,
+  STAGED_KEY,
+  useUpload,
+} from './uploads'
 
 /** The sizes an image's ADF gives: a width the author chose in pixels, else the file's own. */
 function sizeOf(single: AdfNode | undefined, media: AdfNode | undefined) {
@@ -74,8 +81,10 @@ function UploadingImage({
   const upload = found?.key === issueKey ? found : undefined
   const done = upload?.state.status === 'done' ? upload.state.node : null
   useEffect(() => {
-    if (done !== null) onDone(done)
-  }, [done, onDone])
+    // The create dialog's image is no attachment of its own issue key: its finished node would
+    // load nothing. The placeholder stays as it is until the dialog removes it.
+    if (done !== null && issueKey !== STAGED_KEY) onDone(done)
+  }, [done, onDone, issueKey])
 
   if (upload === undefined || upload.state.status === 'failed') {
     const name = upload?.filename ?? 'the image'

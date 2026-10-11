@@ -74,7 +74,7 @@ import {
   useSprints,
   useUsers,
 } from './queries'
-import { commitUpload, getUpload, removeUpload, removeUploadsOf, STAGED_KEY } from './uploads'
+import { commitUpload, getUpload, removeUploadsOf, STAGED_KEY } from './uploads'
 import { useDebounced } from './useDebounced'
 import { TypeIcon } from './TypeIcon'
 
@@ -88,12 +88,17 @@ interface CreateIssueDialogProps {
   issues: readonly Issue[]
   me: CurrentUser | undefined
   onClose: () => void
+  /**
+   * Called the moment the issue exists, before any image or file uploads. `notice` is what the
+   * form compared with Jira's first read, which a later read of the automation's changes is
+   * measured against, however long the uploads take.
+   */
+  onCreating: (result: CreatedIssue, notice: Notice, draft: CreateDraft) => void
   /** Called after each create. `more` is true when the modal stays open for the next one. */
   onCreated: (
     result: CreatedIssue,
     notice: Notice,
     more: boolean,
-    draft: CreateDraft,
     /** A chosen file did not attach, so the notice names it and must reach a toast even when `more` keeps the modal open. */
     failedFiles: boolean,
   ) => void
@@ -135,6 +140,7 @@ export function CreateIssueDialog({
   issues,
   me,
   onClose,
+  onCreating,
   onCreated,
   returnFocus,
 }: CreateIssueDialogProps) {
@@ -226,7 +232,9 @@ export function CreateIssueDialog({
     const doc = descriptionRef.current?.json() ?? null
     create.mutate(args, {
       onSuccess: (result) => {
-        void finish(result, draft, files, doc)
+        const notice = describeCreated(draft, result)
+        onCreating(result, notice, draft)
+        void finish(result, draft, files, doc, notice)
       },
     })
   }
@@ -262,55 +270,60 @@ export function CreateIssueDialog({
     sent: CreateDraft,
     chosen: readonly File[],
     doc: EditorDoc | null,
+    first: Notice,
   ) {
-    let notice = describeCreated(sent, result)
+    let notice = first
     let failedFiles = false
     const pasted = doc === null ? [] : pastedImages(doc)
     if (chosen.length > 0 || pasted.length > 0) setAttaching(true)
-    if (doc !== null && pasted.length > 0) {
-      const embedded = await embedPasted(
-        doc,
-        // Jira's copy of the description, which may differ from what was sent, such as in ids it adds.
-        result.issue?.description ?? sent.description,
-        {
-          upload: async (id) => {
-            const state = await commitUpload(id, result.key)
-            if (state.status === 'done') return { node: state.node }
-            return { failed: state.status === 'failed' ? state.message : 'It did not finish.' }
+    try {
+      if (doc !== null && pasted.length > 0) {
+        const embedded = await embedPasted(
+          doc,
+          // Jira's copy of the description, which may differ from what was sent, such as in ids it adds.
+          result.issue?.description ?? sent.description,
+          {
+            upload: async (id) => {
+              const state = await commitUpload(id, result.key)
+              if (state.status === 'done') return { node: state.node }
+              return { failed: state.status === 'failed' ? state.message : 'It did not finish.' }
+            },
+            name: (id) => getUpload(id)?.filename ?? 'The pasted image',
+            save: async (description, base) => {
+              try {
+                await saveCreatedDescription(client, { key: result.key, description, base })
+                return 'saved'
+              } catch (error) {
+                if (conflictOf(error) !== null) return 'changed'
+                throw error
+              }
+            },
           },
-          name: (id) => getUpload(id)?.filename ?? 'The pasted image',
-          save: async (description, base) => {
-            try {
-              await saveCreatedDescription(client, { key: result.key, description, base })
-              return 'saved'
-            } catch (error) {
-              if (conflictOf(error) !== null) return 'changed'
-              throw error
-            }
-          },
-        },
-      )
-      // Held until now so the placeholders keep showing their upload while it runs.
-      for (const id of pasted) removeUpload(id)
-      const notes = imageNotes(result.key, embedded)
-      if (notes.length > 0) {
-        notice = { ...notice, notes: [...notice.notes, ...notes], warned: true }
-        failedFiles = true
+        )
+        // Held until now so the placeholders keep showing their upload while it runs. This takes
+        // every staged image, so one deleted from the editor meanwhile does not wait for the dialog to close.
+        removeUploadsOf(STAGED_KEY)
+        const notes = imageNotes(result.key, embedded)
+        if (notes.length > 0) {
+          notice = { ...notice, notes: [...notice.notes, ...notes], warned: true }
+          failedFiles = true
+        }
       }
+      if (chosen.length > 0) {
+        const failed: FailedFile[] = []
+        await attachFiles(chosen, {
+          send: (file) => attach.mutateAsync({ key: result.key, ...file }),
+          start: () => undefined,
+          finish: () => undefined,
+          fail: ({ notes }, name) => failed.push({ name, reason: notes.join(' ') }),
+        })
+        notice = withUploadFailures(notice, result.key, failed)
+        failedFiles ||= failed.length > 0
+      }
+    } finally {
+      setAttaching(false)
     }
-    if (chosen.length > 0) {
-      const failed: FailedFile[] = []
-      await attachFiles(chosen, {
-        send: (file) => attach.mutateAsync({ key: result.key, ...file }),
-        start: () => undefined,
-        finish: () => undefined,
-        fail: ({ notes }, name) => failed.push({ name, reason: notes.join(' ') }),
-      })
-      notice = withUploadFailures(notice, result.key, failed)
-      failedFiles ||= failed.length > 0
-    }
-    setAttaching(false)
-    onCreated(result, notice, more, sent, failedFiles)
+    onCreated(result, notice, more, failedFiles)
     if (more) {
       setLast(notice)
       setDraft(nextDraft(sent))

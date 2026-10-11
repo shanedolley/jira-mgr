@@ -99,6 +99,16 @@ async function run(id: string, key?: string): Promise<UploadState> {
   }
 }
 
+/** `file` renamed `pasted-<n>` with its own extension, or one from its type. Its type and bytes are kept. */
+export function pastedName(file: File, n: number): File {
+  const dot = file.name.lastIndexOf('.')
+  const own = dot > 0 ? file.name.slice(dot + 1).toLowerCase() : ''
+  const extension = /^[a-z0-9]{1,5}$/.test(own)
+    ? own
+    : file.type.slice('image/'.length).replace('jpeg', 'jpg')
+  return new File([file], `pasted-${String(n)}.${extension}`, { type: file.type })
+}
+
 /** The key of an image pasted into the create dialog, whose issue does not exist yet. */
 export const STAGED_KEY = ''
 

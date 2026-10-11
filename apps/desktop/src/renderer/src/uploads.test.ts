@@ -5,6 +5,7 @@ import type { AddImageArgs } from '../../shared/ipc'
 import {
   commitUpload,
   getUpload,
+  pastedName,
   releasePreview,
   removeUpload,
   removeUploadsOf,
@@ -175,5 +176,24 @@ describe('uploads', () => {
       expect(getUpload(id)).toBeUndefined()
       expect(store.revoked).toEqual(['blob:preview-1'])
     })
+  })
+})
+
+describe('pastedName', () => {
+  it('numbers a clipboard image and keeps its type, bytes and extension', async () => {
+    const named = pastedName(
+      new File([new Uint8Array([1, 2])], 'image.PNG', { type: 'image/png' }),
+      3,
+    )
+    expect(named.name).toBe('pasted-3.png')
+    expect(named.type).toBe('image/png')
+    expect([...new Uint8Array(await named.arrayBuffer())]).toEqual([1, 2])
+  })
+
+  it('takes the extension from the type when the name has none', () => {
+    expect(pastedName(new File([''], 'blob', { type: 'image/jpeg' }), 1).name).toBe('pasted-1.jpg')
+    expect(pastedName(new File([''], 'image.', { type: 'image/webp' }), 2).name).toBe(
+      'pasted-2.webp',
+    )
   })
 })
