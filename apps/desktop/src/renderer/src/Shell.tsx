@@ -410,7 +410,9 @@ export function Shell({ session }: { session: Session }) {
   const pageOpen = pageKey !== null
   // The list is out of reach under any page.
   const sprintOpen = sprintId !== null
-  const listCovered = pageOpen || inboxOpen || sprintOpen
+  // The Inbox and a Sprint page cover the Tree, so its active row is out of sight and out of play.
+  const covered = inboxOpen || sprintOpen
+  const listCovered = pageOpen || covered
   const surface = pageOpen ? 'page' : inboxOpen ? 'inbox' : sprintOpen ? 'sprint' : 'tree'
   const wasSurface = useRef<typeof surface>('tree')
   useEffect(() => {
@@ -479,8 +481,8 @@ export function Shell({ session }: { session: Session }) {
     setCreating(
       pageKey === null
         ? createContext(
-            // The Tree is out of sight under the Inbox, so its active row says nothing of the user's intent.
-            inboxOpen ? undefined : rows.find((r) => r.id === activeId),
+            // The Tree is out of sight under the Inbox or a Sprint page, so its active row says nothing of the user's intent.
+            covered ? undefined : rows.find((r) => r.id === activeId),
             issues,
           )
         : { selected: issues.find((i) => i.key === pageKey) ?? null, group: null },
@@ -490,12 +492,16 @@ export function Shell({ session }: { session: Session }) {
   /** The active Tree row's issue, which `S`, `A`, `L`, `P` and `E` act on. A header or chip has none. */
   const activeRow = rows.find((r) => r.id === activeId)
   const activeKey = activeRow?.kind === 'issue' ? activeRow.node.issue.key : null
+  /**
+   * The issue a command acts on: the open page's, else the active Tree row's, and none while the
+   * Inbox or a Sprint page hides the Tree. The palette, the timer and the letter keys all read it.
+   */
+  const targetKey = pageKey ?? (covered ? null : activeKey)
 
-  /** Puts focus back where the keyboard was: the page when one is open, else the Tree. */
+  /** Puts focus back where the keyboard was: the open page, the Inbox or a Sprint page, else the Tree. */
   function restoreFocus() {
-    if (pageKey !== null) pageRef.current?.focus()
-    else if (sprintId !== null) sprintRef.current?.focus()
-    else focusTree()
+    const target = { page: pageRef, inbox: inboxRef, sprint: sprintRef, tree: treeRef }[surface]
+    target.current?.focus()
   }
 
   /**
@@ -709,16 +715,16 @@ export function Shell({ session }: { session: Session }) {
         return
       }
       case 'filterMenu': {
-        // The toolbar is inert under an open page, so the menu cannot take focus there.
+        // The toolbar is inert under any page, so the menu cannot take focus there.
         const menu = document.getElementById('filter-menu')
-        if (menu === null || pageOpen || menu.matches(':popover-open')) return
+        if (menu === null || listCovered || menu.matches(':popover-open')) return
         event.preventDefault()
         menu.showPopover()
         menu.querySelector('summary')?.focus()
         return
       }
       case 'timer': {
-        const key = pageKey ?? (inboxOpen ? null : activeKey)
+        const key = targetKey
         if (key === null || !treeReady) return
         event.preventDefault()
         pressTimer(key)
@@ -739,7 +745,7 @@ export function Shell({ session }: { session: Session }) {
         }
         return
       default: {
-        const key = pageKey ?? (inboxOpen ? null : activeKey)
+        const key = targetKey
         if (key === null || !treeReady || creating !== null || deleting !== null || timing !== null)
           return
         event.preventDefault()
@@ -1133,7 +1139,7 @@ export function Shell({ session }: { session: Session }) {
               notify(first, result.issue === null ? {} : { openKey: result.key })
             }
           }}
-          returnFocus={focusTree}
+          returnFocus={restoreFocus}
         />
       )}
       {deleting !== null && (
@@ -1144,7 +1150,7 @@ export function Shell({ session }: { session: Session }) {
             setDeleting(null)
           }}
           onConfirm={confirmDelete}
-          returnFocus={focusTree}
+          returnFocus={restoreFocus}
         />
       )}
       {timing !== null && (
@@ -1164,7 +1170,7 @@ export function Shell({ session }: { session: Session }) {
       {searching && (
         <CommandPalette
           issues={issues}
-          context={issues.find((i) => i.key === (pageKey ?? activeKey)) ?? null}
+          context={issues.find((i) => i.key === targetKey) ?? null}
           onOpen={openFromPalette}
           onAction={runAction}
           onView={(view) => {

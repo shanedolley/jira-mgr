@@ -425,3 +425,22 @@ test('keeps focus out of the sprint page while an issue page is open over it', a
   await window.keyboard.press('Tab')
   expect(await inside()).toBe(true)
 })
+
+test('the palette offers no action for the Tree row a Sprint page hides', async () => {
+  await open()
+  await item(/PSAPAC-2,/).click()
+  await window.keyboard.press('Escape')
+  await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
+  await entry('Current').click()
+  await expect(sprintPage()).toBeFocused()
+
+  await window.keyboard.press('Meta+k')
+  const palette = window.getByRole('dialog', { name: 'Search issues' })
+  await expect(palette).toBeVisible()
+  await expect(palette.getByRole('group', { name: 'Actions' })).toHaveCount(0)
+  await expect(palette.getByRole('option', { name: /Assign to me/ })).toHaveCount(0)
+  await window.keyboard.press('Escape')
+  await expect(palette).toHaveCount(0)
+  // Focus returns to the sprint page, not to the inert Tree.
+  await expect(sprintPage()).toBeFocused()
+})
