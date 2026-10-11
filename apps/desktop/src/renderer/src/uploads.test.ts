@@ -3,13 +3,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { AddImageArgs } from '../../shared/ipc'
 import {
+  commitUpload,
   getUpload,
   releasePreview,
   removeUpload,
   removeUploadsOf,
   resetUploads,
   retryUpload,
+  stageUpload,
   startUpload,
+  STAGED_KEY,
   type UploadDeps,
 } from './uploads'
 
@@ -122,6 +125,55 @@ describe('uploads', () => {
     )
     await vi.waitFor(() => {
       expect(getUpload(id)?.state.status).toBe('failed')
+    })
+  })
+
+  describe('staged for the create dialog', () => {
+    it('sends nothing until it is committed, then uploads to the new issue and keeps its staged key', async () => {
+      const sent: AddImageArgs[] = []
+      const store = deps((args) => {
+        sent.push(args)
+        return Promise.resolve({ node })
+      })
+      const id = stageUpload(png(), store)
+      await Promise.resolve()
+      expect(sent).toEqual([])
+      expect(getUpload(id)).toMatchObject({
+        key: STAGED_KEY,
+        filename: 'shot.png',
+        preview: 'blob:preview-1',
+        state: { status: 'staged' },
+      })
+
+      const pending = commitUpload(id, 'PSAPAC-2000')
+      expect(getUpload(id)?.state.status).toBe('uploading')
+      expect(await pending).toEqual({ status: 'done', node })
+      expect(sent).toMatchObject([{ key: 'PSAPAC-2000', filename: 'shot.png' }])
+      // The placeholder in the dialog still finds its upload under the dialog's own key.
+      expect(getUpload(id)?.key).toBe(STAGED_KEY)
+    })
+
+    it('reports a failed upload and an upload it does not hold', async () => {
+      const store = deps(() => Promise.reject(new Error('Jira refused.')))
+      const id = stageUpload(png(), store)
+      expect(await commitUpload(id, 'PSAPAC-2000')).toEqual({
+        status: 'failed',
+        message: 'Jira refused.',
+      })
+      // Committed twice, or never staged: nothing is sent again.
+      expect(await commitUpload(id, 'PSAPAC-2000')).toMatchObject({ status: 'failed' })
+      expect(await commitUpload('nope', 'PSAPAC-2000')).toEqual({
+        status: 'failed',
+        message: 'The pasted image was lost.',
+      })
+    })
+
+    it('is removed with the dialog, preview and all', () => {
+      const store = deps(() => Promise.resolve({ node }))
+      const id = stageUpload(png(), store)
+      removeUploadsOf(STAGED_KEY)
+      expect(getUpload(id)).toBeUndefined()
+      expect(store.revoked).toEqual(['blob:preview-1'])
     })
   })
 })

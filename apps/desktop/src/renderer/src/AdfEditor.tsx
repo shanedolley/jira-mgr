@@ -23,7 +23,7 @@ import { ReadOnlyBlock } from './ReadOnlyBlock'
 import { ReadOnlyInline } from './ReadOnlyInline'
 import { IssueKeyContext } from './editor/context'
 import { createExtensions, schemaAccepts, type Behaviour } from './editor/extensions'
-import { startUpload } from './uploads'
+import { stageUpload, startUpload } from './uploads'
 
 const EMPTY: AdfDoc = { version: 1, type: 'doc', content: [] }
 
@@ -47,6 +47,8 @@ export interface AdfEditorHandle {
   addImages(files: File[]): void
   /** The document as ADF, or `null` when it holds no text. Throws `validation_failed` for an image still uploading. */
   adf(): AdfDoc | null
+  /** The editor's own document, which keeps an image not uploaded yet as a placeholder. */
+  json(): EditorDoc
 }
 
 export interface AdfEditorProps {
@@ -75,8 +77,9 @@ export interface AdfEditorProps {
   hidden?: boolean
   /**
    * For an editor inside its host's own frame and form, such as the create dialog's description:
-   * no border, no Save and Cancel row, and no embedded images, since the issue they would attach to
-   * does not exist yet. The host reads the document from `onChange`.
+   * no border and no Save and Cancel row. An image is staged, not uploaded, since the issue it
+   * would attach to does not exist yet, and the host uploads it later with `commitUpload`. The host
+   * reads the document from `onChange` or `json()`.
    */
   embedded?: boolean
   onSave: (doc: AdfDoc | null) => void
@@ -177,9 +180,7 @@ export function AdfEditor(props: AdfEditorProps) {
         live.current.onEditRequest(pos)
       },
       images(files, pos) {
-        if (!live.current.editing || live.current.embedded === true || editorRef.current === null) {
-          return false
-        }
+        if (!live.current.editing || editorRef.current === null) return false
         embed(editorRef.current, files, pos)
         return true
       },
@@ -310,7 +311,9 @@ export function AdfEditor(props: AdfEditorProps) {
         tooBig.push(file.name)
         continue
       }
-      const uploadId = startUpload(live.current.issueKey, file)
+      const uploadId = live.current.embedded
+        ? stageUpload(file)
+        : startUpload(live.current.issueKey, file)
       nodes.push(image.create({ node: null, uploadId }))
     }
     setProblem(
@@ -353,6 +356,7 @@ export function AdfEditor(props: AdfEditorProps) {
       setProblem(null)
     },
     adf: () => editorToAdf(editor.getJSON() as EditorDoc),
+    json: () => editor.getJSON() as EditorDoc,
   }))
 
   return (

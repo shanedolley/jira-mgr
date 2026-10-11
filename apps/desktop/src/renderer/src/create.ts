@@ -1,5 +1,11 @@
 import type { Issue } from '@jira-mgr/core'
-import { editorToAdf, type AdfDoc, type EditorDoc } from '@jira-mgr/core/adf'
+import {
+  editorToAdf,
+  type AdfDoc,
+  type AdfNode,
+  type EditorDoc,
+  type EditorNode,
+} from '@jira-mgr/core/adf'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import {
   formatEstimate,
@@ -257,10 +263,48 @@ export function descriptionOf(doc: EditorDoc): AdfDoc | null {
   try {
     adf = editorToAdf(doc)
   } catch {
-    // Only an image still uploading makes it throw, and the create dialog's editor takes no images.
+    // Only an image not uploaded yet makes it throw. `fillImages` takes those out first.
     return null
   }
   return adf === null || !hasContent(adf) ? null : adf
+}
+
+/** The nodes that can hold nothing and stay valid ADF, so one a removed image emptied goes too. */
+const NEEDS_CONTENT = new Set(['blockquote', 'bulletList', 'orderedList', 'listItem'])
+
+function fillNode(node: EditorNode, nodes: ReadonlyMap<string, AdfNode>): EditorNode[] {
+  if (node.type === 'adfImage' && node.attrs?.node === null) {
+    const id = node.attrs.uploadId
+    const found = typeof id === 'string' ? nodes.get(id) : undefined
+    return found === undefined ? [] : [{ type: 'adfImage', attrs: { node: found, uploadId: null } }]
+  }
+  if (node.content === undefined) return [node]
+  const content = node.content.flatMap((child) => fillNode(child, nodes))
+  if (content.length === 0 && NEEDS_CONTENT.has(node.type)) return []
+  return [{ ...node, content }]
+}
+
+/**
+ * The editor's document with each image not uploaded yet replaced by the `mediaSingle` it
+ * uploaded as (`nodes`, by upload id), or taken out when it has none. With no nodes it is the
+ * document the create can send, before any image exists.
+ */
+export function fillImages(doc: EditorDoc, nodes: ReadonlyMap<string, AdfNode>): EditorDoc {
+  return { ...doc, content: doc.content.flatMap((block) => fillNode(block, nodes)) }
+}
+
+/** The upload ids of the images not uploaded yet, in document order and each once. */
+export function pastedImages(doc: EditorDoc): string[] {
+  const ids = new Set<string>()
+  const visit = (node: EditorNode) => {
+    if (node.type === 'adfImage' && node.attrs?.node === null) {
+      const id = node.attrs.uploadId
+      if (typeof id === 'string') ids.add(id)
+    }
+    node.content?.forEach(visit)
+  }
+  doc.content.forEach(visit)
+  return [...ids]
 }
 
 /** After "Create more": the same form with no summary or description for the next issue. */

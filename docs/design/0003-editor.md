@@ -184,6 +184,8 @@ The redirect shape is not documented by Atlassian. `attachment-content-redirect.
 
 While uploading, the view shows the local preview dimmed with "Uploading shot.png" in a `role="status"` region.
 
+**In the create dialog.** The editor there is `embedded` and its issue does not exist, so a dropped or pasted image is staged: `stageUpload` fills the store under the empty key with state `staged`, and the view shows the preview with "<name> uploads when the issue is created" and Remove. Nothing is sent. The create sends the text only (`fillImages` takes the placeholders out). Once the issue exists, `commitUpload` runs steps 3 and 4 above against the new key, one image at a time, the placeholder keeping its staged key so the view shows the upload. Then `issues:setDescription` writes the description with each `mediaSingle` where the image was, checked against the description Jira holds for the new issue, so a description someone changed meanwhile is left alone. A failed upload leaves that image out; a failed or refused write leaves the uploads as attachments; the issue and its text always stay, and the notice names each failure.
+
 The upload happens on drop, not on Save, as in Jira's editor. Cancelling the edit leaves the attachment on the issue; deleting it would be a destructive write the user did not ask for, and D5's attachment list shows it.
 
 ### Save

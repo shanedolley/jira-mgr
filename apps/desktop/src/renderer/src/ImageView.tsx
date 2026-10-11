@@ -105,6 +105,28 @@ function UploadingImage({
       </div>
     )
   }
+  if (upload.state.status === 'staged') {
+    return (
+      <figure className="space-y-1">
+        {upload.preview !== '' && (
+          <img src={upload.preview} alt="" className="max-h-40 max-w-full object-contain" />
+        )}
+        <figcaption className="flex items-center gap-2 text-xs text-muted">
+          <span className="min-w-0 truncate">
+            {upload.filename} uploads when the issue is created
+          </span>
+          <button
+            type="button"
+            aria-label={`Remove ${upload.filename}`}
+            onClick={onRemove}
+            className="btn btn-sm btn-delete"
+          >
+            Remove
+          </button>
+        </figcaption>
+      </figure>
+    )
+  }
   return (
     <figure className="space-y-1">
       {upload.preview !== '' && (
