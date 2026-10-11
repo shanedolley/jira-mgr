@@ -1,9 +1,10 @@
+import { getSprint } from '@jira-mgr/core/sprints'
 import { loadFixture, serveRecorded, usePsapacState, type Recorded } from '@jira-mgr/core/test/msw'
 import { describe, expect, it } from 'vitest'
 
 import { COMMANDS } from '../../schema.js'
 import { fakeSecurity } from '../../test-auth.js'
-import { runJson, runTty } from '../../test-read.js'
+import { http, runJson, runTty } from '../../test-read.js'
 import { expectShape } from '../../test-shape.js'
 
 const spec = COMMANDS.find((c) => c.path.join(' ') === 'sprint list')
@@ -53,6 +54,23 @@ describe('jm sprint list', () => {
       'GET /rest/agile/1.0/board?projectKeyOrId=PSAPAC',
       'GET /rest/agile/1.0/board/1706/sprint?state=active,future&startAt=0&maxResults=50',
     ])
+  })
+
+  it('lists the sprint the desktop Sprint page opens, with the same id, name, state and dates', async () => {
+    const sent = page('board-sprints-active-future').values as SprintRow[]
+    serveRecorded(({ path }) => {
+      if (path.startsWith('/rest/agile/1.0/board?'))
+        return Response.json(loadFixture('board-psapac'))
+      if (path === '/rest/agile/1.0/sprint/10170') return Response.json(sent[0])
+      return Response.json({ ...page('board-sprints-active-future'), total: sent.length })
+    })
+    const { data } = await runJson(['sprint', 'list'])
+    const listed = (data as SprintRow[]).find((s) => s.state === 'active')
+    const { goal, ...read } = await getSprint(http, 10170)
+    expect(typeof goal).toBe('string')
+    expect(read).toEqual(listed)
+    // The list leaves the goal off, so the page's extra field does not change `jm sprint list --json`.
+    expect(listed).not.toHaveProperty('goal')
   })
 
   it('hides an undated future sprint such as PS TEMPLATES', async () => {

@@ -42,6 +42,8 @@ import { unreadCount, useInbox } from './inboxQueries'
 import { LoadError } from './LoadError'
 import { ShortcutHelp } from './ShortcutHelp'
 import { Sidebar } from './Sidebar'
+import { SprintPage } from './SprintPage'
+import { SprintsList } from './SprintsList'
 import { useViews } from './viewQueries'
 import { activeView } from './views'
 import { TimerDialog } from './TimerDialog'
@@ -220,6 +222,8 @@ export function Shell({ session }: { session: Session }) {
   // The Inbox page, over the Tree like an issue page and under any issue page opened from it.
   const [inboxOpen, setInboxOpen] = useState(false)
   const inboxQuery = useInbox()
+  // The sprint whose page is open. It covers the Tree like an issue page, which opens above it.
+  const [sprintId, setSprintId] = useState<number | null>(null)
   // The create modal, opened by `C` or the New issue button, with the selection it started from
   // and, from the palette's Create sub-issue, the type it starts as.
   const [creating, setCreating] = useState<
@@ -260,6 +264,7 @@ export function Shell({ session }: { session: Session }) {
   const peekRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
   const inboxRef = useRef<HTMLElement>(null)
+  const sprintRef = useRef<HTMLElement>(null)
   const filterRef = useRef<HTMLInputElement>(null)
 
   // The Customer list loads for empty Customers in the Tree, and once the Filter menu has opened,
@@ -392,16 +397,19 @@ export function Shell({ session }: { session: Session }) {
   // Focus follows the page: into it whenever it opens or shows another issue, whose controls
   // replace the last page's, and back to the Tree when it closes.
   const pageOpen = pageKey !== null
-  // The list is out of reach under either page.
-  const listCovered = pageOpen || inboxOpen
-  const surface = pageOpen ? 'page' : inboxOpen ? 'inbox' : 'tree'
+  // The list is out of reach under any page.
+  const sprintOpen = sprintId !== null
+  const listCovered = pageOpen || inboxOpen || sprintOpen
+  const surface = pageOpen ? 'page' : inboxOpen ? 'inbox' : sprintOpen ? 'sprint' : 'tree'
   const wasSurface = useRef<typeof surface>('tree')
   useEffect(() => {
     if (surface === 'page') pageRef.current?.focus()
+    // The sprint page takes focus when it opens, shows another sprint, or an issue page above it closes.
+    else if (surface === 'sprint') sprintRef.current?.focus()
     // The Inbox places its own focus, on a row once it has rows.
     else if (wasSurface.current !== surface && surface === 'tree') treeRef.current?.focus()
     wasSurface.current = surface
-  }, [surface, pageKey])
+  }, [surface, pageKey, sprintId])
 
   /**
    * A view replaces the bar's filters and sets the toggles. The toggles go through the same write
@@ -413,8 +421,17 @@ export function Shell({ session }: { session: Session }) {
     setFilters(view.filters)
     if (toggles !== undefined) setToggles.mutate(applyViewToggles(toggles, view))
     setInboxOpen(false)
-    if (pageOpen) setPageKey(null)
-    else focusTree()
+    if (pageOpen || sprintOpen) {
+      setPageKey(null)
+      setSprintId(null)
+    } else focusTree()
+  }
+
+  /** Opens a sprint's page, from the sidebar or the issue page's Sprint row, in place of any issue page or the Inbox. */
+  function openSprint(id: number) {
+    setPageKey(null)
+    setInboxOpen(false)
+    setSprintId(id)
   }
 
   /** Opens the page of the issue the palette chose, and makes its row active when the Tree shows it. */
@@ -465,6 +482,7 @@ export function Shell({ session }: { session: Session }) {
   /** Puts focus back where the keyboard was: the page when one is open, else the Tree. */
   function restoreFocus() {
     if (pageKey !== null) pageRef.current?.focus()
+    else if (sprintId !== null) sprintRef.current?.focus()
     else focusTree()
   }
 
@@ -700,6 +718,9 @@ export function Shell({ session }: { session: Session }) {
         if (pageOpen) {
           event.preventDefault()
           setPageKey(null)
+        } else if (sprintOpen) {
+          event.preventDefault()
+          setSprintId(null)
         } else if (peekOpen && !inboxOpen) {
           event.preventDefault()
           closePeek()
@@ -896,19 +917,32 @@ export function Shell({ session }: { session: Session }) {
       <Sidebar
         session={session}
         count={unresolved.data?.length}
-        issuesCurrent={!inboxOpen && activeView(savedViews ?? [], filters, toggles) === undefined}
+        issuesCurrent={
+          !inboxOpen && !sprintOpen && activeView(savedViews ?? [], filters, toggles) === undefined
+        }
         unread={inboxQuery.data === undefined ? undefined : unreadCount(inboxQuery.data)}
         inboxOpen={inboxOpen}
         onShowInbox={() => {
-          // An issue page covers the Inbox, so it closes first, as applying a view does.
+          // An issue page or sprint page covers the Inbox, so it closes first, as applying a view does.
           setPageKey(null)
+          setSprintId(null)
           setInboxOpen(true)
         }}
         onShowIssues={() => {
+          if (!inboxOpen && !sprintOpen) return
           setInboxOpen(false)
+          setSprintId(null)
           setPageKey(null)
         }}
-        views={<ViewsList filters={filters} toggles={toggles} onApply={applyView} />}
+        sprints={<SprintsList openId={sprintId} onOpen={openSprint} />}
+        views={
+          <ViewsList
+            filters={filters}
+            toggles={toggles}
+            onApply={applyView}
+            showCurrent={!sprintOpen}
+          />
+        }
         onOpenIssue={setPageKey}
         onStopTimer={stopFromSidebar}
       />
@@ -1030,6 +1064,18 @@ export function Shell({ session }: { session: Session }) {
           <InboxPage front={!pageOpen} onOpen={setPageKey} pageRef={inboxRef} />
         </div>
       )}
+      {sprintId !== null && (
+        <div inert={pageOpen} className="[grid-column:2/-1] row-start-1 min-h-0">
+          <SprintPage
+            sprintId={sprintId}
+            pageRef={sprintRef}
+            onBack={() => {
+              setSprintId(null)
+            }}
+            onOpenIssue={setPageKey}
+          />
+        </div>
+      )}
       {pageKey !== null && (
         <div className="[grid-column:2/-1] row-start-1 min-h-0">
           <IssuePage
@@ -1041,6 +1087,7 @@ export function Shell({ session }: { session: Session }) {
               setPageKey(null)
             }}
             onOpen={setPageKey}
+            onOpenSprint={openSprint}
             onDelete={setDeleting}
             pageRef={pageRef}
             onNotice={notify}

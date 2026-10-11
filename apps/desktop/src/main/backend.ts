@@ -37,7 +37,14 @@ import {
 import { assertTypeChangeAllowed, type IssueDetail } from '@jira-mgr/core/issue'
 import { getFieldOptions, getProfile, searchAssignableUsers } from '@jira-mgr/core/lookups'
 import { getIssue, searchIssuePages, searchText } from '@jira-mgr/core/search'
-import { findBoard, listSprints, moveToBacklog, moveToSprint } from '@jira-mgr/core/sprints'
+import {
+  findBoard,
+  listSprints,
+  moveToBacklog,
+  moveToSprint,
+  readSprint,
+  type SprintReport,
+} from '@jira-mgr/core/sprints'
 import {
   assertInProject,
   createView,
@@ -201,6 +208,8 @@ export interface Backend {
   /** Deletes an issue, and its subtasks only when asked and only the ones the caller was shown. */
   deleteIssue(args: DeleteIssueArgs): Promise<DeletedIssue>
   listSprints(args: { all: boolean }): Promise<SprintOption[]>
+  /** A sprint with its issues and their counts. It reads only, so it needs no project guard. */
+  getSprint(args: { id: number }): Promise<SprintReport>
   searchUsers(args: { query: string }): Promise<UserOption[]>
   listFieldOptions(args: FieldOptionsArgs): Promise<FieldChoice[]>
   getMe(): Promise<CurrentUser>
@@ -700,6 +709,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       }
       return listSprints(http, board.id, { all })
     },
+    getSprint: ({ id }) => readSprint(http, id),
     searchUsers: ({ query }) => searchAssignableUsers(http, query),
     async listFieldOptions({ field }) {
       return getFieldOptions(http, field)

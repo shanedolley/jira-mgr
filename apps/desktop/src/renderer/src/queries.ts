@@ -41,6 +41,7 @@ import {
   issueMutation,
   issuesKey,
   pendingFields,
+  sprintKey,
   summaryMutation,
   unresolvedKey,
 } from './optimistic'
@@ -250,6 +251,7 @@ export function clearAccountData(client: QueryClient): void {
   client.removeQueries({ queryKey: pickerKey })
   // The previous account's read state and changes.
   client.removeQueries({ queryKey: inboxKey })
+  client.removeQueries({ queryKey: sprintKey })
   // Removing the image queries revokes their object URLs (see `watchImageUrls`).
   client.removeQueries({ queryKey: attachmentsKey })
   // The comments, worklogs, links and attachment lists of every issue.

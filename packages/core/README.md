@@ -225,6 +225,9 @@ Three subpaths cover the secondary operations. Each function takes an `HttpClien
 
 - `findBoard(http, projectKey?)` returns `{ id, name, type }` for the project's board (settings unless given), or `null`. Only a `scrum` or `simple` board counts, since a Kanban board has no sprints. A project with several of those gets the first one Jira lists.
 - `listSprints(http, boardId, { all? })` returns `{ id, name, state, startDate, endDate }`, all pages. Without `all` it asks for `state=active,future`; with it, closed sprints come too. An undated sprint has `null` dates. The Q20 picker rule (dated future sprints first, undated behind "Show all") is the client's: core returns what Jira lists.
+- `getSprint(http, sprintId)` returns one sprint with its `goal` (`null` when empty). The goal is not on `listSprints` rows, so `jm sprint list --json` keeps its shape; the other fields match the list's for the same sprint.
+- `listSprintIssues(http, sprintId)` reads `GET /rest/agile/1.0/sprint/{id}/issue` page by page, validated as `Issue`, with the fields `searchIssues` asks for. It reads only.
+- `sprintStats(issues)` counts a sprint: `scope` (every issue), `started` (status category In Progress) and `completed` (status category Done), and breakdowns `assignees`, `labels`, `priorities`, `customers` and `engagements`. A group holds `total`, `completed` and `percent`, which the app writes as "N% of M". The issues with no value form one group, last. `readSprint(http, sprintId)` gives `{ sprint, issues, stats }`.
 - `moveToSprint(http, sprintId, keys)` moves issues into a sprint through the Agile sprint endpoint, and `moveToBacklog(http, keys)` moves them out through the Agile backlog endpoint. Each takes 1 to 50 keys, Jira's limit.
 
 ### Pickers

@@ -258,6 +258,8 @@ const deleteIssueArgs: z.ZodType<DeleteIssueArgs> = z.strictObject({
 
 const sprintListArgs = z.strictObject({ all: z.boolean() })
 
+const sprintGetArgs = z.strictObject({ id: z.number().int().positive() })
+
 const userSearchArgs = z.strictObject({ query: z.string().max(200) })
 
 const fieldOptionsArgs: z.ZodType<FieldOptionsArgs> = z.strictObject({
@@ -387,6 +389,7 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'issues:create': createIssueArgs,
   'issues:delete': deleteIssueArgs,
   'sprints:list': sprintListArgs,
+  'sprints:get': sprintGetArgs,
   'users:search': userSearchArgs,
   'fields:options': fieldOptionsArgs,
   'user:me': z.undefined(),
@@ -550,6 +553,7 @@ export function createHandlers(
     ),
     'issues:delete': handle('issues:delete', (args) => backend.deleteIssue(args)),
     'sprints:list': handle('sprints:list', (args) => backend.listSprints(args)),
+    'sprints:get': handle('sprints:get', (args) => backend.getSprint(args)),
     'users:search': handle('users:search', (args) => backend.searchUsers(args)),
     'fields:options': handle('fields:options', (args) => backend.listFieldOptions(args)),
     'user:me': handle('user:me', () => backend.getMe()),

@@ -178,6 +178,8 @@ interface IssuePropertiesProps {
   /** Every loaded issue: the pickers draw recent assignees, labels and parents from them. */
   issues: readonly Issue[]
   me: CurrentUser | undefined
+  /** Opens the page of the issue's sprint, from the link beside the Sprint value. */
+  onOpenSprint?: (id: number) => void
 }
 
 /**
@@ -186,7 +188,7 @@ interface IssuePropertiesProps {
  * spinner until Jira answers. Which properties show follows the issue
  * type (`propertyRules`); Jira has the last word on what it accepts.
  */
-export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
+export function IssueProperties({ issue, issues, me, onOpenSprint }: IssuePropertiesProps) {
   const rules = propertyRules(issue.issueType)
   const setSprint = useSetSprint()
   const pending = usePendingFields(issue.key)
@@ -406,34 +408,50 @@ export function IssueProperties({ issue, issues, me }: IssuePropertiesProps) {
         </Row>
         {rules.sprint && (
           <Row name="Sprint" field="sprints" pending={pending.has('sprints')}>
-            <Picker
-              label="Sprint"
-              valueText={sprint?.name ?? 'Backlog'}
-              options={sprintOptions}
-              selected={[sprint === null ? NONE : String(sprint.id)]}
-              onSelect={chooseSprint}
-              onOpenChange={setSprintOpen}
-              note={
-                sprints.isPending ? (
-                  'Loading sprints'
-                ) : sprints.isError ? (
-                  <Reason lead="Could not load the sprints." error={sprints.error} />
-                ) : undefined
-              }
-              footer={
+            <div className="flex items-center gap-1">
+              <div className="min-w-0 flex-1">
+                <Picker
+                  label="Sprint"
+                  valueText={sprint?.name ?? 'Backlog'}
+                  options={sprintOptions}
+                  selected={[sprint === null ? NONE : String(sprint.id)]}
+                  onSelect={chooseSprint}
+                  onOpenChange={setSprintOpen}
+                  note={
+                    sprints.isPending ? (
+                      'Loading sprints'
+                    ) : sprints.isError ? (
+                      <Reason lead="Could not load the sprints." error={sprints.error} />
+                    ) : undefined
+                  }
+                  footer={
+                    <button
+                      type="button"
+                      data-row
+                      aria-pressed={allSprints}
+                      onClick={() => {
+                        setAllSprints(!allSprints)
+                      }}
+                      className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-xs hover:bg-hover"
+                    >
+                      {allSprints ? 'Show fewer sprints' : 'Show all sprints'}
+                    </button>
+                  }
+                />
+              </div>
+              {sprint !== null && onOpenSprint !== undefined && (
                 <button
                   type="button"
-                  data-row
-                  aria-pressed={allSprints}
+                  aria-label={`Open sprint ${sprint.name}`}
                   onClick={() => {
-                    setAllSprints(!allSprints)
+                    onOpenSprint(sprint.id)
                   }}
-                  className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-xs hover:bg-hover"
+                  className="btn btn-sm shrink-0"
                 >
-                  {allSprints ? 'Show fewer sprints' : 'Show all sprints'}
+                  Open
                 </button>
-              }
-            />
+              )}
+            </div>
           </Row>
         )}
         {!rules.typeChange && (

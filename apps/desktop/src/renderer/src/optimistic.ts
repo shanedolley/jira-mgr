@@ -18,6 +18,18 @@ export const doneKey = ['issues', 'done'] as const
 /** One issue with its description and subtasks, as the page reads it. */
 export const issueDetailKey = (key: string) => ['issues', 'detail', key] as const
 
+/** Prefix of the Sprint page's reads, one per sprint. */
+export const sprintKey = ['sprint'] as const
+
+/**
+ * Marks every sprint read stale. An open Sprint page refetches at once; one that is not open
+ * refetches when it opens. Each way an issue changes, which can change a sprint's rows and counts,
+ * calls it: an edit, a create, a delete and a read of an issue that Jira changed on its own.
+ */
+export function invalidateSprints(client: QueryClient): void {
+  void client.invalidateQueries({ queryKey: sprintKey })
+}
+
 export const PHASES: readonly IssuePhase[] = ['unresolved', 'done']
 
 export function phaseKey(phase: IssuePhase) {
@@ -133,6 +145,7 @@ export function applyUnaskedRead(client: QueryClient, fresh: IssueDetail): void 
  * either phase. The read itself replaces the page's copy.
  */
 export function applyFreshIssue(client: QueryClient, fresh: IssueDetail): void {
+  invalidateSprints(client)
   // The lists hold the plain issue; the description and subtasks stay with the page's own read.
   const plain: Partial<IssueDetail> = { ...fresh }
   delete plain.description
@@ -263,6 +276,7 @@ export function issueMutation<A extends { key: string }>(
         await Promise.all(
           holding(client, key).map((queryKey) => client.invalidateQueries({ queryKey })),
         )
+        invalidateSprints(client)
       }
     },
   }
@@ -286,6 +300,7 @@ export function summaryMutation<A extends SetSummaryArgs>(
 export function applyCreated(client: QueryClient, created: CreatedIssue): void {
   if (created.issue === null) {
     void client.invalidateQueries({ queryKey: unresolvedKey })
+    invalidateSprints(client)
     return
   }
   applyFreshIssue(client, created.issue)
@@ -339,6 +354,7 @@ export function deleteMutation(
       return { removed, orphaned, parentKey: key }
     },
     onSuccess(_data, { key, deleteSubtasks, subtasks }, rollback) {
+      invalidateSprints(client)
       // A phase still on its first load may have paged past an issue no loaded list held, so it
       // starts again. An issue that was in a loaded list cannot be in the phase still loading.
       const found = new Set(rollback.removed.map((r) => r.issue.key))

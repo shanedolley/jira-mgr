@@ -4,6 +4,7 @@ import type { Attachment, IssueComment, IssueLink, LinkType, Worklog } from '@ji
 import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
 import type { InboxEntry } from '@jira-mgr/core/inbox'
 import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
+import type { SprintReport } from '@jira-mgr/core/sprints'
 import type { SavedView } from '@jira-mgr/core/state'
 import type { RunningTimer, TimerSettings, WorklogDraft } from '@jira-mgr/core/timer-calc'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
@@ -431,6 +432,8 @@ export interface IpcContract {
   'issues:delete': { args: DeleteIssueArgs; result: DeletedIssue }
   /** Active and future sprints of the project's board, or every sprint with `all`. */
   'sprints:list': { args: { all: boolean }; result: SprintOption[] }
+  /** One sprint with its issues and their counts, for the Sprint page. Read-only. */
+  'sprints:get': { args: { id: number }; result: SprintReport }
   /** Assignable users whose name or email matches `query`. */
   'users:search': { args: { query: string }; result: UserOption[] }
   'fields:options': { args: FieldOptionsArgs; result: FieldChoice[] }
@@ -496,6 +499,7 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'issues:create': true,
   'issues:delete': true,
   'sprints:list': true,
+  'sprints:get': true,
   'users:search': true,
   'fields:options': true,
   'user:me': true,

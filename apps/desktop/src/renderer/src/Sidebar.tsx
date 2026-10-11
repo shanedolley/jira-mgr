@@ -27,6 +27,7 @@ export function Sidebar({
   inboxOpen,
   onShowInbox,
   onShowIssues,
+  sprints,
   views,
   onOpenIssue,
   onStopTimer,
@@ -35,13 +36,14 @@ export function Sidebar({
   count: number | undefined
   /** No saved view matches the filters, so Issues is the one highlighted item. */
   issuesCurrent: boolean
-  /** Inbox entries nobody has read. `undefined` until the Inbox has loaded. */
   unread: number | undefined
   inboxOpen: boolean
   onShowInbox: () => void
-  /** Leaves the Inbox for the issue list. */
+  /** Leaves the Inbox or a sprint page for the issue list. */
   onShowIssues: () => void
-  /** The saved views section, which sits under the main links. */
+  /** The Sprints section, under the main links. */
+  sprints?: ReactNode
+  /** The saved views section, which sits under the sprints. */
   views?: ReactNode
   /** Opens the page of the issue the timer runs on. */
   onOpenIssue: (key: string) => void
@@ -85,7 +87,7 @@ export function Sidebar({
             aria-current={issuesCurrent ? 'page' : undefined}
             onClick={(event) => {
               event.preventDefault()
-              if (inboxOpen) onShowIssues()
+              onShowIssues()
             }}
             className={`flex items-center justify-between rounded-md px-2 py-1 ${issuesCurrent ? 'is-current' : 'hover:bg-hover'}`}
           >
@@ -94,6 +96,7 @@ export function Sidebar({
           </a>
         </li>
       </ul>
+      {sprints}
       <div className="min-h-0 flex-1 overflow-y-auto">{views}</div>
       {timer !== null && (
         <section aria-label="Timer" className="space-y-1.5 border-t border-line p-3">
