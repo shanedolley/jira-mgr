@@ -1,4 +1,4 @@
-import type { Issue } from '@jira-mgr/core'
+import { JiraMgrError, type ErrorCode, type Issue } from '@jira-mgr/core'
 import type { IssueDetail } from '@jira-mgr/core/issue'
 
 import type { CreateIssueArgs, CreatedIssue } from '../../shared/ipc'
@@ -65,9 +65,51 @@ export function subtaskArgs(parent: Issue, title: string): CreateIssueArgs | nul
 
 /** What one run did. `left` holds the title that failed and every title after it, still to create. */
 export interface BulkResult {
-  created: { title: string; created: CreatedIssue }[]
-  failed: { title: string; message: string } | null
+  /** `confirmed` marks a Subtask Jira made although its reply was lost, found by reading the parent. */
+  created: { title: string; created: CreatedIssue; confirmed?: true }[]
+  /** `unconfirmed` means the create may have reached Jira and the read that would tell failed too. */
+  failed: { title: string; message: string; unconfirmed: boolean } | null
   left: string[]
+}
+
+/**
+ * The codes of a failed create that may still have reached Jira: the network failed, the request
+ * timed out, Jira answered 5xx or sent a reply core could not read (`jira_error`), or the app broke
+ * after sending (`internal`). A refusal (`validation_failed`, `not_found`, `permission_denied`) and
+ * an error thrown before any send mean nothing was made.
+ */
+const MAY_HAVE_LANDED: readonly ErrorCode[] = ['jira_error', 'internal']
+
+const mayHaveLanded = (error: unknown): boolean =>
+  error instanceof JiraMgrError && MAY_HAVE_LANDED.includes(error.code)
+
+/**
+ * The key of the Subtask a lost create made, or `null`. It is the one whose summary equals `title`
+ * exactly and whose key is not in `skip`: the parent's Subtasks before the run, and every Subtask
+ * this run made or confirmed. The skip set keeps a Subtask that already had the title, or an
+ * earlier copy of it in the same paste, from standing in for this one.
+ */
+export function landedKey(
+  subtasks: IssueDetail['subtasks'],
+  title: string,
+  skip: ReadonlySet<string>,
+): string | null {
+  return subtasks.find((s) => s.summary === title && !skip.has(s.key))?.key ?? null
+}
+
+/**
+ * Reads the parent's Subtasks and returns the key `landedKey` finds, skipping `before` (the keys
+ * the page held when the run began) and `made` (the keys this run made or confirmed). Throws when
+ * there is no `before` to compare with, since any match could be an older Subtask.
+ */
+export async function confirmLanded(
+  before: readonly string[] | undefined,
+  read: () => Promise<IssueDetail['subtasks']>,
+  title: string,
+  made: ReadonlySet<string>,
+): Promise<string | null> {
+  if (before === undefined) throw new Error('The page held no Subtasks list to compare with.')
+  return landedKey(await read(), title, new Set([...before, ...made]))
 }
 
 /**
@@ -76,23 +118,44 @@ export interface BulkResult {
  * half sent: what was created is never sent again, and what is left is exactly what to retry.
  * `onCreated` runs after each create, so the lists can show it at once; if it throws, the title
  * still counts as created.
+ *
+ * When a create fails in a way that may have reached Jira, `confirm` reads the parent first, given
+ * the keys made so far. It returns the key of a Subtask that now holds the title, which counts as
+ * created, or `null` for none. If it throws, the title stays in `left` and the failure is
+ * `unconfirmed`, so the notice can warn that it may exist.
  */
 export async function createInOrder(
   titles: readonly string[],
   create: (title: string) => Promise<CreatedIssue>,
   onCreated: (title: string, created: CreatedIssue, done: number) => void = () => undefined,
+  confirm?: (title: string, made: ReadonlySet<string>) => Promise<string | null>,
 ): Promise<BulkResult> {
   const result: BulkResult = { created: [], failed: null, left: [] }
   for (const [index, title] of titles.entries()) {
     let created: CreatedIssue
+    let confirmed = false
     try {
       created = await create(title)
     } catch (error) {
-      result.failed = { title, message: error instanceof Error ? error.message : String(error) }
-      result.left = titles.slice(index)
-      break
+      const message = error instanceof Error ? error.message : String(error)
+      let unconfirmed = false
+      let key: string | null = null
+      if (confirm !== undefined && mayHaveLanded(error)) {
+        try {
+          key = await confirm(title, new Set(result.created.map((made) => made.created.key)))
+        } catch {
+          unconfirmed = true
+        }
+      }
+      if (key === null) {
+        result.failed = { title, message, unconfirmed }
+        result.left = titles.slice(index)
+        break
+      }
+      created = { key, issue: null, warning: null }
+      confirmed = true
     }
-    result.created.push({ title, created })
+    result.created.push(confirmed ? { title, created, confirmed } : { title, created })
     try {
       onCreated(title, created, result.created.length)
     } catch {
@@ -107,7 +170,15 @@ const plural = (count: number) => `${String(count)} sub-issue${count === 1 ? '' 
 /** What to tell the user once a run ends. A run that stopped stays until dismissed and names what is left. */
 export function bulkNotice(parentKey: string, result: BulkResult): Notice {
   const { created, failed, left } = result
-  const warnings = created.flatMap(({ created: c }) => (c.warning === null ? [] : [c.warning]))
+  const lost = created.flatMap((made) =>
+    made.confirmed === true
+      ? [`"${made.title}" reached Jira as ${made.created.key} although its reply was lost.`]
+      : [],
+  )
+  const warnings = [
+    ...lost,
+    ...created.flatMap(({ created: c }) => (c.warning === null ? [] : [c.warning])),
+  ]
   if (failed === null) {
     return {
       title: `Created ${plural(created.length)} under ${parentKey}`,
@@ -124,6 +195,9 @@ export function bulkNotice(parentKey: string, result: BulkResult): Notice {
         : `Created ${String(created.length)} of ${plural(total)} under ${parentKey}`,
     notes: [
       `Could not create "${failed.title}". ${failed.message}`,
+      ...(failed.unconfirmed
+        ? [`"${failed.title}" may already exist. Check the Subtasks before creating it again.`]
+        : []),
       ...(untried > 0 ? [`${String(untried)} more not tried.`] : []),
       ...warnings,
     ],
