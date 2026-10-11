@@ -14,7 +14,6 @@ import {
   searchIssues,
   searchText,
   TEXT_QUERY_MAX,
-  TEXT_SEARCH_LIMIT,
   type SearchPage,
 } from './search.js'
 import { writeFields, writeSettings } from './state.js'
@@ -415,7 +414,7 @@ describe('searchText', () => {
     expect(requests).toHaveLength(1)
     expect(requests[0]).toMatchObject({
       jql: 'project = "PSAPAC" AND text ~ "rollout plan" ORDER BY updated DESC',
-      maxResults: TEXT_SEARCH_LIMIT,
+      maxResults: 50,
     })
     expect(requests[0]?.nextPageToken).toBeUndefined()
     expect(requests[0]?.fields).toContain(IDS.customer)

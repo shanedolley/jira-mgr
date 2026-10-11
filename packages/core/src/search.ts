@@ -33,7 +33,7 @@ export interface SearchPage {
 }
 
 /** The most results one text search returns. */
-export const TEXT_SEARCH_LIMIT = 20
+export const TEXT_SEARCH_LIMIT = 50
 
 /** The longest text one search takes. */
 export const TEXT_QUERY_MAX = 200

@@ -116,3 +116,22 @@ test('text shorter than three characters sends no search', async () => {
   await expect(jiraGroup()).toHaveCount(0)
   expect((await counts(app)).textSearches).toEqual([])
 })
+
+test('a broad query lists 50 Jira matches, newest first, and counts them', async () => {
+  await app.close()
+  ;({ app, window } = await launch(stateDir, { JM_E2E_BULK: '60' }))
+  await logIn(window)
+  await expect(window.getByRole('treeitem', { name: /PSAPAC-10,/ })).toBeVisible()
+  // 60 issues hold the word in the description only, so every one lands in the Jira group.
+  for (let n = 1000; n < 1060; n++) {
+    await setDescription(app, `PSAPAC-${String(n)}`, doc('The quokka batch job stalls.'))
+  }
+  await window.keyboard.press('Meta+k')
+  await search().fill('quokka')
+
+  await expect(jiraGroup()).toContainText('50 more matches')
+  await expect(jiraGroup().getByRole('option')).toHaveCount(50)
+  // Last touched, first listed: the oldest ten fall off the end.
+  await expect(jiraGroup().getByRole('option').first()).toContainText('PSAPAC-1059')
+  await expect(jiraGroup().getByRole('option').last()).toContainText('PSAPAC-1010')
+})
