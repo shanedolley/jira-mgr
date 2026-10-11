@@ -228,16 +228,24 @@ export interface AddLinkInput {
   otherKey: string
 }
 
+/**
+ * After a link is added or removed: the link shows on both pages, and Jira answers with no body,
+ * so both link lists read again. Both issues read again too, so the Tree's blocker pills and the
+ * Relations filter, which read the links the lists hold, follow the change.
+ */
+const linkSettled = (client: QueryClient, key: string, otherKey: string) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: linksKey(key) }),
+    client.invalidateQueries({ queryKey: linksKey(otherKey) }),
+    readIssue(client, key),
+    readIssue(client, otherKey),
+  ])
+
 export function useAddLink(key: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (input: AddLinkInput) => call('links:add', { key, ...input }),
-    // The link shows on both pages, and Jira answers with no body, so both lists read again.
-    onSettled: (_data, _error, { otherKey }) =>
-      Promise.all([
-        client.invalidateQueries({ queryKey: linksKey(key) }),
-        client.invalidateQueries({ queryKey: linksKey(otherKey) }),
-      ]),
+    onSettled: (_data, _error, { otherKey }) => linkSettled(client, key, otherKey),
   })
 }
 
@@ -250,7 +258,7 @@ export function useRemoveLink(key: string) {
       ({ linkId }) => call('links:remove', { key, linkId }),
       (data, { linkId }) => ({ ...data, links: data.links.filter((link) => link.id !== linkId) }),
       ({ otherKey }) => {
-        void client.invalidateQueries({ queryKey: linksKey(otherKey) })
+        void linkSettled(client, key, otherKey)
       },
     ),
   )

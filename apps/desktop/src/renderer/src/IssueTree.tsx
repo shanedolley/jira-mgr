@@ -44,7 +44,7 @@ interface IssueTreeProps {
   properties: readonly RowProperty[]
   /** Today's local date, for the dates a row shows. */
   today: string
-  /** The open blockers of each issue that has any, by key. */
+  /** The open blockers of each loaded issue, by key. */
   blocks: ReadonlyMap<string, OpenBlocks>
   /** Every expandable row id, for Collapse all. */
   expandable: readonly string[]
