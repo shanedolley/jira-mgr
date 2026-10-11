@@ -106,7 +106,7 @@ test('the Customer choices list the Project’s Customers, those with no issue i
 test('Overdue lists open issues due before today', async () => {
   await open()
   await releaseDone(app)
-  await expect(item(/2 done/)).toBeVisible()
+  await expect(item(/^2 done$/)).toBeVisible()
   // PSAPAC-22 is Done and past due, so only the open-issue rule keeps it out.
   await toggle('Hide done').click()
   await expect(item(/PSAPAC-22,/)).toBeVisible()
