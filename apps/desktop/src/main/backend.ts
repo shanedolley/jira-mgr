@@ -58,6 +58,7 @@ import {
   updateView,
   writeSettings,
   type SavedView,
+  type Settings,
 } from '@jira-mgr/core/state'
 import {
   startTimer as startCoreTimer,
@@ -90,6 +91,7 @@ import type {
   CurrentUser,
   DeleteIssueArgs,
   DeletedIssue,
+  Display,
   DeleteViewArgs,
   DownloadAttachmentArgs,
   DownloadResult,
@@ -223,6 +225,8 @@ export interface Backend {
   listCustomers(): Promise<CustomerOption[]>
   getToggles(): Promise<Toggles>
   setToggles(toggles: Toggles): Promise<Toggles>
+  getDisplay(): Promise<Display>
+  setDisplay(display: Display): Promise<Display>
   /** The saved views, the starters when `views.json` does not exist yet. */
   listViews(): Promise<SavedView[]>
   createView(args: CreateViewArgs): Promise<SavedView>
@@ -345,8 +349,20 @@ export function createBackend(deps: BackendDeps = {}): Backend {
   const loads = new Map<IssuePhase, AbortController>()
   /** The text search in flight. The palette types one query at a time, so a new search aborts it. */
   let textSearch: AbortController | undefined
-  /** Settings writes in call order, so a second toggle press never reads settings from before the first. */
-  let toggleWrites: Promise<unknown> = Promise.resolve()
+  /** Settings writes in call order, so a second toggle or display change never reads settings from before the first. */
+  let settingsWrites: Promise<unknown> = Promise.resolve()
+  /** Changes one part of `settings.json`, keeping the rest, and returns that part. */
+  function inSettingsOrder<K extends 'toggles' | 'display'>(
+    key: K,
+    value: Settings[K],
+  ): Promise<Settings[K]> {
+    const write = settingsWrites.then(async () => {
+      await writeSettings({ ...(await readSettings()), [key]: value })
+      return value
+    })
+    settingsWrites = write.catch(() => undefined)
+    return write
+  }
   /**
    * Views reads and writes in call order. Core reads, changes and rewrites `views.json`, so two
    * overlapping calls would drop an edit. The CLI only reads the file, so this in-process queue is
@@ -733,18 +749,14 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     async getToggles() {
       return (await readSettings()).toggles
     },
-    setToggles(toggles) {
-      const write = toggleWrites.then(async () => {
-        const settings = await readSettings()
-        await writeSettings({ ...settings, toggles })
-        return toggles
-      })
-      toggleWrites = write.catch(() => undefined)
-      return write
+    setToggles: (toggles) => inSettingsOrder('toggles', toggles),
+    async getDisplay() {
+      return (await readSettings()).display
     },
+    setDisplay: (display) => inSettingsOrder('display', display),
     listViews: () => inViewOrder(readViews),
-    createView: ({ name, filters, toggles }) =>
-      inViewOrder(() => createView(name, { filters, toggles })),
+    createView: ({ name, filters, toggles, display }) =>
+      inViewOrder(() => createView(name, { filters, toggles, display })),
     renameView: ({ id, name }) => inViewOrder(() => renameView(id, name)),
     deleteView: ({ id }) => inViewOrder(() => deleteView(id)),
     listInbox: loadInbox,
@@ -756,8 +768,8 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       inboxWrites++
       return inInboxOrder(() => markAllRead(through, new Date(deps.now?.() ?? Date.now())))
     },
-    updateView: ({ id, filters, toggles }) =>
-      inViewOrder(() => updateView(id, { filters, toggles })),
+    updateView: ({ id, filters, toggles, display }) =>
+      inViewOrder(() => updateView(id, { filters, toggles, display })),
     duplicateView: ({ id }) => inViewOrder(() => duplicateView(id)),
     moveView: ({ id, toIndex }) => inViewOrder(() => moveView(id, toIndex)),
     getTimer: timerSnapshot,

@@ -139,6 +139,28 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
     }
   })
 
+  it('keeps the text on a Customer band (--band, hovered and focused) at 4.5:1', () => {
+    for (const surface of ['band', 'band-hover', 'row-focus']) {
+      for (const text of ['ink', 'muted']) {
+        expect(
+          contrast(token(text, theme), token(surface, theme)),
+          `${text} on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
+  it('keeps the due date icon colours at 3:1 on every row background', () => {
+    for (const glyph of ['danger', 'status-doing', 'muted']) {
+      for (const surface of ROW_SURFACES) {
+        expect(
+          contrast(token(glyph, theme), token(surface, theme)),
+          `${glyph} on ${surface}`,
+        ).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
   it('keeps field borders at 3:1 on canvas and panel', () => {
     for (const surface of ['canvas', 'panel']) {
       expect(
@@ -146,6 +168,13 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
         surface,
       ).toBeGreaterThanOrEqual(3)
     }
+  })
+})
+
+describe('Customer band', () => {
+  it('reads lighter than the rows in dark, as Linear does, and darker than them in light', () => {
+    expect(luminance(token('band', 'dark'))).toBeGreaterThan(luminance(token('canvas', 'dark')))
+    expect(luminance(token('band', 'light'))).toBeLessThan(luminance(token('canvas', 'light')))
   })
 })
 

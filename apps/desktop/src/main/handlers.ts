@@ -1,5 +1,6 @@
 import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
 import { adfDocSchema, type AdfDoc } from '@jira-mgr/core/adf'
+import { ISSUE_ORDERS, ROW_PROPERTIES } from '@jira-mgr/core/display'
 import { DURATION_PATTERN, SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { TEXT_QUERY_MAX } from '@jira-mgr/core/search'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from '@jira-mgr/core/view-filter'
@@ -20,6 +21,7 @@ import type {
   CreateViewArgs,
   DeleteIssueArgs,
   DeleteViewArgs,
+  Display,
   DownloadAttachmentArgs,
   DuplicateViewArgs,
   EditCommentArgs,
@@ -304,6 +306,11 @@ const togglesArgs: z.ZodType<Toggles> = z.strictObject({
   hideEmptyCustomers: z.boolean(),
 })
 
+const displayArgs: z.ZodType<Display> = z.strictObject({
+  properties: z.array(z.enum(ROW_PROPERTIES)).max(ROW_PROPERTIES.length),
+  order: z.enum(ISSUE_ORDERS),
+})
+
 const filterValues = z.array(z.string().max(MAX_FILTER_VALUE)).max(MAX_FILTER_VALUES).optional()
 
 const filterLists = Object.fromEntries(
@@ -335,6 +342,7 @@ const createViewArgs: z.ZodType<CreateViewArgs> = z.strictObject({
   name: viewName,
   filters: viewFilters,
   toggles: togglesArgs,
+  display: displayArgs.optional(),
 })
 
 const renameViewArgs: z.ZodType<RenameViewArgs> = z.strictObject({ id: viewId, name: viewName })
@@ -345,6 +353,7 @@ const updateViewArgs: z.ZodType<UpdateViewArgs> = z.strictObject({
   id: viewId,
   filters: viewFilters,
   toggles: togglesArgs,
+  display: displayArgs.optional(),
 })
 
 const duplicateViewArgs: z.ZodType<DuplicateViewArgs> = z.strictObject({ id: viewId })
@@ -413,6 +422,8 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'fields:customers': z.undefined(),
   'settings:getToggles': z.undefined(),
   'settings:setToggles': togglesArgs,
+  'settings:getDisplay': z.undefined(),
+  'settings:setDisplay': displayArgs,
   'views:list': z.undefined(),
   'views:create': createViewArgs,
   'views:rename': renameViewArgs,
@@ -580,6 +591,8 @@ export function createHandlers(
     'fields:customers': handle('fields:customers', () => backend.listCustomers()),
     'settings:getToggles': handle('settings:getToggles', () => backend.getToggles()),
     'settings:setToggles': handle('settings:setToggles', (args) => backend.setToggles(args)),
+    'settings:getDisplay': handle('settings:getDisplay', () => backend.getDisplay()),
+    'settings:setDisplay': handle('settings:setDisplay', (args) => backend.setDisplay(args)),
     'views:list': handle('views:list', () => backend.listViews()),
     'views:create': handle('views:create', (args) => backend.createView(args)),
     'views:rename': handle('views:rename', (args) => backend.renameView(args)),

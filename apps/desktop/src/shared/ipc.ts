@@ -5,7 +5,7 @@ import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
 import type { InboxEntry } from '@jira-mgr/core/inbox'
 import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
 import type { SprintReport } from '@jira-mgr/core/sprints'
-import type { SavedView } from '@jira-mgr/core/state'
+import type { Display, SavedView } from '@jira-mgr/core/state'
 import type { RunningTimer, TimerSettings, WorklogDraft } from '@jira-mgr/core/timer-calc'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
@@ -53,14 +53,19 @@ export interface SearchTextArgs {
 /** The three toggles `settings.json` remembers (Q28). */
 export type Toggles = Pick<HierarchyOptions, 'hideDone' | 'assigneeMe' | 'hideEmptyCustomers'>
 
+/** The row properties and issue order `settings.json` remembers, and a saved view may carry. */
+export type { Display }
+
 /** A saved view as `views.json` holds it, the file `jm view list` reads. */
 export type { SavedView }
 
-/** The view to add: a name, the filter bar's filters and the three toggles. Core makes the id. */
+/** The view to add: a name, the filter bar's filters, the three toggles and the display. Core makes the id. */
 export interface CreateViewArgs {
   name: string
   filters: ViewFilters
   toggles: Toggles
+  /** Left out, the view carries no display (create) or keeps the one it has (update). */
+  display?: Display
 }
 
 export interface RenameViewArgs {
@@ -85,11 +90,13 @@ export interface MarkInboxAllReadArgs {
 
 export type { InboxEntry }
 
-/** The view to overwrite, with the filters and toggles to put in it. */
+/** The view to overwrite, with the filters, toggles and display to put in it. */
 export interface UpdateViewArgs {
   id: string
   filters: ViewFilters
   toggles: Toggles
+  /** Left out, the view carries no display (create) or keeps the one it has (update). */
+  display?: Display
 }
 
 export interface DuplicateViewArgs {
@@ -460,6 +467,8 @@ export interface IpcContract {
   'fields:customers': { args: undefined; result: CustomerOption[] }
   'settings:getToggles': { args: undefined; result: Toggles }
   'settings:setToggles': { args: Toggles; result: Toggles }
+  'settings:getDisplay': { args: undefined; result: Display }
+  'settings:setDisplay': { args: Display; result: Display }
   'views:list': { args: undefined; result: SavedView[] }
   'views:create': { args: CreateViewArgs; result: SavedView }
   'views:rename': { args: RenameViewArgs; result: SavedView }
@@ -529,6 +538,8 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'fields:customers': true,
   'settings:getToggles': true,
   'settings:setToggles': true,
+  'settings:getDisplay': true,
+  'settings:setDisplay': true,
   'views:list': true,
   'views:create': true,
   'views:rename': true,

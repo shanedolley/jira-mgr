@@ -10,8 +10,11 @@ import {
   flattenTree,
   indexNodes,
   issuesShown,
+  layoutOf,
+  layoutRows,
   mergeIssues,
   moveActive,
+  rowAtOffset,
   windowRange,
   type KeyInput,
   type MoveContext,
@@ -566,7 +569,7 @@ describe('clickRow', () => {
 
 describe('windowRange', () => {
   const range = (scrollTop: number, height: number, count: number, active = -1) =>
-    windowRange(scrollTop, height, count, active)
+    windowRange(layoutOf(Array<number>(count).fill(32)), scrollTop, height, active)
 
   it('covers the visible rows plus overscan, clamped at both ends', () => {
     // 320 px is 10 rows. At the top, rows 0 to 19: 10 visible and 10 overscan below.
@@ -598,6 +601,33 @@ describe('windowRange', () => {
 
   it('does not repeat an active row already in the window', () => {
     expect(range(0, 320, 1000, 3)).toHaveLength(20)
+  })
+})
+
+describe('layoutRows', () => {
+  const rows = flattenTree(groupsOf(SAMPLE), NONE)
+
+  it('gives a Customer header a gap above its 36px, and every other row 32px', () => {
+    const layout = layoutRows(rows)
+    const slots = rows.map((r, i) => (layout.tops[i + 1] ?? layout.total) - (layout.tops[i] ?? 0))
+    expect(slots).toEqual(rows.map((r) => (r.kind === 'customer' ? 44 : 32)))
+    expect(layout.tops[0]).toBe(0)
+    expect(layout.total).toBe(slots.reduce((a, b) => a + b, 0))
+  })
+
+  it('finds the row at an offset, clamped to the list', () => {
+    const layout = layoutOf([44, 32, 32, 44, 32])
+    expect(
+      [-5, 0, 43, 44, 75, 76, 119, 120, 151, 152, 900].map((y) => rowAtOffset(layout, y)),
+    ).toEqual([0, 0, 0, 1, 1, 2, 3, 3, 3, 4, 4])
+    expect(rowAtOffset(layoutOf([]), 10)).toBe(-1)
+  })
+
+  it('windows over uneven slots', () => {
+    const layout = layoutOf([44, ...Array<number>(100).fill(32)])
+    // The first row ends at 44 and the second at 76, so a 76px view from 0 shows rows 0 and 1.
+    expect(windowRange(layout, 0, 76, -1, 0)).toEqual([0, 1])
+    expect(windowRange(layout, 44, 32, -1, 0)).toEqual([1])
   })
 })
 

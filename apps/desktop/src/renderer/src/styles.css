@@ -71,6 +71,9 @@
   --row-selected-focus: light-dark(oklch(0.915 0.04 275), oklch(0.355 0.095 275));
   /* Secondary text on the two selected fills, which are too dark or too light for --muted. */
   --row-muted: light-dark(oklch(0.42 0.015 275), oklch(0.8 0.012 275));
+  /* A Customer group's header band: lighter than the rows in dark, as Linear's reads as raised. */
+  --band: light-dark(oklch(0.955 0.006 275), oklch(0.225 0.01 275));
+  --band-hover: light-dark(oklch(0.935 0.008 275), oklch(0.26 0.012 275));
 }
 
 .tree-row:hover,
@@ -79,6 +82,20 @@
 }
 
 [role='tree']:focus .tree-row[data-active='true'] {
+  background: var(--row-focus);
+}
+
+/* After the row rules, with the same weight as the active one, so a header keeps its band. */
+.tree-row[data-band] {
+  background: var(--band);
+}
+
+.tree-row[data-band]:hover,
+.tree-row[data-band][data-active='true'] {
+  background: var(--band-hover);
+}
+
+[role='tree']:focus .tree-row[data-band][data-active='true'] {
   background: var(--row-focus);
 }
 

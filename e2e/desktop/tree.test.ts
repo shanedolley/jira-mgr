@@ -283,6 +283,7 @@ test('toggling a toolbar button moves no neighbour', async () => {
     'Hide empty Customers',
     'Filter',
     'Groups',
+    'Display',
     'Filter by key or summary',
   ])
 
@@ -485,10 +486,10 @@ test('renders a bounded number of rows for 2000 issues and reaches the last with
   await expect(item(/PSAPAC-900,/)).toBeVisible()
 
   // Acme 9 rows, Beta 7, and the internal Customer: its header, the bulk Epic with its 2000
-  // Stories, then Epic PSAPAC-50 and its Story.
+  // Stories, then Epic PSAPAC-50 and its Story. Each of the 3 headers holds 12px more than a row.
   const rowCount = 9 + 7 + 2004
   const canvas = await tree().locator(':scope > div').boundingBox()
-  expect(Math.abs((canvas?.height ?? 0) - rowCount * 32)).toBeLessThanOrEqual(32)
+  expect(Math.abs((canvas?.height ?? 0) - (rowCount * 32 + 3 * 12))).toBeLessThanOrEqual(32)
   expect(await tree().getByRole('treeitem').count()).toBeLessThan(100)
 
   await window.keyboard.press('End')
@@ -650,7 +651,7 @@ const paint = (row: Locator) =>
     }
   })
 
-/** The issue key's weight and colour, and whether the text fits its fixed 5rem box. */
+/** The issue key's weight and colour, and whether the text fits its 5.5rem box. */
 const keyPaint = (row: Locator) =>
   row.locator('.tree-key').evaluate((el) => {
     const s = getComputedStyle(el)
@@ -689,7 +690,7 @@ test('marks the active and the open row by distinct fills, with no ring, edge or
   // The open row's key is bold in ink, whether or not the row is active. No other key is.
   const ink = await painted('var(--ink)')
   for (const key of [bothKey, peekedKey]) expect(key).toMatchObject({ weight: '600', colour: ink })
-  for (const key of [focusKey, restKey]) expect(key.weight).toBe('400')
+  for (const key of [focusKey, restKey]) expect(key.weight).toBe('450')
   expect(restKey.colour).not.toBe(ink)
   for (const state of [both, peeked, focus, rest]) {
     expect(state.shadow).toBe('none')

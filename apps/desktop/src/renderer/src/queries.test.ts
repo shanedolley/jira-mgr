@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { IssueDetail } from '@jira-mgr/core/issue'
 
-import type { Toggles } from '../../shared/ipc'
+import type { Display, Toggles } from '../../shared/ipc'
 import { doneKey, issueDetailKey, unresolvedKey } from './optimistic'
 import {
   attachmentsKey,
@@ -20,6 +20,8 @@ import {
   pickerKey,
   sessionKey,
   togglesKey,
+  displayKey,
+  displayMutation,
   togglesMutation,
   unresolvedQuery,
   watchImageUrls,
@@ -196,6 +198,50 @@ describe('togglesMutation', () => {
 
     expect(read).toHaveBeenCalled()
     await expect.poll(() => client.getQueryData(togglesKey)).toEqual(stored)
+    unsubscribe()
+  })
+})
+
+describe('displayMutation', () => {
+  const stored: Display = { properties: ['updated'], order: 'key' }
+  const chosen: Display = { properties: ['due'], order: 'priority' }
+
+  it('shows the choice at once, before the write answers', async () => {
+    const client = new QueryClient()
+    client.setQueryData(displayKey, stored)
+    let finish!: () => void
+    const write = new Promise<Display>((resolve) => {
+      finish = () => {
+        resolve(chosen)
+      }
+    })
+    const done = new MutationObserver(
+      client,
+      displayMutation(client, () => write),
+    ).mutate(chosen)
+    await expect.poll(() => client.getQueryData(displayKey)).toEqual(chosen)
+    finish()
+    await done
+  })
+
+  it('a failed write refetches what the file holds', async () => {
+    const client = new QueryClient()
+    client.setQueryData(displayKey, stored)
+    const read = vi.fn(() => Promise.resolve(stored))
+    const observer = new QueryObserver(client, {
+      queryKey: displayKey,
+      queryFn: read,
+      staleTime: Infinity,
+    })
+    const unsubscribe = observer.subscribe(() => undefined)
+
+    const failing = new MutationObserver(
+      client,
+      displayMutation(client, () => Promise.reject(new JiraMgrError('internal', 'Disk full.'))),
+    )
+    await expect(failing.mutate(chosen)).rejects.toBeInstanceOf(JiraMgrError)
+
+    await expect.poll(() => client.getQueryData(displayKey)).toEqual(stored)
     unsubscribe()
   })
 })

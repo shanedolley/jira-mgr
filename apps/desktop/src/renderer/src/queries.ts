@@ -27,6 +27,7 @@ import type {
   SetStatusArgs,
   SetSummaryArgs,
   SessionState,
+  Display,
   Toggles,
 } from '../../shared/ipc'
 import { clearDrafts } from './drafts'
@@ -233,6 +234,40 @@ export function togglesMutation(
       await client.invalidateQueries({ queryKey: togglesKey })
     },
   }
+}
+
+export const displayKey = ['display'] as const
+
+/** The row properties and issue order `settings.json` remembers. */
+export function useDisplay() {
+  return useQuery({
+    queryKey: displayKey,
+    queryFn: () => call('settings:getDisplay'),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/** Shows a display change at once, then writes it. A failed write refetches what the file holds. */
+export function displayMutation(
+  client: QueryClient,
+  send: (display: Display) => Promise<Display>,
+): MutationOptions<Display, JiraMgrError, Display> {
+  return {
+    mutationFn: send,
+    async onMutate(display) {
+      await client.cancelQueries({ queryKey: displayKey })
+      client.setQueryData<Display>(displayKey, display)
+    },
+    async onError() {
+      await client.invalidateQueries({ queryKey: displayKey })
+    },
+  }
+}
+
+export function useSetDisplay() {
+  const client = useQueryClient()
+  return useMutation(displayMutation(client, (display) => call('settings:setDisplay', display)))
 }
 
 export function useSetToggles() {

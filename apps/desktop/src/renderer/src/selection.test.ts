@@ -116,7 +116,7 @@ describe('no coloured edge marks a row or a sidebar item', () => {
     const rule = /\.tree-row\[aria-selected='true'\] \.tree-key\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
     expect(rule).toMatch(/font-weight:\s*600/)
     expect(rule).toMatch(/color:\s*var\(--ink\)/)
-    expect(read('./TreeRow.tsx')).toMatch(/className="tree-key [^"]*"[^>]*>\{issue\.key\}/)
+    expect(read('./TreeRow.tsx')).toMatch(/className="tree-key [^"]*"[^>]*>\s*\{issue\.key\}/)
   })
 
   it('leaves the Tree container without a ring, except the one over an empty Tree', () => {

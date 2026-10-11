@@ -1,6 +1,7 @@
+import { DEFAULT_ORDER, DEFAULT_PROPERTIES } from '@jira-mgr/core/display'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
-import type { SavedView, Toggles } from '../../shared/ipc'
+import type { Display, SavedView, Toggles } from '../../shared/ipc'
 import { FILTER_FIELDS, OPERATORS, valuesOf } from './filters'
 
 const sameSet = (a: readonly string[] = [], b: readonly string[] = []) =>
@@ -23,6 +24,16 @@ export function viewMatches(view: SavedView, filters: ViewFilters, toggles: Togg
     view.toggles.assigneeMe === toggles.assigneeMe &&
     view.toggles.hideEmptyCustomers === toggles.hideEmptyCustomers
   )
+}
+
+/**
+ * True when the view's display is the one the Tree shows. A view with no display holds the
+ * defaults. Display is not part of `viewMatches`, so a view stays lit while a property is toggled;
+ * this is what tells "Update view" that there is something to save.
+ */
+export function viewDisplayMatches(view: SavedView, display: Display): boolean {
+  const saved = view.display ?? { properties: [...DEFAULT_PROPERTIES], order: DEFAULT_ORDER }
+  return saved.order === display.order && sameSet(saved.properties, display.properties)
 }
 
 /**
