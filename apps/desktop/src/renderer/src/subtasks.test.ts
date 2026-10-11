@@ -6,6 +6,7 @@ import {
   MAX_NEW_SUBTASKS,
   MAX_TITLE,
   bulkNotice,
+  confirmLanded,
   createInOrder,
   landedKey,
   parentProblem,
@@ -321,6 +322,31 @@ describe('landedKey', () => {
     expect(landedKey(list, 'build', new Set())).toBeNull()
     expect(landedKey(list, 'Build ', new Set())).toBeNull()
     expect(landedKey([], 'Plan', new Set())).toBeNull()
+  })
+})
+
+describe('confirmLanded', () => {
+  const held = (key: string, summary: string) => ({ key, summary, status: 'To Do', done: false })
+  const now = () => Promise.resolve([held('K-1', 'lose reply'), held('K-2', 'Other')])
+
+  it('does not take a Subtask the page already held for the one a lost create made', async () => {
+    expect(await confirmLanded(['K-1', 'K-2'], now, 'lose reply', new Set())).toBeNull()
+  })
+
+  it('takes a Subtask with the title that is new since the run began', async () => {
+    expect(await confirmLanded(['K-2'], now, 'lose reply', new Set())).toBe('K-1')
+  })
+
+  it('does not take one this run already made or confirmed', async () => {
+    expect(await confirmLanded(['K-2'], now, 'lose reply', new Set(['K-1']))).toBeNull()
+  })
+
+  it('throws without a list to compare with, and without reading', async () => {
+    const read = vi.fn(now)
+    await expect(confirmLanded(undefined, read, 'lose reply', new Set())).rejects.toThrow(
+      'no Subtasks list',
+    )
+    expect(read).not.toHaveBeenCalled()
   })
 })
 

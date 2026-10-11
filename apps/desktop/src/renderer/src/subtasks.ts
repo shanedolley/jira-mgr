@@ -98,6 +98,21 @@ export function landedKey(
 }
 
 /**
+ * Reads the parent's Subtasks and returns the key `landedKey` finds, skipping `before` (the keys
+ * the page held when the run began) and `made` (the keys this run made or confirmed). Throws when
+ * there is no `before` to compare with, since any match could be an older Subtask.
+ */
+export async function confirmLanded(
+  before: readonly string[] | undefined,
+  read: () => Promise<IssueDetail['subtasks']>,
+  title: string,
+  made: ReadonlySet<string>,
+): Promise<string | null> {
+  if (before === undefined) throw new Error('The page held no Subtasks list to compare with.')
+  return landedKey(await read(), title, new Set([...before, ...made]))
+}
+
+/**
  * Creates `titles` one at a time, in order, and stops at the first refusal. Each create waits for
  * the one before it, so the Subtasks come out in the order pasted and a failure leaves nothing
  * half sent: what was created is never sent again, and what is left is exactly what to retry.

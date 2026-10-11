@@ -8,7 +8,7 @@ import { applyCreated, issueDetailKey } from './optimistic'
 import {
   bulkNotice,
   createInOrder,
-  landedKey,
+  confirmLanded,
   subtaskArgs,
   withSubtask,
   type BulkResult,
@@ -58,12 +58,13 @@ export function useAddSubtasks(
           }
           onProgress(done)
         },
-        async (title, made) => {
-          if (before === undefined)
-            throw new Error(`${parent.key} has no Subtasks list to compare.`)
-          const { subtasks } = await call('issues:get', { key: parent.key })
-          return landedKey(subtasks, title, new Set([...before, ...made]))
-        },
+        (title, made) =>
+          confirmLanded(
+            before,
+            async () => (await call('issues:get', { key: parent.key })).subtasks,
+            title,
+            made,
+          ),
       )
     },
     onSuccess: (result) => {
