@@ -268,14 +268,43 @@ test('the sidebar moves between the Inbox and the issues, and a view leaves the 
   await expect(inboxPage()).toHaveCount(0)
 })
 
-test('arrow keys move between entries', async () => {
+test('the arrow keys work on arrival, and Esc on a page returns to the entry it opened', async () => {
   await seed()
   await open()
   await openInbox()
-  await rows().nth(0).focus()
+  // No Tab first: the first entry has focus.
+  await expect(rows().nth(0)).toBeFocused()
   await window.keyboard.press('ArrowDown')
   await expect(rows().nth(1)).toBeFocused()
   await window.keyboard.press('ArrowUp')
+  await expect(rows().nth(0)).toBeFocused()
+  await window.keyboard.press('ArrowUp')
+  await expect(rows().nth(0)).toBeFocused()
+
+  await window.keyboard.press('ArrowDown')
+  await window.keyboard.press('ArrowDown')
+  await expect(rows().nth(2)).toBeFocused()
+  await window.keyboard.press('Enter')
+  await expect(issuePage()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(inboxPage()).toBeVisible()
+  await expect(rows().nth(2)).toBeFocused()
+  await window.keyboard.press('ArrowUp')
+  await expect(rows().nth(1)).toBeFocused()
+})
+
+test('the Inbox link shows the Inbox while an issue page is open', async () => {
+  await seed()
+  await open()
+  await tree()
+    .getByRole('treeitem', { name: /PSAPAC-1,/ })
+    .click()
+  await window.keyboard.press('Enter')
+  await expect(issuePage()).toBeVisible()
+
+  await inboxLink().click()
+  await expect(issuePage()).toHaveCount(0)
+  await expect(inboxPage()).toBeVisible()
   await expect(rows().nth(0)).toBeFocused()
 })
 

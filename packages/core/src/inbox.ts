@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { JiraMgrError, type ErrorCode } from './errors.js'
 import type { HttpClient } from './http.js'
 import { jiraTime, type Issue } from './issue.js'
 import { getCurrentUser } from './lookups.js'
@@ -21,6 +22,9 @@ const NEVER = '1970-01-01T00:00:00.000Z'
 /** The most changelog histories one read asks for, and the most issues read at once. */
 const HISTORY_PAGE = 100
 const READ_AT_ONCE = 5
+
+/** The errors that mean one issue's history cannot be read, as opposed to Jira being down. */
+const GONE: readonly ErrorCode[] = ['not_found', 'permission_denied']
 
 /** The values Jira's text for a change shows before cutting it. */
 const VALUE_MAX = 40
@@ -343,7 +347,10 @@ export async function listInbox(
     ))
 
   const entries = await inPool(issues, READ_AT_ONCE, async (issue): Promise<InboxEntry> => {
-    if (!isUnread(inbox, issue)) return { issue, unread: false, change: null }
+    const read: InboxEntry = { issue, unread: false, change: null }
+    if (!isUnread(inbox, issue)) return read
+    // The key goes into a request path, so it must be an issue key, whatever Jira sent.
+    if (!issueKey.safeParse(issue.key).success) return read
     const id = `${issue.key} ${issue.updated}`
     let facts = cache.facts.get(id)
     if (facts === undefined) {
@@ -354,8 +361,16 @@ export async function listInbox(
       cache.facts.set(id, facts)
     }
     const mark = Math.max(time(readMark(inbox, issue.key)), windowStart)
-    const change = await changeSince(facts, mark, await whoAmI())
-    return { issue, unread: change !== null, change }
+    const me = await whoAmI()
+    try {
+      const change = await changeSince(facts, mark, me)
+      return { issue, unread: change !== null, change }
+    } catch (error) {
+      // An issue the user cannot read the history of, or that was deleted since the search, must
+      // not fail the whole Inbox. It shows read, and is tried again when it next changes.
+      if (error instanceof JiraMgrError && GONE.includes(error.code)) return read
+      throw error
+    }
   })
 
   // An issue that moved on, or left the window, never needs its old facts again.

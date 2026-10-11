@@ -353,10 +353,16 @@ export function createBackend(deps: BackendDeps = {}): Backend {
   }
   /** What the Inbox read for the signed-in account, so a poll of an unchanged issue asks Jira nothing. */
   let inboxCache = createInboxCache()
-  /** The Inbox load running, which a second call shares instead of starting another. */
-  let inboxLoad: { promise: Promise<InboxEntry[]>; controller: AbortController } | undefined
+  /** Inbox writes called so far. A load that began before the latest one holds a stale file. */
+  let inboxWrites = 0
+  /**
+   * The Inbox load running, which a second call shares instead of starting another, unless an
+   * Inbox write came after it read `inbox.json`: that load would answer with the old marks.
+   */
+  let inboxLoad:
+    { promise: Promise<InboxEntry[]>; controller: AbortController; writes: number } | undefined
   function loadInbox(): Promise<InboxEntry[]> {
-    if (inboxLoad !== undefined) return inboxLoad.promise
+    if (inboxLoad?.writes === inboxWrites) return inboxLoad.promise
     const controller = new AbortController()
     const promise = (async () => {
       const inbox = await inInboxOrder(readInbox)
@@ -375,7 +381,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     })().finally(() => {
       if (inboxLoad?.controller === controller) inboxLoad = undefined
     })
-    inboxLoad = { promise, controller }
+    inboxLoad = { promise, controller, writes: inboxWrites }
     return promise
   }
   function dropInbox() {
@@ -722,10 +728,14 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     renameView: ({ id, name }) => inViewOrder(() => renameView(id, name)),
     deleteView: ({ id }) => inViewOrder(() => deleteView(id)),
     listInbox: loadInbox,
-    markInboxRead: ({ key, updated }) =>
-      inInboxOrder(() => markRead(key, updated, new Date(deps.now?.() ?? Date.now()))),
-    markInboxAllRead: ({ through }) =>
-      inInboxOrder(() => markAllRead(through, new Date(deps.now?.() ?? Date.now()))),
+    markInboxRead({ key, updated }) {
+      inboxWrites++
+      return inInboxOrder(() => markRead(key, updated, new Date(deps.now?.() ?? Date.now())))
+    },
+    markInboxAllRead({ through }) {
+      inboxWrites++
+      return inInboxOrder(() => markAllRead(through, new Date(deps.now?.() ?? Date.now())))
+    },
     getTimer: timerSnapshot,
     async startTimer({ key }) {
       await startCoreTimer(await timeableIssue(key), timerOptions)

@@ -136,6 +136,25 @@ describe('listInbox', () => {
     expect(searches(requests)).toBe(2)
   })
 
+  it('answers a call made after a mark with a load that read the file after it', async () => {
+    let release!: () => void
+    const hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { http, requests } = inboxHttp({ hold })
+    const backend = createBackend({ http, now: clock })
+    // A poll is running, and has read inbox.json, when the user opens PSAPAC-2.
+    const poll = backend.listInbox()
+    await expect.poll(() => searches(requests)).toBe(1)
+    await backend.markInboxRead({ key: 'PSAPAC-2', updated: '2026-10-10T02:00:00.000Z' })
+    const afterMark = backend.listInbox()
+    await expect.poll(() => searches(requests)).toBe(2)
+    release()
+
+    expect((await afterMark).find((e) => e.issue.key === 'PSAPAC-2')?.unread).toBe(false)
+    await poll
+  })
+
   it('keeps the changelogs it read while an issue stays as it was', async () => {
     const { http, requests } = inboxHttp()
     const backend = createBackend({ http, now: clock })

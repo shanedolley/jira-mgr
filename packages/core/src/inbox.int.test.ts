@@ -254,20 +254,48 @@ describe('listInbox', () => {
     expect(served.reads).toHaveLength(first)
   })
 
-  it('does not keep a failed read', async () => {
+  it.each([
+    [404, 'was deleted since the search'],
+    [403, 'cannot be read by the user'],
+  ])('shows an issue that %i, one that %s, as read and keeps the rest', async (status) => {
     let fail = true
     serve((path) => {
       if (path.includes('/PSAPAC-3139/changelog') && fail) {
-        return HttpResponse.json({ errorMessages: ['Gone.'] }, { status: 404 })
+        return HttpResponse.json({ errorMessages: ['No.'] }, { status })
       }
       return undefined
     })
     const cache = createInboxCache()
-    const state = inbox('2026-10-10T00:00:00.000Z')
+    const state = inbox('2026-10-08T00:00:00.000Z')
 
-    expect((await failure(list(state, cache))).code).toBe('not_found')
+    const entries = await list(state, cache)
+    expect(entry(entries, 'PSAPAC-3139')).toMatchObject({ unread: false, change: null })
+    expect(entry(entries, 'PSAPAC-3134').unread).toBe(true)
+    // The failed read is not kept: the next list asks again.
     fail = false
     expect(entry(await list(state, cache), 'PSAPAC-3139').unread).toBe(true)
+  })
+
+  it('still fails the Inbox when Jira is down', async () => {
+    serve((path) =>
+      path.includes('/PSAPAC-3139/changelog')
+        ? HttpResponse.json({ errorMessages: ['Down.'] }, { status: 500 })
+        : undefined,
+    )
+    expect((await failure(list(inbox('2026-10-08T00:00:00.000Z')))).code).toBe('jira_error')
+  })
+
+  it('reads no changelog for a key that is not an issue key', async () => {
+    const page = loadFixture('inbox-search') as { issues: Json[] }
+    const served = serve()
+    server.use(
+      http.post(`${JIRA_SITE}/rest/api/3/search/jql`, () =>
+        HttpResponse.json({ issues: [{ ...page.issues[0], key: '../../x' }], isLast: true }),
+      ),
+    )
+    const entries = await list(inbox(NEVER))
+    expect(entries.map((e) => [e.issue.key, e.unread])).toEqual([['../../x', false]])
+    expect(served.reads).toEqual([])
   })
 
   it('reads the last page of a long changelog', async () => {

@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type RefObject } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react'
 
 import type { InboxEntry } from '../../shared/ipc'
 import { Banner } from './Banner'
@@ -38,6 +38,7 @@ function Row({
         type="button"
         data-row
         data-inbox-row
+        data-inbox-key={issue.key}
         data-unread={unread ? '' : undefined}
         onClick={() => {
           onOpen(entry)
@@ -69,9 +70,12 @@ function Row({
  * clears every mark up to the newest change in the list.
  */
 export function InboxPage({
+  front,
   onOpen,
   pageRef,
 }: {
+  /** False while an issue page covers this one. Focus comes back to the row the user opened. */
+  front: boolean
   /** Opens the page of the issue. */
   onOpen: (key: string) => void
   pageRef: RefObject<HTMLElement | null>
@@ -81,10 +85,32 @@ export function InboxPage({
   const markRead = useMarkInboxRead()
   const markAll = useMarkInboxAllRead()
   const list = useRef<HTMLUListElement>(null)
+  const opened = useRef<string | null>(null)
+  // Whether focus has been placed since the page came to the front.
+  const placed = useRef(false)
   const entries = inbox.data
   const unread = entries === undefined ? 0 : unreadCount(entries)
 
+  // Focus goes to the row the user opened, else the first, so the arrow keys work at once. With
+  // no rows yet it waits on the page itself, and lands on the first row when they load.
+  useEffect(() => {
+    if (!front) {
+      placed.current = false
+      return
+    }
+    if (placed.current) return
+    const rows = [...(list.current?.querySelectorAll<HTMLElement>('[data-inbox-row]') ?? [])]
+    const target = rows.find((row) => row.dataset.inboxKey === opened.current) ?? rows[0]
+    if (target === undefined) {
+      pageRef.current?.focus()
+      return
+    }
+    target.focus()
+    placed.current = true
+  }, [front, entries, pageRef])
+
   function open(entry: InboxEntry) {
+    opened.current = entry.issue.key
     markRead.mutate({ key: entry.issue.key, updated: entry.issue.updated })
     onOpen(entry.issue.key)
   }
@@ -145,6 +171,12 @@ export function InboxPage({
       ref={pageRef}
       aria-label="Inbox"
       tabIndex={-1}
+      onKeyDown={(event) => {
+        // Focus on the page itself, before any rows have loaded, still reaches them.
+        if (event.key !== 'ArrowDown' || event.target !== event.currentTarget) return
+        event.preventDefault()
+        list.current?.querySelector<HTMLElement>('[data-inbox-row]')?.focus()
+      }}
       className="relative z-10 flex h-full min-h-0 min-w-0 flex-col bg-canvas outline-none"
     >
       <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4">

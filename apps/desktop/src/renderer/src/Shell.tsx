@@ -398,8 +398,8 @@ export function Shell({ session }: { session: Session }) {
   const wasSurface = useRef<typeof surface>('tree')
   useEffect(() => {
     if (surface === 'page') pageRef.current?.focus()
-    else if (wasSurface.current !== surface)
-      (surface === 'inbox' ? inboxRef : treeRef).current?.focus()
+    // The Inbox places its own focus, on a row once it has rows.
+    else if (wasSurface.current !== surface && surface === 'tree') treeRef.current?.focus()
     wasSurface.current = surface
   }, [surface, pageKey])
 
@@ -900,6 +900,8 @@ export function Shell({ session }: { session: Session }) {
         unread={inboxQuery.data === undefined ? undefined : unreadCount(inboxQuery.data)}
         inboxOpen={inboxOpen}
         onShowInbox={() => {
+          // An issue page covers the Inbox, so it closes first, as applying a view does.
+          setPageKey(null)
           setInboxOpen(true)
         }}
         onShowIssues={() => {
@@ -1025,7 +1027,7 @@ export function Shell({ session }: { session: Session }) {
       )}
       {inboxOpen && (
         <div className="[grid-column:2/-1] row-start-1 min-h-0">
-          <InboxPage onOpen={setPageKey} pageRef={inboxRef} />
+          <InboxPage front={!pageOpen} onOpen={setPageKey} pageRef={inboxRef} />
         </div>
       )}
       {pageKey !== null && (
