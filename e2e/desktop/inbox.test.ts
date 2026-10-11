@@ -3,10 +3,11 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
 import {
   counts,
+  dropIssue,
   fieldsOf,
   inboxChange,
   inboxComment,
@@ -340,4 +341,76 @@ test('stays inside the page in a wide font and the narrowest window', async () =
   })
   expect(fit, fit.why).toMatchObject({ ok: true })
   await expect(markAll()).toBeVisible()
+})
+
+const nav = () => window.getByRole('navigation', { name: 'Main' })
+const palette = () => window.getByRole('dialog', { name: 'Search issues' })
+const help = () => window.getByRole('dialog', { name: 'Keyboard shortcuts' })
+
+/** Makes a Tree row the active one and closes the Peek the click opened, so the Tree holds an active issue. */
+async function activate(row: RegExp) {
+  await tree().getByRole('treeitem', { name: row }).click()
+  await window.keyboard.press('Escape')
+  await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
+}
+
+const focusInInbox = () =>
+  window.evaluate(() => document.activeElement?.closest('[aria-label="Inbox"]') !== null)
+
+test('a lit saved view gives the highlight to the Inbox, so exactly one item is lit', async () => {
+  await seed()
+  await open()
+  const view = window
+    .getByRole('list', { name: 'Saved views' })
+    .getByRole('button', { name: 'My issues', exact: true })
+  await view.click()
+  await expect(view).toHaveAttribute('aria-current', 'true')
+
+  await openInbox()
+  await expect(inboxLink()).toHaveAttribute('aria-current', 'page')
+  await expect(view).not.toHaveAttribute('aria-current')
+  expect(await nav().locator('[aria-current]').count()).toBe(1)
+})
+
+test('the palette offers no action for the Tree row the Inbox hides', async () => {
+  await seed()
+  await open()
+  await activate(/PSAPAC-2,/)
+  await openInbox()
+
+  await window.keyboard.press('Meta+k')
+  await expect(palette()).toBeVisible()
+  // The hidden row is not in context, so there are no actions to run on it.
+  await expect(palette().getByRole('group', { name: 'Actions' })).toHaveCount(0)
+  await expect(palette().getByRole('option', { name: /Assign to me/ })).toHaveCount(0)
+})
+
+/**
+ * Opens a dialog with `key` from the Inbox row of PSAPAC-4, then makes that row leave: Jira no
+ * longer lists the issue, so the window's next look drops it. The dialog's own opener is gone when
+ * it closes, so focus goes where `restoreFocus` says.
+ */
+async function closeDialogOverVanishedRow(open: string, dialog: () => Locator) {
+  await seed()
+  await logIn(window)
+  await expect(tree()).toBeVisible()
+  await openInbox()
+  await row('PSAPAC-4').focus()
+  await window.keyboard.press(open)
+  await expect(dialog()).toBeVisible()
+
+  await dropIssue(app, 'PSAPAC-4')
+  await refocus()
+  await expect(window.locator('[data-inbox-key="PSAPAC-4"]')).toHaveCount(0)
+  await window.keyboard.press('Escape')
+  await expect(dialog()).toHaveCount(0)
+  await expect.poll(focusInInbox).toBe(true)
+}
+
+test('closing the palette on the Inbox puts focus back in the Inbox when its row has gone', async () => {
+  await closeDialogOverVanishedRow('Meta+k', palette)
+})
+
+test('closing the help on the Inbox puts focus back in the Inbox when its row has gone', async () => {
+  await closeDialogOverVanishedRow('?', help)
 })
