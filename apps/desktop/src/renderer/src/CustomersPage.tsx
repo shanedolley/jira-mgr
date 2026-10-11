@@ -3,20 +3,22 @@ import { customerTotals, type CustomerOption } from '@jira-mgr/core/hierarchy'
 import { useMemo, type RefObject } from 'react'
 
 import { Banner } from './Banner'
-import { OVERVIEW_ROW, OverviewFrame, TH } from './OverviewFrame'
-import { PercentDone } from './Progress'
+import { OVERVIEW_ROW, OverviewFrame, TH, type OverviewLoad } from './OverviewFrame'
+import { NotLoaded, PercentDone } from './Progress'
 
 /**
  * The Customers page: every Customer of the Project with the issues it has open and the share of
- * its issues that is Done. A row opens the Tree filtered to that Customer, so the open count is
- * the number of open issues the filter then shows. The counts are the loaded issues', so they grow
- * once the Done issues load.
+ * its issues that is Done. A row opens the Tree filtered to that Customer, which under the default
+ * toggles shows that many open issues (the Tree also shows the Epic of a mismatched child as
+ * context). The counts are the loaded issues', so they grow once the Done issues load, and the
+ * percent reads "Not loaded" if that load fails.
  */
 export function CustomersPage({
   issues,
   customers,
   customersFailed,
   doneLoading,
+  load,
   front,
   pageRef,
   onBack,
@@ -30,6 +32,7 @@ export function CustomersPage({
   customersFailed: boolean
   /** The Done issues are still loading, so the counts are not final. */
   doneLoading: boolean
+  load: OverviewLoad
   front: boolean
   pageRef: RefObject<HTMLElement | null>
   onBack: () => void
@@ -45,9 +48,9 @@ export function CustomersPage({
       front={front}
       pageRef={pageRef}
       onBack={onBack}
-      status={
-        loading ? '' : doneLoading ? `${count}. Loading Done issues, so counts may grow.` : count
-      }
+      count={loading ? '' : count}
+      doneLoading={doneLoading}
+      load={load}
     >
       {customersFailed && (
         <Banner onRetry={onRetry}>
@@ -99,12 +102,16 @@ export function CustomersPage({
                   <td
                     className="px-3 whitespace-nowrap"
                     title={
-                      open + done === 0
+                      load.doneFailed || open + done === 0
                         ? undefined
                         : `${String(done)} of ${String(open + done)} done`
                     }
                   >
-                    <PercentDone progress={{ done, total: open + done }} />
+                    {load.doneFailed ? (
+                      <NotLoaded />
+                    ) : (
+                      <PercentDone progress={{ done, total: open + done }} />
+                    )}
                   </td>
                 </tr>
               ))}

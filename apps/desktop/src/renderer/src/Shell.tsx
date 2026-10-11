@@ -1,5 +1,10 @@
 import type { Issue } from '@jira-mgr/core'
-import { buildHierarchy, childProgress, type CustomerOption } from '@jira-mgr/core/hierarchy'
+import {
+  buildHierarchy,
+  childProgress,
+  type CustomerOption,
+  type Progress,
+} from '@jira-mgr/core/hierarchy'
 import { assertTimeable, type RunningTimer } from '@jira-mgr/core/timer-calc'
 import {
   applyViewToggles,
@@ -41,6 +46,7 @@ import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { Kbd } from './Kbd'
+import { type OverviewLoad } from './OverviewFrame'
 import { unreadCount, useInbox } from './inboxQueries'
 import { LoadError } from './LoadError'
 import { ShortcutHelp } from './ShortcutHelp'
@@ -319,8 +325,13 @@ export function Shell({ session }: { session: Session }) {
     const byKey = new Map(issues.map((i) => [i.key, i]))
     return new Map(issues.map((i) => [i.key, openBlocks(i, byKey)]))
   }, [issues])
-  // Done over total of each parent's children, which Epic rows and the issue page show.
-  const progress = useMemo(() => childProgress(issues), [issues])
+  const doneFailed = done.isError && done.data === undefined
+  // Done over total of each parent's children, which Epic rows and the issue page show. With no
+  // Done issues to count, a total of the open ones alone would mislead, so the Tree hides them.
+  const progress = useMemo(
+    () => (doneFailed ? new Map<string, Progress>() : childProgress(issues)),
+    [issues, doneFailed],
+  )
   const customerNames = useMemo(
     () => customersQuery.data?.map((c) => c.value) ?? [],
     [customersQuery.data],
@@ -914,7 +925,6 @@ export function Shell({ session }: { session: Session }) {
   const refreshFailed =
     (unresolved.isError && unresolved.data !== undefined) ||
     (done.isError && done.data !== undefined)
-  const doneFailed = done.isError && done.data === undefined
 
   function retryAll() {
     if (unresolved.isError) void unresolved.refetch()
@@ -983,6 +993,15 @@ export function Shell({ session }: { session: Session }) {
         }
       />
     )
+  }
+
+  // The Tree's two loads, which sit in banners under the inert list, as the overview pages show them.
+  const overviewLoad: OverviewLoad = {
+    ready: unresolved.data !== undefined,
+    error: unresolved.data === undefined && unresolved.isError ? unresolved.error : null,
+    onRetry: () => void unresolved.refetch(),
+    doneFailed,
+    onRetryDone: () => void done.refetch(),
   }
 
   const layout = (
@@ -1189,6 +1208,7 @@ export function Shell({ session }: { session: Session }) {
               progress={progress}
               today={today}
               doneLoading={doneLoading}
+              load={overviewLoad}
               front={!pageOpen}
               pageRef={overviewRef}
               onBack={() => {
@@ -1202,6 +1222,7 @@ export function Shell({ session }: { session: Session }) {
               customers={customersQuery.data}
               customersFailed={customersQuery.isError && customersQuery.data === undefined}
               doneLoading={doneLoading}
+              load={overviewLoad}
               front={!pageOpen}
               pageRef={overviewRef}
               onBack={() => {

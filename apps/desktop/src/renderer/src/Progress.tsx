@@ -39,6 +39,8 @@ function Ring({ done, total }: Progress) {
 export function ProgressPill({ progress }: { progress: Progress }) {
   return (
     <span
+      role="img"
+      aria-label={progressText(progress)}
       data-progress={`${String(progress.done)}/${String(progress.total)}`}
       title={progressText(progress)}
       className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line px-2 text-xs leading-5 tabular-nums text-muted"
@@ -47,6 +49,11 @@ export function ProgressPill({ progress }: { progress: Progress }) {
       {progress.done}/{progress.total}
     </span>
   )
+}
+
+/** What a Done-dependent cell says while the Done load has failed. */
+export function NotLoaded() {
+  return <span className="text-muted">Not loaded</span>
 }
 
 /** A bar and the percent done, for a table cell. Nothing is done yet reads "0%"; no issues reads "No issues". */

@@ -614,6 +614,11 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   releaseDone: () => void
   /** Makes the next Done page answer 500. */
   failDone: () => void
+  /** Makes the next open-issues search page answer 500. */
+  failUnresolved: () => void
+  /** Holds every open-issues search page until `releaseUnresolved`, so no open issue loads. */
+  holdUnresolved: () => void
+  releaseUnresolved: () => void
   /** Makes the next read of one issue answer 500. */
   failRead: () => void
   /** Makes the next read of an issue's transitions answer 500. */
@@ -801,6 +806,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   })
   let doneHeld = false
   let failNextDone = false
+  let failNextUnresolved = false
+  let unresolvedGate: Promise<void> | null = null
+  let releaseUnresolvedGate: () => void = () => undefined
   let failNextRead = false
   let failNextTransitions = false
   let failNextComments: 404 | 500 | null = null
@@ -1041,6 +1049,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       }
       // "!= Done" holds "= Done" as a substring, so test it first.
       const phase = search.jql.includes('statusCategory != Done') ? 'unresolved' : 'done'
+      if (phase === 'unresolved') {
+        if (unresolvedGate !== null) await unresolvedGate
+        if (failNextUnresolved) {
+          failNextUnresolved = false
+          return json({ errorMessages: ['The fake failed this page.'] }, 500)
+        }
+      }
       if (phase === 'done' && !unresolvedComplete) counts.doneEarly++
       if (phase === 'done' && !doneHeld) {
         doneHeld = true
@@ -1592,6 +1607,18 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failDone: () => {
       failNextDone = true
+    },
+    failUnresolved: () => {
+      failNextUnresolved = true
+    },
+    holdUnresolved: () => {
+      unresolvedGate = new Promise<void>((resolve) => {
+        releaseUnresolvedGate = resolve
+      })
+    },
+    releaseUnresolved: () => {
+      releaseUnresolvedGate()
+      unresolvedGate = null
     },
     failRead: () => {
       failNextRead = true

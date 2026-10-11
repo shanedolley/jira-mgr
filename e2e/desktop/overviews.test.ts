@@ -5,7 +5,17 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, joinSprint, launch, logIn, releaseDone } from './harness.js'
+import {
+  counts,
+  failDone,
+  failUnresolved,
+  holdUnresolved,
+  joinSprint,
+  launch,
+  logIn,
+  releaseDone,
+  releaseUnresolved,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -618,5 +628,114 @@ test.describe('surfaces', () => {
       return table === null ? 0 : table.scrollWidth - (table.parentElement?.clientWidth ?? 0)
     })
     expect(widths).toBeLessThanOrEqual(1)
+  })
+})
+
+test.describe('load states', () => {
+  const banner = () => window.getByRole('alert').filter({ hasText: 'Could not load Done issues' })
+
+  test('a failed Done load says so on the Epics and Customers pages, hides what needs Done and retries', async () => {
+    await open()
+    await failDone(app)
+    await releaseDone(app)
+    // The Tree's own banner sits under the covered list, so look from the page.
+    await expect(banner()).toBeVisible()
+    await expect(pill(item(/PSAPAC-10,/))).toHaveCount(0)
+
+    await link('Epics').click()
+    await expect(epicsPage().getByRole('alert')).toContainText(
+      'Could not load Done issues. Done counts are hidden.',
+    )
+    await expect(epicsPage().locator('header').getByRole('status')).toHaveText(
+      '3 Epics. Done counts are hidden.',
+    )
+    // The Issues and % done cells are unknown, not zero.
+    const cells = await epicCells('PSAPAC-10')
+    expect(cells[4]).toBe('Not loaded')
+    expect(cells[6]).toBe('Not loaded')
+    await expect(epicsPage().getByText('0%')).toHaveCount(0)
+
+    await link('Customers').click()
+    await expect(customersPage().getByRole('alert')).toContainText('Done counts are hidden.')
+    // Open counts only need the open issues, so they stand.
+    await expect(customerRow('Acme')).toBeVisible()
+    expect(await customerCells('Acme')).toEqual(['9', 'Not loaded'])
+
+    // The page's own page-line pill is gone too, since a count of open children alone misleads.
+    await customersPage().getByRole('alert').getByRole('button', { name: 'Retry' }).click()
+    await expect(customersPage().getByRole('alert')).toHaveCount(0)
+    // The retry reads Done again, and the counts catch up once it lands.
+    await expect.poll(() => customerCells('Acme')).toEqual(['9', '18%'])
+    await link('Epics').click()
+    await expect.poll(async () => (await epicCells('PSAPAC-10'))[6]).toBe('25%')
+    await expect(banner()).toHaveCount(0)
+  })
+
+  test('a failed Done load hides the pill on the issue page line', async () => {
+    await open()
+    await failDone(app)
+    await releaseDone(app)
+    await expect(banner()).toBeVisible()
+    await item(/PSAPAC-1,/).click()
+    await window.keyboard.press('Enter')
+    const line = issuePage().locator('[data-parent-line]').locator('xpath=..')
+    await expect(line).toContainText('PSAPAC-10')
+    await expect(pill(line)).toHaveCount(0)
+  })
+
+  test('before the open issues load, both pages say so and never show "No Epics." or zero counts', async () => {
+    await holdUnresolved(app)
+    await logIn(window)
+    await link('Epics').click()
+    await expect(epicsPage().getByText('Loading issues')).toBeVisible()
+    await expect(epicsPage().getByText('No Epics.')).toHaveCount(0)
+    await expect(epicsPage().getByRole('table')).toHaveCount(0)
+    await link('Customers').click()
+    await expect(customersPage().getByText('Loading issues')).toBeVisible()
+    await expect(customersPage().getByRole('table')).toHaveCount(0)
+    await expect(customersPage().locator('header').getByRole('status')).toHaveText('')
+
+    // Focus moves on to Back while nothing has loaded, and the arrival of rows leaves it there.
+    await window.keyboard.press('Tab')
+    await expect(customersPage().getByRole('button', { name: 'Back to issues' })).toBeFocused()
+    await releaseUnresolved(app)
+    await expect(customersPage().getByRole('table')).toBeVisible()
+    await expect(customersPage().getByRole('button', { name: 'Back to issues' })).toBeFocused()
+    expect(await customerCells('Acme')).toEqual(['9', '0%'])
+  })
+
+  test('with no rows yet the page keeps focus where the user put it', async () => {
+    await holdUnresolved(app)
+    await logIn(window)
+    await link('Epics').click()
+    await expect(epicsPage()).toBeFocused()
+    await epicsPage().getByRole('button', { name: 'Back to issues' }).focus()
+    // Status polls and renders do not pull it back to the page.
+    await window.waitForTimeout(600)
+    await expect(epicsPage().getByRole('button', { name: 'Back to issues' })).toBeFocused()
+  })
+
+  test('a failed open-issues load shows the Tree’s error with Retry, then the table', async () => {
+    await failUnresolved(app)
+    await logIn(window)
+    await link('Epics').click()
+    await expect(epicsPage().getByRole('alert')).toContainText('Jira had a problem')
+    await expect(epicsPage().getByText('No Epics.')).toHaveCount(0)
+    await epicsPage().getByRole('button', { name: 'Retry' }).click()
+    await expect(epicsPage().getByRole('table')).toBeVisible()
+    await expect(epicsPage().getByRole('alert')).toHaveCount(0)
+    expect(await epicKeys()).toEqual(['PSAPAC-50', 'PSAPAC-30', 'PSAPAC-10'])
+  })
+
+  test('the pill names its progress for a screen reader', async () => {
+    await open()
+    await loadDone()
+    await item(/PSAPAC-1,/).click()
+    await window.keyboard.press('Enter')
+    await expect(
+      issuePage().locator('[data-parent-line]').locator('xpath=..').getByRole('img', {
+        name: '2 of 8 done',
+      }),
+    ).toBeVisible()
   })
 })

@@ -13,8 +13,8 @@ import {
   type EpicColumn,
   type EpicRow,
 } from './overview'
-import { OVERVIEW_ROW, OverviewFrame, TH } from './OverviewFrame'
-import { PercentDone, progressText } from './Progress'
+import { OVERVIEW_ROW, OverviewFrame, TH, type OverviewLoad } from './OverviewFrame'
+import { NotLoaded, PercentDone, progressText } from './Progress'
 import { dueTone, shortDate } from './rowProps'
 import { StatusDot } from './StatusDot'
 
@@ -66,10 +66,13 @@ function SortHeader({
 function Row({
   row,
   today,
+  doneFailed,
   onOpen,
 }: {
   row: EpicRow
   today: string
+  /** The Done issues failed to load, so the issue count and percent are unknown. */
+  doneFailed: boolean
   onOpen: (key: string) => void
 }) {
   const { issue, progress } = row
@@ -121,7 +124,7 @@ function Row({
         className="px-3 tabular-nums"
         title={progress === undefined ? undefined : progressText(progress)}
       >
-        {progress?.total ?? 0}
+        {doneFailed ? <NotLoaded /> : (progress?.total ?? 0)}
       </td>
       <td
         className={`px-3 whitespace-nowrap ${overdue ? 'text-danger' : ''}`}
@@ -133,7 +136,7 @@ function Row({
         className="px-3 whitespace-nowrap"
         title={progress === undefined ? undefined : progressText(progress)}
       >
-        <PercentDone progress={progress} />
+        {doneFailed ? <NotLoaded /> : <PercentDone progress={progress} />}
       </td>
     </tr>
   )
@@ -143,13 +146,14 @@ function Row({
  * The Epics table: one row per Epic with its Customer, Status, Priority, Assignee, the number of
  * issues under it, its due date and the share of them that is Done. A header sorts by its column,
  * and a row opens the Epic's page. The counts are the loaded issues', so they grow once the Done
- * issues load.
+ * issues load, and the Issues and % done cells read "Not loaded" if that load fails.
  */
 export function EpicsPage({
   issues,
   progress,
   today,
   doneLoading,
+  load,
   front,
   pageRef,
   onBack,
@@ -160,6 +164,7 @@ export function EpicsPage({
   today: string
   /** The Done issues are still loading, so the counts are not final. */
   doneLoading: boolean
+  load: OverviewLoad
   front: boolean
   pageRef: RefObject<HTMLElement | null>
   onBack: () => void
@@ -174,7 +179,9 @@ export function EpicsPage({
       front={front}
       pageRef={pageRef}
       onBack={onBack}
-      status={doneLoading ? `${count}. Loading Done issues, so counts may grow.` : count}
+      count={count}
+      doneLoading={doneLoading}
+      load={load}
     >
       {rows.length === 0 ? (
         <p className="p-4 text-muted">No Epics.</p>
@@ -198,7 +205,13 @@ export function EpicsPage({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <Row key={row.issue.key} row={row} today={today} onOpen={onOpen} />
+                <Row
+                  key={row.issue.key}
+                  row={row}
+                  today={today}
+                  doneFailed={load.doneFailed}
+                  onOpen={onOpen}
+                />
               ))}
             </tbody>
           </table>

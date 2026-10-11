@@ -53,6 +53,9 @@ interface FakeJira {
   fieldsOf: (key: string) => Record<string, unknown> | undefined
   releaseDone: () => void
   failDone: () => void
+  failUnresolved: () => void
+  holdUnresolved: () => void
+  releaseUnresolved: () => void
   failRead: () => void
   failTransitions: () => void
   holdTextSearch: () => void
@@ -146,6 +149,23 @@ export const releaseDone = (app: ElectronApplication) =>
 export const failDone = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failDone()
+  })
+
+/** Makes the fake Jira answer 500 to the next open-issues search page. Call it before logging in. */
+export const failUnresolved = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.failUnresolved()
+  })
+
+/** Holds the open-issues search until `releaseUnresolved`. Call it before logging in. */
+export const holdUnresolved = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.holdUnresolved()
+  })
+
+export const releaseUnresolved = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.releaseUnresolved()
   })
 
 /** Makes the fake Jira answer 500 to the next read of one issue. */
