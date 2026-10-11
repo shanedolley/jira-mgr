@@ -69,6 +69,16 @@ const COPY_ICON = {
   strokeLinejoin: 'round',
 } as const
 
+/**
+ * A column right of the Tree. Under 960px it is a 360px card over the Tree, below the page header
+ * so the header's buttons stay reachable, with a hairline all round and a soft shadow.
+ */
+const ASIDE =
+  'col-start-3 row-start-1 min-h-0 overflow-y-auto border-l border-line bg-panel ' +
+  'max-rail:col-start-2 max-rail:z-[5] max-rail:m-2 max-rail:mt-12 max-rail:w-[min(22.5rem,calc(100%-1rem))] ' +
+  'max-rail:max-h-[calc(100%-3.5rem)] max-rail:justify-self-end max-rail:self-start ' +
+  'max-rail:rounded-xl max-rail:border max-rail:shadow-[0_4px_40px_var(--dialog-shadow)]'
+
 /** How long the Peek holds still on an issue before it reads the description. */
 const READ_DELAY_MS = 180
 /** How long a description the Peek read stays fresh, so a row visited again shows it without a read. */
@@ -275,9 +285,9 @@ export function IssueDetail({
       data-key-scope
       inert={inert}
       aria-label="Peek"
-      className="col-start-3 row-start-1 min-h-0 overflow-y-auto border-l border-line bg-panel"
+      className={ASIDE}
     >
-      <div className="app-drag flex h-10 shrink-0 items-center justify-end gap-2 px-3">
+      <div className="app-drag flex h-10 shrink-0 items-center justify-end gap-2 px-3 max-rail:[-webkit-app-region:no-drag]">
         {issue !== undefined && (
           <>
             <button

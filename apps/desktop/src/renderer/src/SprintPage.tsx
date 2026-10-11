@@ -147,7 +147,7 @@ function Panel({ report }: { report: SprintReport }) {
   return (
     <aside
       aria-label="Sprint details"
-      className="min-h-0 overflow-y-auto border-l border-line bg-panel px-3"
+      className="min-h-0 overflow-y-auto border-l border-line bg-panel px-3 max-stack:min-h-auto max-stack:overflow-y-visible max-stack:border-l-0 max-stack:border-t"
     >
       <Group title="Dates">
         <dl>
@@ -192,7 +192,7 @@ function Issues({ report, onOpen }: { report: SprintReport; onOpen: (key: string
   const { sprint, issues } = report
   const groups = groupByStatus(issues)
   return (
-    <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px]">
+    <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px] max-stack:min-h-auto max-stack:overflow-y-visible max-stack:px-4">
       <div className="max-w-[40rem] space-y-6">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold leading-7">{sprint.name}</h1>
@@ -261,15 +261,15 @@ export function SprintPage({ sprintId, pageRef, onBack, onOpenIssue }: SprintPag
       tabIndex={-1}
       aria-label="Sprint page"
       onKeyDown={onKeyDown}
-      className="relative z-10 grid h-full min-h-0 grid-cols-[minmax(0,1fr)_21rem] grid-rows-[auto_minmax(0,1fr)] bg-canvas focus-visible:outline-none"
+      className="relative z-10 grid h-full min-h-0 grid-cols-[minmax(0,1fr)_21rem] grid-rows-[auto_minmax(0,1fr)] bg-canvas focus-visible:outline-none max-stack:grid-cols-[minmax(0,1fr)] max-stack:grid-rows-[auto] max-stack:content-start max-stack:overflow-y-auto"
     >
-      <header className="app-drag col-span-2 flex h-10 items-center gap-3 border-b border-line px-4">
+      <header className="app-drag col-span-2 flex h-10 items-center gap-3 border-b border-line px-4 max-rail:pl-6 max-stack:sticky max-stack:top-0 max-stack:z-10 max-stack:col-span-1 max-stack:bg-canvas">
         <button type="button" onClick={onBack} className="btn btn-sm app-no-drag">
           Back to issues
         </button>
       </header>
       {report.data === undefined ? (
-        <div className="col-span-2">
+        <div className="col-span-2 max-stack:col-span-1">
           {report.isError ? (
             <LoadError
               what="this sprint"

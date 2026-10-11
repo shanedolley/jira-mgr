@@ -179,7 +179,7 @@ export function InboxPage({
       }}
       className="relative z-10 flex h-full min-h-0 min-w-0 flex-col bg-canvas outline-none"
     >
-      <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4">
+      <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4 max-rail:pl-6">
         <h1 className="font-semibold">Inbox</h1>
         <div className="flex items-center gap-3">
           <span role="status" className="text-xs text-muted">

@@ -1006,7 +1006,7 @@ export function Shell({ session }: { session: Session }) {
 
   const layout = (
     <div
-      className={`relative grid h-full grid-rows-[minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
+      className={`relative grid h-full grid-rows-[minmax(0,1fr)] max-rail:grid-cols-[3rem_minmax(0,1fr)] ${peekOpen ? 'grid-cols-[14.5rem_minmax(20rem,1fr)_minmax(21rem,26rem)]' : 'grid-cols-[14.5rem_minmax(20rem,1fr)]'}`}
     >
       <a
         href="#issue-list"
@@ -1065,7 +1065,7 @@ export function Shell({ session }: { session: Session }) {
         inert={listCovered}
         className="col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
       >
-        <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4">
+        <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4 max-rail:pl-6">
           <h1 className="font-semibold">Issues</h1>
           <div className="flex items-center gap-3">
             <span role="status" className="text-xs text-muted">
@@ -1334,7 +1334,7 @@ export function Shell({ session }: { session: Session }) {
       {toasts.length > 0 && (
         <ul
           aria-label="Notices"
-          className="fixed bottom-4 left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2"
+          className="fixed bottom-4 left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2 max-rail:left-16 max-rail:max-w-[min(28rem,calc(100vw-5rem))]"
         >
           {toasts.map((toast) => (
             <Toast

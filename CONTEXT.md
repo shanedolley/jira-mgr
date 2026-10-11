@@ -53,6 +53,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Inbox** | The sidebar page listing the issues the user is assigned to, reported or watches that changed in the last 14 days, each marked read or unread, with a badge in the sidebar. | notifications, activity feed |
 | **Read mark** | The `updated` time of an issue when the user opened it, kept in `inbox.json`. An issue is unread when it changed after its read mark, or after the Inbox-wide mark set by Mark all read, and someone else made the change. | seen, last looked |
 | **Peek** | The space-bar preview of an issue. | quick view |
+| **Rail** | The sidebar under 960px: a 48px column of icons (Show sidebar, Inbox, Issues). Show sidebar opens the full sidebar over the Tree. Under 960px the Peek is a card over the Tree. | collapsed sidebar, drawer |
 | **Issue page** | The full page of one issue, opened with Enter: summary, description and subtasks beside the properties sidebar. | detail view |
 | **Sprint page** | The page of one sprint, opened from the sidebar's Current and Upcoming entries or the Sprint row of an Issue page: its issues by status beside the dates, goal, counts and breakdowns. | cycle page |
 | **Scope, Started, Completed** | The Sprint page's counts. Scope is every issue in the sprint, Started the issues whose status category is In Progress, and Completed the issues whose status category is Done, whatever the status is called. A breakdown row reads "N% of M": M issues share a value, and N percent of them are Completed. | done count |

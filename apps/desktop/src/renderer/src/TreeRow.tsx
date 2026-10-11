@@ -284,7 +284,7 @@ function Properties({
   const sprint = rowSprint(issue)
   const [firstLabel, ...moreLabels] = issue.labels
   return (
-    <span data-props className="hidden shrink-0 items-center gap-2 @2xl:flex">
+    <span data-props className="hidden shrink-0 items-center gap-2 @tree:flex">
       {properties.map((property) => {
         switch (property) {
           case 'labels':

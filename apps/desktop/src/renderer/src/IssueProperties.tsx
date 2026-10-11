@@ -314,7 +314,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
     <aside
       aria-label="Properties"
       data-issue={issue.key}
-      className="min-h-0 overflow-y-auto border-l border-line bg-panel px-3"
+      className="min-h-0 overflow-y-auto border-l border-line bg-panel px-3 max-stack:min-h-auto max-stack:overflow-y-visible max-stack:border-l-0 max-stack:border-t"
     >
       <Group title="Status">
         <Row name="Status" field="status" pending={pending.has('status')}>

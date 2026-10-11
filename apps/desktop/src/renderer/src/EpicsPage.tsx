@@ -13,7 +13,7 @@ import {
   type EpicColumn,
   type EpicRow,
 } from './overview'
-import { OVERVIEW_ROW, OverviewFrame, TH, type OverviewLoad } from './OverviewFrame'
+import { OVERVIEW_ROW, OverviewFrame, TH, keepInView, type OverviewLoad } from './OverviewFrame'
 import { NotLoaded, PercentDone, progressText } from './Progress'
 import { dueTone, shortDate } from './rowProps'
 import { StatusDot } from './StatusDot'
@@ -186,7 +186,7 @@ export function EpicsPage({
       {rows.length === 0 ? (
         <p className="p-4 text-muted">No Epics.</p>
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto px-4 text-sm">
+        <div onFocus={keepInView} className="min-h-0 flex-1 overflow-auto px-4 text-sm">
           <table className="w-full min-w-[56rem] border-collapse">
             <thead>
               <tr>

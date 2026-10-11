@@ -62,6 +62,18 @@
 }
 
 /*
+ * Layout breakpoints (#151). `max-rail:` is a window under 960px: the sidebar is a 48px rail and
+ * the Peek a card over the Tree. `max-stack:` is under 760px: a page's Properties stack under its
+ * content. `@max-tree:` is a Tree under 700px wide: the toolbar is one row of icons and the rows
+ * drop their properties. `narrow.ts` holds the 960px the sidebar needs in script.
+ */
+@theme {
+  --breakpoint-rail: 60rem;
+  --breakpoint-stack: 47.5rem;
+  --container-tree: 43.75rem;
+}
+
+/*
  * Row state (#131): the active row, the open row and the current sidebar item show by fill and
  * weight. No ring, edge or side bar draws them, so no state depends on hue.
  */
