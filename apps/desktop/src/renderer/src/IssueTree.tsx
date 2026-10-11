@@ -1,5 +1,6 @@
 import type { RowProperty } from '@jira-mgr/core/display'
 import type { OpenBlocks } from '@jira-mgr/core/view-filter'
+import type { Progress } from '@jira-mgr/core/hierarchy'
 import {
   useCallback,
   useEffect,
@@ -54,6 +55,8 @@ interface IssueTreeProps {
   onPick: (key: string, property: 'status' | 'assignee') => void
   /** A click on a group header's "+". */
   onAdd: (row: Row) => void
+  /** Done over total of each parent's children, of which an Epic's row shows its own. */
+  progress: ReadonlyMap<string, Progress>
   treeRef: RefObject<HTMLDivElement | null>
   /** Shown over a Tree with no issues, which stays mounted so focus is not lost. */
   empty: ReactNode
@@ -83,6 +86,7 @@ export function IssueTree({
   onChange,
   onPick,
   onAdd,
+  progress,
   treeRef,
   empty,
 }: IssueTreeProps) {
@@ -205,6 +209,11 @@ export function IssueTree({
             const row = rows[index]
             if (row === undefined) return null
             const held = row.kind === 'issue' ? blocks.get(row.node.issue.key) : undefined
+            // Only an Epic's row shows its progress.
+            const children =
+              row.kind === 'issue' && row.node.issue.issueType.hierarchyLevel >= 1
+                ? progress.get(row.node.issue.key)
+                : undefined
             return (
               <TreeRow
                 key={row.id}
@@ -220,6 +229,8 @@ export function IssueTree({
                 onClick={onRowClick}
                 onPick={onPick}
                 onAdd={onAdd}
+                done={children?.done}
+                total={children?.total}
               />
             )
           })}

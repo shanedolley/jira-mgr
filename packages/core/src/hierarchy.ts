@@ -100,7 +100,10 @@ function customerRank(c: CustomerOption | null): number {
   return INTERNAL_CUSTOMERS.includes(c.value) ? 2 : 0
 }
 
-function byCustomer(a: CustomerGroup, b: CustomerGroup): number {
+function byCustomer(
+  a: { customer: CustomerOption | null },
+  b: { customer: CustomerOption | null },
+): number {
   return (
     customerRank(a.customer) - customerRank(b.customer) ||
     (a.customer?.value ?? '').localeCompare(b.customer?.value ?? '', 'en', { sensitivity: 'base' })
@@ -212,4 +215,57 @@ export function buildHierarchy(issues: Issue[], options: HierarchyOptions): Cust
       noEpic: g.noEpic.sort((a, b) => sort.others(a.issue, b.issue)),
     }))
     .sort(byCustomer)
+}
+
+export interface Progress {
+  done: number
+  total: number
+}
+
+/**
+ * Done over total of each parent's direct children, by parent key. It counts the children
+ * `buildHierarchy` nests under a parent (an Epic is never a child), whatever the toggles and
+ * filters hide, so an Epic's `children` and `doneCount` add up to `total`. Done is the status
+ * category. A parent with no loaded child has no entry.
+ */
+export function childProgress(issues: readonly Issue[]): Map<string, Progress> {
+  const byKey = new Map(issues.map((i) => [i.key, i]))
+  const progress = new Map<string, Progress>()
+  for (const i of issues) {
+    if (isEpic(i) || i.parentKey === null || !byKey.has(i.parentKey)) continue
+    const entry = progress.get(i.parentKey) ?? { done: 0, total: 0 }
+    entry.total += 1
+    if (isDone(i)) entry.done += 1
+    progress.set(i.parentKey, entry)
+  }
+  return progress
+}
+
+export interface CustomerTotals {
+  customer: CustomerOption
+  open: number
+  done: number
+}
+
+/**
+ * The open and Done issues of each Customer, by the issue's own Customer, Epics included. An
+ * issue with no Customer counts for none. Every Customer in `customers` has a row, with zeros when
+ * it holds no issue, and a Customer only the issues name has one too. The rows sort as the Tree's
+ * groups do.
+ */
+export function customerTotals(
+  issues: readonly Issue[],
+  customers: readonly CustomerOption[],
+): CustomerTotals[] {
+  const rows = new Map<string, CustomerTotals>()
+  const row = (customer: CustomerOption) => {
+    const found = rows.get(customer.id)
+    if (found !== undefined) return found
+    const created = { customer, open: 0, done: 0 }
+    rows.set(customer.id, created)
+    return created
+  }
+  for (const c of customers) row(c)
+  for (const i of issues) if (i.customer !== null) row(i.customer)[isDone(i) ? 'done' : 'open'] += 1
+  return [...rows.values()].sort(byCustomer)
 }

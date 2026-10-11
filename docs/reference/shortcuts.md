@@ -19,11 +19,11 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Y` | Copy the issue key |
 | `U` | Copy the link to the issue on the Jira site |
 | `F` | Open the Filter menu, with focus on its first field; `Esc` closes it and returns to the Tree |
-| `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open issue, Inbox or Sprint page |
+| `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open issue, Inbox, Sprint, Epics or Customers page |
 | `?` | List every shortcut on this page; works from a sidebar or toolbar button too, not in a field or over a dialog |
 | `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo |
-| `Esc` | Close the issue page, then the Sprint page, then the Peek. An issue page opened from a sprint returns to the sprint |
+| `Esc` | Close the issue page, then the Sprint page or the Epics or Customers page, then the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
 | `Tab` | The first stop is a "Skip to issues" link, hidden until it has focus; `Enter` on it moves focus to the Tree |
 
 ## Tree

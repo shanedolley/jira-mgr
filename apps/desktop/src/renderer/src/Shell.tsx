@@ -1,5 +1,10 @@
 import type { Issue } from '@jira-mgr/core'
-import { buildHierarchy } from '@jira-mgr/core/hierarchy'
+import {
+  buildHierarchy,
+  childProgress,
+  type CustomerOption,
+  type Progress,
+} from '@jira-mgr/core/hierarchy'
 import { assertTimeable, type RunningTimer } from '@jira-mgr/core/timer-calc'
 import {
   applyViewToggles,
@@ -33,12 +38,15 @@ import { Banner } from './Banner'
 import { copyText } from './clipboard'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
+import { CustomersPage } from './CustomersPage'
 import { DeleteIssueDialog } from './DeleteIssueDialog'
+import { EpicsPage } from './EpicsPage'
 import { InboxPage } from './InboxPage'
 import { IssueDetail } from './IssueDetail'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { Kbd } from './Kbd'
+import { type OverviewLoad } from './OverviewFrame'
 import { unreadCount, useInbox } from './inboxQueries'
 import { LoadError } from './LoadError'
 import { ShortcutHelp } from './ShortcutHelp'
@@ -106,6 +114,9 @@ import {
   type TreeRow,
   type TreeState,
 } from './tree'
+
+/** The pages that list Epics or Customers rather than issues. */
+type Overview = 'epics' | 'customers'
 
 /** The "N issues shown" announcement waits this long after a toggle or filter settles. */
 const ANNOUNCE_MS = 500
@@ -239,6 +250,8 @@ export function Shell({ session }: { session: Session }) {
   // The Inbox page, over the Tree like an issue page and under any issue page opened from it.
   const [inboxOpen, setInboxOpen] = useState(false)
   const inboxQuery = useInbox()
+  // The Epics table or the Customers page, over the Tree like the Inbox and exclusive with it.
+  const [overview, setOverview] = useState<Overview | null>(null)
   // The sprint whose page is open. It covers the Tree like an issue page, which opens above it.
   const [sprintId, setSprintId] = useState<number | null>(null)
   // The create modal, opened by `C` or the New issue button, with the selection it started from
@@ -282,13 +295,16 @@ export function Shell({ session }: { session: Session }) {
   const pageRef = useRef<HTMLElement>(null)
   const inboxRef = useRef<HTMLElement>(null)
   const sprintRef = useRef<HTMLElement>(null)
+  const overviewRef = useRef<HTMLElement>(null)
   const filterRef = useRef<HTMLInputElement>(null)
 
   // The Customer list loads for empty Customers in the Tree, and once the Filter menu has opened,
   // for its Customer choices.
   const [filterMenuOpened, setFilterMenuOpened] = useState(false)
   const showEmptyCustomers = toggles?.hideEmptyCustomers === false
-  const customersQuery = useCustomers(showEmptyCustomers || filterMenuOpened)
+  const customersQuery = useCustomers(
+    showEmptyCustomers || filterMenuOpened || overview === 'customers',
+  )
   // Only the Tree needs the list to place empty Customers, so only then does a failure matter.
   const customersFailed =
     showEmptyCustomers && customersQuery.isError && customersQuery.data === undefined
@@ -309,6 +325,13 @@ export function Shell({ session }: { session: Session }) {
     const byKey = new Map(issues.map((i) => [i.key, i]))
     return new Map(issues.map((i) => [i.key, openBlocks(i, byKey)]))
   }, [issues])
+  const doneFailed = done.isError && done.data === undefined
+  // Done over total of each parent's children, which Epic rows and the issue page show. With no
+  // Done issues to count, a total of the open ones alone would mislead, so the Tree hides them.
+  const progress = useMemo(
+    () => (doneFailed ? new Map<string, Progress>() : childProgress(issues)),
+    [issues, doneFailed],
+  )
   const customerNames = useMemo(
     () => customersQuery.data?.map((c) => c.value) ?? [],
     [customersQuery.data],
@@ -427,16 +450,24 @@ export function Shell({ session }: { session: Session }) {
   const pageOpen = pageKey !== null
   // The list is out of reach under any page.
   const sprintOpen = sprintId !== null
-  // The Inbox and a Sprint page cover the Tree, so its active row is out of sight and out of play.
-  const covered = inboxOpen || sprintOpen
+  // The Inbox, a Sprint page and the overviews cover the Tree, so its active row is out of sight and out of play.
+  const covered = inboxOpen || sprintOpen || overview !== null
   const listCovered = pageOpen || covered
-  const surface = pageOpen ? 'page' : inboxOpen ? 'inbox' : sprintOpen ? 'sprint' : 'tree'
+  const surface = pageOpen
+    ? 'page'
+    : inboxOpen
+      ? 'inbox'
+      : sprintOpen
+        ? 'sprint'
+        : overview !== null
+          ? 'overview'
+          : 'tree'
   const wasSurface = useRef<typeof surface>('tree')
   useEffect(() => {
     if (surface === 'page') pageRef.current?.focus()
     // The sprint page takes focus when it opens, shows another sprint, or an issue page above it closes.
     else if (surface === 'sprint') sprintRef.current?.focus()
-    // The Inbox places its own focus, on a row once it has rows.
+    // The Inbox and the overviews place their own focus, on a row once they have rows.
     else if (wasSurface.current !== surface && surface === 'tree') treeRef.current?.focus()
     wasSurface.current = surface
   }, [surface, pageKey, sprintId])
@@ -453,16 +484,35 @@ export function Shell({ session }: { session: Session }) {
     if (toggles !== undefined) setToggles.mutate(applyViewToggles(toggles, view))
     if (view.display !== undefined) setDisplay.mutate(view.display)
     setInboxOpen(false)
+    setOverview(null)
     if (pageOpen || sprintOpen) {
       setPageKey(null)
       setSprintId(null)
     } else focusTree()
   }
 
+  /** Opens the Epics table or the Customers page, in place of any issue page, sprint page or the Inbox. */
+  function showOverview(next: Overview) {
+    setPageKey(null)
+    setSprintId(null)
+    setInboxOpen(false)
+    setOverview(next)
+  }
+
+  /** A Customer's row on the Customers page: the Tree, filtered to that Customer alone. */
+  function openCustomer(customer: CustomerOption) {
+    setAppliedViewId(undefined)
+    setFilters({ customer: [customer.value] })
+    setOverview(null)
+    setPageKey(null)
+    focusTree()
+  }
+
   /** Opens a sprint's page, from the sidebar or the issue page's Sprint row, in place of any issue page or the Inbox. */
   function openSprint(id: number) {
     setPageKey(null)
     setInboxOpen(false)
+    setOverview(null)
     setSprintId(id)
   }
 
@@ -512,13 +562,19 @@ export function Shell({ session }: { session: Session }) {
   const activeKey = activeRow?.kind === 'issue' ? activeRow.node.issue.key : null
   /**
    * The issue a command acts on: the open page's, else the active Tree row's, and none while the
-   * Inbox or a Sprint page hides the Tree. The palette, the timer and the letter keys all read it.
+   * Inbox, a Sprint page or an overview hides the Tree. The palette, the timer and the letter keys all read it.
    */
   const targetKey = pageKey ?? (covered ? null : activeKey)
 
-  /** Puts focus back where the keyboard was: the open page, the Inbox or a Sprint page, else the Tree. */
+  /** Puts focus back where the keyboard was: the open page, the Inbox, a Sprint page or an overview, else the Tree. */
   function restoreFocus() {
-    const target = { page: pageRef, inbox: inboxRef, sprint: sprintRef, tree: treeRef }[surface]
+    const target = {
+      page: pageRef,
+      inbox: inboxRef,
+      sprint: sprintRef,
+      overview: overviewRef,
+      tree: treeRef,
+    }[surface]
     target.current?.focus()
   }
 
@@ -757,6 +813,9 @@ export function Shell({ session }: { session: Session }) {
         } else if (sprintOpen) {
           event.preventDefault()
           setSprintId(null)
+        } else if (overview !== null) {
+          event.preventDefault()
+          setOverview(null)
         } else if (peekOpen && !inboxOpen) {
           event.preventDefault()
           closePeek()
@@ -866,7 +925,6 @@ export function Shell({ session }: { session: Session }) {
   const refreshFailed =
     (unresolved.isError && unresolved.data !== undefined) ||
     (done.isError && done.data !== undefined)
-  const doneFailed = done.isError && done.data === undefined
 
   function retryAll() {
     if (unresolved.isError) void unresolved.refetch()
@@ -918,6 +976,7 @@ export function Shell({ session }: { session: Session }) {
         onAdd={(row) => {
           if (canCreate) setCreating(createContext(row, issues))
         }}
+        progress={progress}
         treeRef={treeRef}
         empty={
           shown > 0 ? null : (
@@ -934,6 +993,15 @@ export function Shell({ session }: { session: Session }) {
         }
       />
     )
+  }
+
+  // The Tree's two loads, which sit in banners under the inert list, as the overview pages show them.
+  const overviewLoad: OverviewLoad = {
+    ready: unresolved.data !== undefined,
+    error: unresolved.data === undefined && unresolved.isError ? unresolved.error : null,
+    onRetry: () => void unresolved.refetch(),
+    doneFailed,
+    onRetryDone: () => void done.refetch(),
   }
 
   const layout = (
@@ -956,20 +1024,25 @@ export function Shell({ session }: { session: Session }) {
         issuesCurrent={
           !inboxOpen &&
           !sprintOpen &&
+          overview === null &&
           activeView(savedViews ?? [], filters, toggles, appliedViewId) === undefined
         }
         unread={inboxQuery.data === undefined ? undefined : unreadCount(inboxQuery.data)}
         inboxOpen={inboxOpen}
         onShowInbox={() => {
-          // An issue page or sprint page covers the Inbox, so it closes first, as applying a view does.
+          // An issue page, sprint page or overview covers the Inbox, so it closes first, as applying a view does.
           setPageKey(null)
           setSprintId(null)
+          setOverview(null)
           setInboxOpen(true)
         }}
+        overview={overview}
+        onShowOverview={showOverview}
         onShowIssues={() => {
-          if (!inboxOpen && !sprintOpen) return
+          if (!inboxOpen && !sprintOpen && overview === null) return
           setInboxOpen(false)
           setSprintId(null)
+          setOverview(null)
           setPageKey(null)
         }}
         sprints={<SprintsList openId={sprintId} onOpen={openSprint} />}
@@ -980,7 +1053,7 @@ export function Shell({ session }: { session: Session }) {
             display={display}
             applied={appliedViewId}
             onApply={applyView}
-            showCurrent={!inboxOpen && !sprintOpen}
+            showCurrent={!inboxOpen && !sprintOpen && overview === null}
           />
         }
         onOpenIssue={setPageKey}
@@ -1127,11 +1200,46 @@ export function Shell({ session }: { session: Session }) {
           />
         </div>
       )}
+      {overview !== null && (
+        <div inert={pageOpen} className="[grid-column:2/-1] row-start-1 min-h-0">
+          {overview === 'epics' ? (
+            <EpicsPage
+              issues={issues}
+              progress={progress}
+              today={today}
+              doneLoading={doneLoading}
+              load={overviewLoad}
+              front={!pageOpen}
+              pageRef={overviewRef}
+              onBack={() => {
+                setOverview(null)
+              }}
+              onOpen={setPageKey}
+            />
+          ) : (
+            <CustomersPage
+              issues={issues}
+              customers={customersQuery.data}
+              customersFailed={customersQuery.isError && customersQuery.data === undefined}
+              doneLoading={doneLoading}
+              load={overviewLoad}
+              front={!pageOpen}
+              pageRef={overviewRef}
+              onBack={() => {
+                setOverview(null)
+              }}
+              onOpen={openCustomer}
+              onRetry={() => void customersQuery.refetch()}
+            />
+          )}
+        </div>
+      )}
       {pageKey !== null && (
         <div className="[grid-column:2/-1] row-start-1 min-h-0">
           <IssuePage
             issueKey={pageKey}
             issues={issues}
+            progress={progress}
             me={meQuery.data}
             mismatch={nodes.get(pageKey)?.customerMismatch ?? null}
             onBack={() => {

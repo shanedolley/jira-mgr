@@ -164,7 +164,9 @@ test('shows the properties of an issue, and its description, subtasks and parent
 
 test('lists the description, the subtasks and the parent, which open their own pages', async () => {
   await openPage(/PSAPAC-11,/, 'Draft the runbook')
-  await expect(issuePage().getByRole('button', { name: 'PSAPAC-10', exact: true })).toBeVisible()
+  await expect(
+    issuePage().getByRole('button', { name: /^Epic PSAPAC-10 Customer onboarding/ }),
+  ).toBeVisible()
   await issuePage()
     .getByRole('button', { name: /PSAPAC-12 Outline the sections/ })
     .click()
@@ -177,7 +179,9 @@ test('lists the description, the subtasks and the parent, which open their own p
   await expect(props().getByLabel('Original estimate')).toBeVisible()
   // The button that opened this page is gone, so focus must be on the page, where Esc leaves.
   await expect(issuePage()).toBeFocused()
-  await issuePage().getByRole('button', { name: 'PSAPAC-11', exact: true }).click()
+  await issuePage()
+    .getByRole('button', { name: /^Story PSAPAC-11 Draft the runbook/ })
+    .click()
   await expect(heading('Draft the runbook')).toBeVisible()
   await expect(issuePage()).toBeFocused()
   await window.keyboard.press('Escape')
@@ -952,10 +956,18 @@ test('heads each page section in 13/600 sentence case, with a 1px rule above all
 })
 
 test('starts the description by y=140 in the page', async () => {
-  await openPage(/PSAPAC-1,/, 'Kick off the engagement')
+  await openPage(/PSAPAC-10,/, 'Customer onboarding')
   const description = issuePage().getByRole('region', { name: 'Description', exact: true })
   await expect(description).toBeVisible()
   expect((await description.boundingBox())?.y).toBeLessThanOrEqual(140)
+})
+
+test('starts the description by y=164 under a Sub-issue of line, which adds one row', async () => {
+  await openPage(/PSAPAC-1,/, 'Kick off the engagement')
+  await expect(issuePage().locator('[data-parent-line]')).toBeVisible()
+  const description = issuePage().getByRole('region', { name: 'Description', exact: true })
+  await expect(description).toBeVisible()
+  expect((await description.boundingBox())?.y).toBeLessThanOrEqual(164)
 })
 
 test('wraps a long unbroken summary inside the page instead of overflowing it', async () => {

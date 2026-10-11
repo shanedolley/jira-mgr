@@ -1,9 +1,11 @@
 import type { Issue } from '@jira-mgr/core'
 import type { RowProperty } from '@jira-mgr/core/display'
+import type { Progress } from '@jira-mgr/core/hierarchy'
 import { memo, type ReactNode } from 'react'
 
 import { Avatar } from './Avatar'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
+import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate } from './rowProps'
 import { StatusDot } from './StatusDot'
 import { TimerClock } from './TimerClock'
@@ -36,13 +38,15 @@ const blockingTitle = (n: number) => `Blocking ${plural(n, 'issue')}`
 
 /**
  * The accessible name of a row, in one format per kind. An issue's name ends with what the row
- * shows only as a glyph, a pill or a column: its open blockers, its priority when not Medium, and
- * its due date when the Due property is on. The rest of the contents are presentation only.
+ * shows only as a glyph, a pill or a column: its open blockers, its priority when not Medium, its
+ * due date when the Due property is on, and its children's progress. The rest of the contents are
+ * presentation only.
  */
 export function rowName(
   row: Row,
   properties: readonly RowProperty[] = [],
   blocks: BlockCounts = NO_BLOCKS,
+  progress?: Progress,
 ): string {
   switch (row.kind) {
     case 'customer':
@@ -65,6 +69,7 @@ export function rowName(
         ...(blocks.blocking > 0 ? [blockingTitle(blocks.blocking).toLowerCase()] : []),
         ...(hasPriorityGlyph(issue.priority) ? [`priority ${issue.priority.name}`] : []),
         ...(properties.includes('due') && issue.dueDate !== null ? [`due ${issue.dueDate}`] : []),
+        ...(progress === undefined ? [] : [progressText(progress)]),
       ].join(', ')
     }
   }
@@ -330,6 +335,7 @@ function Content({
   properties,
   today,
   blocks,
+  progress,
   onAdd,
 }: {
   row: Row
@@ -337,6 +343,7 @@ function Content({
   properties: readonly RowProperty[]
   today: string
   blocks: BlockCounts
+  progress: Progress | undefined
   onAdd: (row: Row) => void
 }) {
   switch (row.kind) {
@@ -368,7 +375,6 @@ function Content({
       )
     case 'issue': {
       const { issue, contextOnly, customerMismatch } = row.node
-      const isEpic = issue.issueType.hierarchyLevel >= 1
       // Context rows read as muted text, which keeps AA contrast, rather than as faded ink.
       const tone = contextOnly ? 'text-muted' : ''
       return (
@@ -392,7 +398,7 @@ function Content({
             </span>
           )}
           {timing && <TimerClock issueKey={issue.key} className="shrink-0" />}
-          {isEpic && <span className="shrink-0 text-xs text-muted">{row.count}</span>}
+          {progress !== undefined && <ProgressPill progress={progress} />}
           <PrioritySlot priority={issue.priority} />
           <Properties issue={issue} properties={properties} today={today} />
           <Pick property="assignee" title="Change assignee">
@@ -423,6 +429,9 @@ interface TreeRowProps {
   onClick: (id: string, onChevron: boolean) => void
   /** A click on the row's status dot or avatar, after `onClick` has made the row active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
+  /** Done over total of the issue's children, which the row shows beside its title, as numbers so the memo holds. */
+  done: number | undefined
+  total: number | undefined
   /** A click on a group header's "+". */
   onAdd: (row: Row) => void
 }
@@ -440,14 +449,17 @@ export const TreeRow = memo(function TreeRow({
   blocking,
   onClick,
   onPick,
+  done,
+  total,
   onAdd,
 }: TreeRowProps) {
   const blocks = { blockedBy, blocking }
+  const progress = done === undefined || total === undefined ? undefined : { done, total }
   return (
     <div
       id={rowDomId(row.id)}
       role="treeitem"
-      aria-label={rowName(row, properties, blocks)}
+      aria-label={rowName(row, properties, blocks, progress)}
       aria-level={row.level}
       aria-setsize={row.setSize}
       aria-posinset={row.posInSet}
@@ -478,6 +490,7 @@ export const TreeRow = memo(function TreeRow({
         properties={properties}
         today={today}
         blocks={blocks}
+        progress={progress}
         onAdd={onAdd}
       />
     </div>

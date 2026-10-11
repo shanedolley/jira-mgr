@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { loadFixture } from '../test/msw.js'
 import {
   buildHierarchy,
+  childProgress,
+  customerTotals,
   STATUS_ORDER,
   type CustomerGroup,
   type HierarchyNode,
@@ -587,5 +589,107 @@ describe('order', () => {
 describe('STATUS_ORDER', () => {
   it('runs Opportunity, To Do, In Progress, Review, Hold, Done', () => {
     expect(STATUS_ORDER).toEqual(['Opportunity', 'To Do', 'In Progress', 'Review', 'Hold', 'Done'])
+  })
+})
+
+describe('childProgress', () => {
+  const issues = [
+    issue('P-1', { type: 'Epic', customer: ACME }),
+    issue('P-2', { parent: 'P-1', customer: ACME }),
+    issue('P-3', { parent: 'P-1', customer: ACME, status: 'Done' }),
+    issue('P-4', { parent: 'P-1', customer: ACME, status: 'Done' }),
+    issue('P-5', { type: 'Subtask', parent: 'P-2', customer: ACME, status: 'Done' }),
+    issue('P-6', { type: 'Epic', customer: BETA }),
+    issue('P-7', { type: 'Subtask', parent: 'P-99' }),
+  ]
+
+  it('counts the direct children of each parent, Done by status category', () => {
+    const progress = childProgress(issues)
+    expect(progress.get('P-1')).toEqual({ done: 2, total: 3 })
+    // A Story's Subtasks count too, and a Subtask of an unloaded parent counts for nobody.
+    expect(progress.get('P-2')).toEqual({ done: 1, total: 1 })
+    expect(progress.has('P-99')).toBe(false)
+    expect(progress.has('P-6')).toBe(false)
+  })
+
+  it("agrees with buildHierarchy's children and Done chip, however the Done children are shown", () => {
+    const progress = childProgress(issues)
+    for (const hideDone of [true, false]) {
+      const epic = build(issues, { hideDone })
+        .flatMap((g) => g.epics)
+        .find((n) => n.issue.key === 'P-1')
+      const total = (epic?.children.length ?? 0) + (epic?.doneCount ?? 0)
+      const done = [...(epic?.children ?? []), ...(epic?.doneChildren ?? [])].filter(
+        (n) => n.issue.status.category === 'done',
+      ).length
+      expect(progress.get('P-1')).toEqual({ done, total })
+    }
+  })
+
+  it('does not count an Epic as the child of another', () => {
+    const progress = childProgress([
+      issue('P-1', { type: 'Epic' }),
+      issue('P-2', { type: 'Epic', parent: 'P-1' }),
+    ])
+    expect(progress.has('P-1')).toBe(false)
+  })
+
+  it('has an entry only for what the loaded issues name', () => {
+    expect(childProgress([]).size).toBe(0)
+  })
+})
+
+describe('customerTotals', () => {
+  const issues = [
+    issue('P-1', { type: 'Epic', customer: ACME }),
+    issue('P-2', { parent: 'P-1', customer: ACME }),
+    issue('P-3', { parent: 'P-1', customer: ACME, status: 'Done' }),
+    issue('P-4', { customer: TEAM }),
+    issue('P-5'),
+  ]
+
+  it('counts open and Done issues by their own Customer, Epics included', () => {
+    const totals = customerTotals(issues, [ACME, BETA, TEAM])
+    expect(totals.find((t) => t.customer.id === ACME.id)).toMatchObject({ open: 2, done: 1 })
+    expect(totals.find((t) => t.customer.id === TEAM.id)).toMatchObject({ open: 1, done: 0 })
+  })
+
+  it('lists every Customer given, with zeros for one that holds no issue', () => {
+    const totals = customerTotals(issues, [ACME, BETA, TEAM])
+    expect(totals.find((t) => t.customer.id === BETA.id)).toEqual({
+      customer: BETA,
+      open: 0,
+      done: 0,
+    })
+  })
+
+  it('adds a Customer only the issues name, and counts an issue with no Customer for none', () => {
+    expect(customerTotals(issues, []).map((t) => t.customer.value)).toEqual([
+      'Acme',
+      'Collibra (Internal team)',
+    ])
+    expect(customerTotals([issue('P-1', { customer: ACME })], [ACME])).toHaveLength(1)
+  })
+
+  it("sorts as the Tree's groups do: ordinary Customers, then the internal ones", () => {
+    const names = customerTotals(issues, [TEAM, BETA, ACME, TEMPLATE]).map((t) => t.customer.value)
+    expect(names).toEqual([
+      'Acme',
+      'beta',
+      'Collibra (Internal team)',
+      'Collibra (Internal template)',
+    ])
+  })
+
+  it('counts the same issues the Tree holds under each Customer filter', () => {
+    const matched = (customer: string) =>
+      build(issues, { match: (i) => i.customer?.value === customer })
+        .flatMap((g) => g.epics.concat(g.noEpic))
+        .flatMap(function flat(n): HierarchyNode[] {
+          return [n, ...n.children.flatMap(flat), ...n.doneChildren.flatMap(flat)]
+        })
+        .filter((n) => !n.contextOnly).length
+    const acme = customerTotals(issues, [ACME]).find((t) => t.customer.id === ACME.id)
+    expect(matched('Acme')).toBe((acme?.open ?? 0) + (acme?.done ?? 0))
   })
 })
