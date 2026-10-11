@@ -210,6 +210,14 @@ export function Shell({ session }: { session: Session }) {
   const savedViews = useViews().data
   /** The view applied last, so a duplicate of the view the bar matches can be the lit one. */
   const [appliedViewId, setAppliedViewId] = useState<string>()
+  // A deleted view's id can come back on a new view, so forget it as soon as it leaves the list.
+  if (
+    appliedViewId !== undefined &&
+    savedViews !== undefined &&
+    !savedViews.some((v) => v.id === appliedViewId)
+  ) {
+    setAppliedViewId(undefined)
+  }
 
   const [filters, setFilters] = useState<ViewFilters>({})
   const deferredFilters = useDeferredValue(filters)

@@ -428,6 +428,30 @@ test('lights the copy you applied, not its identical original', async () => {
   await expect(apply('Active copy')).not.toHaveAttribute('aria-current', 'true')
 })
 
+test('does not light a new view that reuses the id of an applied view that was deleted', async () => {
+  await open()
+  const duplicateActive = () =>
+    window.getByRole('button', { name: 'Duplicate view Active', exact: true }).click()
+  await duplicateActive()
+  await apply('Active copy').click()
+  await expect(apply('Active copy')).toHaveAttribute('aria-current', 'true')
+
+  await window.getByRole('button', { name: 'Delete view Active copy' }).click()
+  await window
+    .getByRole('group', { name: 'Delete view Active copy' })
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click()
+  await expect(apply('Active copy')).toHaveCount(0)
+  await expect(apply('Active')).toHaveAttribute('aria-current', 'true')
+
+  // The bar still equals Active, and the new copy has the old copy's id.
+  await duplicateActive()
+  await expect(apply('Active copy')).toBeVisible()
+  await expect(apply('Active copy')).not.toHaveAttribute('aria-current', 'true')
+  await expect(tab('Active copy')).not.toHaveAttribute('aria-current', 'true')
+  await expect(apply('Active')).toHaveAttribute('aria-current', 'true')
+})
+
 /** The view names in the sidebar, top to bottom. */
 const sidebarOrder = () =>
   list().evaluate((ul) =>
@@ -475,13 +499,21 @@ test('reorders with Alt and the arrow keys, and the order survives a restart', a
 
 test('reorders by dragging a view onto another, and the file holds the order', async () => {
   await open()
-  // A view dropped on a text field puts no text in it.
-  const filter = window.getByPlaceholder('Filter by key or summary')
-  await apply('Backlog').dragTo(filter)
-  await expect(filter).toHaveValue('')
-  await expect.poll(sidebarOrder).toEqual(STARTERS.map((n) => n.toLowerCase().replaceAll(' ', '-')))
-
+  // The drag carries its own type and no text, so a text field has nothing to take. A listener on
+  // the document runs after the row's own dragstart handler and records what it put on the drag.
+  await window.evaluate(() => {
+    document.addEventListener('dragstart', (event) => {
+      ;(window as unknown as { dragTypes: string[] }).dragTypes = [
+        ...(event.dataTransfer?.types ?? []),
+      ]
+    })
+  })
   await apply('Backlog').dragTo(apply('My issues'))
+  const types = await window.evaluate(
+    () => (window as unknown as { dragTypes: string[] }).dragTypes,
+  )
+  expect(types).toContain('application/x-jm-view')
+  expect(types).not.toContain('text/plain')
   await expect
     .poll(sidebarOrder)
     .toEqual(['backlog', 'my-issues', 'created-by-me', 'current-sprint', 'active'])
