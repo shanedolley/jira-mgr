@@ -7,6 +7,8 @@ import { activeView } from './views'
 interface ViewTabsProps {
   filters: ViewFilters
   toggles: Toggles | undefined
+  /** The view applied last: of twin views, the one that is lit. */
+  applied: string | undefined
   onApply: (view: SavedView) => void
 }
 
@@ -15,10 +17,10 @@ interface ViewTabsProps {
  * 6px radius), so it follows the button system rather than Linear's full pill. The lit tab is the
  * view the bar matches.
  */
-export function ViewTabs({ filters, toggles, onApply }: ViewTabsProps) {
+export function ViewTabs({ filters, toggles, applied, onApply }: ViewTabsProps) {
   const views = useViews().data
   if (views === undefined || views.length === 0) return null
-  const active = activeView(views, filters, toggles)
+  const active = activeView(views, filters, toggles, applied)
   return (
     <div
       role="group"

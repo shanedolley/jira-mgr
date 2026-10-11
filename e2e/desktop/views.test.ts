@@ -43,7 +43,8 @@ const list = () => window.getByRole('list', { name: 'Saved views' })
 const tabs = () => window.getByRole('group', { name: 'View tabs' })
 const tab = (name: string) => tabs().getByRole('button', { name, exact: true })
 const apply = (name: string) => list().getByRole('button', { name, exact: true })
-const update = (name: string) => window.getByRole('button', { name: `Update view ${name}` })
+const update = (name: string) =>
+  window.getByRole('button', { name: `Update view ${name}`, exact: true })
 const chips = () => window.getByRole('list', { name: 'Active filters' })
 
 async function open() {
@@ -400,6 +401,29 @@ test('duplicates a view to just after it, with the same filters', async () => {
 
   await window.getByRole('button', { name: 'Duplicate view Active', exact: true }).click()
   await expect(apply('Active copy 2')).toBeVisible()
+})
+
+test('lights the copy you applied, not its identical original', async () => {
+  await open()
+  await window.getByRole('button', { name: 'Duplicate view Active', exact: true }).click()
+  await expect(apply('Active copy')).toBeVisible()
+
+  await apply('Active copy').click()
+  for (const lit of [apply('Active copy'), tab('Active copy')]) {
+    await expect(lit).toHaveAttribute('aria-current', 'true')
+  }
+  for (const unlit of [apply('Active'), tab('Active')]) {
+    await expect(unlit).not.toHaveAttribute('aria-current', 'true')
+  }
+  // Both equal the bar, so neither has anything to update.
+  await expect(update('Active copy')).toBeDisabled()
+  await expect(update('Active')).toBeDisabled()
+
+  await tab('Active').click()
+  await expect(tab('Active')).toHaveAttribute('aria-current', 'true')
+  await expect(apply('Active')).toHaveAttribute('aria-current', 'true')
+  await expect(tab('Active copy')).not.toHaveAttribute('aria-current', 'true')
+  await expect(apply('Active copy')).not.toHaveAttribute('aria-current', 'true')
 })
 
 /** The view names in the sidebar, top to bottom. */

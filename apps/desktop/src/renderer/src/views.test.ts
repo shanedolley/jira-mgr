@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SavedView, Toggles } from '../../shared/ipc'
-import { activeView, movedView } from './views'
+import { activeView, movedView, viewMatches } from './views'
 
 const TOGGLES: Toggles = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
 const view = (id: string, filters: SavedView['filters'], toggles = TOGGLES): SavedView => ({
@@ -68,10 +68,29 @@ describe('activeView', () => {
     expect(activeView([hold], { not: { status: ['Hold'] } }, TOGGLES)).toBeUndefined()
   })
 
-  it('finds none before the toggles load, and takes the first of two equal views', () => {
+  it('finds none before the toggles load', () => {
     expect(activeView([sprint], { sprint: ['current'] }, undefined)).toBeUndefined()
+  })
+
+  it('takes the view applied last out of equal twins, else the first', () => {
     const twin = view('twin', { sprint: ['current'] })
-    expect(activeView([sprint, twin], { sprint: ['current'] }, TOGGLES)).toBe(sprint)
+    const bar = { sprint: ['current'] }
+    expect(activeView([sprint, twin], bar, TOGGLES)).toBe(sprint)
+    expect(activeView([sprint, twin], bar, TOGGLES, 'twin')).toBe(twin)
+    expect(activeView([sprint, twin], bar, TOGGLES, 'sprint')).toBe(sprint)
+    // An applied view the bar no longer matches does not win.
+    expect(activeView([sprint, twin, mine], bar, TOGGLES, 'mine')).toBe(sprint)
+    expect(activeView([sprint, twin], bar, TOGGLES, 'gone')).toBe(sprint)
+  })
+})
+
+describe('viewMatches', () => {
+  it('is true for a twin of the bar and false for another view', () => {
+    expect(viewMatches(sprint, { sprint: ['current'] }, TOGGLES)).toBe(true)
+    expect(
+      viewMatches(view('twin', { sprint: ['current'] }), { sprint: ['current'] }, TOGGLES),
+    ).toBe(true)
+    expect(viewMatches(mine, { sprint: ['current'] }, TOGGLES)).toBe(false)
   })
 })
 

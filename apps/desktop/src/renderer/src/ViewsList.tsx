@@ -13,12 +13,14 @@ import {
   useUpdateView,
   useViews,
 } from './viewQueries'
-import { activeView } from './views'
+import { activeView, viewMatches } from './views'
 
 interface ViewsListProps {
   /** The filter bar and toggles as they are now: what "New view" saves, and what marks a view active. */
   filters: ViewFilters
   toggles: Toggles | undefined
+  /** The view applied last: of twin views, the one that is lit. */
+  applied: string | undefined
   onApply: (view: SavedView) => void
   /** False while a sprint page holds the sidebar's one highlight. */
   showCurrent?: boolean
@@ -140,7 +142,7 @@ function dropEdge(
  * duplicate, rename, delete and reorder. The list is `views.json`, the file `jm view list` reads.
  * Arrow keys move between views, and Alt with an arrow moves the focused view. A drag does the same.
  */
-export function ViewsList({ filters, toggles, onApply, showCurrent = true }: ViewsListProps) {
+export function ViewsList({ filters, toggles, applied, onApply, showCurrent = true }: ViewsListProps) {
   const viewsQuery = useViews()
   const create = useCreateView()
   const rename = useRenameView()
@@ -150,7 +152,9 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
   const move = useMoveView()
   const views = viewsQuery.data
   const active =
-    views === undefined || !showCurrent ? undefined : activeView(views, filters, toggles)
+    views === undefined || !showCurrent
+      ? undefined
+      : activeView(views, filters, toggles, applied)
 
   const [creating, setCreating] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -421,7 +425,11 @@ export function ViewsList({ filters, toggles, onApply, showCurrent = true }: Vie
                     type="button"
                     aria-label={`Update view ${view.name}`}
                     title="Replace this view's filters and toggles with the current ones"
-                    disabled={toggles === undefined || update.isPending || active?.id === view.id}
+                    disabled={
+                      toggles === undefined ||
+                      update.isPending ||
+                      viewMatches(view, filters, toggles)
+                    }
                     onClick={() => {
                       updateFromBar(view)
                     }}

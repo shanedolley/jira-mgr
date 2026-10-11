@@ -15,24 +15,31 @@ function sameFilters(a: ViewFilters, b: ViewFilters): boolean {
   )
 }
 
+/** True when the view's filters and toggles equal the bar's and the toggles' current ones. */
+export function viewMatches(view: SavedView, filters: ViewFilters, toggles: Toggles): boolean {
+  return (
+    sameFilters(view.filters, filters) &&
+    view.toggles.hideDone === toggles.hideDone &&
+    view.toggles.assigneeMe === toggles.assigneeMe &&
+    view.toggles.hideEmptyCustomers === toggles.hideEmptyCustomers
+  )
+}
+
 /**
- * The view the filter bar and toggles show, if any: the first whose filters and toggles equal
- * the current ones. Derived on each render, so a view stops being active the moment the user
- * changes a filter or toggle, and a hand-built bar that matches a view highlights it.
+ * The view the filter bar and toggles show, if any: one whose filters and toggles equal the
+ * current ones. Of several twins (a duplicate matches its original) the one applied last wins when
+ * it still matches, else the first. Derived on each render, so a view stops being active the
+ * moment the user changes a filter or toggle, and a hand-built bar that matches a view highlights it.
  */
 export function activeView(
   views: readonly SavedView[],
   filters: ViewFilters,
   toggles: Toggles | undefined,
+  appliedId?: string,
 ): SavedView | undefined {
   if (toggles === undefined) return undefined
-  return views.find(
-    (view) =>
-      sameFilters(view.filters, filters) &&
-      view.toggles.hideDone === toggles.hideDone &&
-      view.toggles.assigneeMe === toggles.assigneeMe &&
-      view.toggles.hideEmptyCustomers === toggles.hideEmptyCustomers,
-  )
+  const matching = views.filter((view) => viewMatches(view, filters, toggles))
+  return matching.find((view) => view.id === appliedId) ?? matching[0]
 }
 
 /** The views with `id` moved to `toIndex`, as core's `moveView` places it. Unchanged when `id` is unknown. */
