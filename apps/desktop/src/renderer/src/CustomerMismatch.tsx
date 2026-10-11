@@ -60,11 +60,7 @@ export function CustomerMismatch({
         Customer: {mismatch.epic?.value ?? 'none'}.
       </p>
       {mismatch.epic !== null && (
-        <button
-          type="button"
-          onClick={onMatch}
-          className="rounded-md border border-line px-2 py-0.5 hover:bg-hover"
-        >
+        <button type="button" onClick={onMatch} className="btn btn-sm">
           Match Epic&apos;s Customer
         </button>
       )}

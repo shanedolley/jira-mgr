@@ -90,11 +90,7 @@ export function LoginScreen({ prefill }: { prefill: Partial<Session> }) {
             {login.error.message}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={login.isPending}
-          className="w-full rounded-md bg-accent px-3 py-2 font-medium text-accent-ink disabled:opacity-60"
-        >
+        <button type="submit" disabled={login.isPending} className="btn btn-primary w-full">
           {login.isPending ? 'Logging in...' : 'Log in'}
         </button>
       </form>

@@ -117,8 +117,8 @@ const FIELD_ICONS: Record<FilterField, ReactNode> = {
   ),
 }
 
-const BUTTON =
-  'inline-flex h-7 items-center gap-1.5 rounded-md border border-line px-2 text-xs hover:bg-hover'
+/** The toolbar keeps the 8px padding its wrap points were measured with. */
+const BUTTON = 'btn px-2'
 
 /**
  * Closing a menu hands focus back to the Tree, unless the user already moved it to another
@@ -271,6 +271,7 @@ export function TreeToolbar({
             popoverTarget="groups-menu"
             popoverTargetAction="hide"
             onClick={onCollapseAll}
+            data-row
             className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover"
           >
             Collapse all
@@ -280,6 +281,7 @@ export function TreeToolbar({
             popoverTarget="groups-menu"
             popoverTargetAction="hide"
             onClick={onExpandAll}
+            data-row
             className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover"
           >
             Expand all
@@ -312,7 +314,7 @@ export function TreeToolbar({
           {chips.map((chip) => (
             <li
               key={chip.field}
-              className="inline-flex h-6 items-center gap-1 rounded-full border border-line pl-2.5 pr-1 text-xs"
+              className="inline-flex items-center gap-1 rounded-md border border-line pl-2.5 text-xs"
             >
               {chip.text}
               <button
@@ -322,7 +324,7 @@ export function TreeToolbar({
                   onFilters(clearField(filters, chip.field))
                   onActed()
                 }}
-                className="grid size-4 place-items-center rounded-full text-muted hover:bg-hover hover:text-ink"
+                className="btn btn-sm btn-icon btn-ghost"
               >
                 <svg
                   aria-hidden
@@ -346,7 +348,7 @@ export function TreeToolbar({
                   onFilters({})
                   onActed()
                 }}
-                className="h-6 rounded px-1.5 text-xs text-muted hover:bg-hover hover:text-ink"
+                className="btn btn-sm btn-ghost"
               >
                 Clear
               </button>

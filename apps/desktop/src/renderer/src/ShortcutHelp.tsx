@@ -26,11 +26,7 @@ export function ShortcutHelp({ onClose, returnFocus }: ShortcutHelpProps) {
         <h2 id={titleId} className="font-semibold">
           Keyboard shortcuts
         </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex items-center gap-2 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-        >
+        <button type="button" onClick={onClose} className="btn btn-sm gap-2">
           Close
           <Kbd aria-hidden>Esc</Kbd>
         </button>

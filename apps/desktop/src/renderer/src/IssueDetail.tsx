@@ -57,8 +57,7 @@ function Property({
  * The Peek's copy buttons are icons, so the header's five buttons fit the Peek at the narrowest
  * window (348px) in a wide font. The name and key are in `aria-label` and `title`.
  */
-const COPY_BUTTON =
-  'app-no-drag grid h-[22px] w-7 place-items-center rounded-md border border-line text-muted hover:bg-hover hover:text-ink'
+const COPY_BUTTON = 'btn btn-sm btn-icon app-no-drag text-muted hover:text-ink'
 const COPY_ICON = {
   'aria-hidden': true,
   viewBox: '0 0 16 16',
@@ -174,7 +173,7 @@ function PeekIssue({
               onClick={() => {
                 onTimer(issue.key)
               }}
-              className="shrink-0 rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+              className="btn btn-sm"
             >
               {pressOf(timer, issue.key) === 'stop' ? 'Stop timer' : 'Start timer'}
             </button>
@@ -267,7 +266,7 @@ export function IssueDetail({
               onClick={() => {
                 onOpenPage(issue.key)
               }}
-              className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
+              className="btn btn-sm app-no-drag"
             >
               Open
             </button>
@@ -305,17 +304,13 @@ export function IssueDetail({
               onClick={() => {
                 onDelete(issue)
               }}
-              className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs text-danger hover:bg-hover"
+              className="btn btn-sm btn-delete app-no-drag"
             >
               Delete
             </button>
           </>
         )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="app-no-drag rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-        >
+        <button type="button" onClick={onClose} className="btn btn-sm app-no-drag">
           Close
         </button>
       </div>

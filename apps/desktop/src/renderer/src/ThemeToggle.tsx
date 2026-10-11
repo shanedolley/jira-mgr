@@ -15,7 +15,7 @@ export function ThemeToggle() {
           onClick={() => {
             setTheme(theme)
           }}
-          className="flex-1 rounded px-2 py-0.5 text-xs text-muted hover:text-ink aria-pressed:bg-selected aria-pressed:text-ink"
+          className="btn btn-sm btn-ghost flex-1 aria-pressed:bg-selected aria-pressed:text-ink"
         >
           {LABELS[theme]}
         </button>

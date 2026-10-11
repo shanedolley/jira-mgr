@@ -69,15 +69,12 @@ export function Sidebar({
               onClick={() => {
                 onOpenIssue(timer.issueKey)
               }}
+              data-row
               className="min-w-0 truncate font-mono text-xs hover:text-accent"
             >
               {timer.issueKey}
             </button>
-            <button
-              type="button"
-              onClick={onStopTimer}
-              className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover"
-            >
+            <button type="button" onClick={onStopTimer} className="btn btn-sm">
               Stop
             </button>
           </div>
@@ -98,7 +95,7 @@ export function Sidebar({
             if (unsaved > 0) setConfirming(true)
             else logout.mutate()
           }}
-          className="w-full rounded-md border border-line px-2 py-1 hover:bg-hover disabled:opacity-60"
+          className="btn w-full"
         >
           Log out
         </button>

@@ -1,6 +1,7 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
+import { Icon, PLUS } from './Icon'
 import { LoadError } from './LoadError'
 
 interface SectionProps {
@@ -12,6 +13,21 @@ interface SectionProps {
 
 /** A page section's heading: 13/600 in sentence case. Properties groups keep the small uppercase one. */
 export const SECTION_HEADING = 'text-[13px] font-semibold leading-5 text-ink'
+
+/** The "+" at a section heading's right edge: how a section adds its first or next item. */
+export function AddAction({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="btn btn-sm btn-icon btn-ghost ml-auto"
+    >
+      <Icon path={PLUS} />
+    </button>
+  )
+}
 
 /** One block of the issue page: its heading, a 1px rule above, and what it holds. */
 export function Section({ title, actions, children }: SectionProps) {
@@ -56,11 +72,4 @@ export function QueryBody<T>({ query, loading, what, children }: QueryBodyProps<
   )
 }
 
-/** A small button as the page's sections use them. */
-export const BUTTON =
-  'rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-60'
-export const DANGER_BUTTON =
-  'rounded-md border border-danger px-2 py-0.5 text-xs text-danger hover:bg-hover disabled:opacity-60'
-export const PRIMARY_BUTTON =
-  'rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-ink disabled:opacity-50'
 export const FIELD = 'h-7 rounded-md border border-field-border bg-panel px-2 text-ink'

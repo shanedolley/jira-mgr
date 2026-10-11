@@ -12,7 +12,8 @@ import {
 } from './activity'
 import { useAddLink, useLinks, useRemoveLink } from './activityQueries'
 import type { Notice } from './create'
-import { BUTTON, FIELD, PRIMARY_BUTTON, QueryBody, Section } from './Section'
+import { Icon, TRASH } from './Icon'
+import { AddAction, FIELD, QueryBody, Section } from './Section'
 
 interface LinksSectionProps {
   issueKey: string
@@ -109,10 +110,10 @@ function AddLinkForm({ issueKey, types, issues, onDone }: AddLinkFormProps) {
             ))}
         </datalist>
       </label>
-      <button type="submit" disabled={!valid || add.isPending} className={PRIMARY_BUTTON}>
+      <button type="submit" disabled={!valid || add.isPending} className="btn btn-primary">
         {add.isPending ? 'Adding' : 'Add link'}
       </button>
-      <button type="button" onClick={onDone} className={BUTTON}>
+      <button type="button" onClick={onDone} className="btn">
         Cancel
       </button>
       {problem !== null && (
@@ -133,13 +134,14 @@ interface LinkRowProps extends Pick<LinksSectionProps, 'issueKey' | 'onOpen' | '
 function LinkRow({ issueKey, link, known, onOpen, onNotice }: LinkRowProps) {
   const remove = useRemoveLink(issueKey)
   return (
-    <li className="flex h-8 items-center gap-3 px-3">
+    <li className="group/row flex h-8 items-center gap-3 px-3">
       {known ? (
         <button
           type="button"
           onClick={() => {
             onOpen(link.issue.key)
           }}
+          data-row
           className="w-20 shrink-0 text-left font-mono text-xs text-muted hover:text-ink"
         >
           {link.issue.key}
@@ -164,9 +166,9 @@ function LinkRow({ issueKey, link, known, onOpen, onNotice }: LinkRowProps) {
               )
             })
         }}
-        className={BUTTON}
+        className="btn btn-sm btn-icon btn-ghost btn-delete opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100"
       >
-        Remove
+        <Icon path={TRASH} />
       </button>
     </li>
   )
@@ -183,15 +185,12 @@ export function LinksSection({ issueKey, issues, onOpen, onNotice }: LinksSectio
       actions={
         !adding &&
         links.data !== undefined && (
-          <button
-            type="button"
+          <AddAction
+            label="Add link"
             onClick={() => {
               setAdding(true)
             }}
-            className={`${BUTTON} ml-auto`}
-          >
-            Add link
-          </button>
+          />
         )
       }
     >

@@ -110,12 +110,7 @@ export function DeleteIssueDialog({
         )}
 
         <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            autoFocus
-            onClick={onCancel}
-            className="rounded-md border border-line px-3 py-1 hover:bg-hover"
-          >
+          <button type="button" autoFocus onClick={onCancel} className="btn">
             Cancel
           </button>
           <button
@@ -128,7 +123,7 @@ export function DeleteIssueDialog({
                 subtasks: subtasks.map((s) => s.key),
               })
             }}
-            className="rounded-md bg-danger px-3 py-1 font-medium text-accent-ink disabled:opacity-50"
+            className="btn btn-danger"
           >
             {subtasks.length > 0
               ? `Delete issue and ${plural(subtasks.length, 'subtask')}`

@@ -237,7 +237,7 @@ export function DescriptionEditor({
               onClick={() => {
                 saveMine(conflict.current)
               }}
-              className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink"
+              className="btn btn-primary"
             >
               Save mine anyway
             </button>
@@ -246,7 +246,7 @@ export function DescriptionEditor({
               onClick={() => {
                 discardMine(conflict.current)
               }}
-              className="rounded-md border border-line px-3 py-1 hover:bg-hover"
+              className="btn"
             >
               Discard mine
             </button>
@@ -265,7 +265,7 @@ export function DescriptionEditor({
           onClick={() => {
             startEdit('end')
           }}
-          className="rounded-md border border-line px-2 py-0.5 text-xs hover:bg-hover disabled:opacity-60"
+          className="btn btn-sm btn-ghost"
         >
           {phase === 'saving' || pending
             ? 'Saving'

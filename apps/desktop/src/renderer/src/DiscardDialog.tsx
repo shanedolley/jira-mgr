@@ -47,19 +47,10 @@ export function DiscardDialog({
           {title}
         </p>
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            autoFocus
-            onClick={onKeep}
-            className="rounded-md bg-accent px-3 py-1 font-medium text-accent-ink"
-          >
+          <button type="button" autoFocus onClick={onKeep} className="btn btn-primary">
             {keepLabel}
           </button>
-          <button
-            type="button"
-            onClick={onDiscard}
-            className="rounded-md border border-line px-3 py-1 text-danger hover:bg-hover"
-          >
+          <button type="button" onClick={onDiscard} className="btn btn-delete">
             {discardLabel}
           </button>
         </div>

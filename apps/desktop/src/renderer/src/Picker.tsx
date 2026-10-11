@@ -26,7 +26,7 @@ export interface PickerOption {
 }
 
 /**
- * How the trigger looks. `row` fills its line, with a chevron. `chip` is a pill. `filled` is a pill
+ * How the trigger looks. `row` fills its line, with a chevron. `chip` is a small bordered button. `filled` is a chip
  * tinted with the accent for a required value, and reads in `--danger` while nothing is chosen.
  * `icon` shows only `leading` and a chevron; the name and value stay in the accessible name.
  */
@@ -34,9 +34,8 @@ export type PickerVariant = 'row' | 'chip' | 'filled' | 'icon'
 
 const TRIGGER: Record<PickerVariant, string> = {
   row: 'h-8 w-full min-w-0 gap-2 rounded-md px-2 hover:bg-hover',
-  chip: 'h-7 max-w-48 min-w-0 gap-1.5 rounded-full border border-field-border px-2.5 text-xs hover:bg-hover',
-  filled:
-    'h-7 max-w-48 min-w-0 gap-1.5 rounded-full border border-accent bg-selected px-2.5 text-xs',
+  chip: 'h-7 max-w-48 min-w-0 gap-1.5 rounded-md border border-field-border px-2.5 text-xs hover:bg-hover',
+  filled: 'h-7 max-w-48 min-w-0 gap-1.5 rounded-md border border-accent bg-selected px-2.5 text-xs',
   icon: 'h-10 w-12 justify-center gap-1 rounded-md border border-field-border hover:bg-hover',
 }
 
