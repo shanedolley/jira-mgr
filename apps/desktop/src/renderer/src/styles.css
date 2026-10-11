@@ -93,6 +93,12 @@
   --muted: var(--row-muted);
 }
 
+/* The open row's key reads bold in ink: a cue that holds without hue or contrast between fills. */
+.tree-row[aria-selected='true'] .tree-key {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 [role='tree']:focus .tree-row[data-active='true'][aria-selected='true'] {
   background: var(--row-selected-focus);
 }

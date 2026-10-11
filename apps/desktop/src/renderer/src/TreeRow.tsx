@@ -162,7 +162,7 @@ function Content({ row, timing, onAdd }: { row: Row; timing: boolean; onAdd: (ro
           <Pick property="status" title="Change status">
             <StatusDot status={issue.status} />
           </Pick>
-          <span className="w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
+          <span className="tree-key w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
           <span className={`min-w-0 flex-1 truncate ${tone} ${isEpic ? 'font-medium' : ''}`}>
             {issue.summary}
           </span>

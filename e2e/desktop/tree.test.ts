@@ -650,6 +650,13 @@ const paint = (row: Locator) =>
     }
   })
 
+/** The issue key's weight and colour, and whether the text fits its fixed 5rem box. */
+const keyPaint = (row: Locator) =>
+  row.locator('.tree-key').evaluate((el) => {
+    const s = getComputedStyle(el)
+    return { weight: s.fontWeight, colour: s.color, fits: el.scrollWidth <= el.clientWidth }
+  })
+
 test('marks the active and the open row by distinct fills, with no ring, edge or bar', async () => {
   await open()
   await window.keyboard.press('j')
@@ -660,21 +667,30 @@ test('marks the active and the open row by distinct fills, with no ring, edge or
   // Active and open at once: the brightest fill, in medium weight.
   await expect(tree()).toBeFocused()
   const both = await paint(row)
+  const bothKey = await keyPaint(row)
   // Open only: the active row moved to the header above.
   await window.keyboard.press('k')
   await expect(tree()).toHaveAttribute('aria-activedescendant', 'tree-row-c:1')
   const peeked = await paint(row)
+  const peekedKey = await keyPaint(row)
   // Active only: the Peek closed, and the active row came back.
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
   await window.keyboard.press('j')
   await expect(row).toHaveAttribute('data-active', 'true')
   const focus = await paint(row)
+  const focusKey = await keyPaint(row)
   const rest = await paint(item(/PSAPAC-3,/))
+  const restKey = await keyPaint(item(/PSAPAC-3,/))
 
   expect(new Set([both.fill, peeked.fill, focus.fill, rest.fill]).size).toBe(4)
   expect(peeked.weight).toBe('500')
   expect(both.weight).toBe('500')
+  // The open row's key is bold in ink, whether or not the row is active. No other key is.
+  const ink = await painted('var(--ink)')
+  for (const key of [bothKey, peekedKey]) expect(key).toMatchObject({ weight: '600', colour: ink })
+  for (const key of [focusKey, restKey]) expect(key.weight).toBe('400')
+  expect(restKey.colour).not.toBe(ink)
   for (const state of [both, peeked, focus, rest]) {
     expect(state.shadow).toBe('none')
     expect(state.outline).toBe('none')
@@ -682,6 +698,22 @@ test('marks the active and the open row by distinct fills, with no ring, edge or
     expect(state.radius).toBe('8px')
     expect(state.inset).toEqual(['8px', '8px'])
   }
+})
+
+test('keeps the bold key inside its box in a wide font', async () => {
+  await open()
+  await window.keyboard.press('j')
+  await window.keyboard.press(' ')
+  await expect(peek()).toBeVisible()
+  const style = await window.addStyleTag({
+    content: '* { font-family: Verdana, sans-serif !important }',
+  })
+  const key = await keyPaint(item(/PSAPAC-10,/))
+  await style.evaluate((node) => {
+    node.parentNode?.removeChild(node)
+  })
+  expect(key.weight).toBe('600')
+  expect(key.fits).toBe(true)
 })
 
 test('asks for Done issues only after the unresolved phase has loaded', async () => {

@@ -107,10 +107,18 @@ describe('no coloured edge marks a row or a sidebar item', () => {
     }
   })
 
-  it('leaves the Tree container without a ring', () => {
-    expect(read('./IssueTree.tsx')).toMatch(/focus-visible:outline-none/)
-    expect(read('./IssueTree.tsx')).not.toMatch(
-      /\bring\b|border-accent|outline-accent|shadow-\[inset/,
-    )
+  it('bolds the key of the open row in ink, and only there', () => {
+    const rule = /\.tree-row\[aria-selected='true'\] \.tree-key\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(rule).toMatch(/font-weight:\s*600/)
+    expect(rule).toMatch(/color:\s*var\(--ink\)/)
+    expect(read('./TreeRow.tsx')).toMatch(/className="tree-key [^"]*"[^>]*>\{issue\.key\}/)
+  })
+
+  it('leaves the Tree container without a ring, except the one over an empty Tree', () => {
+    const tree = read('./IssueTree.tsx')
+    // With no rows there is no row to fill, so a Tree with no issues keeps its focus ring (#159).
+    const rest = tree.replace(/\/\*\*(?:(?!\*\/)[^])*\*\/\s*const RING =\s*'[^']*'/, '')
+    expect(rest).toMatch(/focus-visible:outline-none/)
+    expect(rest).not.toMatch(/\bring\b|border-accent|outline-accent|shadow-\[inset/)
   })
 })
