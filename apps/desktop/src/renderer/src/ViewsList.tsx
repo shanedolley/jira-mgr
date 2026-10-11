@@ -284,7 +284,15 @@ export function ViewsList({ filters, toggles, applied, onApply, showCurrent = tr
   function updateFromBar(view: SavedView) {
     if (toggles === undefined) return
     resetFailures()
-    update.mutate({ id: view.id, filters, toggles })
+    update.mutate(
+      { id: view.id, filters, toggles },
+      {
+        onSuccess() {
+          // The Update button disables once the bar equals the view, and focus must not fall to the page.
+          setRefocus(view.id)
+        },
+      },
+    )
   }
 
   function duplicateView(view: SavedView) {

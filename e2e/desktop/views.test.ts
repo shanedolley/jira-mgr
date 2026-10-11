@@ -366,6 +366,8 @@ test('updates a view with the current filters, in place, and the file the CLI re
 
   await expect(apply('Active')).toHaveAttribute('aria-current', 'true')
   await expect(update('Active')).toBeDisabled()
+  // The button that was pressed is now disabled, so focus goes to the view, not the page.
+  await expect(apply('Active')).toBeFocused()
   const views = await stored()
   expect(views.map((v) => v.id)).toEqual([
     'my-issues',
