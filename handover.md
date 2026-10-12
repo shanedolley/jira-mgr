@@ -2,7 +2,7 @@
 
 ## Where Work Stands
 
-Checked 2026-10-13. Head `1034bac` (`git log --oneline -1 origin/main`, PR [#204](https://github.com/shanedolley/jira-mgr/pull/204), #199's Hide done change); main CI run 38272423159 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12. #199 is merged and in HIL Review with `question` (the epic-filter output, see Open Decisions). #200 is built on branch `200-progress-ring`; #201 and #202 are open and unclaimed (see Open Stories).
+Checked 2026-10-13. Head `1034bac` (`git log --oneline -1 origin/main`, PR [#204](https://github.com/shanedolley/jira-mgr/pull/204), #199's Hide done change); main CI run 38272423159 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12. #199 is merged and in HIL Review with `question` (the epic-filter output, see Open Decisions). #200 is built in PR [#205](https://github.com/shanedolley/jira-mgr/pull/205); #201 and #202 are open and unclaimed (see Open Stories).
 
 #143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
@@ -51,7 +51,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | Closed 2026-10-12. Found by 149-sprint-review |
 | #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194), [#195](https://github.com/shanedolley/jira-mgr/pull/195) | Closed 2026-10-12; M3 settled as option A. Low: the same-tick `inFlight` guard in `BulkBar.tsx` has no unit test (no component-test setup). Selection is pruned to the rows shown. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
 | #199 | Hide done hides every Done issue | [#204](https://github.com/shanedolley/jira-mgr/pull/204) | Merged 2026-10-13, in HIL Review with `question`. With Hide done on, `buildHierarchy` builds from open issues only: no Done row, no dimmed Done ancestor, no "N done" chip; an open issue under a Done parent attaches to its nearest open ancestor, else roots in its own Customer group. Progress still counts Done children. `jm issue tree` changes only for an epic filter (`--epic` or a view with `epic`), which loads Done issues and now hides them too; settled as intended, disclosed on the PR. Lows: a mixed open/Done parent cycle still loses issues (as before); a Subtask re-attached under an Epic gets a Customer mismatch check against it |
-| #200 | Show sub-issue progress on issues, not Epics | branch `200-progress-ring` | The ring and "N of M done" move to Story, Task and Bug rows with sub-issues (`rowProgress` in `TreeRow.tsx`); Epic and Subtask rows show none. Task and Bug are covered by unit test only: the e2e fake has no Task or Bug with sub-issues |
+| #200 | Show sub-issue progress on issues, not Epics | [#205](https://github.com/shanedolley/jira-mgr/pull/205) | The ring and "N of M done" move to Story, Task and Bug rows with sub-issues (`rowProgress` in `TreeRow.tsx`); Epic and Subtask rows show none. Task and Bug are covered by unit test only: the e2e fake has no Task or Bug with sub-issues |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -82,7 +82,7 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 | In progress | #200 | `--label status:in-progress` | 2026-10-13 |
 | In HIL Review | #199 | `--label status:hil-review` | 2026-10-13 |
 | With `question` | #199 | `--label question` | 2026-10-13 |
-| Open pull requests | the #200 PR only | `gh pr list --state open` | 2026-10-13 |
+| Open pull requests | #205 only | `gh pr list --state open` | 2026-10-13 |
 
 `git worktree list` shows the main tree only (2026-10-13). Only `main` exists on origin (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
