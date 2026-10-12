@@ -39,12 +39,20 @@ export const commentsQuery = (key: string) => ({
 /** A list from the page's own read, which refetches on window focus like the rest. */
 export const useComments = (key: string) => useQuery(commentsQuery(key))
 
+export const worklogsQuery = (key: string) => ({
+  queryKey: worklogsKey(key),
+  queryFn: () => call('worklogs:list', { key }),
+})
+
 export const useWorklogs = (key: string, options: { enabled?: boolean; staleTime?: number } = {}) =>
-  useQuery({
-    queryKey: worklogsKey(key),
-    queryFn: () => call('worklogs:list', { key }),
-    ...options,
-  })
+  useQuery({ ...worklogsQuery(key), ...options })
+
+/**
+ * How the Peek reads worklogs: only once it has held still on a row (`load`), and a list the page
+ * read in the last 30 s counts as fresh. The page and the Peek share one list, so without that the
+ * Peek's delayed first read could start after the page deleted a worklog and bring the row back.
+ */
+export const peekWorklogOptions = (load: boolean) => ({ enabled: load, staleTime: 30_000 })
 
 /** The issue's links and every link type, which the add form offers. */
 export const useLinks = (key: string) =>

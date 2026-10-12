@@ -8,17 +8,10 @@ import {
   type ChartBar,
   type ChartPeriod,
 } from '@jira-mgr/core/time-tracking'
-import { useWorklogs } from './activityQueries'
+import { peekWorklogOptions, useWorklogs } from './activityQueries'
 import { useTimeTracking } from './queries'
 import { QueryBody, Section } from './Section'
 import { setChartPeriod, useChartPeriod } from './timePeriod'
-
-/**
- * How long worklogs the Peek holds stay fresh. The page and the Peek share one list, so a read
- * the page made lately serves the Peek, and the Peek's delayed first read cannot land on a list
- * the page just changed and bring back what an edit removed.
- */
-const PEEK_FRESH_MS = 30_000
 
 const PERIODS: { id: ChartPeriod; label: string; range: string; noun: string }[] = [
   { id: 'days', label: 'Days', range: 'Last 14 days', noun: 'day' },
@@ -69,7 +62,7 @@ function WorklogChart({
   peek: boolean
   load: boolean
 }) {
-  const worklogs = useWorklogs(issueKey, peek ? { enabled: load, staleTime: PEEK_FRESH_MS } : {})
+  const worklogs = useWorklogs(issueKey, peek ? peekWorklogOptions(load) : {})
   const period = useChartPeriod()
   const shown = PERIODS.find((p) => p.id === period) ?? PERIODS[0]
   return (

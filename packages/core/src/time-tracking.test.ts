@@ -171,6 +171,22 @@ describe('bucketWorklogs', () => {
     expect(bars.find((bar) => bar.seconds > 0)).toMatchObject({ start: '2026-11-01' })
   })
 
+  it('starts every week on a Monday across the spring clock change', () => {
+    // Clocks go forward on 8 March 2026, a 23-hour day inside the 12-week window.
+    const bars = bucketWorklogs([], 'weeks', new Date(2026, 2, 20, 12))
+    expect(bars).toHaveLength(12)
+    for (const { start } of bars) {
+      const [y, m, d] = start.split('-').map(Number)
+      expect(new Date(y ?? 0, (m ?? 1) - 1, d ?? 1).getDay(), start).toBe(1)
+    }
+    expect(bars.map((bar) => bar.start).slice(-3)).toEqual([
+      '2026-03-02',
+      '2026-03-09',
+      '2026-03-16',
+    ])
+    expect(new Set(bars.map((bar) => bar.start)).size).toBe(12)
+  })
+
   it('gives each bar a text alternative with its period and hours', () => {
     const [bar] = bucketWorklogs([], 'days', now())
     expect(bar && barText(bar)).toBe('Wed 30 Sep: 0 hours')

@@ -5,8 +5,6 @@ import { useSyncExternalStore } from 'react'
 let held: ChartPeriod = 'days'
 const listeners = new Set<() => void>()
 
-export const chartPeriod = (): ChartPeriod => held
-
 export function setChartPeriod(period: ChartPeriod): void {
   held = period
   listeners.forEach((listener) => {
