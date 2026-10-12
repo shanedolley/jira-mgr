@@ -34,6 +34,8 @@ globalThis.fetch = jira.fetch
 start(
   createBackend({
     keychain: createFakeKeychain(),
+    // The fake answers a bulk task at once, so the batch polls at core's fastest rate.
+    batchPoll: { pollMs: 100 },
     ...(lateReadMs !== undefined && { lateReadMs: Number(lateReadMs) }),
     // Stands in for the native save dialog: a file under the state folder, or a cancel on request.
     async chooseSavePath(defaultName) {

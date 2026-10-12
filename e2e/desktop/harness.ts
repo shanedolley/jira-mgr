@@ -37,6 +37,8 @@ export interface Counts {
   notifications: { title: string; body: string }[]
   /** The Inbox's searches, and each changelog and newest-comment read it made, as path and query. */
   inbox: { searches: number; reads: string[] }
+  /** Every bulk POST received, in order, as its path and body. Bulk calls are not held. */
+  bulk: { path: string; body: unknown }[]
 }
 
 /** One field of a changelog history. */
@@ -62,6 +64,8 @@ interface FakeJira {
   releaseTextSearch: () => void
   dropIssue: (key: string) => void
   refuseNextEdit: () => void
+  refuseNextBulk: () => void
+  refuseKeys: (keys: string[]) => void
   moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
   releaseUpload: () => void
   failUpload: () => void
@@ -203,6 +207,18 @@ export const refuseNextEdit = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.refuseNextEdit()
   })
+
+/** Makes the fake Jira answer 400 to the next bulk POST, so the app falls back to one call per issue. */
+export const refuseNextBulk = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.refuseNextBulk()
+  })
+
+/** Makes the fake Jira refuse every write to these issues, in a bulk task and one at a time. */
+export const refuseKeys = (app: ElectronApplication, keys: string[]) =>
+  app.evaluate((_electron, names) => {
+    ;(globalThis as unknown as WithFake).__fakeJira.refuseKeys(names)
+  }, keys)
 
 /** Removes an issue from the fake Jira, as if someone else deleted it. The next refetch loses it. */
 export const dropIssue = (app: ElectronApplication, key: string) =>

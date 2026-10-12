@@ -737,13 +737,13 @@ test('prevents the default of the keys it handles and of no other', async () => 
     'window.addEventListener("keydown", (e) => { (window.__keys ??= []).push([e.key, e.defaultPrevented]) })',
   )
 
-  for (const key of ['j', ' ', 'PageDown', 'ArrowRight', 'Home', 'x', 'Meta+k']) {
+  for (const key of ['j', ' ', 'PageDown', 'ArrowRight', 'Home', 'q', 'Meta+k']) {
     await window.keyboard.press(key)
   }
 
   const seen = await window.evaluate<[string, boolean][]>('window.__keys')
   // Handled keys, Space and the page keys included, never reach the container's own scrolling.
-  // The unhandled `x` stays available to the system. Cmd+K is the palette's (D7), so it is handled.
+  // The unhandled `q` stays available (`x` checks the active issue, so it is handled) to the system. Cmd+K is the palette's (D7), so it is handled.
   expect(
     seen.filter(([key]) => ['j', ' ', 'PageDown', 'ArrowRight', 'Home'].includes(key)),
   ).toEqual([
@@ -753,8 +753,8 @@ test('prevents the default of the keys it handles and of no other', async () => 
     ['ArrowRight', true],
     ['Home', true],
   ])
-  expect(seen.filter(([key]) => key === 'x' || key === 'k')).toEqual([
-    ['x', false],
+  expect(seen.filter(([key]) => key === 'q' || key === 'k')).toEqual([
+    ['q', false],
     ['k', true],
   ])
 })
