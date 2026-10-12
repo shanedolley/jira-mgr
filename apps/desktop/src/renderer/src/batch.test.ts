@@ -8,6 +8,7 @@ import {
   labelAction,
   namedKeys,
   planBatch,
+  planBulk,
   priorityAction,
   refusedBatchNotice,
   sprintAction,
@@ -68,6 +69,53 @@ describe('refusedBatchNotice', () => {
       'Status not changed on 1 issue',
     )
     expect(issues(0)).toBe('0 issues')
+  })
+})
+
+describe('planBulk', () => {
+  const many = (count: number) => Array.from({ length: count }, (_, n) => issue(n + 1))
+
+  it('plans the items an action would change', () => {
+    const plan = planBulk([issue(1), issue(2, { status: DONE })], statusAction(DONE), false)
+    expect(plan).toMatchObject({ run: [{ key: 'P-1' }] })
+  })
+
+  it('sends a batch of 1000 and refuses 1001 with a notice, sending nothing', () => {
+    expect('run' in planBulk(many(1000), statusAction(DONE), false)).toBe(true)
+    const plan = planBulk(many(1001), statusAction(DONE), false)
+    expect(plan).toEqual({
+      stop: {
+        title: 'Select at most 1000 issues',
+        notes: ['1001 issues would change, and nothing was sent.'],
+        warned: true,
+      },
+    })
+  })
+
+  it('counts the issues that would change, not the ones checked', () => {
+    const checked = [
+      ...many(1001).map((i) => ({ ...i })),
+      ...many(5).map((i) => ({ ...i, key: `Q-${i.key}`, status: DONE })),
+    ]
+    expect(planBulk(checked, statusAction(DONE), false)).toMatchObject({
+      stop: { title: 'Select at most 1000 issues' },
+    })
+    const done = many(3).map((i) => ({ ...i, key: `Q-${i.key}`, status: DONE }))
+    expect('run' in planBulk([...many(1000), ...done], statusAction(DONE), false)).toBe(true)
+  })
+
+  it('stops quietly while a batch runs, so a second click cannot overlap the first', () => {
+    expect(planBulk([issue(1)], statusAction(DONE), true)).toEqual({ stop: null })
+  })
+
+  it('says so when nothing would change', () => {
+    expect(planBulk([issue(1, { status: DONE })], statusAction(DONE), false)).toEqual({
+      stop: {
+        title: 'Nothing to change',
+        notes: ['1 issue already has it.'],
+        warned: false,
+      },
+    })
   })
 })
 

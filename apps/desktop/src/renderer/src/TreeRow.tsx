@@ -511,9 +511,12 @@ export const TreeRow = memo(function TreeRow({
       aria-selected={selected ? true : undefined}
       aria-checked={checkable && selecting ? checked : undefined}
       data-active={active}
-      // A Shift+click checks a range, so it must not also select the text it crosses.
+      // A Shift+click checks a range, so it must not also select the text it crosses. Stopping the
+      // default also stops the click from focusing the Tree, so the Tree takes focus here.
       onMouseDown={(event) => {
-        if (event.shiftKey) event.preventDefault()
+        if (!event.shiftKey) return
+        event.preventDefault()
+        event.currentTarget.closest<HTMLElement>('[role="tree"]')?.focus()
       }}
       onClick={(event) => {
         const target = event.target as Element

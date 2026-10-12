@@ -355,66 +355,72 @@ export async function batchMutation(
   client: QueryClient,
   send: (items: BatchItem[]) => Promise<BatchOutcome>,
   reread: (key: string) => Promise<IssueDetail>,
-  items: readonly BatchRequestItem[],
+  requested: readonly BatchRequestItem[],
   record?: (done: BatchDone[]) => void,
 ): Promise<BatchRun> {
+  // One line per issue: a key that repeats would wait on its own earlier turn forever.
+  const seen = new Set<string>()
+  const items = requested.filter(({ key }) => !seen.has(key) && seen.add(key))
   const line = {}
   await Promise.all(items.map(({ key }) => joinLine(client, key, line)))
-  await Promise.all(
-    items.flatMap(({ key }) =>
-      holding(client, key).map((queryKey) => client.cancelQueries({ queryKey })),
-    ),
-  )
-  const shown = new Map<string, Rollback>()
-  const missing = new Set<string>()
-  for (const { key, patch } of items) {
-    const before = current(client, key)
-    if (before === undefined) {
-      missing.add(key)
-      continue
-    }
-    const previous = Object.fromEntries(
-      Object.keys(patch).map((field) => [field, before[field as keyof Issue]]),
-    ) as Partial<IssueDetail>
-    editEverywhere(client, key, (issue, detail) => ({
-      ...issue,
-      ...(detail ? patch : listFields(patch)),
-    }))
-    shown.set(key, { key, patch, previous })
-  }
-
-  const sent = items.filter(({ key }) => shown.has(key))
-  let outcome: BatchOutcome = { done: [], refused: [] }
+  // Whatever happens from here, every line is left, so a later edit of these issues is never stuck.
   try {
-    if (sent.length > 0) {
-      outcome = await send(sent.map(({ key, id, change }) => ({ key, id, change })))
-    }
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error)
-    outcome = { done: [], refused: sent.map(({ key }) => ({ key, reason })) }
-  }
-  const reasons = new Map(outcome.refused.map(({ key, reason }) => [key, reason]))
-  for (const key of reasons.keys()) {
-    const rollback = shown.get(key)
-    if (rollback !== undefined) rollBack(client, rollback)
-  }
-  const changed = new Set(outcome.done)
-  const done = sent.flatMap(({ key, change, patch }) =>
-    changed.has(key) ? [{ key, change, patch, before: shown.get(key)?.previous ?? {} }] : [],
-  )
-  if (done.length > 0) record?.(done)
-
-  for (let at = 0; at < items.length; at += REREAD_AT_ONCE) {
     await Promise.all(
-      items.slice(at, at + REREAD_AT_ONCE).map(({ key }) => leaveLine(client, key, line, reread)),
+      items.flatMap(({ key }) =>
+        holding(client, key).map((queryKey) => client.cancelQueries({ queryKey })),
+      ),
     )
-  }
-  return {
-    done,
-    refused: items.flatMap(({ key }) => {
-      const reason = missing.has(key) ? 'It is no longer loaded.' : reasons.get(key)
-      return reason === undefined ? [] : [{ key, reason }]
-    }),
+    const shown = new Map<string, Rollback>()
+    const missing = new Set<string>()
+    for (const { key, patch } of items) {
+      const before = current(client, key)
+      if (before === undefined) {
+        missing.add(key)
+        continue
+      }
+      const previous = Object.fromEntries(
+        Object.keys(patch).map((field) => [field, before[field as keyof Issue]]),
+      ) as Partial<IssueDetail>
+      editEverywhere(client, key, (issue, detail) => ({
+        ...issue,
+        ...(detail ? patch : listFields(patch)),
+      }))
+      shown.set(key, { key, patch, previous })
+    }
+
+    const sent = items.filter(({ key }) => shown.has(key))
+    let outcome: BatchOutcome = { done: [], refused: [] }
+    try {
+      if (sent.length > 0) {
+        outcome = await send(sent.map(({ key, id, change }) => ({ key, id, change })))
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      outcome = { done: [], refused: sent.map(({ key }) => ({ key, reason })) }
+    }
+    const reasons = new Map(outcome.refused.map(({ key, reason }) => [key, reason]))
+    for (const key of reasons.keys()) {
+      const rollback = shown.get(key)
+      if (rollback !== undefined) rollBack(client, rollback)
+    }
+    const changed = new Set(outcome.done)
+    const done = sent.flatMap(({ key, change, patch }) =>
+      changed.has(key) ? [{ key, change, patch, before: shown.get(key)?.previous ?? {} }] : [],
+    )
+    if (done.length > 0) record?.(done)
+    return {
+      done,
+      refused: items.flatMap(({ key }) => {
+        const reason = missing.has(key) ? 'It is no longer loaded.' : reasons.get(key)
+        return reason === undefined ? [] : [{ key, reason }]
+      }),
+    }
+  } finally {
+    for (let at = 0; at < items.length; at += REREAD_AT_ONCE) {
+      await Promise.all(
+        items.slice(at, at + REREAD_AT_ONCE).map(({ key }) => leaveLine(client, key, line, reread)),
+      )
+    }
   }
 }
 

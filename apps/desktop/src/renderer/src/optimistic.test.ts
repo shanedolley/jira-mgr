@@ -1142,6 +1142,82 @@ describe('batchMutation', () => {
     expect(read).toHaveBeenCalledExactlyOnceWith('PSAPAC-1')
   })
 
+  it('leaves every edit line when record throws, so the next edit of the issue still sends', async () => {
+    const { client, read } = setupBatch()
+    await expect(
+      batchMutation(
+        client,
+        () => Promise.resolve({ done: ['PSAPAC-1'], refused: [] }),
+        read,
+        [toDone('PSAPAC-1')],
+        () => {
+          throw new Error('record failed')
+        },
+      ),
+    ).rejects.toThrow('record failed')
+    expect(isEditingKey(client, 'PSAPAC-1')).toBe(false)
+
+    const edit = new MutationObserver(
+      client,
+      issueMutation(
+        client,
+        () => Promise.resolve(null),
+        ({ patch }: { key: string; patch: Partial<Issue> }) => patch,
+        read,
+      ),
+    )
+    await edit.mutate({ key: 'PSAPAC-1', patch: { summary: 'After' } })
+    expect(current(client, 'PSAPAC-1')?.summary).toBe('PSAPAC-1')
+  })
+
+  it('treats a repeated key as one issue instead of waiting on its own turn', async () => {
+    const { client, read, statuses } = setupBatch({ 'PSAPAC-1': { status: DONE } })
+    const send = vi.fn<(items: BatchItem[]) => Promise<BatchOutcome>>(() =>
+      Promise.resolve({ done: ['PSAPAC-1'], refused: [] }),
+    )
+    const run = await batchMutation(client, send, read, [toDone('PSAPAC-1'), toDone('PSAPAC-1')])
+    expect(send).toHaveBeenCalledExactlyOnceWith([
+      { key: 'PSAPAC-1', id: '101', change: { kind: 'status', statusId: '3' } },
+    ])
+    expect(run.done).toHaveLength(1)
+    expect(statuses()[0]).toBe('PSAPAC-1:Done')
+    expect(isEditingKey(client, 'PSAPAC-1')).toBe(false)
+  })
+
+  it('does not let its late read-back overwrite a newer edit of the issue', async () => {
+    const { client, read } = setupBatch()
+    const stale = deferred<IssueDetail>()
+    read.mockReturnValueOnce(stale.promise)
+    const run = batchMutation(
+      client,
+      () => Promise.resolve({ done: ['PSAPAC-1'], refused: [] }),
+      read,
+      [toDone('PSAPAC-1')],
+    )
+    await expect.poll(() => read.mock.calls.length).toBe(1)
+
+    // A newer edit of the issue starts while the batch's read is out, and is shown at once.
+    const held = deferred<null>()
+    const edit = new MutationObserver(
+      client,
+      issueMutation(
+        client,
+        () => held.promise,
+        ({ patch }: { key: string; patch: Partial<Issue> }) => patch,
+        read,
+      ),
+    )
+    const editing = edit.mutate({ key: 'PSAPAC-1', patch: { summary: 'Newer' } })
+    await expect.poll(() => current(client, 'PSAPAC-1')?.summary).toBe('Newer')
+
+    stale.resolve(detail(issue('PSAPAC-1', 'Old, from the batch read', { status: DONE })))
+    await run
+    expect(current(client, 'PSAPAC-1')?.summary).toBe('Newer')
+
+    held.resolve(null)
+    await editing
+  })
+
   it('reads at most five issues at once', async () => {
     const client = new QueryClient()
     const keys = Array.from({ length: 12 }, (_, n) => `PSAPAC-${String(n + 1)}`)

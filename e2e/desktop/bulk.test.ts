@@ -31,7 +31,7 @@ test.afterEach(async () => {
 })
 
 const tree = () => window.getByRole('tree', { name: 'Issues' })
-const item = (name: string | RegExp) => tree().getByRole('treeitem', { name })
+const item = (name: string | RegExp, exact = false) => tree().getByRole('treeitem', { name, exact })
 const peek = () => window.getByRole('complementary', { name: 'Peek' })
 const bar = () => window.getByRole('toolbar', { name: 'Selected issues' })
 const barButton = (name: string) => bar().getByRole('button', { name, exact: true })
@@ -111,7 +111,7 @@ for (const rate of [1, 20]) {
 
       // Done children sit behind their parent's chip, so the ten leave the rows, and the
       // selection, which only holds rows shown, goes with them.
-      await expect(item('10 done')).toBeVisible()
+      await expect(item('10 done', true)).toBeVisible()
       await expect(story(1)).toHaveCount(0)
       await expect(story(11)).toHaveAccessibleName(status(11, 'To Do'))
       const calls = await bulkCalls()
@@ -165,7 +165,7 @@ for (const rate of [1, 20]) {
       )
       await expect(alert).toContainText('PSAPAC-1006: The fake refuses PSAPAC-1006.')
       for (let n = 1; n <= 7; n++) await expect(story(n)).toHaveAccessibleName(status(n, 'To Do'))
-      await expect(item('3 done')).toBeVisible()
+      await expect(item('3 done', true)).toBeVisible()
       await expect(notice('Status changed to Done on 3 issues')).toBeVisible()
       // The three that moved left the rows; the seven refused stay checked for another try.
       await expect(bar()).toContainText('7 selected')
@@ -255,7 +255,7 @@ for (const rate of [1, 20]) {
       await expect(alert.locator('p').first()).toHaveText('Status not changed on 1 issue')
       await expect(alert).toContainText('Skipped PSAPAC-1002.')
       await expect(story(3)).toHaveAccessibleName(status(3, 'To Do'))
-      await expect(item('9 done')).toBeVisible()
+      await expect(item('9 done', true)).toBeVisible()
       await expect(notice('Status changed to Done on 9 issues')).toBeVisible()
     })
   })
@@ -297,7 +297,10 @@ test('Esc clears the selection when focus is on the bar, and the clear button do
 test('Shift+click checks a range from the anchor, and Cmd+A every issue but the Epic', async () => {
   await open()
   await story(2).locator('[data-check]').click()
+  // A Shift+click holds back the browser's own focus, so the Tree has to take it.
+  await window.getByLabel('Filter by key or summary').focus()
   await story(6).click({ modifiers: ['Shift'] })
+  await expect(tree()).toBeFocused()
   await expect(checkedRows()).toHaveCount(5)
   for (let n = 2; n <= 6; n++) await expect(story(n)).toHaveAttribute('aria-checked', 'true')
   await expect(story(1)).toHaveAttribute('aria-checked', 'false')

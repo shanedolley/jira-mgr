@@ -1,6 +1,12 @@
 import type { Issue } from '@jira-mgr/core'
 
-import type { BatchChange, FieldChoice, SprintOption, StatusOption } from '../../shared/ipc'
+import {
+  BATCH_MAX,
+  type BatchChange,
+  type FieldChoice,
+  type SprintOption,
+  type StatusOption,
+} from '../../shared/ipc'
 import type { Notice } from './create'
 import type { BatchRequestItem } from './optimistic'
 import {
@@ -67,6 +73,42 @@ export function planBatch(issues: readonly Issue[], action: BulkAction): BatchRe
     const planned = action.change(issue)
     return planned === null ? [] : [{ key: issue.key, id: issue.id, ...planned }]
   })
+}
+
+/** What a bulk action does now: send these items, or stop, with a notice when the user needs one. */
+export type BulkPlan = { run: BatchRequestItem[] } | { stop: Notice | null }
+
+/**
+ * Whether `action` over `checked` can go out. It cannot while a batch runs (a second batch over the
+ * same issues would race the first, and the stop is silent), when no issue would change, or when
+ * more than `BATCH_MAX` would, which the channel refuses whole.
+ */
+export function planBulk(
+  checked: readonly Issue[],
+  action: BulkAction,
+  running: boolean,
+): BulkPlan {
+  if (running) return { stop: null }
+  const items = planBatch(checked, action)
+  if (items.length === 0) {
+    return {
+      stop: {
+        title: 'Nothing to change',
+        notes: [`${issues(checked.length)} already ${checked.length === 1 ? 'has' : 'have'} it.`],
+        warned: false,
+      },
+    }
+  }
+  if (items.length > BATCH_MAX) {
+    return {
+      stop: {
+        title: `Select at most ${String(BATCH_MAX)} issues`,
+        notes: [`${issues(items.length)} would change, and nothing was sent.`],
+        warned: true,
+      },
+    }
+  }
+  return { run: items }
 }
 
 export const statusAction = (option: StatusOption): BulkAction => ({

@@ -6,9 +6,8 @@ import { withAvatars } from './Avatar'
 import {
   assigneeAction,
   customerAction,
-  issues as countIssues,
   labelAction,
-  planBatch,
+  planBulk,
   priorityAction,
   refusedBatchNotice,
   sprintAction,
@@ -234,29 +233,29 @@ export function BulkBar({ checked, all, me, progress, run, onNotice, onClear }: 
   const menuId = useId()
   const menu = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
+  const inFlight = useRef(false)
   if (checked.length === 0) return null
   const running = busy || progress !== null
 
   function apply(action: BulkAction, stay = false) {
-    if (!stay) menu.current?.hidePopover()
-    const items = planBatch(checked, action)
-    if (items.length === 0) {
-      onNotice({
-        title: 'Nothing to change',
-        notes: [
-          `${countIssues(checked.length)} already ${checked.length === 1 ? 'has' : 'have'} it.`,
-        ],
-        warned: false,
-      })
+    // The ref answers a second click in the same tick, before `busy` has rendered.
+    const plan = planBulk(checked, action, running || inFlight.current)
+    if (!('run' in plan)) {
+      if (plan.stop !== null) onNotice(plan.stop)
       return
     }
+    if (!stay) menu.current?.hidePopover()
+    inFlight.current = true
     setBusy(true)
+    const items = plan.run
     run({ items, title: action.title }).then(
       ({ refused }) => {
+        inFlight.current = false
         setBusy(false)
         if (refused.length > 0) onNotice(refusedBatchNotice(capital(action.what), refused))
       },
       (failure: unknown) => {
+        inFlight.current = false
         setBusy(false)
         onNotice({
           title: `Could not change the ${action.what}`,
