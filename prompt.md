@@ -2,15 +2,14 @@
 
 ## Start Here
 
-Measured 2026-10-13 (head `6dea814`: `git log --oneline -1 origin/main`; main CI run 38265434115 succeeded). #199 is built and in review in PR [#204](https://github.com/shanedolley/jira-mgr/pull/204); #200, #201 and #202 are open and unclaimed (`gh issue list --state open --limit 200`). The test command is `pnpm test`, plus `pnpm e2e --workers=1` for desktop work. No database exists: Jira is reached live only through `jm` and the app, and tests never write to it. [handover.md](handover.md) holds the state, the decisions and the traps. Pull requests land one at a time.
+Measured 2026-10-13 (head `1034bac`: `git log --oneline -1 origin/main`; main CI run 38272423159 succeeded). #199 is merged and in HIL Review with `question`; #200 is built on branch `200-progress-ring`; #201 and #202 are open and unclaimed (`gh issue list --state open --limit 200`). The test command is `pnpm test`, plus `pnpm e2e --workers=1` for desktop work. No database exists: Jira is reached live only through `jm` and the app, and tests never write to it. [handover.md](handover.md) holds the state, the decisions and the traps. Pull requests land one at a time.
 
 1. **Keep the documentation current and remove stale references in every pull request.** Shane asked for this explicitly and restated it on 2026-10-13. Before opening the PR, grep `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`, `AGENTS.md`, `docs/` (except dated discovery records) and each package README for closed issues named as open and features named as planned or not built. Check each file name and script a doc names against `git ls-files` and `package.json`. Compare the `e2e/README.md` suite table with `e2e/desktop/` and the `apps/desktop/README.md` file table with `git ls-files apps/desktop/src` (the table names files by basename, some inside another file's row). Run a link and anchor check over every tracked `.md` file (a script that resolves each relative link and each `#anchor` against the target's headings). Run `pnpm docs:reference` and confirm `git status` shows no drift. Never edit an accepted ADR; flag a stale one in the PR. Last swept 2026-10-13 (the `docs: refresh the handover and sweep stale references` pull request): 90 tracked `.md` files and 406 relative links, 0 broken; no stale reference found outside the handover files; `pnpm docs:reference` left no drift. A story that changes behaviour a doc describes updates that doc in its own PR.
 2. **Build the open stories, one at a time, in this order.** Claim each per Loop and send each to Shane through `status:hil-review`.
-   1. #200, the progress ring on Stories, Tasks and Bugs with sub-issues, not Epics: an `IssueTree.tsx` guard change, no core change.
-   2. #201, a double-click on a Tree row opens the issue page.
-   3. #202, estimate, time logged and a worklog chart on the Peek and the issue page: adds a core call for the time tracking settings, with a recorded fixture.
+   1. #201, a double-click on a Tree row opens the issue page.
+   2. #202, estimate, time logged and a worklog chart on the Peek and the issue page: adds a core call for the time tracking settings, with a recorded fixture.
 
-   #200 touches the Tree rows #199 changed, so cut it from `main` after PR #204 merges. Before claiming, run `gh issue list --state open --limit 200`: a new issue or a `question` answer is claimed per Loop. Do not build gap 13 (undecided) or gap 14 (Later).
+   Before claiming, run `gh issue list --state open --limit 200`: a new issue or a `question` answer is claimed per Loop. Do not build gap 13 (undecided) or gap 14 (Later).
 
 Run e2e with `pnpm e2e --workers=1`, serialised across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` (see Traps in the handover).
 
