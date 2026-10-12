@@ -259,6 +259,10 @@ export interface TreeState {
   collapsed: ReadonlySet<string>
   revealed: ReadonlySet<string>
   peekOpen: boolean
+  /** The keys of the checked issues, which a bulk action applies to. Only checkable rows hold one. */
+  checked: ReadonlySet<string>
+  /** The issue a Shift+click range starts from: the last one checked or unchecked. */
+  anchor: string | null
 }
 
 export interface KeyInput {
@@ -279,6 +283,51 @@ export interface MoveContext {
   pageSize: number
   /** Every expandable row id, for Collapse all. */
   expandable: readonly string[]
+}
+
+/** An issue row a bulk action can take: not a header, a chip or an ancestor shown only as context. */
+const checkable = (row: TreeRow | undefined): row is IssueRow =>
+  row?.kind === 'issue' && !row.node.contextOnly
+
+/** The keys of the checkable rows from `fromId` to `toId` inclusive, whichever comes first. */
+function keysBetween(rows: readonly TreeRow[], fromId: string, toId: string): string[] {
+  const from = rows.findIndex((r) => r.id === fromId)
+  const to = rows.findIndex((r) => r.id === toId)
+  if (from < 0 || to < 0) return []
+  return rows
+    .slice(Math.min(from, to), Math.max(from, to) + 1)
+    .filter(checkable)
+    .map((r) => r.node.issue.key)
+}
+
+/** The state with `keys` checked as well, the anchor kept or, with none yet, set to `anchor`. */
+function checkMore(state: TreeState, keys: readonly string[], anchor: string | null): TreeState {
+  return { ...state, checked: new Set([...state.checked, ...keys]), anchor: state.anchor ?? anchor }
+}
+
+/** The state with `key` checked or unchecked, which also becomes the anchor. */
+function toggleChecked(state: TreeState, key: string): TreeState {
+  const checked = new Set(state.checked)
+  if (!checked.delete(key)) checked.add(key)
+  return { ...state, checked, anchor: key }
+}
+
+/**
+ * The checked set and anchor limited to the rows shown, so a collapse, a filter or a move to Done
+ * under "Hide done" never leaves an issue checked that the user cannot see. The same state when
+ * nothing needed dropping, so a caller can tell by identity.
+ */
+export function pruneChecked<T extends Pick<TreeState, 'checked' | 'anchor'>>(
+  rows: readonly TreeRow[],
+  state: T,
+): T {
+  if (state.checked.size === 0 && state.anchor === null) return state
+  const shown = new Set(rows.filter(checkable).map((r) => r.node.issue.key))
+  const checked = new Set([...state.checked].filter((key) => shown.has(key)))
+  const anchor = state.anchor !== null && shown.has(state.anchor) ? state.anchor : null
+  return checked.size === state.checked.size && anchor === state.anchor
+    ? state
+    : { ...state, checked, anchor }
 }
 
 const without = (set: ReadonlySet<string>, id: string) => {
@@ -330,7 +379,9 @@ export function moveActive(
   input: KeyInput,
   context: MoveContext,
 ): MoveResult | null {
-  if (input.metaKey || input.ctrlKey || input.altKey) return null
+  const selectAll =
+    (input.metaKey || input.ctrlKey) && !input.altKey && !input.shiftKey && /^a$/i.test(input.key)
+  if (!selectAll && (input.metaKey || input.ctrlKey || input.altKey)) return null
   if (rows.length === 0) return null
   const index = rows.findIndex((r) => r.id === state.activeId)
   const row = rows[index]
@@ -341,6 +392,24 @@ export function moveActive(
     openPage: false,
   })
   const stay = (next: TreeState = state): MoveResult => ({ ...next, openPage: false })
+
+  if (selectAll) {
+    const keys = rows.filter(checkable).map((r) => r.node.issue.key)
+    return stay(checkMore(state, keys, keys[0] ?? null))
+  }
+  // Shift with Up or Down moves as the arrow does and checks the rows it crosses.
+  if (
+    input.shiftKey &&
+    row !== undefined &&
+    (input.key === 'ArrowDown' || input.key === 'ArrowUp')
+  ) {
+    const moved = to(index + (input.key === 'ArrowDown' ? 1 : -1))
+    const keys = keysBetween(rows, row.id, moved.activeId ?? row.id)
+    return {
+      ...checkMore(moved, keys, checkable(row) ? row.node.issue.key : null),
+      openPage: false,
+    }
+  }
 
   switch (input.key) {
     case 'j':
@@ -389,7 +458,12 @@ export function moveActive(
       if (row?.kind !== 'issue') return stay()
       return stay({ ...state, peekOpen: !state.peekOpen })
     }
+    case 'x':
+    case 'X':
+      return checkable(row) ? stay(toggleChecked(state, row.node.issue.key)) : stay()
     case 'Escape':
+      // The checked issues go first, and a second Esc closes the Peek.
+      if (state.checked.size > 0) return stay({ ...state, checked: new Set(), anchor: null })
       return state.peekOpen ? stay({ ...state, peekOpen: false }) : null
     default:
       return null
@@ -398,17 +472,27 @@ export function moveActive(
 
 /**
  * A click on a row: the row becomes active. A click on its chevron expands or collapses it;
- * elsewhere it opens an issue row in the Peek and toggles a header or chip.
+ * elsewhere it opens an issue row in the Peek and toggles a header or chip. With `select`, a click
+ * on a checkable issue row checks it instead: `toggle` flips it (its checkbox) and `range` adds
+ * every checkable row from the anchor to it (Shift+click), the anchor being the active issue when
+ * none is set. Neither opens the Peek.
  */
 export function clickRow(
   rows: readonly TreeRow[],
   state: TreeState,
   id: string,
   onChevron: boolean,
+  select?: 'toggle' | 'range',
 ): TreeState {
   const row = rows.find((r) => r.id === id)
   if (row === undefined) return state
   const active = { ...state, activeId: id }
+  if (select !== undefined && checkable(row)) {
+    if (select === 'toggle') return toggleChecked(active, row.node.issue.key)
+    const current = rows.find((r) => r.id === state.activeId)
+    const from = state.anchor ?? (checkable(current) ? current.node.issue.key : row.node.issue.key)
+    return checkMore(active, keysBetween(rows, `i:${from}`, id), from)
+  }
   if (onChevron) return row.expandable ? toggle(row, active) : active
   if (row.kind === 'issue') return { ...active, peekOpen: true }
   return row.expandable ? toggle(row, active) : active

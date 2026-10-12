@@ -273,7 +273,7 @@ Core resolves the Customer, Engagement and Start date field ids by name, as `edi
 
 Proven live on 2026-10-12 (the `bulk-*` fixtures; the tests deep-equal the bodies against the recorded requests): priority, label ADD, status transitions, assignee, unassign, Customer and Engagement. Removing, replacing and clearing labels (REMOVE, REPLACE, REMOVE_ALL) are documented but unproven, so they go one issue at a time, like dates. `bulk-fields-get.json` is recorded evidence of the fields Jira offers for a bulk edit; one test checks that every field a batch sends appears in it.
 
-A bulk submit returns a task id. `runBatch` polls `GET /bulk/queue/{taskId}` every `pollMs` (default 1000) and settles each issue from `processedAccessibleIssues` and `failedAccessibleIssues`, which hold issue ids. A failed issue is refused with Jira's message, and an issue in neither list with `Jira skipped it.`. When the task ends FAILED, CANCELLED or DEAD, the issues in `processedAccessibleIssues` count as done and the rest are refused with `Jira ended the task as <STATUS>.`. `pollMs` is at least 100.
+A bulk submit returns a task id. `runBatch` polls `GET /bulk/queue/{taskId}` every `pollMs` (default 1000) and settles each issue from `processedAccessibleIssues` and `failedAccessibleIssues`, which hold issue ids. A failed issue is refused with Jira's message, and an issue in neither list with `Jira skipped it.`. When the task ends FAILED, CANCELLED or DEAD, the issues in `processedAccessibleIssues` count as done and the rest are refused with `Jira ended the task as <STATUS>.`. `pollMs` is at least 100, and a value that is not finite (`NaN`, `Infinity`) means the default.
 
 Fallback rules:
 

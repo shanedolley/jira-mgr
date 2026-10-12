@@ -65,7 +65,10 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Customer prompt** | The question the parent picker asks when a new parent's Customer or Engagement differs: also set them to the parent's? | |
 | **Read-only block** | Content the description editor shows but cannot edit, such as a panel, a table or a macro, kept as the original ADF and saved unchanged. | unsupported node, macro |
 | **Draft** | Unsaved description text, kept for the session until it is saved or discarded. | autosave |
-| **Undo stack** | The session's list of field edits, reverted newest first by writing the previous value back. | history |
+| **Undo stack** | The session's list of field edits and batches, reverted newest first by writing the previous value back. | history |
+| **Selection** | The issues checked in the Tree for a batch, held by key with the anchor a Shift+click range starts from, and limited to the rows shown. `X`, the row checkbox, `Shift+Up`, `Shift+Down`, `Shift+click` and `Cmd+A` add to it, and `Esc` clears it before it closes the Peek. A checked row carries `aria-checked`; the row the Peek shows keeps `aria-selected`. A header, a chip and a dimmed context row cannot be checked. | multi-select, bulk select |
+| **Bulk bar** | The bar over the foot of the Tree while issues are checked: the count, Status as the primary action, an Actions menu of every property and a clear button. | toolbar, action bar |
+| **Batch** | One change applied to every issue of the Selection through `issues:batch`: Jira's bulk call where it has one, else one call per issue. It reports the issues that changed and the ones Jira refused, by key, and the selection stays afterwards. `Cmd+Z` undoes it as one batch, each issue to its own prior value, skipping any that changed since. | bulk edit, mass edit |
 
 ## Code
 

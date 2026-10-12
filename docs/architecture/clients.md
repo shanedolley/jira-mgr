@@ -39,7 +39,7 @@ The desktop app (`apps/desktop/src`) has three sides ([system overview](system-o
 |---|---|
 | `main/` | Window creation and hardening, IPC handlers with zod validation, `backend.ts` as the only caller of core, avatar and image fetching under strict rules, the quit prompt for unsaved drafts |
 | `preload/` | The `window.jm` bridge, one function per channel in `shared/ipc.ts` |
-| `renderer/` | The Tree, Peek, issue page, pickers, the TipTap editor, the Cmd+K palette, shortcuts, optimistic updates and undo |
+| `renderer/` | The Tree, Peek, issue page, pickers, the TipTap editor, the Cmd+K palette, shortcuts, optimistic updates, the issue selection with its bulk bar and undo |
 
 `shared/ipc.ts` is the contract all three sides import. The renderer never calls Jira and never holds the token.
 

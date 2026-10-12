@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   UNDO_DEPTH,
   UndoStack,
+  batchEntry,
+  batchRecorder,
+  changeOfReversal,
   changedFields,
   changedSince,
   describeEdit,
@@ -13,10 +16,14 @@ import {
   editEntry,
   recorder,
   invertChanges,
+  planBatchUndo,
+  reversible,
   sprintEntry,
   statusEntry,
   summaryEntry,
   undoStack,
+  isBatch,
+  type StackEntry,
   type UndoEntry,
 } from './undo'
 
@@ -226,12 +233,15 @@ describe('UndoStack', () => {
     reversal: null,
   })
 
+  const keyOf = (held: StackEntry | undefined) =>
+    held === undefined || isBatch(held) ? undefined : held.key
+
   it('pops the newest edit first', () => {
     const stack = new UndoStack()
     stack.push(entry(1))
     stack.push(entry(2))
-    expect(stack.pop()?.key).toBe('P-2')
-    expect(stack.pop()?.key).toBe('P-1')
+    expect(keyOf(stack.pop())).toBe('P-2')
+    expect(keyOf(stack.pop())).toBe('P-1')
     expect(stack.pop()).toBeUndefined()
   })
 
@@ -240,7 +250,7 @@ describe('UndoStack', () => {
     for (let n = 1; n <= UNDO_DEPTH + 3; n++) stack.push(entry(n))
     expect(stack.size).toBe(UNDO_DEPTH)
     const oldest: string[] = []
-    for (let e = stack.pop(); e !== undefined; e = stack.pop()) oldest.push(e.key)
+    for (let e = stack.pop(); e !== undefined; e = stack.pop()) oldest.push(keyOf(e) ?? '')
     expect(oldest.at(-1)).toBe('P-4')
   })
 
@@ -341,5 +351,119 @@ describe('description undo', () => {
     expect(changedSince(entry, { description: doc('new', 'abc') })).toBe('')
     expect(changedSince(entry, { description: doc('theirs') })).toBe('description')
     expect(changedSince(entry, { description: null })).toBe('description')
+  })
+})
+
+describe('batch entries', () => {
+  const DONE = { id: '3', name: 'Done', category: 'done' } as const
+  const done = (key: string, before: Partial<Issue>) => ({
+    key,
+    change: { kind: 'status', statusId: '3' } as const,
+    patch: { status: DONE },
+    before,
+  })
+  const entry = batchEntry('Status changed to Done on 3 issues', [
+    done('P-1', { status: TODO }),
+    done('P-2', { status: DOING }),
+    done('P-3', {}),
+  ])
+  const issueOf = (key: string, status: Issue['status']) =>
+    ({ id: `id-${key}`, key, status }) as Issue
+
+  it('holds one part per issue, each with its own prior status to move back to', () => {
+    expect(entry.what).toBe('status')
+    expect(entry.parts.map((p) => [p.key, p.reversal])).toEqual([
+      ['P-1', { kind: 'status', statusId: '1' }],
+      ['P-2', { kind: 'status', statusId: '2' }],
+      ['P-3', null],
+    ])
+  })
+
+  it('is reversible while any part can be put back', () => {
+    expect(reversible(entry)).toBe(true)
+    expect(reversible(batchEntry('x', [done('P-3', {})]))).toBe(false)
+    expect(
+      reversible(
+        statusEntry({ key: 'P-1' }, { patch: { status: DONE }, before: { status: TODO } }),
+      ),
+    ).toBe(true)
+  })
+
+  it('goes back as one batch of each issue its own prior value, with the optimistic patch', () => {
+    const plan = planBatchUndo(entry, (key) => issueOf(key, DONE))
+    expect(plan.items).toEqual([
+      {
+        key: 'P-1',
+        id: 'id-P-1',
+        change: { kind: 'status', statusId: '1' },
+        patch: { status: TODO },
+      },
+      {
+        key: 'P-2',
+        id: 'id-P-2',
+        change: { kind: 'status', statusId: '2' },
+        patch: { status: DOING },
+      },
+    ])
+    // P-3 had no prior value to move back to.
+    expect(plan.skipped).toEqual(['P-3'])
+  })
+
+  it('skips and names an issue that changed since, and one no longer loaded', () => {
+    const plan = planBatchUndo(entry, (key) =>
+      key === 'P-1' ? issueOf(key, DOING) : key === 'P-2' ? undefined : issueOf(key, DONE),
+    )
+    expect(plan.items).toEqual([])
+    expect(plan.skipped).toEqual(['P-1', 'P-2', 'P-3'])
+    const partly = planBatchUndo(entry, (key) => issueOf(key, key === 'P-1' ? DOING : DONE))
+    expect(partly.items.map((i) => i.key)).toEqual(['P-2'])
+    expect(partly.skipped).toEqual(['P-1', 'P-3'])
+  })
+
+  it('maps a reversal to a batch change, and text edits to none', () => {
+    expect(changeOfReversal({ kind: 'sprint', sprintId: null })).toEqual({
+      kind: 'sprint',
+      sprintId: null,
+    })
+    expect(changeOfReversal({ kind: 'edit', changes: { assignee: null } })).toEqual({
+      kind: 'edit',
+      changes: { assignee: null },
+    })
+    expect(changeOfReversal({ kind: 'summary', summary: 'x' })).toBeNull()
+    expect(changeOfReversal({ kind: 'description', description: null })).toBeNull()
+  })
+
+  it('builds each part by the kind of change the batch made', () => {
+    const mixed = batchEntry('t', [
+      {
+        key: 'P-1',
+        change: { kind: 'edit', changes: { assignee: 'b2' } },
+        patch: { assignee: null },
+        before: { assignee: ann },
+      },
+      {
+        key: 'P-2',
+        change: { kind: 'sprint', sprintId: 5 },
+        patch: { sprints: [{ id: 5, name: 'S5', state: 'active' }] },
+        before: { sprints: [] },
+      },
+    ])
+    expect(mixed.parts.map((p) => p.reversal)).toEqual([
+      { kind: 'edit', changes: { assignee: 'a1' } },
+      { kind: 'sprint', sprintId: null },
+    ])
+  })
+
+  it('records one entry for a batch, none for an undo, and none when nothing changed', () => {
+    const client = new QueryClient()
+    const stack = undoStack(client)
+    const record = batchRecorder(client, (n) => `Changed ${String(n)}`)
+    record([])
+    expect(stack.size).toBe(0)
+    record([done('P-1', { status: TODO }), done('P-2', { status: TODO })])
+    expect(stack.size).toBe(1)
+    expect(stack.pop()).toMatchObject({ title: 'Changed 2', what: 'status' })
+    batchRecorder(client, () => 'x', true)([done('P-1', { status: TODO })])
+    expect(stack.size).toBe(0)
   })
 })

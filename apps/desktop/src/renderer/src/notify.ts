@@ -1,13 +1,13 @@
 import { createContext, useContext } from 'react'
 
 import type { Notice } from './create'
-import type { UndoEntry } from './undo'
+import type { StackEntry } from './undo'
 
 export interface NoticeOptions {
   /** The issue the toast's Open button goes to. */
   openKey?: string
   /** The edit the toast's Undo button takes back. */
-  entry?: UndoEntry
+  entry?: StackEntry
   /** Puts a Retry button on the toast. It sends the failed edit again. */
   retry?: () => void
   /** The issue whose Tree row, and the rows of these fields in the Peek and on the page, flash. */

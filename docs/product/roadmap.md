@@ -57,7 +57,7 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 
 ## Review Follow-ups
 
-Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md). Each is one issue; the tracker holds the status. All are built and merged except #143, whose core batch module is built and whose desktop selection and bulk bar are not.
+Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md). Each is one issue; the tracker holds the status. All are built.
 
 | Issue | Item |
 |---|---|
@@ -66,7 +66,7 @@ Stories #126 to #151 came from the [UX review and Linear gap analysis](../discov
 | #139, #146, #147, #148, #149 | Filters by more fields; saved views that update; Jira text search; the Inbox; the Sprint page |
 | #140, #141, #142, #145 | Tree quick actions; issue actions in the palette; description and attachments in the create dialog; sub-issues from the issue page |
 | #150, #151 | Epic progress, the Epics table and the Customers page; a layout for narrow windows |
-| #143 | Select and edit several issues at once. Core batch module built; desktop selection and bulk bar not built |
+| #143 | Select and edit several issues at once. Core batch module and the desktop selection, bulk bar and batch undo built |
 
 ## Working Rules
 

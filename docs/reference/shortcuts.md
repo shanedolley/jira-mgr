@@ -22,8 +22,8 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open issue, Inbox, Sprint, Epics or Customers page |
 | `?` | List every shortcut on this page; works from a sidebar or toolbar button too, not in a field or over a dialog |
 | `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
-| `Cmd+Z` | Undo; a text field keeps its own undo |
-| `Esc` | Close the issue page, then the Sprint page or the Epics or Customers page, then the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
+| `Cmd+Z` | Undo; a text field keeps its own undo. A batch from the bulk bar goes back as one, skipping issues that changed since |
+| `Esc` | Close the issue page, then the Sprint page or the Epics or Customers page, then clear the checked issues, then close the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
 | `Tab` | The first stop is a "Skip to issues" link, hidden until it has focus; `Enter` on it moves focus to the Tree |
 
 ## Tree
@@ -40,7 +40,11 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Shift+Left` | Collapse all to the customer |
 | `Enter` | Open the issue page; toggle a header |
 | `Space` | Toggle the Peek |
-| `Esc` | Close the Peek |
+| `X` | Check or uncheck the active issue; the checkbox in a row's left gutter does the same |
+| `Shift+Down`, `Shift+Up` | Move to the next or previous row and check the issue rows it crosses |
+| `Shift+click` | Check every issue row from the anchor (the issue last checked or unchecked) to the one clicked |
+| `Cmd+A` | Check every issue row shown, skipping headers, chips and dimmed context |
+| `Esc` | Clear the checked issues; with none checked, close the Peek |
 
 ## Fields and Dialogs
 

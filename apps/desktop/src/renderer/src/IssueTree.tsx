@@ -33,6 +33,9 @@ import {
 const RING =
   'has-[[role=tree]:focus-visible]:after:pointer-events-none has-[[role=tree]:focus-visible]:after:absolute has-[[role=tree]:focus-visible]:after:inset-0 has-[[role=tree]:focus-visible]:after:z-10 has-[[role=tree]:focus-visible]:after:outline-2 has-[[role=tree]:focus-visible]:after:-outline-offset-2 has-[[role=tree]:focus-visible]:after:outline-accent'
 
+/** Room under the last row while the bulk bar floats over the foot of the Tree. */
+const BAR_CLEARANCE = 64
+
 interface IssueTreeProps {
   rows: readonly Row[]
   /** Active row, collapsed and revealed sets and the Peek: everything `moveActive` reads. */
@@ -99,6 +102,7 @@ export function IssueTree({
   const indexById = useMemo(() => new Map(rows.map((r, i) => [r.id, i])), [rows])
   const activeIndex = state.activeId === null ? -1 : (indexById.get(state.activeId) ?? -1)
   const pageSize = Math.max(1, Math.floor(height / ROW_HEIGHT))
+  const selecting = state.checked.size > 0
 
   // Takes focus when it first renders, unless the user already put it somewhere.
   useEffect(() => {
@@ -140,12 +144,14 @@ export function IssueTree({
     if (activeIndex < 0) return
     const top = layout.tops[activeIndex] ?? 0
     const bottom = layout.tops[activeIndex + 1] ?? layout.total
+    // The bulk bar covers the foot of the Tree, so a row must clear it to count as in view.
+    const inset = selecting ? BAR_CLEARANCE : 0
     if (top < tree.scrollTop) tree.scrollTop = top
-    else if (bottom > tree.scrollTop + tree.clientHeight) {
-      tree.scrollTop = bottom - tree.clientHeight
+    else if (bottom > tree.scrollTop + tree.clientHeight - inset) {
+      tree.scrollTop = bottom - tree.clientHeight + inset
     }
     setScrollTop(tree.scrollTop)
-  }, [state.activeId, activeIndex, layout, treeRef])
+  }, [state.activeId, activeIndex, layout, treeRef, selecting])
 
   const indices = useMemo(
     () => windowRange(layout, scrollTop, height, activeIndex),
@@ -181,9 +187,9 @@ export function IssueTree({
   }
 
   const onRowClick = useCallback(
-    (id: string, onChevron: boolean) => {
+    (id: string, onChevron: boolean, select?: 'toggle' | 'range') => {
       // The click also focuses the Tree, the nearest focusable ancestor of the row.
-      onChange({ ...clickRow(rows, state, id, onChevron), openPage: false })
+      onChange({ ...clickRow(rows, state, id, onChevron, select), openPage: false })
     },
     [rows, state, onChange],
   )
@@ -207,7 +213,10 @@ export function IssueTree({
         onScroll={onScroll}
         className="group absolute inset-0 overflow-y-auto overflow-x-hidden focus-visible:outline-none"
       >
-        <div className="relative" style={{ height: layout.total }}>
+        <div
+          className="relative"
+          style={{ height: layout.total + (selecting ? BAR_CLEARANCE : 0) }}
+        >
           {indices.map((index) => {
             const row = rows[index]
             if (row === undefined) return null
@@ -224,6 +233,8 @@ export function IssueTree({
                 top={layout.tops[index] ?? 0}
                 active={row.id === state.activeId}
                 selected={row.id === selectedId}
+                checked={row.kind === 'issue' && state.checked.has(row.node.issue.key)}
+                selecting={selecting}
                 timing={row.kind === 'issue' && row.node.issue.key === timerKey}
                 properties={properties}
                 today={today}

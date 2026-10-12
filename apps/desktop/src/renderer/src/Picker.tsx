@@ -46,6 +46,8 @@ export interface PickerProps {
   shortcut?: string
   /** What the trigger shows and a screen reader hears after the label. */
   valueText: string
+  /** Names the trigger in place of "<label>: <value>", for a button that names an action, not a value. */
+  triggerLabel?: string
   leading?: ReactNode
   variant?: PickerVariant
   options: readonly PickerOption[]
@@ -124,6 +126,7 @@ export function Picker({
   label,
   shortcut,
   valueText,
+  triggerLabel,
   leading,
   variant = 'row',
   options,
@@ -271,7 +274,7 @@ export function Picker({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={popoverId}
-        aria-label={`${label}: ${valueText}`}
+        aria-label={triggerLabel ?? `${label}: ${valueText}`}
         aria-keyshortcuts={shortcut}
         disabled={disabled}
         popoverTarget={popoverId}

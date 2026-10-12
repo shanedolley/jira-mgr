@@ -13,7 +13,13 @@ import {
   type IpcMainInvokeEvent,
 } from 'electron'
 
-import { CHANNELS, ISSUES_PROGRESS_EVENT, LATE_READ_EVENT, WINDOW_FOCUS_EVENT } from '../shared/ipc'
+import {
+  BATCH_PROGRESS_EVENT,
+  CHANNELS,
+  ISSUES_PROGRESS_EVENT,
+  LATE_READ_EVENT,
+  WINDOW_FOCUS_EVENT,
+} from '../shared/ipc'
 import { externalUrl } from '../shared/links'
 import type { Backend } from './backend'
 import { createHandlers } from './handlers'
@@ -164,6 +170,9 @@ export function start(backend: Backend, options: StartOptions = {}): void {
             // Progress goes to the window that asked, and not at all once it is gone.
             sendProgress(progress) {
               if (!event.sender.isDestroyed()) event.sender.send(ISSUES_PROGRESS_EVENT, progress)
+            },
+            sendBatchProgress(progress) {
+              if (!event.sender.isDestroyed()) event.sender.send(BATCH_PROGRESS_EVENT, progress)
             },
             isOpen: () => !event.sender.isDestroyed(),
             sendLateRead(read) {

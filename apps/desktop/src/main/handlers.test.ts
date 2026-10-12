@@ -19,6 +19,9 @@ function progressRecorder() {
     sendProgress(p) {
       sent.push(p)
     },
+    sendBatchProgress(p) {
+      sent.push(p)
+    },
     isOpen: () => true,
     sendLateRead: () => undefined,
   }
@@ -55,6 +58,7 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     setSummary: record('setSummary', undefined),
     getIssue: record('getIssue', {} as never),
     editIssue: record('editIssue', undefined),
+    batch: record('batch', { done: [], refused: [] }),
     setDescription: record('setDescription', { saved: true }),
     addImage: record('addImage', { node: { type: 'mediaSingle' } }),
     image: record('image', { mimeType: 'image/png', bytes: new Uint8Array() }),
@@ -272,6 +276,59 @@ describe('issue edits', () => {
     expect(calls).toEqual([
       { method: 'setSprint', args: [{ key: 'PSAPAC-1', sprintId: null }] },
       { method: 'searchUsers', args: [{ query: '' }] },
+    ])
+  })
+})
+
+describe('issues:batch', () => {
+  const item = (n: number, change: unknown = { kind: 'status', statusId: '3' }) => ({
+    key: `PSAPAC-${String(n)}`,
+    id: String(1000 + n),
+    change,
+  })
+  const BATCH = { batchId: 1, items: [item(1), item(2)] }
+
+  it.each([
+    ['no batch id', { items: BATCH.items }],
+    ['a negative batch id', { ...BATCH, batchId: -1 }],
+    ['1001 items', { batchId: 1, items: Array.from({ length: 1001 }, (_, n) => item(n + 1)) }],
+    ['a key outside the key pattern', { ...BATCH, items: [{ ...item(1), key: '../x' }] }],
+    ['an id that is not digits', { ...BATCH, items: [{ ...item(1), id: 'abc' }] }],
+    ['a change of an unknown kind', { ...BATCH, items: [item(1, { kind: 'delete' })] }],
+    ['a status with no status id', { ...BATCH, items: [item(1, { kind: 'status' })] }],
+    ['a fractional sprint', { ...BATCH, items: [item(1, { kind: 'sprint', sprintId: 1.5 })] }],
+    [
+      'an edit of a field the edit does not take',
+      { ...BATCH, items: [item(1, { kind: 'edit', changes: { summary: 'x' } })] },
+    ],
+    ['a field the item does not take', { ...BATCH, items: [{ ...item(1), extra: 1 }] }],
+  ])('refuses %s before the backend runs', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['issues:batch'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes a batch of every change kind, and 1000 items, to the backend with the progress sender', async () => {
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    const mixed = {
+      batchId: 2,
+      items: [
+        item(1),
+        item(2, { kind: 'edit', changes: { assignee: null, addLabels: ['docs'] } }),
+        item(3, { kind: 'sprint', sprintId: null }),
+      ],
+    }
+    expect(await handlers['issues:batch'](mixed, noProgress)).toEqual({
+      ok: true,
+      data: { done: [], refused: [] },
+    })
+    const max = { batchId: 3, items: Array.from({ length: 1000 }, (_, n) => item(n + 1)) }
+    expect(await handlers['issues:batch'](max, noProgress)).toMatchObject({ ok: true })
+    expect(calls).toEqual([
+      { method: 'batch', args: [mixed, noProgress] },
+      { method: 'batch', args: [max, noProgress] },
     ])
   })
 })

@@ -178,7 +178,8 @@ function failureText(messages: unknown): string {
 /** Waits for the bulk task, then settles each of `items` by the lists Jira returns. */
 async function poll(run: Run, items: readonly Item[], taskId: string): Promise<void> {
   const { http, options } = run
-  const pollMs = Math.max(options.pollMs ?? POLL_MS, MIN_POLL_MS)
+  const given = options.pollMs ?? POLL_MS
+  const pollMs = Number.isFinite(given) ? Math.max(given, MIN_POLL_MS) : POLL_MS
   const sleep =
     options.sleep ?? ((ms: number, signal?: AbortSignal) => delay(ms, undefined, { signal }))
   for (let polls = Math.ceil(POLL_LIMIT_MS / pollMs); polls > 0; polls--) {

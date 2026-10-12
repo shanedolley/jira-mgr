@@ -134,6 +134,8 @@ export interface FakeJiraCounts {
   notifications: { title: string; body: string }[]
   /** The Inbox's search, and each changelog and newest-comment read it made, as path and query. */
   inbox: { searches: number; reads: string[] }
+  /** Every bulk POST received, in order, as its path and body. Bulk calls are not held. */
+  bulk: { path: string; body: unknown }[]
 }
 
 export interface FakeJiraOptions {
@@ -494,6 +496,18 @@ interface CreateBody {
   fields?: Record<string, unknown>
 }
 
+/** The body of a bulk transition or bulk field edit, as far as the fake reads it. */
+interface BulkBody {
+  bulkTransitionInputs?: { selectedIssueIdsOrKeys: string[]; transitionId: string }[]
+  selectedIssueIdsOrKeys?: string[]
+  editedFieldsInput?: {
+    priority?: { priorityId: string }
+    singleSelectClearableUserPickerFields?: { user: { accountId: string } | null }[]
+    labelsFields?: { labels: { name: string }[] }[]
+    singleSelectFields?: { fieldId: string; option: { optionId: number } }[]
+  }
+}
+
 /** The body of an issue edit, as far as the fake reads it. */
 interface EditBody {
   fields?: Record<string, unknown>
@@ -631,6 +645,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   releaseTextSearch: () => void
   /** Makes the next issue edit answer 400, whatever it holds, so a test can watch an undo refused. */
   refuseNextEdit: () => void
+  /** Makes the next bulk POST answer 400, so core runs the batch one issue at a time. */
+  refuseNextBulk: () => void
+  /** Makes every write to these issues fail: a bulk task lists them as failed and a single write answers 400. */
+  refuseKeys: (keys: string[]) => void
   /** Removes an issue as if someone else deleted it: no hold and no count, so the next refetch loses it. */
   dropIssue: (key: string) => void
   /** Moves an issue to another status as if someone else did: no hold and no count, so the next refetch sees it. */
@@ -709,6 +727,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     textSearches: [],
     notifications: [],
     inbox: { searches: 0, reads: [] },
+    bulk: [],
   }
   // Attachments by issue key. PSAPAC-1 starts with the image its description embeds.
   const attachments = new Map<string, Attachment[]>([
@@ -813,6 +832,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   let failNextTransitions = false
   let failNextComments: 404 | 500 | null = null
   let refuseNext = false
+  let refuseBulkNext = false
+  const refusedKeys = new Set<string>()
+  /** The bulk tasks submitted, by id: the issue ids Jira processed and the ones it failed. */
+  const tasks = new Map<string, { processed: number[]; failed: Record<string, string[]> }>()
   let textHeld = false
   const heldText: (() => void)[] = []
   let readsHeld = false
@@ -1131,6 +1154,95 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       return new Response(null, { status: 204 })
     }
 
+    // Jira's bulk endpoints: a submit answers a task id, and the queue answers the task's result.
+    if (method === 'GET' && path === '/rest/api/3/bulk/issues/transition') {
+      const keys = (url.searchParams.get('issueIdsOrKeys') ?? '').split(',')
+      const targets = keys.flatMap((key) => find(key) ?? [])
+      // The transitions common to every issue: a status none of them is in already.
+      const common = Object.values(STATUSES).filter((s) =>
+        targets.every((t) => t.fields.status.id !== s.id),
+      )
+      return json({
+        availableTransitions: [
+          {
+            transitions: common.map((to) => ({
+              transitionId: 100 + Number(to.id),
+              transitionName: to.name,
+              to: { statusId: Number(to.id), statusName: to.name },
+            })),
+            issues: targets.map((t) => t.key),
+            isTransitionsFiltered: false,
+          },
+        ],
+      })
+    }
+    const bulkSubmit = /^\/rest\/api\/3\/bulk\/issues\/(transition|fields)$/.exec(path)
+    if (method === 'POST' && bulkSubmit !== null) {
+      if (refuseBulkNext) {
+        refuseBulkNext = false
+        return json({ errorMessages: ['The fake refuses this bulk call.'] }, 400)
+      }
+      const submitted = body() as BulkBody
+      counts.bulk.push({ path, body: submitted })
+      const processed: number[] = []
+      const failed: Record<string, string[]> = {}
+      const apply = (keys: string[], change: (target: RawIssue) => void) => {
+        for (const key of keys) {
+          const target = find(key)
+          if (target === undefined) continue
+          if (refusedKeys.has(key)) failed[target.id] = [`The fake refuses ${key}.`]
+          else {
+            change(target)
+            touch(target)
+            processed.push(Number(target.id))
+          }
+        }
+      }
+      if (bulkSubmit[1] === 'transition') {
+        for (const input of submitted.bulkTransitionInputs ?? []) {
+          const to = Object.values(STATUSES).find(
+            (s) => 100 + Number(s.id) === Number(input.transitionId),
+          )
+          apply(input.selectedIssueIdsOrKeys, (target) => {
+            if (to !== undefined) target.fields.status = to
+          })
+        }
+      } else {
+        const input = submitted.editedFieldsInput ?? {}
+        apply(submitted.selectedIssueIdsOrKeys ?? [], (target) => {
+          const priority = PRIORITIES.find((p) => p.id === input.priority?.priorityId)
+          if (priority !== undefined) target.fields.priority = priority
+          const user = input.singleSelectClearableUserPickerFields?.[0]
+          if (user !== undefined) {
+            target.fields.assignee =
+              Object.values(USERS).find((u) => u.accountId === user.user?.accountId) ?? null
+          }
+          for (const { name } of input.labelsFields?.[0]?.labels ?? []) {
+            if (!target.fields.labels.includes(name)) target.fields.labels.push(name)
+          }
+          for (const { fieldId, option } of input.singleSelectFields ?? []) {
+            const options = fieldId === FIELDS.customer ? CUSTOMERS : ENGAGEMENTS
+            const chosen = Object.values(options).find((o) => Number(o.id) === option.optionId)
+            if (chosen !== undefined) target.fields[fieldId] = chosen
+          }
+        })
+      }
+      const taskId = String(9000 + tasks.size)
+      tasks.set(taskId, { processed, failed })
+      return json({ taskId })
+    }
+    const queued = /^\/rest\/api\/3\/bulk\/queue\/(\d+)$/.exec(path)
+    if (method === 'GET' && queued !== null) {
+      const task = tasks.get(queued[1] ?? '')
+      if (task === undefined) return json({ errorMessages: ['No such task.'] }, 404)
+      return json({
+        taskId: queued[1],
+        status: 'COMPLETE',
+        processedAccessibleIssues: task.processed,
+        failedAccessibleIssues: task.failed,
+      })
+    }
+
     const transitions = /^\/rest\/api\/3\/issue\/(PSAPAC-\d+)\/transitions$/.exec(path)
     if (transitions !== null) {
       const target = find(transitions[1] ?? '')
@@ -1150,7 +1262,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         const move = body() as { transition: { id: string } }
         await hold(move)
         const to = open.find((s) => `t${s.id}` === move.transition.id)
-        if (to === undefined) return json({ errorMessages: ['No such transition.'] }, 400)
+        if (to === undefined || refusedKeys.has(target.key)) {
+          return json({ errorMessages: [`No such transition for ${target.key}.`] }, 400)
+        }
         target.fields.status = to
         touch(target)
         counts.applied++
@@ -1585,6 +1699,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const target = find(one[1] ?? '')
       if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
       await hold(edit)
+      if (refusedKeys.has(target.key)) return refusal('summary', `The fake refuses ${target.key}.`)
       const refused = applyEdit(target, edit)
       if (refused !== null) return refused
       counts.applied++
@@ -1638,6 +1753,12 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     refuseNextEdit: () => {
       refuseNext = true
+    },
+    refuseNextBulk: () => {
+      refuseBulkNext = true
+    },
+    refuseKeys: (keys) => {
+      for (const key of keys) refusedKeys.add(key)
     },
     dropIssue: (key) => {
       const target = find(key)

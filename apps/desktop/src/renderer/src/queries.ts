@@ -12,9 +12,10 @@ import {
   type MutationOptions,
   type QueryClient,
 } from '@tanstack/react-query'
-import { useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 
 import type {
+  BatchProgress,
   CreateIssueArgs,
   EditIssueArgs,
   IssuePhase,
@@ -35,6 +36,7 @@ import { inboxKey } from './inboxQueries'
 import { call } from './ipc'
 import {
   applyCreated,
+  batchMutation,
   deleteMutation,
   doneKey,
   issueDetailKey,
@@ -45,8 +47,11 @@ import {
   sprintKey,
   summaryMutation,
   unresolvedKey,
+  type BatchRequestItem,
+  type BatchRun,
 } from './optimistic'
 import {
+  batchRecorder,
   descriptionEntry,
   editEntry,
   recorder,
@@ -405,6 +410,53 @@ export function useSetSprint() {
       recorder(client, sprintEntry),
     ),
   )
+}
+
+/** Numbers each batch, so a progress event is told apart from another batch's. */
+let lastBatchId = 0
+
+/** One batch to run: the change for each issue, and how its undo entry reads. */
+export interface BatchOptions {
+  items: BatchRequestItem[]
+  /** What the toast says after the batch, from the count of issues Jira changed. */
+  title: (changed: number) => string
+  /** The batch is itself an undo, which the stack must not record again. */
+  undoing?: boolean
+}
+
+/**
+ * Runs batches over `issues:batch`. `progress` holds the issues settled so far of the running
+ * batch, or `null` between batches. A batch's changed issues go on the undo stack as one entry.
+ */
+export function useBatch() {
+  const client = useQueryClient()
+  const [progress, setProgress] = useState<BatchProgress | null>(null)
+  useEffect(
+    () =>
+      window.jm.onBatchProgress((next) => {
+        setProgress((held) => (held?.batchId === next.batchId ? next : held))
+      }),
+    [],
+  )
+  const run = useCallback(
+    async ({ items, title, undoing }: BatchOptions): Promise<BatchRun> => {
+      const batchId = lastBatchId++
+      setProgress({ batchId, done: 0, total: items.length })
+      try {
+        return await batchMutation(
+          client,
+          (sent) => call('issues:batch', { batchId, items: sent }),
+          rereadIssue,
+          items,
+          batchRecorder(client, title, undoing),
+        )
+      } finally {
+        setProgress(null)
+      }
+    },
+    [client],
+  )
+  return { run, progress }
 }
 
 /**

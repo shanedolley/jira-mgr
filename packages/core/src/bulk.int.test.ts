@@ -863,6 +863,33 @@ describe('runBatch review fixes', () => {
     expect(polls).toBe(1200)
   })
 
+  it('polls every 1000 ms when pollMs is NaN or Infinity', async () => {
+    for (const pollMs of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      const waits: number[] = []
+      const fake = fakeClient((method, path) => {
+        if (method === 'POST') return { taskId: '9' }
+        if (path.startsWith('/rest/api/3/bulk/queue/')) {
+          return {
+            taskId: '9',
+            status: 'COMPLETE',
+            processedAccessibleIssues: [Number(idOf('PSAPAC-100'))],
+          }
+        }
+        return {}
+      })
+
+      await runBatch(fake, all(keys(1), edit({ priorityId: '3' })), {
+        pollMs,
+        sleep: (ms) => {
+          waits.push(ms)
+          return Promise.resolve()
+        },
+      })
+
+      expect(waits).toEqual([1000])
+    }
+  })
+
   it('returns done and refused in input order whatever order the calls finish in', async () => {
     const waiting: { key: string; settle: () => void }[] = []
     const fake = fakeClient(

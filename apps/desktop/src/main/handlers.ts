@@ -6,7 +6,13 @@ import { TEXT_QUERY_MAX } from '@jira-mgr/core/search'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from '@jira-mgr/core/view-filter'
 import { z } from 'zod'
 
-import { ATTACHMENT_LIMIT_BYTES, CREATE_TYPES, IMAGE_LIMIT_BYTES, IMAGE_TYPES } from '../shared/ipc'
+import {
+  ATTACHMENT_LIMIT_BYTES,
+  BATCH_MAX,
+  CREATE_TYPES,
+  IMAGE_LIMIT_BYTES,
+  IMAGE_TYPES,
+} from '../shared/ipc'
 import type {
   AddAttachmentArgs,
   AddCommentArgs,
@@ -15,6 +21,7 @@ import type {
   AddWorklogArgs,
   ArgsOf,
   AvatarArgs,
+  BatchArgs,
   Channel,
   CommentIdArgs,
   CreateIssueArgs,
@@ -230,6 +237,26 @@ const editIssueArgs: z.ZodType<EditIssueArgs> = z.strictObject({
   changes: issueChanges,
 })
 
+const batchArgs: z.ZodType<BatchArgs> = z.strictObject({
+  batchId: z.number().int().nonnegative(),
+  items: z
+    .array(
+      z.strictObject({
+        key: issueKey,
+        id: jiraId,
+        change: z.discriminatedUnion('kind', [
+          z.strictObject({ kind: z.literal('edit'), changes: issueChanges }),
+          z.strictObject({ kind: z.literal('status'), statusId: text(64) }),
+          z.strictObject({
+            kind: z.literal('sprint'),
+            sprintId: z.number().int().positive().nullable(),
+          }),
+        ]),
+      }),
+    )
+    .max(BATCH_MAX),
+})
+
 const setStatusArgs: z.ZodType<SetStatusArgs> = z.strictObject({
   key: issueKey,
   statusId: text(64),
@@ -391,6 +418,7 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'issues:setSummary': setSummaryArgs,
   'issues:get': keyArgs,
   'issues:edit': editIssueArgs,
+  'issues:batch': batchArgs,
   'issues:setDescription': setDescriptionArgs,
   'attachments:addImage': addImageArgs,
   'attachments:image': imageArgs,
@@ -536,6 +564,7 @@ export function createHandlers(
       await backend.editIssue(args)
       return null
     }),
+    'issues:batch': handle('issues:batch', (args, progress) => backend.batch(args, progress)),
     'issues:setDescription': handle('issues:setDescription', (args) =>
       backend.setDescription(args),
     ),

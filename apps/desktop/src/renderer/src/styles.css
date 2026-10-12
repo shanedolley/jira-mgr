@@ -112,6 +112,7 @@
 }
 
 .tree-row[aria-selected='true'],
+.tree-row[aria-checked='true'],
 .is-current {
   background: var(--row-selected);
   font-weight: 500;
@@ -124,7 +125,8 @@
   font-weight: 600;
 }
 
-[role='tree']:focus .tree-row[data-active='true'][aria-selected='true'] {
+[role='tree']:focus .tree-row[data-active='true'][aria-selected='true'],
+[role='tree']:focus .tree-row[data-active='true'][aria-checked='true'] {
   background: var(--row-selected-focus);
 }
 
