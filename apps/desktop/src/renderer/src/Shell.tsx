@@ -36,6 +36,7 @@ import type {
 } from '../../shared/ipc'
 import { issueUrl } from '../../shared/links'
 import { Banner } from './Banner'
+import { BulkBar } from './BulkBar'
 import { copyText } from './clipboard'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
@@ -87,6 +88,7 @@ import type { ActionId } from './paletteActions'
 import { assignMeOutcome, assigneePatch } from './properties'
 import { attemptWith } from './PropertyPickers'
 import {
+  useBatch,
   useCustomers,
   useDeleteIssue,
   useEditIssue,
@@ -101,7 +103,7 @@ import {
 } from './queries'
 import { NotifyContext, type Notify } from './notify'
 import { applyUnaskedRead } from './optimistic'
-import { describeEdit, undoStack, type UndoEntry } from './undo'
+import { describeEdit, isBatch, reversible, undoStack, type StackEntry } from './undo'
 import { useUndo } from './useUndo'
 import {
   ancestorIds,
@@ -112,6 +114,7 @@ import {
   issuesShown,
   mergeIssues,
   moveActive,
+  pruneChecked,
   type MoveResult,
   type TreeRow,
   type TreeState,
@@ -243,6 +246,12 @@ export function Shell({ session }: { session: Session }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set())
   const [peekOpen, setPeekOpen] = useState(false)
+  // The issues checked for a bulk action, by key, and the one a Shift+click range starts from.
+  const batch = useBatch()
+  const [selection, setSelection] = useState<{
+    checked: ReadonlySet<string>
+    anchor: string | null
+  }>({ checked: new Set(), anchor: null })
   // Enter in the filter asked for the first issue row, which waits for the deferred rows.
   const [enterPending, setEnterPending] = useState(false)
   const [lastIssueKey, setLastIssueKey] = useState<string | null>(null)
@@ -402,9 +411,16 @@ export function Shell({ session }: { session: Session }) {
     }
   }
 
+  // Only the rows shown stay checked: a collapse, a filter or a move out of view drops its issues.
+  // Not while a batch runs: its optimistic changes can hide rows that come back if Jira refuses
+  // them, and the bar must stay up to show the progress. The batch's end prunes what left.
+  const pruned = batch.progress === null ? pruneChecked(rows, selection) : selection
+  if (pruned !== selection) setSelection(pruned)
+  const { checked, anchor } = selection
+
   const state = useMemo<TreeState>(
-    () => ({ activeId, collapsed, revealed, peekOpen }),
-    [activeId, collapsed, revealed, peekOpen],
+    () => ({ activeId, collapsed, revealed, peekOpen, checked, anchor }),
+    [activeId, collapsed, revealed, peekOpen, checked, anchor],
   )
 
   function apply(next: MoveResult) {
@@ -413,6 +429,11 @@ export function Shell({ session }: { session: Session }) {
     setCollapsed(next.collapsed)
     setRevealed(next.revealed)
     setPeekOpen(next.peekOpen)
+    setSelection((held) =>
+      held.checked === next.checked && held.anchor === next.anchor
+        ? held
+        : { checked: next.checked, anchor: next.anchor },
+    )
     if (!next.peekOpen) setEditingKey(null)
     const row = rows.find((r) => r.id === next.activeId)
     if (row?.kind === 'issue') {
@@ -749,10 +770,21 @@ export function Shell({ session }: { session: Session }) {
 
   const undo = useUndo((reported) => {
     notify(reported)
-  })
+  }, batch)
+
+  /** The checked issues, in the order they were checked. A row a running batch hides still counts. */
+  const checkedIssues = useMemo(() => {
+    const byKey = new Map(issues.map((i) => [i.key, i]))
+    return [...checked].flatMap((key) => byKey.get(key) ?? [])
+  }, [issues, checked])
+
+  function clearChecked() {
+    setSelection({ checked: new Set(), anchor: null })
+    focusTree()
+  }
 
   /** Undoes `offered`, or the newest edit, and takes down the toasts that offered it. */
-  function runUndo(offered?: UndoEntry) {
+  function runUndo(offered?: StackEntry) {
     const taken = undo(offered)
     if (taken !== undefined) setToasts((held) => held.filter((toast) => toast.entry !== taken))
   }
@@ -819,6 +851,10 @@ export function Shell({ session }: { session: Session }) {
         } else if (overview !== null) {
           event.preventDefault()
           setOverview(null)
+        } else if (checked.size > 0 && !inboxOpen) {
+          // The checked issues go first, and a second Esc closes the Peek.
+          event.preventDefault()
+          clearChecked()
         } else if (peekOpen && !inboxOpen) {
           event.preventDefault()
           closePeek()
@@ -852,11 +888,11 @@ export function Shell({ session }: { session: Session }) {
       undoStack(client).onPush((entry) => {
         notify(
           {
-            title: describeEdit(entry),
-            notes: entry.reversal === null ? ['This change cannot be undone here.'] : [],
+            title: isBatch(entry) ? entry.title : describeEdit(entry),
+            notes: reversible(entry) ? [] : ['This change cannot be undone here.'],
             warned: false,
           },
-          entry.reversal === null ? {} : { entry },
+          reversible(entry) ? { entry } : {},
         )
       }),
     [client, notify],
@@ -1073,7 +1109,7 @@ export function Shell({ session }: { session: Session }) {
         id="issue-list"
         aria-label="Issue list"
         inert={listCovered}
-        className="col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
+        className="relative col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
       >
         <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4 max-rail:pl-6">
           <h1 className="font-semibold">Issues</h1>
@@ -1165,6 +1201,15 @@ export function Shell({ session }: { session: Session }) {
           </Banner>
         )}
         {body}
+        <BulkBar
+          checked={checkedIssues}
+          all={issues}
+          me={meQuery.data}
+          progress={batch.progress}
+          run={batch.run}
+          onNotice={notify}
+          onClear={clearChecked}
+        />
         <p role="status" className="sr-only">
           {loadStatus}
         </p>
@@ -1344,7 +1389,7 @@ export function Shell({ session }: { session: Session }) {
       {toasts.length > 0 && (
         <ul
           aria-label="Notices"
-          className="fixed bottom-4 left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2 max-rail:left-16 max-rail:max-w-[min(28rem,calc(100vw-5rem))]"
+          className={`fixed ${checked.size > 0 ? 'bottom-[4.5rem]' : 'bottom-4'} left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2 max-rail:left-16 max-rail:max-w-[min(28rem,calc(100vw-5rem))]`}
         >
           {toasts.map((toast) => (
             <Toast

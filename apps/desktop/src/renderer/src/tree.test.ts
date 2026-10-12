@@ -14,6 +14,7 @@ import {
   layoutRows,
   mergeIssues,
   moveActive,
+  pruneChecked,
   rowAtOffset,
   windowRange,
   type KeyInput,
@@ -373,6 +374,8 @@ const state = (activeId: string | null, extra: Partial<TreeState> = {}): TreeSta
   collapsed: new Set(),
   revealed: new Set(),
   peekOpen: false,
+  checked: new Set(),
+  anchor: null,
   ...extra,
 })
 
@@ -528,13 +531,142 @@ describe('moveActive', () => {
   })
 
   it('leaves every other key unhandled', () => {
-    for (const key of ['c', 's', 'a', 'l', 'p', 'e', 't', 'x', 'C', 'Tab', 'Backspace', '/', '?']) {
+    for (const key of ['c', 's', 'a', 'l', 'p', 'e', 't', 'C', 'Tab', 'Backspace', '/', '?']) {
       expect(move('i:P-1', press(key))).toBeNull()
     }
   })
 
   it('handles nothing when there are no rows', () => {
     expect(moveActive([], state(null), press('j'), context)).toBeNull()
+  })
+})
+
+describe('selection keys', () => {
+  // Rows: c:1, P-1, P-2, P-3, P-4, d:P-1, n:1, P-6. Issue rows are P-1, P-2, P-3, P-4 and P-6.
+  const groups = groupsOf(SAMPLE)
+  const rows = flattenTree(groups, NONE)
+  const context: MoveContext = { pageSize: 3, expandable: expandableIds(groups) }
+  const move = (active: string | null, input: KeyInput, extra: Partial<TreeState> = {}) =>
+    moveActive(rows, state(active, extra), input, context)
+  const checked = (result: { checked: ReadonlySet<string> } | null) =>
+    [...(result?.checked ?? [])].sort()
+
+  it('X checks and unchecks the active issue, and makes it the anchor', () => {
+    const on = move('i:P-2', press('x'))
+    expect(checked(on)).toEqual(['P-2'])
+    expect(on?.anchor).toBe('P-2')
+    expect(on?.activeId).toBe('i:P-2')
+    expect(checked(move('i:P-2', press('X'), { checked: new Set(['P-2', 'P-4']) }))).toEqual([
+      'P-4',
+    ])
+  })
+
+  it('X on a header, a chip or a row with no issue checks nothing but is still handled', () => {
+    for (const id of ['c:1', 'd:P-1', 'n:1']) {
+      expect(move(id, press('x'))).toMatchObject({ activeId: id })
+      expect(checked(move(id, press('x')))).toEqual([])
+    }
+  })
+
+  it('never checks a row shown only as context', () => {
+    const filtered = flattenTree(groupsOf(SAMPLE, { match: (i) => i.key === 'P-2' }), NONE)
+    expect(filtered.some((r) => r.kind === 'issue' && r.node.issue.key === 'P-1')).toBe(true)
+    const result = moveActive(filtered, state('i:P-1'), press('x'), context)
+    expect(checked(result)).toEqual([])
+    // Cmd+A skips it too: of P-1 (context) and P-2 (a match), only P-2 is checked.
+    const all = moveActive(filtered, state('i:P-2'), press('a', { metaKey: true }), context)
+    expect(checked(all)).toEqual(['P-2'])
+  })
+
+  it('Shift+Down moves down and checks the row it left and the one it reached', () => {
+    const first = move('i:P-2', press('ArrowDown', { shiftKey: true }))
+    expect(first?.activeId).toBe('i:P-3')
+    expect(checked(first)).toEqual(['P-2', 'P-3'])
+    expect(first?.anchor).toBe('P-2')
+    // Crossing a chip checks only the issue rows around it, and the anchor stays.
+    const next = move('i:P-4', press('ArrowDown', { shiftKey: true }), {
+      checked: new Set(['P-2', 'P-3', 'P-4']),
+      anchor: 'P-2',
+    })
+    expect(next?.activeId).toBe('d:P-1')
+    expect(checked(next)).toEqual(['P-2', 'P-3', 'P-4'])
+    expect(next?.anchor).toBe('P-2')
+  })
+
+  it('Shift+Up adds upward, and nothing is unchecked by moving back', () => {
+    const up = move('i:P-4', press('ArrowUp', { shiftKey: true }))
+    expect(up?.activeId).toBe('i:P-3')
+    expect(checked(up)).toEqual(['P-3', 'P-4'])
+    const back = move('i:P-3', press('ArrowDown', { shiftKey: true }), {
+      checked: new Set(['P-3', 'P-4']),
+      anchor: 'P-4',
+    })
+    expect(checked(back)).toEqual(['P-3', 'P-4'])
+  })
+
+  it('a plain arrow leaves the checked set alone', () => {
+    const result = move('i:P-2', press('ArrowDown'), { checked: new Set(['P-2']), anchor: 'P-2' })
+    expect(checked(result)).toEqual(['P-2'])
+  })
+
+  it('Cmd+A and Ctrl+A add every issue row shown, and a chip or header is not one', () => {
+    for (const mod of [{ metaKey: true }, { ctrlKey: true }]) {
+      const all = move('c:1', press('a', mod))
+      expect(checked(all)).toEqual(['P-1', 'P-2', 'P-3', 'P-4', 'P-6'])
+      expect(all?.activeId).toBe('c:1')
+    }
+    // Only what is shown: a collapsed Epic hides its children.
+    const collapsed = { collapsed: new Set(['i:P-1']) }
+    const shown = moveActive(
+      flattenTree(groups, { ...NONE, ...collapsed }),
+      state('c:1', collapsed),
+      press('a', { metaKey: true }),
+      context,
+    )
+    expect(checked(shown)).toEqual(['P-1', 'P-6'])
+  })
+
+  it('Cmd+A keeps what was checked and other Cmd keys stay unhandled', () => {
+    expect(
+      checked(move('c:1', press('A', { metaKey: true }), { checked: new Set(['P-9']) })),
+    ).toContain('P-9')
+    expect(move('c:1', press('a', { metaKey: true, shiftKey: true }))).toBeNull()
+    expect(move('c:1', press('a', { metaKey: true, altKey: true }))).toBeNull()
+    expect(move('c:1', press('x', { metaKey: true }))).toBeNull()
+  })
+
+  it('Esc clears the checked issues first, and a second Esc closes the Peek', () => {
+    const open = { checked: new Set(['P-2', 'P-4']), anchor: 'P-2', peekOpen: true }
+    const first = move('i:P-2', press('Escape'), open)
+    expect(first).toMatchObject({ peekOpen: true, anchor: null })
+    expect(checked(first)).toEqual([])
+    const second = move('i:P-2', press('Escape'), { peekOpen: true })
+    expect(second?.peekOpen).toBe(false)
+    // With nothing checked and no Peek, Esc is not the Tree's.
+    expect(move('i:P-2', press('Escape'))).toBeNull()
+  })
+})
+
+describe('pruneChecked', () => {
+  const rows = flattenTree(groupsOf(SAMPLE), NONE)
+
+  it('drops keys no row shows, and an anchor that went with them', () => {
+    const pruned = pruneChecked(rows, { checked: new Set(['P-2', 'P-9']), anchor: 'P-9' })
+    expect([...pruned.checked]).toEqual(['P-2'])
+    expect(pruned.anchor).toBeNull()
+  })
+
+  it('returns the same object when every key is still shown', () => {
+    const held = { checked: new Set(['P-2']), anchor: 'P-2' }
+    expect(pruneChecked(rows, held)).toBe(held)
+  })
+
+  it('drops an issue that became context and one behind a collapsed parent', () => {
+    const held = { checked: new Set(['P-1', 'P-2']), anchor: null }
+    const context = flattenTree(groupsOf(SAMPLE, { match: (i) => i.key === 'P-2' }), NONE)
+    expect([...pruneChecked(context, held).checked]).toEqual(['P-2'])
+    const collapsed = flattenTree(groupsOf(SAMPLE), { ...NONE, collapsed: new Set(['i:P-1']) })
+    expect([...pruneChecked(collapsed, held).checked]).toEqual(['P-1'])
   })
 })
 
@@ -546,6 +678,41 @@ describe('clickRow', () => {
       activeId: 'i:P-4',
       peekOpen: true,
     })
+  })
+
+  it('a checkbox click checks the issue and makes it active and the anchor, without the Peek', () => {
+    const on = clickRow(rows, state(null), 'i:P-4', false, 'toggle')
+    expect([...on.checked]).toEqual(['P-4'])
+    expect(on).toMatchObject({ activeId: 'i:P-4', anchor: 'P-4', peekOpen: false })
+    const off = clickRow(rows, on, 'i:P-4', false, 'toggle')
+    expect([...off.checked]).toEqual([])
+  })
+
+  it('a Shift+click adds every issue row from the anchor to the row, in either direction', () => {
+    const anchored = state('i:P-2', { checked: new Set(['P-2']), anchor: 'P-2' })
+    const down = clickRow(rows, anchored, 'i:P-4', false, 'range')
+    expect([...down.checked].sort()).toEqual(['P-2', 'P-3', 'P-4'])
+    expect(down).toMatchObject({ activeId: 'i:P-4', anchor: 'P-2', peekOpen: false })
+    const upFrom = state('i:P-6', { checked: new Set(['P-6']), anchor: 'P-6' })
+    expect([...clickRow(rows, upFrom, 'i:P-3', false, 'range').checked].sort()).toEqual([
+      'P-3',
+      'P-4',
+      'P-6',
+    ])
+  })
+
+  it('a Shift+click with no anchor starts from the active issue, else from the row itself', () => {
+    const fromActive = clickRow(rows, state('i:P-2'), 'i:P-4', false, 'range')
+    expect([...fromActive.checked].sort()).toEqual(['P-2', 'P-3', 'P-4'])
+    expect(fromActive.anchor).toBe('P-2')
+    const alone = clickRow(rows, state('c:1'), 'i:P-4', false, 'range')
+    expect([...alone.checked]).toEqual(['P-4'])
+  })
+
+  it('a Shift+click on a header or chip is a plain click', () => {
+    const header = clickRow(rows, state(null), 'c:1', false, 'range')
+    expect([...header.collapsed]).toEqual(['c:1'])
+    expect([...header.checked]).toEqual([])
   })
 
   it('toggles a header or chip, and an issue only by its chevron', () => {

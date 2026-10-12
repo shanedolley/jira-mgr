@@ -118,6 +118,41 @@ function Pick({
   )
 }
 
+/**
+ * The checkbox in an issue row's left gutter, drawn only: a click on it is read by the row, and `X`
+ * is the keyboard's way to the same. It shows under the pointer, on the active row and, once any
+ * row is checked, on every row. A checked box is the one place the accent fills, as a control.
+ */
+function Check({ checked, shown }: { checked: boolean; shown: boolean }) {
+  return (
+    <span
+      aria-hidden
+      data-check
+      className={`absolute left-0.5 flex size-4 items-center justify-center group-hover/row:opacity-100 group-data-[active=true]/row:opacity-100 ${shown ? 'opacity-100' : 'opacity-0'}`}
+    >
+      <svg viewBox="0 0 16 16" className="size-3.5" fill="none" strokeLinecap="round">
+        <rect
+          x="1.5"
+          y="1.5"
+          width="13"
+          height="13"
+          rx="3.5"
+          className={checked ? 'fill-accent' : 'stroke-muted'}
+          strokeWidth="1.25"
+        />
+        {checked && (
+          <path
+            d="m4.8 8.3 2.2 2.2 4.2-4.6"
+            className="stroke-accent-ink"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        )}
+      </svg>
+    </span>
+  )
+}
+
 /** Adds an issue to a group: a header's "+" opens create with that group's Customer. */
 function AddButton({ row, onAdd }: { row: Row; onAdd: (row: Row) => void }) {
   const customer = row.kind === 'customer' || row.kind === 'noEpic' ? row.customer : null
@@ -417,6 +452,10 @@ interface TreeRowProps {
   active: boolean
   /** The row whose issue the Peek shows. */
   selected: boolean
+  /** The row's issue is checked, for a bulk action. */
+  checked: boolean
+  /** Some row is checked, so every issue row shows its checkbox. */
+  selecting: boolean
   /** The shared timer runs on this row's issue. */
   timing: boolean
   /** The row properties the Display menu chose, shown on issue rows while the Tree is wide. */
@@ -426,7 +465,8 @@ interface TreeRowProps {
   /** The open issues holding this row's issue up, and held up by it, as counts so the memo holds. */
   blockedBy: number
   blocking: number
-  onClick: (id: string, onChevron: boolean) => void
+  /** `toggle` is a click on the checkbox and `range` a Shift+click, which check instead of opening. */
+  onClick: (id: string, onChevron: boolean, select?: 'toggle' | 'range') => void
   /** A click on the row's status dot or avatar, after `onClick` has made the row active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
   /** Done over total of the issue's children, which the row shows beside its title, as numbers so the memo holds. */
@@ -442,6 +482,8 @@ export const TreeRow = memo(function TreeRow({
   top,
   active,
   selected,
+  checked,
+  selecting,
   timing,
   properties,
   today,
@@ -455,6 +497,8 @@ export const TreeRow = memo(function TreeRow({
 }: TreeRowProps) {
   const blocks = { blockedBy, blocking }
   const progress = done === undefined || total === undefined ? undefined : { done, total }
+  // A header, a chip and an ancestor shown only as context cannot be checked.
+  const checkable = row.kind === 'issue' && !row.node.contextOnly
   return (
     <div
       id={rowDomId(row.id)}
@@ -465,10 +509,17 @@ export const TreeRow = memo(function TreeRow({
       aria-posinset={row.posInSet}
       aria-expanded={row.expandable ? row.expanded : undefined}
       aria-selected={selected ? true : undefined}
+      aria-checked={checkable && selecting ? checked : undefined}
       data-active={active}
+      // A Shift+click checks a range, so it must not also select the text it crosses.
+      onMouseDown={(event) => {
+        if (event.shiftKey) event.preventDefault()
+      }}
       onClick={(event) => {
         const target = event.target as Element
-        onClick(row.id, target.closest('[data-chevron]') !== null)
+        const select =
+          target.closest('[data-check]') !== null ? 'toggle' : event.shiftKey ? 'range' : undefined
+        onClick(row.id, target.closest('[data-chevron]') !== null, select)
         const picked = target.closest<HTMLElement>('[data-pick]')?.dataset.pick
         if (row.kind === 'issue' && (picked === 'status' || picked === 'assignee')) {
           onPick(row.node.issue.key, picked)
@@ -483,6 +534,7 @@ export const TreeRow = memo(function TreeRow({
       }}
       className="tree-row group/row absolute inset-x-2 flex cursor-default items-center gap-2 rounded-lg pr-2"
     >
+      {checkable && <Check checked={checked} shown={selecting} />}
       <Chevron row={row} />
       <Content
         row={row}
