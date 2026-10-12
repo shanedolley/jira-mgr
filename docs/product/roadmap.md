@@ -57,7 +57,7 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 
 ## Review Follow-ups
 
-Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md). Each is one issue; the tracker holds the status. All are built except #143, whose core batch module is merged and whose desktop selection, bulk bar and batch undo wait for review.
+Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md). Each is one issue; the tracker holds the status. All are built.
 
 | Issue | Item |
 |---|---|
