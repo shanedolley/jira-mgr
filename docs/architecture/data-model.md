@@ -15,7 +15,7 @@ Core reads Jira entities and maps them to plain domain types. Everything else ab
 | `assignee`, `priority`, `resolution` | Same-named fields, `null` when empty |
 | `creator` | `creator`: `accountId` and `displayName`, `null` when empty |
 | `links` | `issuelinks`: per link the type name, the direction and the linked issue's key and status category |
-| `originalEstimateSeconds`, `remainingEstimateSeconds` | `timetracking` |
+| `originalEstimateSeconds`, `remainingEstimateSeconds`, `timeSpentSeconds` | `timetracking` |
 | `dueDate` | `duedate` |
 | `customer`, `engagement` | The resolved custom fields, as `{ id, value }` |
 | `sprints` | The resolved Sprint field, as `{ id, name, state }`, `[]` when empty |
