@@ -2,9 +2,9 @@
 
 ## Where Work Stands
 
-Checked 2026-10-12. Head `3d1487f` (`git log --oneline -1 origin/main`, PR [#195](https://github.com/shanedolley/jira-mgr/pull/195), the desktop bulk bar); main CI run 38195032090 succeeded on it. Every story from #9 to #184 is closed except #143. #143 is the one open issue, built and in HIL Review.
+Checked 2026-10-12. Head `5bc9feb` (`git log --oneline -1 origin/main`, PR [#196](https://github.com/shanedolley/jira-mgr/pull/196), a handover refresh after the desktop bulk bar in #195); main CI run 38196777760 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). No issue is open.
 
-#143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Reviewer 143-desktop-review passed #195 after the builder fixed its M1, M2 and L1 to L4. #143 waits in HIL Review, labelled `question`, on [the M3 question](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6116549609): under the default Hide done, a bulk move to Done empties the selection, against Shane's answer that the selection stays. Recommended A (keep as built); on B, build a follow-up that keeps issues a batch moved out of view.
+#143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
 Shane closed #138, #150 and #184 and answered #144 ("keep the neutral capsule with a red icon") and #151 ("Approved") on 2026-10-12; the project manager closed those two.
 
@@ -40,7 +40,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #150 | Epic progress, Epics table, Customers page | [#189](https://github.com/shanedolley/jira-mgr/pull/189) | Closed 2026-10-12. Open Lows L4 and L5 (see the #150 review comments). No "No Customer" row; progress counts direct children |
 | #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | Closed 2026-10-12, approved. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
 | #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | Closed 2026-10-12. Found by 149-sprint-review |
-| #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194), [#195](https://github.com/shanedolley/jira-mgr/pull/195) | HIL Review, M3 question open. Low: the same-tick `inFlight` guard in `BulkBar.tsx` has no unit test (no component-test setup). Selection is pruned to the rows shown. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
+| #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194), [#195](https://github.com/shanedolley/jira-mgr/pull/195) | Closed 2026-10-12; M3 settled as option A. Low: the same-tick `inFlight` guard in `BulkBar.tsx` has no unit test (no component-test setup). Selection is pruned to the rows shown. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -66,12 +66,11 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Open | 1: #143 | `gh issue list --state open --limit 200` | 2026-10-12 |
-| Closed | 70 | `gh issue list --state closed --limit 300` | 2026-10-12 |
+| Open | 0 | `gh issue list --state open --limit 200` | 2026-10-12 |
+| Closed | 71 | `gh issue list --state closed --limit 300` | 2026-10-12 |
 | In progress | none | `--label status:in-progress` | 2026-10-12 |
-| In HIL Review | #143 | `--label status:hil-review` | 2026-10-12 |
-| With `question` | #143 | `--label question` | 2026-10-12 |
-| Open blockers of #143 | none | `gh api repos/shanedolley/jira-mgr/issues/143/dependencies/blocked_by --jq '[.[]\|select(.state=="open")\|.number]'` | 2026-10-12 |
+| In HIL Review | none | `--label status:hil-review` | 2026-10-12 |
+| With `question` | none | `--label question` | 2026-10-12 |
 | Open pull requests | none | `gh pr list --state open` | 2026-10-12 |
 
 `git worktree list` shows the main tree only (2026-10-12). Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
@@ -106,12 +105,11 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 | Raised | Decision | Owner |
 |---|---|---|
 | 2026-10-10 | Whether to build Favourites and recents (gap 13) | Shane |
-| 2026-10-12 | #143 M3: whether the selection survives a bulk move out of view ([comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6116549609)) | Shane |
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
 - #131: the light-theme fills stay as built, and the active-only row keeps its fill alone.
-- #143 (Shane, 2026-10-12): Esc clears the selection before it closes the Peek; the selection stays after an action; bulk calls send `sendBulkNotification: false`; checked rows take the selected fill through `aria-checked` while the peeked row keeps `aria-selected` and its bold key. The bar's primary action is Status.
+- #143 (Shane, 2026-10-12): M3 option A, the selection stays pruned to the rows shown. Esc clears the selection before it closes the Peek; the selection stays after an action; bulk calls send `sendBulkNotification: false`; checked rows take the selected fill through `aria-checked` while the peeked row keeps `aria-selected` and its bold key. The bar's primary action is Status.
 - #144 (Shane, 2026-10-12): keep the neutral capsule with a red icon. #151 (2026-10-12): approved as built.
 - Review decisions: [docs/discovery/2026-10-10-review-decisions.md](docs/discovery/2026-10-10-review-decisions.md). Shane's answers on #128 to #149 (2026-10-11) sit under his login in `gh issue view <n> --json comments`, as agents post through his account. The ones that shape code: #128 option B (branch on not found and server fault); #131 option C (the bold key); #139 option A (sibling keys plus a `not` object); #142 upload a pasted image after the create and patch the description, and drop onto the dialog; #145 the "No subtasks" section always shows, the UI says "sub-issue", and a lost create is read to confirm before a retry; #146 option A; #147 option B (cap 50); #148 option C (keep the reporter clause); #138 option B (row properties and order persist per view).
 - 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors as dimmed context; internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review; Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10; zod is core's validation library and `marked` its Markdown lexer; view filters are multi-value arrays; `internal` errors exit 1.
