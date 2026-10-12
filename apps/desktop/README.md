@@ -366,7 +366,7 @@ One `keydown` listener on the document, in the Shell, asks `resolveKey` (`keymap
 - Dates filter by presets around today, with no absolute before and after dates. Relations count a "Blocks" link only while the other issue is not Done.
 - Row heights are fixed. A row with a second line would need a rewrite of the window.
 - The theme choice lives in `localStorage`, not in the settings file, which the CLI also reads. Move it there if the CLI should honour it.
-- Opening the Peek narrows the Tree, which can wrap the toolbar onto another line and move the rows by one, so a double click on a row lands on its neighbour. Enter and the Peek's Open button open the page.
+- Opening the Peek narrows the Tree, which can wrap the toolbar onto another line and move the rows by one. A double-click still opens the issue its first click hit (#201); the wrap itself is not fixed.
 - The page cannot clear a parent, since core's `editIssue` takes a key only, and cannot clear the original estimate, since it takes a duration only.
 - "Recent assignees" are the people on the most recently updated loaded issues, since Jira keeps no record of who the user assigned to.
 - The label list is the labels on the issues loaded so far, so a label used only by a Done issue appears once Done has loaded.

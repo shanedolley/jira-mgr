@@ -57,7 +57,7 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 
 ## Review Follow-ups
 
-Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md). Each is one issue; the tracker holds the status. All are built.
+Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202 are Shane's later requests. Each is one issue; the tracker holds the status. All are built.
 
 | Issue | Item |
 |---|---|
@@ -67,6 +67,7 @@ Stories #126 to #151 came from the [UX review and Linear gap analysis](../discov
 | #140, #141, #142, #145 | Tree quick actions; issue actions in the palette; description and attachments in the create dialog; sub-issues from the issue page |
 | #150, #151 | Epic progress, the Epics table and the Customers page; a layout for narrow windows |
 | #143 | Select and edit several issues at once. Core batch module and the desktop selection, bulk bar and batch undo built |
+| #199 to #202 | Hide done hides every Done issue; sub-issue progress on Story, Task and Bug rows, not Epics; a double-click opens the first-clicked issue; estimate, time logged and a worklog chart on the Peek and the issue page |
 
 ## Working Rules
 
