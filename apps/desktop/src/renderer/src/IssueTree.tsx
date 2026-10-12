@@ -13,7 +13,7 @@ import {
   type RefObject,
 } from 'react'
 
-import { TreeRow, rowDomId } from './TreeRow'
+import { TreeRow, rowDomId, rowProgress } from './TreeRow'
 import {
   ROW_HEIGHT,
   clickRow,
@@ -58,7 +58,7 @@ interface IssueTreeProps {
   onPick: (key: string, property: 'status' | 'assignee') => void
   /** A click on a group header's "+". */
   onAdd: (row: Row) => void
-  /** Done over total of each parent's children, of which an Epic's row shows its own. */
+  /** Done over total of each parent's children, of which a Story, Task or Bug row shows its own. */
   progress: ReadonlyMap<string, Progress>
   treeRef: RefObject<HTMLDivElement | null>
   /** Shown over a Tree with no issues, which stays mounted so focus is not lost. */
@@ -221,11 +221,7 @@ export function IssueTree({
             const row = rows[index]
             if (row === undefined) return null
             const held = row.kind === 'issue' ? blocks.get(row.node.issue.key) : undefined
-            // Only an Epic's row shows its progress.
-            const children =
-              row.kind === 'issue' && row.node.issue.issueType.hierarchyLevel >= 1
-                ? progress.get(row.node.issue.key)
-                : undefined
+            const children = rowProgress(row, progress)
             return (
               <TreeRow
                 key={row.id}

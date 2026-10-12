@@ -75,6 +75,19 @@ export function rowName(
   }
 }
 
+/**
+ * The progress a row shows: a Story, Task or Bug (hierarchy level 0) with sub-issues. An Epic, a
+ * Subtask and a childless issue show none.
+ */
+export function rowProgress(
+  row: Row,
+  progress: ReadonlyMap<string, Progress>,
+): Progress | undefined {
+  return row.kind === 'issue' && row.node.issue.issueType.hierarchyLevel === 0
+    ? progress.get(row.node.issue.key)
+    : undefined
+}
+
 function Chevron({ row }: { row: Row }) {
   if (!row.expandable) return <span aria-hidden className="size-4 shrink-0" />
   return (

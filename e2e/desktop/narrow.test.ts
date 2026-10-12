@@ -505,7 +505,7 @@ test('the Epics and Customers pages open from the sidebar overlay and keep every
   }
 })
 
-test('the block pills and the Epic progress pill stay inside a narrow row', async () => {
+test('the block pills and a Story’s progress pill stay inside a narrow row', async () => {
   await open()
   for (const width of [720, 1200]) {
     await resize(width)
@@ -513,13 +513,30 @@ test('the block pills and the Epic progress pill stay inside a narrow row', asyn
       const view = globalThis.innerWidth
       const rows = [...document.querySelectorAll<HTMLElement>('[role=treeitem]')]
       const pills = [...document.querySelectorAll<HTMLElement>('[data-pill], [data-progress]')]
+      const rowOf = (key: string) =>
+        document.querySelector(`[role=treeitem][aria-label^="${key},"]`)?.getBoundingClientRect()
+      const ring = (key: string) => [
+        ...document.querySelectorAll<HTMLElement>(
+          `[role=treeitem][aria-label^="${key},"] [data-progress]`,
+        ),
+      ]
       return {
         pills: pills.length,
         pillsOutside: pills.filter((p) => p.getBoundingClientRect().right > view + 0.5).length,
+        // PSAPAC-11 has a Subtask, so its ring sits last after the other chips on the row. The
+        // Epic PSAPAC-10 has children but no ring.
+        rings: ring('PSAPAC-11').length,
+        ringsOutsideRow: ring('PSAPAC-11').filter(
+          (p) => p.getBoundingClientRect().right > (rowOf('PSAPAC-11')?.right ?? 0) + 0.5,
+        ).length,
+        epicRings: ring('PSAPAC-10').length,
         rowsOverflowing: rows.filter((r) => r.scrollWidth > r.clientWidth + 1).length,
       }
     })
     expect(found.pills, `pills at ${String(width)}`).toBeGreaterThan(0)
+    expect(found.rings, `progress pills at ${String(width)}`).toBeGreaterThan(0)
+    expect(found.ringsOutsideRow).toBe(0)
+    expect(found.epicRings).toBe(0)
     expect(found.pillsOutside).toBe(0)
     expect(found.rowsOverflowing).toBe(0)
   }
