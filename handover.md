@@ -2,7 +2,7 @@
 
 ## Where Work Stands
 
-Checked 2026-10-13. Head `6dea814` (`git log --oneline -1 origin/main`, PR [#203](https://github.com/shanedolley/jira-mgr/pull/203), the handover sweep); main CI run 38265434115 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12. #199 is built on branch `199-hide-done` and goes to HIL Review once merged; #200, #201 and #202 are open and unclaimed (see Open Stories).
+Checked 2026-10-13. Head `6dea814` (`git log --oneline -1 origin/main`, PR [#203](https://github.com/shanedolley/jira-mgr/pull/203), the handover sweep); main CI run 38265434115 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12. #199 is built in PR [#204](https://github.com/shanedolley/jira-mgr/pull/204) and goes to HIL Review once merged; #200, #201 and #202 are open and unclaimed (see Open Stories).
 
 #143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
@@ -51,7 +51,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | Closed 2026-10-12, approved. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
 | #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | Closed 2026-10-12. Found by 149-sprint-review |
 | #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194), [#195](https://github.com/shanedolley/jira-mgr/pull/195) | Closed 2026-10-12; M3 settled as option A. Low: the same-tick `inFlight` guard in `BulkBar.tsx` has no unit test (no component-test setup). Selection is pruned to the rows shown. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
-| #199 | Hide done hides every Done issue | branch `199-hide-done` | HIL Review once merged. With Hide done on, `buildHierarchy` builds from open issues only: no Done row, no dimmed Done ancestor, no "N done" chip; an open issue under a Done parent attaches to its nearest open ancestor, else roots in its own Customer group. Progress still counts Done children. `jm issue tree` changes only for an epic filter (`--epic` or a view with `epic`), which loads Done issues and now hides them too; settled as intended, disclosed on the PR. Lows: a mixed open/Done parent cycle still loses issues (as before); a Subtask re-attached under an Epic gets a Customer mismatch check against it |
+| #199 | Hide done hides every Done issue | [#204](https://github.com/shanedolley/jira-mgr/pull/204) | HIL Review once merged. With Hide done on, `buildHierarchy` builds from open issues only: no Done row, no dimmed Done ancestor, no "N done" chip; an open issue under a Done parent attaches to its nearest open ancestor, else roots in its own Customer group. Progress still counts Done children. `jm issue tree` changes only for an epic filter (`--epic` or a view with `epic`), which loads Done issues and now hides them too; settled as intended, disclosed on the PR. Lows: a mixed open/Done parent cycle still loses issues (as before); a Subtask re-attached under an Epic gets a Customer mismatch check against it |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -79,10 +79,10 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Open | 4 (#199 to #202) | `gh issue list --state open --limit 200` | 2026-10-13 |
 | Closed | 71 | `gh issue list --state closed --limit 300` | 2026-10-13 |
-| In progress | #199, until its PR merges | `--label status:in-progress` | 2026-10-13 |
+| In progress | #199, until PR #204 merges | `--label status:in-progress` | 2026-10-13 |
 | In HIL Review | none | `--label status:hil-review` | 2026-10-13 |
 | With `question` | none | `--label question` | 2026-10-13 |
-| Open pull requests | the #199 PR only | `gh pr list --state open` | 2026-10-13 |
+| Open pull requests | #204 only | `gh pr list --state open` | 2026-10-13 |
 
 `git worktree list` shows the main tree only (2026-10-13). Only `main` exists on origin (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
@@ -120,7 +120,7 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
-- #199 (Shane, 2026-10-12): with Hide done on, no Done issue shows, not even a Done ancestor of an open issue. It replaces the first clause of the 2026-10-07 decision below; the #199 branch updates `docs/design/0002-issue-tree.md`, `CONTEXT.md` and both READMEs with the code.
+- #199 (Shane, 2026-10-12): with Hide done on, no Done issue shows, not even a Done ancestor of an open issue. It replaces the first clause of the 2026-10-07 decision below; PR #204 updates `docs/design/0002-issue-tree.md`, `CONTEXT.md` and both READMEs with the code.
 - #200 (Shane, 2026-10-12): the progress ring goes on any Story, Task or Bug with sub-issues, and Epics lose it. #202 (Shane, 2026-10-12): a day is Jira's working day from `/rest/api/3/configuration/timetracking`, and the chart is hand-drawn with no dependency.
 - #131: the light-theme fills stay as built, and the active-only row keeps its fill alone.
 - #143 (Shane, 2026-10-12): M3 option A, the selection stays pruned to the rows shown. Esc clears the selection before it closes the Peek; the selection stays after an action; bulk calls send `sendBulkNotification: false`; checked rows take the selected fill through `aria-checked` while the peeked row keeps `aria-selected` and its bold key. The bar's primary action is Status.
