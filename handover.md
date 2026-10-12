@@ -2,7 +2,7 @@
 
 ## Where Work Stands
 
-Checked 2026-10-13. Head `949ffe4` (`git log --oneline -1 origin/main`, PR [#205](https://github.com/shanedolley/jira-mgr/pull/205), #200's progress ring); main CI run 38278498104 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12. #199 is merged and in HIL Review with `question` (the epic-filter output, see Open Decisions). #200 is merged and in HIL Review. #201 is built on branch `201-dblclick-open`; #202 is open and unclaimed (see Open Stories).
+Checked 2026-10-13. Head `949ffe4` (`git log --oneline -1 origin/main`, PR [#205](https://github.com/shanedolley/jira-mgr/pull/205), #200's progress ring); main CI run 38278498104 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12. #199 is merged and in HIL Review with `question` (the epic-filter output, see Open Decisions). #200 is merged and in HIL Review. #201 is built in PR [#206](https://github.com/shanedolley/jira-mgr/pull/206); #202 is open and unclaimed (see Open Stories).
 
 #143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
@@ -51,7 +51,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194), [#195](https://github.com/shanedolley/jira-mgr/pull/195) | Closed 2026-10-12; M3 settled as option A. Low: the same-tick `inFlight` guard in `BulkBar.tsx` has no unit test (no component-test setup). Selection is pruned to the rows shown. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
 | #199 | Hide done hides every Done issue | [#204](https://github.com/shanedolley/jira-mgr/pull/204) | Merged 2026-10-13, in HIL Review with `question`. With Hide done on, `buildHierarchy` builds from open issues only: no Done row, no dimmed Done ancestor, no "N done" chip; an open issue under a Done parent attaches to its nearest open ancestor, else roots in its own Customer group. Progress still counts Done children. `jm issue tree` changes only for an epic filter (`--epic` or a view with `epic`), which loads Done issues and now hides them too; settled as intended, disclosed on the PR. Lows: a mixed open/Done parent cycle still loses issues (as before); a Subtask re-attached under an Epic gets a Customer mismatch check against it |
 | #200 | Show sub-issue progress on issues, not Epics | [#205](https://github.com/shanedolley/jira-mgr/pull/205) | Merged 2026-10-13, in HIL Review. The ring and "N of M done" move to Story, Task and Bug rows with sub-issues (`rowProgress` in `TreeRow.tsx`); Epic and Subtask rows show none. Task and Bug are covered by unit test only: the e2e fake has no Task or Bug with sub-issues |
-| #201 | Open the issue page with a double-click on a Tree row | branch `201-dblclick-open` | A double-click opens the issue its first click hit, armed in a ref in `IssueTree` (`onArm` on `event.detail === 1`), so a row shift between the clicks cannot open the wrong issue. Ignored when the first click is on the checkbox, status dot, avatar, chevron, a header, a chip or with Shift held |
+| #201 | Open the issue page with a double-click on a Tree row | [#206](https://github.com/shanedolley/jira-mgr/pull/206) | A double-click opens the issue its first click hit, armed in a ref in `IssueTree` (`onArm` on `event.detail === 1`), so a row shift between the clicks cannot open the wrong issue. Ignored when the first click is on the checkbox, status dot, avatar, chevron, a header, a chip or with Shift held |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -82,7 +82,7 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 | In progress | #201 | `--label status:in-progress` | 2026-10-13 |
 | In HIL Review | #199, #200 | `--label status:hil-review` | 2026-10-13 |
 | With `question` | #199 | `--label question` | 2026-10-13 |
-| Open pull requests | the #201 PR only | `gh pr list --state open` | 2026-10-13 |
+| Open pull requests | #206 only | `gh pr list --state open` | 2026-10-13 |
 
 `git worktree list` shows the main tree only (2026-10-13). Only `main` exists on origin (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
