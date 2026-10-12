@@ -186,22 +186,28 @@ export function IssueTree({
     onChange(next)
   }
 
+  const armed = useRef<string | null>(null)
   const onRowClick = useCallback(
-    (id: string, onChevron: boolean, select?: 'toggle' | 'range') => {
+    (id: string, onChevron: boolean, select: 'toggle' | 'range' | undefined, detail: number) => {
+      // The second click of a double-click on an issue is inert: the Peek may have moved a header or
+      // another row under it, and the double-click opens the first click's issue.
+      if (detail > 1 && armed.current !== null) return
       // The click also focuses the Tree, the nearest focusable ancestor of the row.
       onChange({ ...clickRow(rows, state, id, onChevron, select), openPage: false })
     },
     [rows, state, onChange],
   )
 
-  const armed = useRef<string | null>(null)
   const onRowArm = useCallback((id: string | null) => {
     armed.current = id
   }, [])
   const onRowOpen = useCallback(() => {
     const id = armed.current
-    if (id !== null) onChange({ ...state, activeId: id, openPage: true })
-  }, [state, onChange])
+    // The armed row may have left the Tree since, with a filter or a collapse.
+    if (id !== null && rows.some((r) => r.id === id)) {
+      onChange({ ...state, activeId: id, openPage: true })
+    }
+  }, [rows, state, onChange])
 
   const activeRow = activeIndex < 0 ? undefined : rows[activeIndex]
   const selectedId = peekedKey === null ? null : `i:${peekedKey}`

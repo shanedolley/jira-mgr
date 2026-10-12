@@ -187,6 +187,10 @@ function AddButton({ row, onAdd }: { row: Row; onAdd: (row: Row) => void }) {
         event.stopPropagation()
         onAdd(row)
       }}
+      // The row's double-click must not open the issue an earlier click armed.
+      onDoubleClick={(event) => {
+        event.stopPropagation()
+      }}
       className="btn btn-sm btn-icon btn-ghost opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 group-data-[active=true]/row:opacity-100"
     >
       <svg
@@ -479,7 +483,12 @@ interface TreeRowProps {
   blockedBy: number
   blocking: number
   /** `toggle` is a click on the checkbox and `range` a Shift+click, which check instead of opening. */
-  onClick: (id: string, onChevron: boolean, select?: 'toggle' | 'range') => void
+  onClick: (
+    id: string,
+    onChevron: boolean,
+    select: 'toggle' | 'range' | undefined,
+    detail: number,
+  ) => void
   /**
    * The issue a double-click opens, set by a first click: the row's issue, or `null` for a header,
    * a chip, the checkbox, the status dot, the avatar, the chevron or a Shift+click, which keep
@@ -549,7 +558,7 @@ export const TreeRow = memo(function TreeRow({
         }
         const select =
           target.closest('[data-check]') !== null ? 'toggle' : event.shiftKey ? 'range' : undefined
-        onClick(row.id, target.closest('[data-chevron]') !== null, select)
+        onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
         const picked = target.closest<HTMLElement>('[data-pick]')?.dataset.pick
         if (row.kind === 'issue' && (picked === 'status' || picked === 'assignee')) {
           onPick(row.node.issue.key, picked)

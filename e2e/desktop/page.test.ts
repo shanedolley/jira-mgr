@@ -113,8 +113,6 @@ test('Enter opens the full page and Esc returns to the Tree, while Space keeps t
 })
 
 /** Where on a summary the pointer lands: on its text, which the Peek's narrowing leaves in the Tree. */
-
-/** Where on a summary the pointer lands: on its text, which the Peek's narrowing leaves in the Tree. */
 const ON_TEXT = { x: 20, y: 8 }
 
 test('a double-click on a row opens its page, and Esc returns to the Tree with the row active', async () => {
@@ -156,6 +154,21 @@ for (const rate of [1, 20]) {
 
     await window.keyboard.press('Escape')
     await expect(item(/PSAPAC-4,/)).toHaveAttribute('data-active', 'true')
+  })
+}
+
+for (const rate of [1, 20]) {
+  test(`a double-click whose second click lands on a Customer header opens the first issue and leaves the Customer expanded, at ${String(rate)}x CPU`, async () => {
+    await open()
+    await throttle(rate)
+    const header = item('Acme, 8 issues', true)
+    // The Peek's toolbar wrap moves the Customer header under the second click.
+    await item(/PSAPAC-10,/).dblclick({ position: { x: 90, y: 8 } })
+    await expect(heading('Customer onboarding')).toBeVisible()
+
+    await window.keyboard.press('Escape')
+    await expect(header).toHaveAttribute('aria-expanded', 'true')
+    await expect(item(/PSAPAC-10,/)).toHaveAttribute('data-active', 'true')
   })
 }
 
