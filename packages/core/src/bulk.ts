@@ -16,6 +16,8 @@ const MAX_ITEMS = 1000
 const SPRINT_CHUNK = 50
 const FALLBACK_AT_ONCE = 5
 const POLL_MS = 1000
+/** The shortest wait between polls, so a `pollMs` of 0 cannot spin through the cap at once. */
+const MIN_POLL_MS = 100
 // ponytail: a fixed 120 s cap on polling one task; make it an option if a real task runs longer.
 const POLL_LIMIT_MS = 120_000
 /** The task states after which Jira changes nothing more. */
@@ -93,6 +95,11 @@ function rethrowAbort(run: Run, error: unknown): void {
   if (run.options.signal?.aborted === true) throw error
 }
 
+/** Stops the batch before a call once the caller has aborted. */
+function checkAbort(run: Run): void {
+  if (run.options.signal?.aborted === true) throw run.options.signal.reason
+}
+
 /**
  * True for the answers that mean "Jira will not do this as one grouped call": 400 (a field or
  * workflow the bulk endpoint cannot handle) and 403. A call per issue can still get past them.
@@ -118,6 +125,21 @@ function refuseAll(run: Run, items: readonly Item[], reason: string): void {
   emit(run)
 }
 
+/**
+ * What a grouped call does after `error`: a 400 or 403 reruns `items` through `one`, anything else
+ * refuses them all. An abort ends the batch.
+ */
+async function fallBackOrRefuse(
+  run: Run,
+  error: unknown,
+  items: readonly Item[],
+  one: (item: Item) => Promise<unknown>,
+): Promise<void> {
+  rethrowAbort(run, error)
+  if (fallsBack(error)) await perIssue(run, items, one)
+  else refuseAll(run, items, reasonOf(error))
+}
+
 /** One call per issue, five at a time. A call's failure refuses only its issue. */
 async function perIssue(
   run: Run,
@@ -125,7 +147,7 @@ async function perIssue(
   one: (item: Item) => Promise<unknown>,
 ): Promise<void> {
   await inPool(items, FALLBACK_AT_ONCE, async (item) => {
-    if (run.options.signal?.aborted === true) throw run.options.signal.reason
+    checkAbort(run)
     try {
       await one(item)
       settle(run, item.key)
@@ -156,7 +178,7 @@ function failureText(messages: unknown): string {
 /** Waits for the bulk task, then settles each of `items` by the lists Jira returns. */
 async function poll(run: Run, items: readonly Item[], taskId: string): Promise<void> {
   const { http, options } = run
-  const pollMs = options.pollMs ?? POLL_MS
+  const pollMs = Math.max(options.pollMs ?? POLL_MS, MIN_POLL_MS)
   const sleep =
     options.sleep ?? ((ms: number, signal?: AbortSignal) => delay(ms, undefined, { signal }))
   for (let polls = Math.ceil(POLL_LIMIT_MS / pollMs); polls > 0; polls--) {
@@ -205,9 +227,7 @@ async function viaBulk(
   try {
     taskId = parseResponse(submitted, await submit(), 'bulk submit').taskId
   } catch (error) {
-    rethrowAbort(run, error)
-    if (fallsBack(error)) await perIssue(run, items, one)
-    else refuseAll(run, items, reasonOf(error))
+    await fallBackOrRefuse(run, error, items, one)
     return
   }
   try {
@@ -247,9 +267,7 @@ async function runStatus(run: Run, items: readonly Item[], statusId: string): Pr
     )
     workflows = parseResponse(transitionsSchema, raw, 'bulk transitions').availableTransitions
   } catch (error) {
-    rethrowAbort(run, error)
-    if (fallsBack(error)) await perIssue(run, items, one)
-    else refuseAll(run, items, reasonOf(error))
+    await fallBackOrRefuse(run, error, items, one)
     return
   }
   const unmatched = new Map(items.map((item) => [item.key, item]))
@@ -290,20 +308,12 @@ async function runStatus(run: Run, items: readonly Item[], statusId: string): Pr
  * The edit inputs the bulk endpoint can carry. Everything else goes one issue at a time,
  * dates included: the bulk date format is unproven live, and a misparsed date would go unseen.
  */
-const BULK_EDITABLE = [
-  'assignee',
-  'priorityId',
-  'labels',
-  'addLabels',
-  'removeLabels',
-  'customerId',
-  'engagementId',
-]
+const BULK_EDITABLE = ['assignee', 'priorityId', 'addLabels', 'customerId', 'engagementId']
 
 /**
  * The body of `POST /rest/api/3/bulk/issues/fields` for `changes`, or `undefined` when an input
- * is one the bulk endpoint cannot carry. Adding and removing labels in one edit also goes one
- * issue at a time, since one PUT does both and the bulk shape for it is unproven.
+ * is one the bulk endpoint cannot carry. Only adding labels is proven live: removing, replacing
+ * and clearing them go one issue at a time, like dates.
  */
 async function bulkEditBody(keys: string[], changes: Edit): Promise<object | undefined> {
   const given: Record<string, unknown> = changes
@@ -315,22 +325,12 @@ async function bulkEditBody(keys: string[], changes: Edit): Promise<object | und
     )
   })
   if (used.some((name) => !BULK_EDITABLE.includes(name))) return undefined
-  const { addLabels = [], removeLabels = [], labels } = changes
-  if (addLabels.length > 0 && removeLabels.length > 0) return undefined
+  const { addLabels = [] } = changes
 
   const ids = await getFieldIds()
   const actions: string[] = []
   const input: Record<string, unknown> = {}
   const singleSelect: object[] = []
-  const labelEdits: object[] = []
-  const labelEdit = (option: string, names: string[]) => {
-    actions.push('labels')
-    labelEdits.push({
-      bulkEditMultiSelectFieldOption: option,
-      fieldId: 'labels',
-      labels: names.map((name) => ({ name })),
-    })
-  }
 
   if (changes.priorityId !== undefined) {
     actions.push('priority')
@@ -354,12 +354,18 @@ async function bulkEditBody(keys: string[], changes: Edit): Promise<object | und
     actions.push(fieldId)
     singleSelect.push({ fieldId, option: { optionId: Number(optionId) } })
   }
-  if (addLabels.length > 0) labelEdit('ADD', addLabels)
-  if (removeLabels.length > 0) labelEdit('REMOVE', removeLabels)
-  if (labels !== undefined) labelEdit(labels.length > 0 ? 'REPLACE' : 'REMOVE_ALL', labels)
+  if (addLabels.length > 0) {
+    actions.push('labels')
+    input.labelsFields = [
+      {
+        bulkEditMultiSelectFieldOption: 'ADD',
+        fieldId: 'labels',
+        labels: addLabels.map((name) => ({ name })),
+      },
+    ]
+  }
 
   if (singleSelect.length > 0) input.singleSelectFields = singleSelect
-  if (labelEdits.length > 0) input.labelsFields = labelEdits
   return {
     editedFieldsInput: input,
     selectedActions: actions,
@@ -406,6 +412,7 @@ async function runSprint(run: Run, items: readonly Item[], sprintId: number | nu
   for (let at = 0; at < items.length; at += SPRINT_CHUNK) {
     const chunk = items.slice(at, at + SPRINT_CHUNK)
     const keys = chunk.map(({ key }) => key)
+    checkAbort(run)
     try {
       await (sprintId === null
         ? moveToBacklog(run.http, keys)
@@ -413,9 +420,7 @@ async function runSprint(run: Run, items: readonly Item[], sprintId: number | nu
       for (const { key } of chunk) settle(run, key)
       emit(run)
     } catch (error) {
-      rethrowAbort(run, error)
-      if (fallsBack(error)) await perIssue(run, chunk, one)
-      else refuseAll(run, chunk, reasonOf(error))
+      await fallBackOrRefuse(run, error, chunk, one)
     }
   }
 }
@@ -423,14 +428,15 @@ async function runSprint(run: Run, items: readonly Item[], sprintId: number | nu
 /**
  * Applies each item's change, one grouped call per distinct change where Jira has one:
  * `POST /bulk/issues/transition` for a status, `POST /bulk/issues/fields` for assignee, priority,
- * labels, Customer and Engagement, the Agile move in chunks of 50 for a
+ * added labels, Customer and Engagement, the Agile move in chunks of 50 for a
  * sprint. The rest go one issue at a time, five at a time, as does any group Jira answers 400 or
  * 403. Any other failure of a grouped call refuses its issues without a retry, since a write may
  * have gone through. A bulk task that runs past 120 seconds refuses its issues the same way.
  *
  * A refusal never throws: it lands in `refused` with the reason. Throws `validation_failed`
  * before any request for bad input, a repeated key or more than 1000 items. Aborting `signal`
- * rejects with its reason. Bulk calls send `sendBulkNotification: false`.
+ * rejects with a `JiraMgrError` whose `details` hold `done`, `refused` and `unsettled`.
+ * Bulk calls send `sendBulkNotification: false`.
  */
 export async function runBatch(
   http: HttpClient,
@@ -455,18 +461,55 @@ export async function runBatch(
     const key = JSON.stringify(item.change)
     groups.set(key, [...(groups.get(key) ?? []), item])
   }
-  for (const group of groups.values()) {
-    const change = group[0]?.change
-    if (change === undefined) continue
-    if (change.kind === 'status') await runStatus(run, group, change.statusId)
-    else if (change.kind === 'edit') await runEdit(run, group, change.changes)
-    else await runSprint(run, group, change.sprintId)
-  }
-  return {
+  const outcome = (): BatchOutcome => ({
     done: parsed.filter(({ key }) => run.done.has(key)).map(({ key }) => key),
     refused: parsed.flatMap(({ key }) => {
       const reason = run.refused.get(key)
       return reason === undefined ? [] : [{ key, reason }]
     }),
+  })
+  try {
+    for (const group of groups.values()) {
+      checkAbort(run)
+      const change = group[0]?.change
+      if (change === undefined) continue
+      if (change.kind === 'status') await runStatus(run, group, change.statusId)
+      else if (change.kind === 'edit') await runEdit(run, group, change.changes)
+      else await runSprint(run, group, change.sprintId)
+    }
+  } catch (error) {
+    if (options.signal?.aborted !== true) throw error
+    throw aborted(run, parsed, outcome(), error)
   }
+  return outcome()
+}
+
+/**
+ * The error an abort rejects with. `details` carries the outcome so far and the keys left
+ * unsettled, whose change may still land (a bulk task already submitted keeps running), so a
+ * caller can undo what changed. A `JiraMgrError` reason keeps its code, message and details.
+ */
+function aborted(
+  run: Run,
+  items: readonly Item[],
+  outcome: BatchOutcome,
+  reason: unknown,
+): JiraMgrError {
+  const unsettled = items
+    .map(({ key }) => key)
+    .filter((key) => !run.done.has(key) && !run.refused.has(key))
+  const progress = { ...outcome, unsettled }
+  if (reason instanceof JiraMgrError) {
+    const details =
+      typeof reason.details === 'object' && reason.details !== null ? reason.details : {}
+    return new JiraMgrError(reason.code, reason.message, {
+      details: { ...details, ...progress },
+      cause: reason,
+    })
+  }
+  return new JiraMgrError(
+    'jira_error',
+    `The batch was aborted with ${String(outcome.done.length)} issues changed and ${String(unsettled.length)} not settled. A change may still land, so read the issues before repeating it.`,
+    { details: progress, cause: reason },
+  )
 }

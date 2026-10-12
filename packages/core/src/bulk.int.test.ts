@@ -1,5 +1,5 @@
 import { HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   failure,
@@ -11,7 +11,8 @@ import {
   type Recorded,
 } from '../test/msw.js'
 import { runBatch, type BatchChange, type BatchItem, type BatchProgress } from './bulk.js'
-import { createHttpClient } from './http.js'
+import { JiraMgrError } from './errors.js'
+import { createHttpClient, type HttpClient } from './http.js'
 
 usePsapacState()
 
@@ -306,7 +307,7 @@ describe('runBatch edit', () => {
           assignee: 'acc-1',
           customerId: '10042',
           engagementId: '10043',
-          removeLabels: ['old'],
+          addLabels: ['new'],
         }),
       ),
       { sleep: noSleep },
@@ -324,9 +325,9 @@ describe('runBatch edit', () => {
         ],
         labelsFields: [
           {
-            bulkEditMultiSelectFieldOption: 'REMOVE',
+            bulkEditMultiSelectFieldOption: 'ADD',
             fieldId: 'labels',
-            labels: [{ name: 'old' }],
+            labels: [{ name: 'new' }],
           },
         ],
       },
@@ -665,19 +666,265 @@ describe('runBatch progress and input', () => {
     expect(await runBatch(client, [])).toEqual({ done: [], refused: [] })
     expect(requests).toHaveLength(0)
   })
+})
 
-  it('rejects with the abort reason', async () => {
-    jira({ [BULK_FIELDS]: to(json({ taskId: '9' })), [QUEUE]: to(running) })
-    const controller = new AbortController()
+/** A client that answers every call with `respond`, so a test can hold calls open. */
+const fakeClient = (respond: (method: string, path: string) => unknown): HttpClient => ({
+  request: async (method, path) => await respond(method, path),
+})
 
-    const result = runBatch(client, all(keys(2), edit({ priorityId: '3' })), {
-      signal: controller.signal,
-      sleep: () => {
-        controller.abort(new Error('stop'))
-        return Promise.reject(new Error('stop'))
+const keyOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
+
+describe('runBatch review fixes', () => {
+  describe('abort', () => {
+    const stop = () => AbortSignal.abort(new Error('stop'))
+
+    it('sends no sprint call once the signal is aborted', async () => {
+      const requests = jira({ 'POST /rest/agile/1.0/sprint/10171/issue': () => noContent() })
+      const list = keys(120)
+
+      const error = await failure(
+        runBatch(client, all(list, { kind: 'sprint', sprintId: 10171 }), { signal: stop() }),
+      )
+
+      expect(requests).toHaveLength(0)
+      expect(error.code).toBe('jira_error')
+      expect((error.cause as Error).message).toBe('stop')
+      expect(error.details).toEqual({ done: [], refused: [], unsettled: list })
+    })
+
+    it('stops a sprint batch between chunks and reports what moved', async () => {
+      const controller = new AbortController()
+      const requests = jira({
+        'POST /rest/agile/1.0/backlog/issue': () => {
+          controller.abort(new Error('stop'))
+          return noContent()
+        },
+      })
+      const list = keys(120)
+
+      const error = await failure(
+        runBatch(client, all(list, { kind: 'sprint', sprintId: null }), {
+          signal: controller.signal,
+        }),
+      )
+
+      expect(requests).toHaveLength(1)
+      expect(error.details).toEqual({
+        done: list.slice(0, 50),
+        refused: [],
+        unsettled: list.slice(50),
+      })
+    })
+
+    it('stops per-issue calls that have not started', async () => {
+      const controller = new AbortController()
+      const requests = jira({
+        [EDIT]: () => {
+          controller.abort(new Error('stop'))
+          return noContent()
+        },
+      })
+
+      const error = await failure(
+        runBatch(client, all(keys(20), edit({ summary: 'New' })), { signal: controller.signal }),
+      )
+
+      // Five calls are already in flight when the first aborts; no sixth starts.
+      expect(requests.length).toBeLessThanOrEqual(5)
+      expect(error.code).toBe('jira_error')
+    })
+
+    it('keeps a JiraMgrError reason and adds the outcome to its details', async () => {
+      const reason = new JiraMgrError('permission_denied', 'Not allowed.', { details: { why: 1 } })
+      jira({})
+
+      const error = await failure(
+        runBatch(client, all(keys(2), { kind: 'sprint', sprintId: null }), {
+          signal: AbortSignal.abort(reason),
+        }),
+      )
+
+      expect(error.code).toBe('permission_denied')
+      expect(error.message).toBe('Not allowed.')
+      expect(error.details).toEqual({ why: 1, done: [], refused: [], unsettled: keys(2) })
+    })
+
+    it('reports the issues of a task whose poll was aborted as unsettled', async () => {
+      jira({ [BULK_FIELDS]: to(json({ taskId: '9' })), [QUEUE]: to(running) })
+      const controller = new AbortController()
+
+      const error = await failure(
+        runBatch(client, all(keys(2), edit({ priorityId: '3' })), {
+          signal: controller.signal,
+          sleep: () => {
+            controller.abort(new Error('stop'))
+            return Promise.reject(new Error('stop'))
+          },
+        }),
+      )
+
+      expect(error.details).toEqual({ done: [], refused: [], unsettled: keys(2) })
+    })
+  })
+
+  it('runs per-issue calls five at a time', async () => {
+    let inFlight = 0
+    let peak = 0
+    let open: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      open = resolve
+    })
+    const fake = fakeClient(async () => {
+      inFlight++
+      peak = Math.max(peak, inFlight)
+      await gate
+      inFlight--
+    })
+
+    const result = runBatch(fake, all(keys(20), edit({ summary: 'New' })), { sleep: noSleep })
+    await vi.waitFor(() => {
+      expect(inFlight).toBe(5)
+    })
+    open()
+
+    expect((await result).done).toEqual(keys(20))
+    expect(peak).toBe(5)
+  })
+
+  it.each(['FAILED', 'CANCELLED', 'DEAD'])(
+    'settles by the lists when Jira ends the task as %s',
+    async (status) => {
+      const requests = jira({
+        [BULK_FIELDS]: to(json({ taskId: '9' })),
+        [QUEUE]: () =>
+          json({
+            taskId: '9',
+            status,
+            processedAccessibleIssues: [Number(idOf('PSAPAC-100'))],
+            failedAccessibleIssues: { [idOf('PSAPAC-101')]: ['No permission.'] },
+          }),
+      })
+
+      const outcome = await runBatch(client, all(keys(3), edit({ priorityId: '3' })), {
+        sleep: noSleep,
+      })
+
+      expect(outcome).toEqual({
+        done: ['PSAPAC-100'],
+        refused: [
+          { key: 'PSAPAC-101', reason: 'No permission.' },
+          { key: 'PSAPAC-102', reason: `Jira ended the task as ${status}.` },
+        ],
+      })
+      expect(only(requests, QUEUE)).toHaveLength(1)
+    },
+  )
+
+  it('sends label removal, replacement and clearing one issue at a time', async () => {
+    const list = keys(2)
+    const requests = jira({ [BULK_FIELDS]: errorWith(500), [EDIT]: () => noContent() })
+
+    for (const changes of [
+      { removeLabels: ['old'] },
+      { labels: ['a'] },
+      { labels: [] },
+      { priorityId: '3', removeLabels: ['old'] },
+    ]) {
+      const outcome = await runBatch(client, all(list, edit(changes)), { sleep: noSleep })
+      expect(outcome.done).toEqual(list)
+    }
+
+    expect(requests.every(({ method }) => method === 'PUT')).toBe(true)
+    expect(requests).toHaveLength(8)
+  })
+
+  it('never polls faster than every 100 ms, even for a pollMs of 0', async () => {
+    const waits: number[] = []
+    let polls = 0
+    const fake = fakeClient((method, path) => {
+      if (method === 'POST') return { taskId: '9' }
+      if (path.startsWith('/rest/api/3/bulk/queue/')) polls++
+      return { taskId: '9', status: 'RUNNING' }
+    })
+
+    const outcome = await runBatch(fake, all(keys(2), edit({ priorityId: '3' })), {
+      pollMs: 0,
+      sleep: (ms) => {
+        waits.push(ms)
+        return waits.length > 5000
+          ? Promise.reject(new Error('polling without bound'))
+          : Promise.resolve()
       },
     })
 
-    await expect(result).rejects.toThrow('stop')
+    expect(outcome.refused[0]?.reason).toMatch(/still running task 9 after 120 seconds/)
+    expect(new Set(waits)).toEqual(new Set([100]))
+    expect(polls).toBe(1200)
+  })
+
+  it('returns done and refused in input order whatever order the calls finish in', async () => {
+    const waiting: { key: string; settle: () => void }[] = []
+    const fake = fakeClient(
+      (_, path) =>
+        new Promise<void>((resolve, reject) => {
+          const key = keyOf(path)
+          waiting.push({
+            key,
+            settle: () => {
+              if (key === 'PSAPAC-103') reject(new Error('boom'))
+              else resolve()
+            },
+          })
+        }),
+    )
+    // Two groups, interleaved: 100, 102 and 104 say X; 101, 103 and 105 say Y.
+    const batch = keys(6).map((key, i) => item(key, edit({ summary: i % 2 === 0 ? 'X' : 'Y' })))
+
+    const result = runBatch(fake, batch, { sleep: noSleep })
+    for (let round = 0; round < 2; round++) {
+      await vi.waitFor(() => {
+        expect(waiting).toHaveLength(3)
+      })
+      // Finish the calls newest first.
+      for (const call of waiting.splice(0).reverse()) call.settle()
+    }
+
+    expect(await result).toEqual({
+      done: ['PSAPAC-100', 'PSAPAC-101', 'PSAPAC-102', 'PSAPAC-104', 'PSAPAC-105'],
+      refused: [{ key: 'PSAPAC-103', reason: 'boom' }],
+    })
+  })
+
+  it('sends only fields the recorded bulk field list offers', async () => {
+    const listed = loadFixture('bulk-fields-get') as {
+      fields: { id: string; multiSelectFieldOptions?: string[] }[]
+    }
+    const requests = jira({ [BULK_FIELDS]: to(json({ taskId: '9' })), [QUEUE]: to(queue(keys(1))) })
+
+    await runBatch(
+      client,
+      all(
+        keys(1),
+        edit({
+          assignee: 'acc-1',
+          priorityId: '3',
+          addLabels: ['x'],
+          customerId: '10042',
+          engagementId: '10043',
+        }),
+      ),
+      { sleep: noSleep },
+    )
+
+    const { selectedActions } = only(requests, BULK_FIELDS)[0]?.body as {
+      selectedActions: string[]
+    }
+    const offered = listed.fields.map(({ id }) => id)
+    expect(selectedActions.length).toBe(5)
+    for (const action of selectedActions) expect(offered).toContain(action)
+    expect(listed.fields.find(({ id }) => id === 'labels')?.multiSelectFieldOptions).toContain(
+      'ADD',
+    )
   })
 })
