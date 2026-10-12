@@ -2,9 +2,11 @@
 
 ## Where Work Stands
 
-Checked 2026-10-12. Head `df420cf` (`git log --oneline -1 origin/main`, PR [#192](https://github.com/shanedolley/jira-mgr/pull/192), the docs sweep); main CI run 38175877383 succeeded on it (`gh run view <id> --json headSha,conclusion`). Every story from #126 to #151 is built and merged except #143. #143 needs Shane present for one live bulk write, so an autonomous session has no unblocked story and stops. Open issues: #138, #143, #144, #150, #151 and #184.
+Checked 2026-10-12. Head `4729a20` (`git log --oneline -1 origin/main`, PR [#193](https://github.com/shanedolley/jira-mgr/pull/193), a handover refresh plus an e2e locator fix). Every story from #9 to #184 is closed except #143. #143 is the one open issue, In Progress on branch `143-bulk-edit`.
 
-Shane closes only issues carrying `status:hil-review` and finds his questions by the `question` label. #138, #144, #150, #151 and #184 are merged and wait in HIL Review. Two carry `question`: #144 (the pill style; its question was posted 2026-10-11 without the label, which was added 2026-10-12) and #151 (the Peek card over the rows, the rail's contents and the traffic-light padding). Everything else in #9 to #151 is closed (65 closed issues, 2026-10-12).
+#143 lands as two pull requests. PR 1, core's batch module `@jira-mgr/core/bulk`, is built on `143-bulk-edit` and in review. PR 2, the desktop selection and bulk bar, is not started. Its plan is [the #143 build plan comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115369790), and Shane's four design answers are in [the decisions comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115196580). Both live bulk probes ran with Shane present on 2026-10-12 ([first](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115035335), [second](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115308481)), so PR 2 needs no further live write.
+
+Shane closed #138, #150 and #184 and answered #144 ("keep the neutral capsule with a red icon") and #151 ("Approved") on 2026-10-12; the project manager closed those two. Nothing waits in HIL Review.
 
 ## Stories
 
@@ -33,12 +35,12 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #147 | Jira text search | [#166](https://github.com/shanedolley/jira-mgr/pull/166), [#177](https://github.com/shanedolley/jira-mgr/pull/177) | `TEXT_SEARCH_LIMIT` in `packages/core/src/search.ts` is the one cap (50) |
 | #148 | Inbox | [#179](https://github.com/shanedolley/jira-mgr/pull/179) | `inbox.json` is not per account, so a second Jira account on one machine shares the read marks; a swallowed 401 on the Inbox query is theoretical |
 | #149 | Sprint page | [#182](https://github.com/shanedolley/jira-mgr/pull/182) | Lows: the progress bar rounds each share separately and can read 101% in `aria-valuetext`; status groups sort by key number across projects; every issue re-read refetches an open Sprint page. The burndown is not built |
-| #138 | Tree row anatomy, row properties, ordering | [#187](https://github.com/shanedolley/jira-mgr/pull/187) | HIL. Row properties persist per view in `views.json` (option B). Row properties hide below 700px of Tree width, so a toggle can seem to do nothing while the Peek is open. `jm view list --json` gains an optional `display` field |
-| #144 | Blocked and blocking pills | [#188](https://github.com/shanedolley/jira-mgr/pull/188) | HIL with `question` (the pill style). The hook wiring is untested |
-| #150 | Epic progress, Epics table, Customers page | [#189](https://github.com/shanedolley/jira-mgr/pull/189) | HIL. Open Lows L4 and L5 (see the #150 review comments). No "No Customer" row; progress counts direct children |
-| #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | HIL with `question`. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
-| #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | HIL. Found by 149-sprint-review |
-| #143 | Select and edit several issues at once | none | Open, blocked only by #138, which is merged and in HIL Review (treat as satisfied). Needs Shane present for one real bulk POST on a throwaway PSAPAC issue before the bulk path is relied on. Core owns the batch |
+| #138 | Tree row anatomy, row properties, ordering | [#187](https://github.com/shanedolley/jira-mgr/pull/187) | Closed 2026-10-12. Row properties persist per view in `views.json` (option B). Row properties hide below 700px of Tree width, so a toggle can seem to do nothing while the Peek is open. `jm view list --json` gains an optional `display` field |
+| #144 | Blocked and blocking pills | [#188](https://github.com/shanedolley/jira-mgr/pull/188) | Closed 2026-10-12; Shane kept the neutral capsule. The hook wiring is untested |
+| #150 | Epic progress, Epics table, Customers page | [#189](https://github.com/shanedolley/jira-mgr/pull/189) | Closed 2026-10-12. Open Lows L4 and L5 (see the #150 review comments). No "No Customer" row; progress counts direct children |
+| #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | Closed 2026-10-12, approved. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
+| #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | Closed 2026-10-12. Found by 149-sprint-review |
+| #143 | Select and edit several issues at once | PR 1 on `143-bulk-edit` | In Progress. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -64,12 +66,12 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Open | 6: #138, #143, #144, #150, #151, #184 | `gh issue list --state open --limit 200` | 2026-10-12 |
-| Closed | 65 | `gh issue list --state closed --limit 300` | 2026-10-12 |
-| In progress | none | `--label status:in-progress` | 2026-10-12 |
-| In HIL Review | #138, #144, #150, #151, #184 | `--label status:hil-review` | 2026-10-12 |
-| With `question` | #144, #151 | `--label question` | 2026-10-12 |
-| Open blockers of #143 | #138 | `gh api repos/shanedolley/jira-mgr/issues/143/dependencies/blocked_by --jq '[.[]\|select(.state=="open")\|.number]'` | 2026-10-12 |
+| Open | 1: #143 | `gh issue list --state open --limit 200` | 2026-10-12 |
+| Closed | 70 | `gh issue list --state closed --limit 300` | 2026-10-12 |
+| In progress | #143 | `--label status:in-progress` | 2026-10-12 |
+| In HIL Review | none | `--label status:hil-review` | 2026-10-12 |
+| With `question` | none | `--label question` | 2026-10-12 |
+| Open blockers of #143 | none | `gh api repos/shanedolley/jira-mgr/issues/143/dependencies/blocked_by --jq '[.[]\|select(.state=="open")\|.number]'` | 2026-10-12 |
 | Open pull requests | none | `gh pr list --state open` | 2026-10-12 |
 
 `git worktree list` shows the main tree only (2026-10-12). Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
@@ -80,7 +82,7 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests. Core 1310 pass and 5 skip, desktop 1074, CLI 602 (main CI run 38175877383 on df420cf; check with `gh run view 38175877383 --log`) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests. Core 1310 pass and 5 skip, desktop 1074, CLI 602 on main (CI run 38175877383 on df420cf; `gh run view 38175877383 --log`). On `143-bulk-edit` core has 1353 pass and 5 skip (local run, 2026-10-12) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | The same plus `*.live.test.ts`, with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only |
 | `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38175877383 on df420cf: 503 passed, 4 skipped (`gh run view 38175877383 --log`, 2026-10-12). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
@@ -103,14 +105,13 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 
 | Raised | Decision | Owner |
 |---|---|---|
-| 2026-10-10 | A Shane-present real bulk POST before #143 relies on it | Shane |
 | 2026-10-10 | Whether to build Favourites and recents (gap 13) | Shane |
-| 2026-10-11 | #144's pill style: keep the neutral capsule with a red icon, or another style (options in the issue) | Shane |
-| 2026-10-12 | #151's three narrow-width items (see Where Work Stands) | Shane |
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
 - #131: the light-theme fills stay as built, and the active-only row keeps its fill alone.
+- #143 (Shane, 2026-10-12): Esc clears the selection before it closes the Peek; the selection stays after an action; bulk calls send `sendBulkNotification: false`; checked rows take the selected fill through `aria-checked` while the peeked row keeps `aria-selected` and its bold key. The bar's primary action is Status.
+- #144 (Shane, 2026-10-12): keep the neutral capsule with a red icon. #151 (2026-10-12): approved as built.
 - Review decisions: [docs/discovery/2026-10-10-review-decisions.md](docs/discovery/2026-10-10-review-decisions.md). Shane's answers on #128 to #149 (2026-10-11) sit under his login in `gh issue view <n> --json comments`, as agents post through his account. The ones that shape code: #128 option B (branch on not found and server fault); #131 option C (the bold key); #139 option A (sibling keys plus a `not` object); #142 upload a pasted image after the create and patch the description, and drop onto the dialog; #145 the "No subtasks" section always shows, the UI says "sub-issue", and a lost create is read to confirm before a retry; #146 option A; #147 option B (cap 50); #148 option C (keep the reporter clause); #138 option B (row properties and order persist per view).
 - 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors as dimmed context; internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review; Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10; zod is core's validation library and `marked` its Markdown lexer; view filters are multi-value arrays; `internal` errors exit 1.
 - CLI (Shane, 2026-10-07): JSON envelope `{"data"}` or `{"error"}`; a timer stop needing confirmation exits 2 without `--confirm` or `--time`; JSON carries `descriptionMarkdown` and `bodyMarkdown` beside the ADF; write commands and `--parent` refuse keys outside the configured project.

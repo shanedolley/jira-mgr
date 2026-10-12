@@ -1,6 +1,6 @@
 # Core
 
-`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It owns the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, the pure view filters at `@jira-mgr/core/view-filter`, the row properties, orders and priority levels at `@jira-mgr/core/display`, the Inbox at `@jira-mgr/core/inbox`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
+`@jira-mgr/core`, the package every client imports: the CLI and the desktop app. It owns the Jira client, domain rules, the saved view schema and typed errors with stable codes. It exports `JiraMgrError`, plus `APP_NAME`, `appTitle` and the `Issue` type. The Node-only state file readers and writers live at `@jira-mgr/core/state`, the credential functions at `@jira-mgr/core/auth`, field resolution at `@jira-mgr/core/fields`, the HTTP client at `@jira-mgr/core/http`, issue search at `@jira-mgr/core/search`, the issue tree at `@jira-mgr/core/hierarchy`, issue writes at `@jira-mgr/core/write`, comments, worklogs, links and attachments at `@jira-mgr/core/extras`, sprints at `@jira-mgr/core/sprints`, batch edits at `@jira-mgr/core/bulk`, the timer engine at `@jira-mgr/core/timer`, the pure timer rules at `@jira-mgr/core/timer-calc`, the pure view filters at `@jira-mgr/core/view-filter`, the row properties, orders and priority levels at `@jira-mgr/core/display`, the Inbox at `@jira-mgr/core/inbox`, pickers (labels, users, field options) at `@jira-mgr/core/lookups`, and the ADF and Markdown converters at `@jira-mgr/core/adf`, so the renderer bundle never pulls in `node:` modules.
 
 Its exported API is public to the other packages, so change it additively.
 
@@ -252,6 +252,37 @@ Three subpaths cover the secondary operations. Each function takes an `HttpClien
 - `getFieldOptions(http, field)` returns `{ id, name }[]` for `customer`, `engagement`, `priority`, `issueType` or `status`. Customer, Engagement and Priority come from the project's create metadata, so Priority lists the project's 11 priorities, not the site's 20. `status` lists each status of the project once.
 
 Recorded fixtures back every response mapping: `comments-psapac-666`, `worklogs-psapac-666`, `issue-links-psapac-666` and `-664` (the same link seen from both ends), `issue-attachments-psapac-3017`, `issuelinktype`, `attachment-meta`, `board-psapac`, `board-sprints-active-future`, `board-sprints-all`, `label-suggestions`, `assignable-users`, `project-statuses` and `myself`. Tests record each request's method, path, query and body, and never reach Jira.
+
+## Batch Edits
+
+`@jira-mgr/core/bulk` is Node-only. `runBatch(http, items, options?)` applies one change to each of up to 1000 issues and returns `{ done, refused }`: the keys that changed, and `{ key, reason }` for each that did not, both in input order. An item is `{ key, id, change }`, where `id` is the numeric issue id, since a bulk task reports issues by id. `change` is one of:
+
+- `{ kind: 'edit', changes }` with the `editIssue` input.
+- `{ kind: 'status', statusId }`.
+- `{ kind: 'sprint', sprintId }`, where `null` moves the issue to the backlog.
+
+Items with an equal `change` form a group, and a group makes one grouped call, so an undo whose issues held different values makes one call per value. Bulk calls send `sendBulkNotification: false`. A refusal never throws. `runBatch` throws `validation_failed` before any request for bad input, a repeated key or more than 1000 items, and on abort rejects with a `JiraMgrError` whose `details` hold `done`, `refused` and `unsettled` (the keys not yet settled, which may still change when a bulk task was already submitted), so a caller can undo what changed. An abort reason that is a `JiraMgrError` keeps its code and message, and any other reason becomes the `cause` of a `jira_error`. `runBatch` checks the signal before each group, each sprint chunk and each per-issue call.
+
+| Change | Grouped call                                                                                                                                        | Per-issue call                                                                                                                                                                                             |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status | `GET /bulk/issues/transition`, then one `POST /bulk/issues/transition` with an input per workflow that offers the status (matched by `to.statusId`) | `transitionIssue`, for an issue no workflow group offers it to. Its `Available: ...` message is the refusal                                                                                                |
+| Edit   | `POST /bulk/issues/fields` when every input is assignee, priority, added labels, Customer or Engagement                                             | `editIssue`, for any other input (summary, description, parent, type, estimates, Start date, Due date), for Customer or Engagement ids that are not digits, and for removing, replacing or clearing labels |
+| Sprint | `moveToSprint` or `moveToBacklog`, 50 issues per call                                                                                               | The same, one issue                                                                                                                                                                                        |
+
+Core resolves the Customer, Engagement and Start date field ids by name, as `editIssue` does. Date edits always go one issue at a time, because the bulk date format is unproven live and a misparsed date would go unseen.
+
+Proven live on 2026-10-12 (the `bulk-*` fixtures; the tests deep-equal the bodies against the recorded requests): priority, label ADD, status transitions, assignee, unassign, Customer and Engagement. Removing, replacing and clearing labels (REMOVE, REPLACE, REMOVE_ALL) are documented but unproven, so they go one issue at a time, like dates. `bulk-fields-get.json` is recorded evidence of the fields Jira offers for a bulk edit; one test checks that every field a batch sends appears in it.
+
+A bulk submit returns a task id. `runBatch` polls `GET /bulk/queue/{taskId}` every `pollMs` (default 1000) and settles each issue from `processedAccessibleIssues` and `failedAccessibleIssues`, which hold issue ids. A failed issue is refused with Jira's message, and an issue in neither list with `Jira skipped it.`. When the task ends FAILED, CANCELLED or DEAD, the issues in `processedAccessibleIssues` count as done and the rest are refused with `Jira ended the task as <STATUS>.`. `pollMs` is at least 100.
+
+Fallback rules:
+
+- A 400 or 403 from a grouped call (the bulk submit, the bulk transitions read or an Agile move) reruns that group one issue at a time, five at a time.
+- Any other failure of a grouped call (5xx, 401, a timeout, an unreadable response) refuses the whole group with its reason and retries nothing, since the write may have gone through.
+- A failure while polling refuses the group the same way. A task still running after 120 seconds refuses it with `jira_error` text saying it may still be running in Jira.
+- A failed per-issue call refuses only its issue.
+
+`options.onProgress({ done, total })` fires after each per-issue call and each poll, with `done` counting issues settled so far. `options.sleep` replaces the wait between polls for tests. The transitions read sends every key in one URL (about 12 KB at 1000 keys). A 414 or any other status except 400 and 403 refuses the group, and no test sends a URL that long. It reads the first page of workflows, as 50 workflows are far more than a project holds. The probe (2026-10-12, issue [#143](https://github.com/shanedolley/jira-mgr/issues/143)) recorded the `bulk-*` fixtures; the tests replay them and write nothing to Jira.
 
 ## Timer
 

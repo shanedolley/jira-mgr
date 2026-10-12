@@ -43,7 +43,7 @@ const createInput = z.strictObject({
 
 export type CreateIssueInput = z.input<typeof createInput>
 
-const editInput = z
+export const editInput = z
   .strictObject({
     summary: text,
     description: description.nullable(),
