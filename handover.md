@@ -2,7 +2,7 @@
 
 ## Where Work Stands
 
-Checked 2026-10-13. Head `9b26de4` (`git log --oneline -1 origin/main`, PR [#198](https://github.com/shanedolley/jira-mgr/pull/198), which moved the CI-wait trap into AGENTS.md); main CI run 38255417040 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Four issues are open and unclaimed, all filed by Shane on 2026-10-12: #199, #200, #201 and #202 (see Open Stories).
+Checked 2026-10-13. Head `6dea814` (`git log --oneline -1 origin/main`, PR [#203](https://github.com/shanedolley/jira-mgr/pull/203), the handover sweep); main CI run 38265434115 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12. #199 is built in PR [#204](https://github.com/shanedolley/jira-mgr/pull/204) and goes to HIL Review once merged; #200, #201 and #202 are open and unclaimed (see Open Stories).
 
 #143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
@@ -10,11 +10,10 @@ Shane closed #138, #143, #150 and #184 and answered #144 ("keep the neutral caps
 
 ## Open Stories
 
-Each goes to HIL Review for Shane when built, since each shows in the desktop app. Land them one at a time: #199 and #200 both change the Tree rows.
+Each goes to HIL Review for Shane when built, since each shows in the desktop app. Land them one at a time. #200 also changes the Tree rows, so cut it from `main` after #199 merges.
 
 | Issue | Story | Notes |
 |---|---|---|
-| #199 | Hide done hides every Done issue | With Hide done on, no Done issue shows, not even a Done ancestor of an open issue (Shane, 2026-10-12). `buildHierarchy` in `packages/core/src/hierarchy.ts` builds from open issues only, so no `doneChildren` and no "N done" chip. An open issue under a Done parent attaches to its nearest open ancestor, else becomes a root in its own Customer group. Epic and sub-issue progress still counts Done children. Hide done off is unchanged, and so is `jm issue tree`. Replaces the 2026-10-07 decision once built; docs that describe today's behaviour stay true until then |
 | #200 | Show sub-issue progress on issues, not Epics | The ring moves to any Story, Task or Bug with at least one sub-issue; Epics lose it (Shane, 2026-10-12). The guard in `IssueTree.tsx` moves from `hierarchyLevel >= 1` to standard-level issues with an entry in the progress map. No core change. The Epics table, the Customers page and the issue page's "Sub-issue of" line are unchanged |
 | #201 | Open the issue page with a double-click on a Tree row | Opens the page as Enter does, Epic and context rows included. Ignored on the checkbox, status dot, avatar, chevron and with Shift held. Needs an e2e test and docs in `apps/desktop/README.md` and `docs/reference/shortcuts.md` |
 | #202 | Show estimate, time logged and a worklog chart on the Peek and the issue page | Adds a core call: `GET /rest/api/3/configuration/timetracking` for `workingHoursPerDay` and `workingDaysPerWeek` (a day is Jira's working day, Shane, 2026-10-12), with a zod schema and a recorded fixture, plus `timeSpentSeconds` from the search's `timetracking` object. The chart is hand-drawn, with no dependency. Not on Epics |
@@ -52,6 +51,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | Closed 2026-10-12, approved. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
 | #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | Closed 2026-10-12. Found by 149-sprint-review |
 | #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194), [#195](https://github.com/shanedolley/jira-mgr/pull/195) | Closed 2026-10-12; M3 settled as option A. Low: the same-tick `inFlight` guard in `BulkBar.tsx` has no unit test (no component-test setup). Selection is pruned to the rows shown. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
+| #199 | Hide done hides every Done issue | [#204](https://github.com/shanedolley/jira-mgr/pull/204) | HIL Review once merged. With Hide done on, `buildHierarchy` builds from open issues only: no Done row, no dimmed Done ancestor, no "N done" chip; an open issue under a Done parent attaches to its nearest open ancestor, else roots in its own Customer group. Progress still counts Done children. `jm issue tree` changes only for an epic filter (`--epic` or a view with `epic`), which loads Done issues and now hides them too; settled as intended, disclosed on the PR. Lows: a mixed open/Done parent cycle still loses issues (as before); a Subtask re-attached under an Epic gets a Customer mismatch check against it |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -79,10 +79,10 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Open | 4 (#199 to #202) | `gh issue list --state open --limit 200` | 2026-10-13 |
 | Closed | 71 | `gh issue list --state closed --limit 300` | 2026-10-13 |
-| In progress | none | `--label status:in-progress` | 2026-10-13 |
+| In progress | #199, until PR #204 merges | `--label status:in-progress` | 2026-10-13 |
 | In HIL Review | none | `--label status:hil-review` | 2026-10-13 |
 | With `question` | none | `--label question` | 2026-10-13 |
-| Open pull requests | none before the sweep PR | `gh pr list --state open` | 2026-10-13 |
+| Open pull requests | #204 only | `gh pr list --state open` | 2026-10-13 |
 
 `git worktree list` shows the main tree only (2026-10-13). Only `main` exists on origin (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
@@ -120,13 +120,13 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
-- Pending supersession: #199 (Shane, 2026-10-12) replaces the 2026-10-07 decision below that Hide done keeps a Done ancestor of an open issue as dimmed context. Until #199 merges the code, `docs/design/0002-issue-tree.md`, `CONTEXT.md` and `packages/core/README.md` describe today's behaviour and stay as written; #199 updates them with the code.
+- #199 (Shane, 2026-10-12): with Hide done on, no Done issue shows, not even a Done ancestor of an open issue. It replaces the first clause of the 2026-10-07 decision below; PR #204 updates `docs/design/0002-issue-tree.md`, `CONTEXT.md` and both READMEs with the code.
 - #200 (Shane, 2026-10-12): the progress ring goes on any Story, Task or Bug with sub-issues, and Epics lose it. #202 (Shane, 2026-10-12): a day is Jira's working day from `/rest/api/3/configuration/timetracking`, and the chart is hand-drawn with no dependency.
 - #131: the light-theme fills stay as built, and the active-only row keeps its fill alone.
 - #143 (Shane, 2026-10-12): M3 option A, the selection stays pruned to the rows shown. Esc clears the selection before it closes the Peek; the selection stays after an action; bulk calls send `sendBulkNotification: false`; checked rows take the selected fill through `aria-checked` while the peeked row keeps `aria-selected` and its bold key. The bar's primary action is Status.
 - #144 (Shane, 2026-10-12): keep the neutral capsule with a red icon. #151 (2026-10-12): approved as built.
 - Review decisions: [docs/discovery/2026-10-10-review-decisions.md](docs/discovery/2026-10-10-review-decisions.md). Shane's answers on #128 to #149 (2026-10-11) sit under his login in `gh issue view <n> --json comments`, as agents post through his account. The ones that shape code: #128 option B (branch on not found and server fault); #131 option C (the bold key); #139 option A (sibling keys plus a `not` object); #142 upload a pasted image after the create and patch the description, and drop onto the dialog; #145 the "No subtasks" section always shows, the UI says "sub-issue", and a lost create is read to confirm before a retry; #146 option A; #147 option B (cap 50); #148 option C (keep the reporter clause); #138 option B (row properties and order persist per view).
-- 2026-10-07 (to be replaced by #199, see above): with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors as dimmed context; internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review; Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10; zod is core's validation library and `marked` its Markdown lexer; view filters are multi-value arrays; `internal` errors exit 1.
+- 2026-10-07 (first clause replaced by #199, see above): with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors as dimmed context; internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review; Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10; zod is core's validation library and `marked` its Markdown lexer; view filters are multi-value arrays; `internal` errors exit 1.
 - CLI (Shane, 2026-10-07): JSON envelope `{"data"}` or `{"error"}`; a timer stop needing confirmation exits 2 without `--confirm` or `--time`; JSON carries `descriptionMarkdown` and `bodyMarkdown` beside the ADF; write commands and `--parent` refuse keys outside the configured project.
 
 ## Traps
@@ -151,7 +151,7 @@ Each re-read at its source on 2026-10-13 unless it says otherwise.
 - **Retitling a PR does not rerun CI**, so `pr-title` keeps its old result; push a new commit after a retitle. PR title scopes (`ci.yml`, 2026-10-12): `cli`, `desktop`, `core`, `config`, `e2e`, `docs`, `repo`, `deps`, `deps-dev`.
 - **Two PRs on shared desktop files conflict in sequence.** Merge one, rebase the other onto `main`, and trust only a CI run from after the rebase. Land pull requests one at a time.
 - **Squash merges and `git branch -d`.** After a squash merge `-d` refuses. Confirm `git diff <branch-tip> origin/main` is empty, then `KOTHAR_ALLOW_DESTRUCTIVE=1 git branch -D`.
-- **A copied worktree folder moves the original's HEAD.** Make scratch copies with `git worktree add` or `git clone`, never `cp`. Give each agent its own worktree; one left the main tree on its own branch and the commit guard then blocked a commit on `main`.
+- **A copied worktree folder moves the original's HEAD.** Make scratch copies with `git worktree add` or `git clone`, never `cp`. Give each agent its own worktree; one left the main tree on its own branch and the commit guard then blocked a commit on `main`. On 2026-10-13 a reviewer ran `git checkout --detach` in the main tree mid-build and switched back; tell every reviewer to read with `gh pr diff` or `git show` and to experiment only in its own `git worktree add` copy.
 - **Node 22 is the default shell node** (2026-10-13: `node` on PATH in a bare shell resolves `~/.local/share/mise/installs/node/22.22.0/bin/node` and prints v22.22.0). CI uses `.nvmrc` (24) and `engines` requires `>=24`. Put `~/.local/share/mise/installs/node/24.16.0/bin` first on PATH (v24.16.0 confirmed 2026-10-13).
 - **pnpm forwards `--`.** `pnpm jm -- --help` passes a literal `--`; `scripts/jm.ts` strips it.
 - **Pinned toolchain** (re-read in the package files, 2026-10-13). ESLint stays on 9 for `eslint-plugin-react`. Every package is on TypeScript `~7.0.2` except `packages/config-lint`, which keeps `~6.0.0` for `typescript-eslint`.

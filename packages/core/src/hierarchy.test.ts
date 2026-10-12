@@ -182,10 +182,11 @@ describe('buildHierarchy', () => {
       expect(epic?.doneCount).toBe(2)
     })
 
-    it('collapse whatever "Hide done" says', () => {
+    it('vanish under "Hide done", with no chip', () => {
       const epic = build(issues, { hideDone: true })[0]?.epics[0]
 
-      expect(epic?.doneCount).toBe(2)
+      expect(epic?.doneCount).toBe(0)
+      expect(epic?.doneChildren).toEqual([])
       expect(keys(epic?.children ?? [])).toEqual(['P-4'])
     })
 
@@ -202,52 +203,72 @@ describe('buildHierarchy', () => {
   })
 
   describe('Hide done', () => {
-    it('keeps a Done Epic as context for its open child', () => {
+    it('drops a Done Epic and attaches its open child as a root in its own Customer group', () => {
       const tree = build(
         [
           issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
-          issue('P-2', { parent: 'P-1' }),
-          issue('P-3', { parent: 'P-1', status: 'Done' }),
+          issue('P-2', { parent: 'P-1', customer: ACME }),
+          issue('P-3', { parent: 'P-1', status: 'Done', customer: ACME }),
           issue('P-4', { type: 'Epic', customer: BETA }),
         ],
         { hideDone: true },
       )
 
       expect(names(tree)).toEqual(['Acme', 'beta'])
-      const epic = tree[0]?.epics[0]
-      expect(epic?.contextOnly).toBe(true)
-      expect(keys(epic?.children ?? [])).toEqual(['P-2'])
+      expect(tree[0]?.epics).toEqual([])
+      expect(keys(tree[0]?.noEpic ?? [])).toEqual(['P-2'])
+      expect(tree[0]?.noEpic[0]?.contextOnly).toBe(false)
       expect(tree[1]?.epics[0]?.contextOnly).toBe(false)
     })
 
-    it('keeps every Done ancestor of an open Subtask, and drops their other Done children', () => {
+    it('attaches an open issue to its nearest open ancestor, past Done ones', () => {
       const tree = build(
         [
-          issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
-          issue('P-2', { parent: 'P-1', status: 'Done' }),
-          issue('P-3', { parent: 'P-1', status: 'Done' }),
-          issue('P-4', { type: 'Subtask', parent: 'P-2' }),
+          issue('P-1', { type: 'Epic', customer: ACME }),
+          issue('P-2', { parent: 'P-1', status: 'Done', customer: ACME }),
+          issue('P-3', { type: 'Subtask', parent: 'P-2', customer: ACME }),
+          issue('P-4', { parent: 'P-1', status: 'Done', customer: ACME }),
+          issue('P-5', { type: 'Subtask', parent: 'P-4', status: 'Done', customer: ACME }),
         ],
         { hideDone: true },
       )
 
       const epic = tree[0]?.epics[0]
-      expect(keys(epic?.children ?? [])).toEqual(['P-2'])
-      expect(epic?.children[0]?.contextOnly).toBe(true)
-      expect(keys(epic?.children[0]?.children ?? [])).toEqual(['P-4'])
+      expect(keys(epic?.children ?? [])).toEqual(['P-3'])
+      expect(epic?.doneChildren).toEqual([])
+      expect(epic?.children[0]?.customerMismatch).toBeNull()
     })
 
-    it('drops a Done Epic whose children are all Done', () => {
+    it('roots an open Subtask whose Done chain ends in no open ancestor', () => {
       const tree = build(
         [
           issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
-          issue('P-2', { parent: 'P-1', status: 'Done' }),
-          issue('P-3', { type: 'Epic', customer: BETA }),
+          issue('P-2', { parent: 'P-1', status: 'Done', customer: ACME }),
+          issue('P-3', { type: 'Subtask', parent: 'P-2', customer: ACME }),
         ],
         { hideDone: true },
       )
 
-      expect(names(tree)).toEqual(['beta'])
+      expect(keys(tree[0]?.noEpic ?? [])).toEqual(['P-3'])
+    })
+
+    it('shows no Done row and no chip anywhere', () => {
+      const tree = build(
+        [
+          issue('P-1', { type: 'Epic', customer: ACME }),
+          issue('P-2', { parent: 'P-1', customer: ACME }),
+          issue('P-3', { parent: 'P-1', status: 'Done', customer: ACME }),
+          issue('P-4', { type: 'Subtask', parent: 'P-2', status: 'Done', customer: ACME }),
+          issue('P-5', { type: 'Epic', status: 'Done', customer: BETA }),
+        ],
+        { hideDone: true },
+      )
+
+      const all = (nodes: HierarchyNode[]): HierarchyNode[] =>
+        nodes.flatMap((n) => [n, ...all(n.children), ...all(n.doneChildren)])
+      const nodes = tree.flatMap((g) => all([...g.epics, ...g.noEpic]))
+      expect(nodes.map((n) => n.issue.key)).toEqual(['P-1', 'P-2'])
+      expect(nodes.every((n) => n.doneCount === 0 && n.doneChildren.length === 0)).toBe(true)
     })
 
     it('drops a Done Epic-less issue and keeps it when off', () => {
@@ -279,13 +300,13 @@ describe('buildHierarchy', () => {
       expect(epic?.children[0]?.children[0]?.contextOnly).toBe(false)
     })
 
-    it('keeps a Done ancestor of my open issue as context under "Hide done"', () => {
+    it('hides a Done ancestor of my open issue under "Hide done"', () => {
       const tree = build(
         [
           issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
           issue('P-2', { parent: 'P-1', status: 'Done', assignee: 'other' }),
           issue('P-3', { parent: 'P-1', status: 'Done', assignee: 'me' }),
-          issue('P-4', { parent: 'P-1', assignee: 'me' }),
+          issue('P-4', { parent: 'P-1', assignee: 'me', customer: ACME }),
           issue('P-5', { type: 'Epic', status: 'Done', customer: BETA }),
           issue('P-6', { parent: 'P-5', status: 'Done', assignee: 'me' }),
         ],
@@ -293,9 +314,42 @@ describe('buildHierarchy', () => {
       )
 
       expect(names(tree)).toEqual(['Acme'])
-      const epic = tree[0]?.epics[0]
-      expect(epic?.contextOnly).toBe(true)
-      expect(keys(epic?.children ?? [])).toEqual(['P-4'])
+      expect(tree[0]?.epics).toEqual([])
+      expect(keys(tree[0]?.noEpic ?? [])).toEqual(['P-4'])
+    })
+
+    it("drops a group whose only match is a Done child of someone else's Epic", () => {
+      const tree = build(
+        [
+          issue('P-1', { type: 'Epic', status: 'In Progress', customer: ACME, assignee: 'other' }),
+          issue('P-2', { parent: 'P-1', status: 'Done', customer: ACME, assignee: 'me' }),
+        ],
+        { assigneeMe: true, hideDone: true },
+      )
+
+      expect(tree).toEqual([])
+      expect(
+        build(
+          [
+            issue('P-1', { type: 'Epic', customer: ACME, assignee: 'other' }),
+            issue('P-2', { parent: 'P-1', status: 'Done', customer: ACME, assignee: 'me' }),
+          ],
+          { assigneeMe: true, hideDone: true, hideEmptyCustomers: false, customers: [ACME] },
+        ),
+      ).toEqual([{ customer: ACME, epics: [], noEpic: [] }])
+    })
+
+    it('drops a group whose only view match is a Done child of an open Epic', () => {
+      const tree = build(
+        [
+          issue('P-1', { type: 'Epic', customer: ACME }),
+          issue('P-2', { parent: 'P-1', status: 'Done', customer: ACME }),
+          issue('P-3', { parent: 'P-1', customer: ACME }),
+        ],
+        { hideDone: true, match: (i) => i.key === 'P-2' },
+      )
+
+      expect(tree).toEqual([])
     })
 
     it('keeps everything when off', () => {
@@ -337,7 +391,9 @@ describe('buildHierarchy', () => {
     it('show a Customer whose issues "Hide done" removed, when not hidden', () => {
       const done = [issue('P-1', { type: 'Epic', status: 'Done', customer: ACME })]
 
-      expect(names(build(done, { hideDone: true, hideEmptyCustomers: false }))).toEqual(['Acme'])
+      expect(
+        names(build(done, { hideDone: true, hideEmptyCustomers: false, customers: [ACME] })),
+      ).toEqual(['Acme'])
       expect(build(done, { hideDone: true })).toEqual([])
     })
 
@@ -612,18 +668,23 @@ describe('childProgress', () => {
     expect(progress.has('P-6')).toBe(false)
   })
 
-  it("agrees with buildHierarchy's children and Done chip, however the Done children are shown", () => {
-    const progress = childProgress(issues)
-    for (const hideDone of [true, false]) {
-      const epic = build(issues, { hideDone })
-        .flatMap((g) => g.epics)
-        .find((n) => n.issue.key === 'P-1')
-      const total = (epic?.children.length ?? 0) + (epic?.doneCount ?? 0)
-      const done = [...(epic?.children ?? []), ...(epic?.doneChildren ?? [])].filter(
-        (n) => n.issue.status.category === 'done',
-      ).length
-      expect(progress.get('P-1')).toEqual({ done, total })
-    }
+  it("agrees with buildHierarchy's children and Done chip when Done shows", () => {
+    const epic = build(issues)
+      .flatMap((g) => g.epics)
+      .find((n) => n.issue.key === 'P-1')
+    const total = (epic?.children.length ?? 0) + (epic?.doneCount ?? 0)
+    const done = [...(epic?.children ?? []), ...(epic?.doneChildren ?? [])].filter(
+      (n) => n.issue.status.category === 'done',
+    ).length
+    expect(childProgress(issues).get('P-1')).toEqual({ done, total })
+  })
+
+  it('still counts the Done children that "Hide done" removes from the Tree', () => {
+    const epic = build(issues, { hideDone: true })
+      .flatMap((g) => g.epics)
+      .find((n) => n.issue.key === 'P-1')
+    expect(epic?.doneCount).toBe(0)
+    expect(childProgress(issues).get('P-1')).toEqual({ done: 2, total: 3 })
   })
 
   it('does not count an Epic as the child of another', () => {

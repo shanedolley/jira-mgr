@@ -306,7 +306,7 @@ Calls:
 jm issue tree [--view <id-or-name>] [--search <text>] [--assignee <assignee>] [--status <name-or-id>] [--label <text>] [--type <name-or-id>] [--sprint <sprint>] [--mine] [--show-done] [--show-empty-customers]
 ```
 
-Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. Done children collapse into a `+N done` chip.
+Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. With `--show-done` or a view that shows Done, Done children collapse into a `+N done` chip; otherwise no Done issue shows.
 
 #### Options
 

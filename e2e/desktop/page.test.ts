@@ -236,6 +236,8 @@ test('changes the status from the keyboard, then reads that one issue and no lis
 test('moves an issue to Done into its parent chip without reloading either list', async () => {
   await open()
   await releaseDone(app)
+  // The chip shows only while "Hide done" is off.
+  await window.getByRole('button', { name: 'Hide done', exact: true }).click()
   await expect(item('2 done', true)).toBeVisible()
   await item(/PSAPAC-4,/).click()
   await window.keyboard.press('Enter')

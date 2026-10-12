@@ -121,7 +121,7 @@ test('the palette finds by key, moves with the arrows, opens on a click, and say
 test('the palette reaches a Done issue the Tree hides, and the letters then act on its page', async () => {
   await open()
   await releaseDone(app)
-  await expect(item('2 done', true)).toBeVisible()
+  await expect.poll(async () => (await counts(app)).searches.done).toBeGreaterThan(0)
   await expect(item(/PSAPAC-22,/)).toHaveCount(0)
 
   await window.keyboard.press('Meta+k')

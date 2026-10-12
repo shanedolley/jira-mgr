@@ -385,7 +385,7 @@ export const COMMANDS = [
     path: ['issue', 'tree'],
     summary: 'Show issues grouped by Customer and Epic',
     description:
-      'Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. Done children collapse into a `+N done` chip.',
+      'Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. With `--show-done` or a view that shows Done, Done children collapse into a `+N done` chip; otherwise no Done issue shows.',
     options: [
       ...FILTER_OPTIONS,
       {

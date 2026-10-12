@@ -300,14 +300,26 @@ describe('flattenTree', () => {
     expect(ids(rows)).not.toContain('i:P-3')
   })
 
-  it('lists a Done Epic kept as context for its open child', () => {
+  it('roots the open child of a Done Epic under "Hide done"', () => {
     const issues = [
       issue('P-1', { type: 'Epic', status: 'Done', customer: ACME }),
       issue('P-2', { parent: 'P-1', customer: ACME }),
     ]
     const rows = flattenTree(groupsOf(issues, { hideDone: true }), NONE)
 
+    expect(ids(rows)).toEqual(['c:1', 'n:1', 'i:P-2'])
+  })
+
+  it('shows no chip and no Done row under "Hide done"', () => {
+    const issues = [
+      issue('P-1', { type: 'Epic', customer: ACME }),
+      issue('P-2', { parent: 'P-1', customer: ACME }),
+      issue('P-3', { parent: 'P-1', status: 'Done', customer: ACME }),
+    ]
+    const rows = flattenTree(groupsOf(issues, { hideDone: true }), NONE)
+
     expect(ids(rows)).toEqual(['c:1', 'i:P-1', 'i:P-2'])
+    expect(rows.some((r) => r.kind === 'chip')).toBe(false)
   })
 
   it('keeps ids stable when the same issues are rebuilt', () => {

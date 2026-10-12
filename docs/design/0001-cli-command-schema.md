@@ -305,7 +305,7 @@ Filters for `list` and `tree`:
 
 - Toggles start at `hideDone: true`, `assigneeMe: false`, `hideEmptyCustomers: true`. A view's toggles replace them, and `--show-done`, `--mine` and `--show-empty-customers` turn one on. The CLI ignores `settings.toggles`, which hold the app's last UI state, so the same command gives the same answer whatever the app last showed.
 - A view's filters apply first. Each filter flag replaces that field's list, and `--search` replaces `text`.
-- With `hideDone` on, the handler stops `searchIssuePages` after the `unresolved` phase, which halves the requests. `issue tree` then has no Done issues to count, so it prints no Done chips; `--show-done` loads both phases.
+- With `hideDone` on, the handler stops `searchIssuePages` after the `unresolved` phase, which halves the requests. `issue tree` then has no Done issues to count, so it prints no Done chips; `--show-done` loads both phases. An `epic` or `not.epic` filter loads both phases to climb from a Subtask even with `hideDone` on, yet `buildHierarchy` builds from the open issues alone, so the tree still prints no Done chip and no Done row (#199). The `+N done` chip shows only with `--show-done` or a view with `hideDone` off.
 - `--mine`, and any `me` assignee value, calls `ctx.me()` once for the account id.
 - `--limit` stops paging once that many issues match.
 

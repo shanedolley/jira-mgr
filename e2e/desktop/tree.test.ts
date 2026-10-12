@@ -44,6 +44,13 @@ async function open() {
 async function openWithDone() {
   await open()
   await releaseDone(app)
+  await expect(window.getByText('Loading Done issues:')).toHaveCount(0)
+}
+
+/** As `openWithDone`, then turns "Hide done" off, which is when the N done chips show. */
+async function openWithChips() {
+  await openWithDone()
+  await toggle('Hide done').click()
   await expect(item('2 done', true)).toBeVisible()
 }
 
@@ -74,7 +81,7 @@ test("shows each row's type icon by its accessible name", async () => {
   await expect(item(/PSAPAC-12, Subtask/).getByRole('img', { name: 'Subtask' })).toBeVisible()
 })
 
-test('shows the Tree before Done issues load, then their N done chips', async () => {
+test('shows the Tree before Done issues load, then their N done chips once Hide done is off', async () => {
   await open()
 
   // The fake holds the first Done page, so no chip can exist yet.
@@ -83,27 +90,41 @@ test('shows the Tree before Done issues load, then their N done chips', async ()
   expect((await counts(app)).searches.done).toBe(0)
 
   await releaseDone(app)
-  await expect(item('2 done', true)).toBeVisible()
   await expect(window.getByText('Loading Done issues:')).toHaveCount(0)
+  // "Hide done" is on, so the loaded Done issues add no chip and no row.
+  await expect(item(/^\d+ done$/)).toHaveCount(0)
+  await expect(item(/PSAPAC-14,/)).toHaveCount(0)
+  await expect(item(/PSAPAC-22,/)).toHaveCount(0)
+
+  await toggle('Hide done').click()
+  await expect(item('2 done', true)).toBeVisible()
 })
 
-test('moves an open Story under its Done Epic once Done issues load', async () => {
+test('keeps an open Story under No Epic while its Epic is Done and Hide done is on', async () => {
   await open()
-  // Until Done arrives its Epic is unknown, so the Story sits under No Epic.
   await expect(item(/PSAPAC-21,/)).toBeVisible()
   await expect(item(/PSAPAC-20,/)).toHaveCount(0)
+  // The Epics' progress pills grow when Done loads, so compare the keys.
+  const keysOf = async () => (await rowNames()).map((l) => l.split(',')[0])
+  const before = await keysOf()
 
   await releaseDone(app)
-  await expect(item(/PSAPAC-20, Epic, Done.*, context/)).toBeVisible()
+  await expect(window.getByText('Loading Done issues:')).toHaveCount(0)
+  // No dimmed Done Epic appears, and the Story does not move.
+  await expect(item(/PSAPAC-20,/)).toHaveCount(0)
+  expect(await keysOf()).toEqual(before)
+
+  // With "Hide done" off, the Done Epic shows, not dimmed, with the Story below it.
+  await toggle('Hide done').click()
+  await expect(item(/PSAPAC-20, Epic, Done/)).toBeVisible()
+  await expect(item(/PSAPAC-20,.*context/)).toHaveCount(0)
   const labels = await rowNames()
   const epic = labels.findIndex((l) => l.startsWith('PSAPAC-20,'))
   expect(labels[epic + 1]).toMatch(/^PSAPAC-21,/)
-  // The Done Epic's other Done child stays hidden under "Hide done".
-  await expect(item(/PSAPAC-22,/)).toHaveCount(0)
 })
 
 test("reveals a parent's Done children from its chip", async () => {
-  await openWithDone()
+  await openWithChips()
   await expect(item(/PSAPAC-14,/)).toHaveCount(0)
 
   await item('2 done', true).click()
@@ -250,6 +271,7 @@ test('turning Hide done off shows the Done Epic with its subtree', async () => {
   await openWithDone()
   await expect(toggle('Hide done')).toHaveAttribute('aria-pressed', 'true')
   await expect(item(/PSAPAC-22,/)).toHaveCount(0)
+  await expect(item(/^\d+ done$/)).toHaveCount(0)
 
   await toggle('Hide done').click()
 
@@ -366,10 +388,11 @@ test('Assignee: me keeps my issues with their ancestors dimmed', async () => {
   // Mine, not dimmed.
   await expect(item(/PSAPAC-2,/)).toBeVisible()
   await expect(item(/PSAPAC-2,/)).not.toHaveAttribute('aria-label', /context/)
-  // Their ancestors, dimmed: another person's Story above my Subtask, and a Done Epic.
+  // Their ancestors, dimmed: another person's Story above my Subtask. "Hide done" is on, so a
+  // Done Epic does not show as context.
   await expect(item(/PSAPAC-11,.*context/)).toBeVisible()
   await expect(item(/PSAPAC-10,.*context/)).toBeVisible()
-  await expect(item(/PSAPAC-20, Epic, Done.*context/)).toBeVisible()
+  await expect(item(/PSAPAC-20,/)).toHaveCount(0)
 })
 
 test('turning Hide empty Customers off shows the Customer with no issues', async () => {
@@ -466,6 +489,7 @@ test('names the text and the chips that match nothing', async () => {
 
 test('keeps the Tree and offers Retry when the Done load fails', async () => {
   await open()
+  await toggle('Hide done').click()
   await failDone(app)
   await releaseDone(app)
 

@@ -109,10 +109,10 @@ for (const rate of [1, 20]) {
 
       await chooseStatus('Done')
 
-      // Done children sit behind their parent's chip, so the ten leave the rows, and the
-      // selection, which only holds rows shown, goes with them.
-      await expect(item('10 done', true)).toBeVisible()
+      // "Hide done" is on, so the ten leave the rows with no chip, and the selection, which
+      // only holds rows shown, goes with them.
       await expect(story(1)).toHaveCount(0)
+      await expect(item(/^\d+ done$/)).toHaveCount(0)
       await expect(story(11)).toHaveAccessibleName(status(11, 'To Do'))
       const calls = await bulkCalls()
       expect(calls).toHaveLength(1)
@@ -165,8 +165,8 @@ for (const rate of [1, 20]) {
       )
       await expect(alert).toContainText('PSAPAC-1006: The fake refuses PSAPAC-1006.')
       for (let n = 1; n <= 7; n++) await expect(story(n)).toHaveAccessibleName(status(n, 'To Do'))
-      await expect(item('3 done', true)).toBeVisible()
       await expect(notice('Status changed to Done on 3 issues')).toBeVisible()
+      await expect(item(/^\d+ done$/)).toHaveCount(0)
       // The three that moved left the rows; the seven refused stay checked for another try.
       await expect(bar()).toContainText('7 selected')
     })
@@ -246,7 +246,7 @@ for (const rate of [1, 20]) {
         if (settled < 10) await expect(bar()).toContainText(`Updating ${String(settled)} of 10`)
       }
 
-      // Nine moved behind the chip; the refused one stays checked.
+      // Nine moved out of the rows; the refused one stays checked.
       await expect(bar()).toContainText('1 selected')
       // The refused bulk POST was not counted, and nothing else went in bulk.
       expect(await bulkCalls()).toHaveLength(0)
@@ -255,8 +255,8 @@ for (const rate of [1, 20]) {
       await expect(alert.locator('p').first()).toHaveText('Status not changed on 1 issue')
       await expect(alert).toContainText('Skipped PSAPAC-1002.')
       await expect(story(3)).toHaveAccessibleName(status(3, 'To Do'))
-      await expect(item('9 done', true)).toBeVisible()
       await expect(notice('Status changed to Done on 9 issues')).toBeVisible()
+      await expect(item(/^\d+ done$/)).toHaveCount(0)
     })
   })
 }
