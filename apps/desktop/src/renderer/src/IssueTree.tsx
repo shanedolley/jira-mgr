@@ -194,12 +194,14 @@ export function IssueTree({
     [rows, state, onChange],
   )
 
-  const onRowOpen = useCallback(
-    (id: string) => {
-      onChange({ ...state, activeId: id, openPage: true })
-    },
-    [state, onChange],
-  )
+  const armed = useRef<string | null>(null)
+  const onRowArm = useCallback((id: string | null) => {
+    armed.current = id
+  }, [])
+  const onRowOpen = useCallback(() => {
+    const id = armed.current
+    if (id !== null) onChange({ ...state, activeId: id, openPage: true })
+  }, [state, onChange])
 
   const activeRow = activeIndex < 0 ? undefined : rows[activeIndex]
   const selectedId = peekedKey === null ? null : `i:${peekedKey}`
@@ -244,6 +246,7 @@ export function IssueTree({
                 blockedBy={held?.blockedBy.length ?? 0}
                 blocking={held?.blocking.length ?? 0}
                 onClick={onRowClick}
+                onArm={onRowArm}
                 onOpen={onRowOpen}
                 onPick={onPick}
                 onAdd={onAdd}

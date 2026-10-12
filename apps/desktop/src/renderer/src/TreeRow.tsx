@@ -480,8 +480,14 @@ interface TreeRowProps {
   blocking: number
   /** `toggle` is a click on the checkbox and `range` a Shift+click, which check instead of opening. */
   onClick: (id: string, onChevron: boolean, select?: 'toggle' | 'range') => void
-  /** A double-click on an issue row, which opens its page as Enter does. */
-  onOpen: (id: string) => void
+  /**
+   * The issue a double-click opens, set by a first click: the row's issue, or `null` for a header,
+   * a chip, the checkbox, the status dot, the avatar, the chevron or a Shift+click, which keep
+   * their own double-click.
+   */
+  onArm: (id: string | null) => void
+  /** A double-click, which opens the armed issue's page as Enter does. */
+  onOpen: () => void
   /** A click on the row's status dot or avatar, after `onClick` has made the row active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
   /** Done over total of the issue's children, which the row shows beside its title, as numbers so the memo holds. */
@@ -505,6 +511,7 @@ export const TreeRow = memo(function TreeRow({
   blockedBy,
   blocking,
   onClick,
+  onArm,
   onOpen,
   onPick,
   done,
@@ -536,6 +543,10 @@ export const TreeRow = memo(function TreeRow({
       }}
       onClick={(event) => {
         const target = event.target as Element
+        if (event.detail === 1) {
+          const own = target.closest('[data-check], [data-pick], [data-chevron]') !== null
+          onArm(row.kind === 'issue' && !own && !event.shiftKey ? row.id : null)
+        }
         const select =
           target.closest('[data-check]') !== null ? 'toggle' : event.shiftKey ? 'range' : undefined
         onClick(row.id, target.closest('[data-chevron]') !== null, select)
@@ -544,16 +555,9 @@ export const TreeRow = memo(function TreeRow({
           onPick(row.node.issue.key, picked)
         }
       }}
-      // The first click made the row active and opened the Peek. The checkbox, the status dot, the
-      // avatar and the chevron keep their own double-click, and Shift is a range check.
-      onDoubleClick={(event) => {
-        if (row.kind !== 'issue' || event.shiftKey) return
-        if (
-          (event.target as Element).closest('[data-check], [data-pick], [data-chevron]') === null
-        ) {
-          onOpen(row.id)
-        }
-      }}
+      // A double-click opens the issue its first click hit, not the row under the pointer by then:
+      // the Peek opening can move the rows between the two clicks.
+      onDoubleClick={onOpen}
       data-band={row.kind === 'customer' ? '' : undefined}
       style={{
         // A header's slot starts with the gap above it, so the band sits at the slot's foot.

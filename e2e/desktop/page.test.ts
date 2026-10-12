@@ -112,27 +112,13 @@ test('Enter opens the full page and Esc returns to the Tree, while Space keeps t
   await expect(peek()).toBeVisible()
 })
 
-/** Where on a summary the pointer lands. The first click opens the Peek, which narrows the row, so the middle of a wide summary can end up under the Peek. */
+/** Where on a summary the pointer lands: on its text, which the Peek's narrowing leaves in the Tree. */
+
+/** Where on a summary the pointer lands: on its text, which the Peek's narrowing leaves in the Tree. */
 const ON_TEXT = { x: 20, y: 8 }
 
-/**
- * Opens with the Done load finished and a window wide enough that the first click's Peek leaves
- * the Tree over 700px. The "Loading Done issues" line, or a Tree under 700px, wraps the toolbar
- * onto another row when the Peek opens, which moves every row under the pointer between the two
- * clicks of a double-click.
- */
-async function openSteady() {
-  await app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1600, 900)
-  })
-  await expect.poll(() => window.evaluate(() => globalThis.innerWidth)).toBe(1600)
-  await open()
-  await releaseDone(app)
-  await expect(window.getByText('Loading Done issues:')).toHaveCount(0)
-}
-
 test('a double-click on a row opens its page, and Esc returns to the Tree with the row active', async () => {
-  await openSteady()
+  await open()
   const row = item(/PSAPAC-4,/)
   await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
   await expect(heading('Migrate the dashboards')).toBeVisible()
@@ -150,8 +136,31 @@ test('a double-click on a row opens its page, and Esc returns to the Tree with t
   await expect(heading('Customer onboarding')).toBeVisible()
 })
 
+/** Slows the renderer, so a render can land between the two clicks of a double-click. */
+async function throttle(rate: number) {
+  const session = await window.context().newCDPSession(window)
+  await session.send('Emulation.setCPUThrottlingRate', { rate })
+}
+
+for (const rate of [1, 20]) {
+  test(`a double-click opens the issue its first click hit when the Peek moves the rows, at ${String(rate)}x CPU`, async () => {
+    await open()
+    await throttle(rate)
+    const row = item(/PSAPAC-4,/)
+    const before = (await row.boundingBox())?.y ?? 0
+    // While Done loads, the first click's Peek wraps the toolbar's status line onto its own row,
+    // so the second click lands on the row above.
+    await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+    await expect(heading('Migrate the dashboards')).toBeVisible()
+    expect((await row.boundingBox())?.y ?? 0).toBeGreaterThan(before)
+
+    await window.keyboard.press('Escape')
+    await expect(item(/PSAPAC-4,/)).toHaveAttribute('data-active', 'true')
+  })
+}
+
 test('a double-click on a checkbox, status dot, avatar, chevron or with Shift held opens no page', async () => {
-  await openSteady()
+  await open()
   const row = item(/PSAPAC-4,/)
   await row.locator('[data-check]').dblclick({ force: true })
   await expect(issuePage()).toHaveCount(0)
@@ -175,7 +184,7 @@ test('a double-click on a checkbox, status dot, avatar, chevron or with Shift he
 })
 
 test('a double-click on a Customer header toggles it as two clicks do and opens no page', async () => {
-  await openSteady()
+  await open()
   const header = item('Acme, 8 issues', true)
   await expect(header).toHaveAttribute('aria-expanded', 'true')
   await header.dblclick()
