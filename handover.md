@@ -2,11 +2,11 @@
 
 ## Where Work Stands
 
-Checked 2026-10-12. Head `e595ef0` (`git log --oneline -1 origin/main`, PR [#194](https://github.com/shanedolley/jira-mgr/pull/194), core's batch module); main CI run 38187354069 succeeded on it. Every story from #9 to #184 is closed except #143. #143 is the one open issue, In Progress on branch `143-bulk-desktop`.
+Checked 2026-10-12. Head `3d1487f` (`git log --oneline -1 origin/main`, PR [#195](https://github.com/shanedolley/jira-mgr/pull/195), the desktop bulk bar); main CI run 38195032090 succeeded on it. Every story from #9 to #184 is closed except #143. #143 is the one open issue, built and in HIL Review.
 
-#143 lands as two pull requests. PR 1, core's batch module `@jira-mgr/core/bulk`, merged as [#194](https://github.com/shanedolley/jira-mgr/pull/194) (`e595ef0`). PR 2, the desktop selection, bulk bar and batch undo, is built on `143-bulk-desktop` (`git log --oneline origin/main..143-bulk-desktop`). Reviewer 143-desktop-review passed it on 2026-10-12 with three Mediums and four Lows; the builder fixed M1, M2 and L1 to L4 in a follow-up commit, which the reviewer passed again. M3 waits for Shane: under the default Hide done, a bulk move to Done empties the selection, because the selection is pruned to the rows shown (plan item 2), which reads against his answer that the selection stays after an action. Its plan is [the #143 build plan comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115369790), and Shane's four design answers are in [the decisions comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115196580). Both live bulk probes ran with Shane present on 2026-10-12 ([first](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115035335), [second](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115308481)), so PR 2 needs no further live write.
+#143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Reviewer 143-desktop-review passed #195 after the builder fixed its M1, M2 and L1 to L4. #143 waits in HIL Review, labelled `question`, on [the M3 question](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6116549609): under the default Hide done, a bulk move to Done empties the selection, against Shane's answer that the selection stays. Recommended A (keep as built); on B, build a follow-up that keeps issues a batch moved out of view.
 
-Shane closed #138, #150 and #184 and answered #144 ("keep the neutral capsule with a red icon") and #151 ("Approved") on 2026-10-12; the project manager closed those two. Nothing waits in HIL Review.
+Shane closed #138, #150 and #184 and answered #144 ("keep the neutral capsule with a red icon") and #151 ("Approved") on 2026-10-12; the project manager closed those two.
 
 ## Stories
 
@@ -40,7 +40,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #150 | Epic progress, Epics table, Customers page | [#189](https://github.com/shanedolley/jira-mgr/pull/189) | Closed 2026-10-12. Open Lows L4 and L5 (see the #150 review comments). No "No Customer" row; progress counts direct children |
 | #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | Closed 2026-10-12, approved. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
 | #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | Closed 2026-10-12. Found by 149-sprint-review |
-| #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194); PR 2 on `143-bulk-desktop` | In Progress. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
+| #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194), [#195](https://github.com/shanedolley/jira-mgr/pull/195) | HIL Review, M3 question open. Low: the same-tick `inFlight` guard in `BulkBar.tsx` has no unit test (no component-test setup). Selection is pruned to the rows shown. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -68,13 +68,13 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Open | 1: #143 | `gh issue list --state open --limit 200` | 2026-10-12 |
 | Closed | 70 | `gh issue list --state closed --limit 300` | 2026-10-12 |
-| In progress | #143 | `--label status:in-progress` | 2026-10-12 |
-| In HIL Review | none | `--label status:hil-review` | 2026-10-12 |
-| With `question` | none | `--label question` | 2026-10-12 |
+| In progress | none | `--label status:in-progress` | 2026-10-12 |
+| In HIL Review | #143 | `--label status:hil-review` | 2026-10-12 |
+| With `question` | #143 | `--label question` | 2026-10-12 |
 | Open blockers of #143 | none | `gh api repos/shanedolley/jira-mgr/issues/143/dependencies/blocked_by --jq '[.[]\|select(.state=="open")\|.number]'` | 2026-10-12 |
 | Open pull requests | none | `gh pr list --state open` | 2026-10-12 |
 
-`git worktree list` shows the main tree only, on `143-bulk-desktop` (2026-10-12). Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree only (2026-10-12). Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
@@ -82,9 +82,9 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests. Core 1353 pass and 5 skip, desktop 1074, CLI 602 (main CI run 38187354069 on e595ef0; `gh run view 38187354069 --log`, 2026-10-12). On `143-bulk-desktop` core 1354 and 5 skip, desktop 1142, CLI 602 (builder's local run, 2026-10-12) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests. Core 1354 pass and 5 skip, desktop 1142, CLI 602 (main CI run 38195032090 on 3d1487f; `gh run view 38195032090 --log`, 2026-10-12) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | The same plus `*.live.test.ts`, with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only |
-| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38187354069 on e595ef0: 503 passed, 4 skipped (`gh run view 38187354069 --log`, 2026-10-12). On `143-bulk-desktop`: 526 tests, 525 passed, 1 skipped (local, 1 worker, 2026-10-12). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
+| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38195032090 on 3d1487f: 522 passed, 4 skipped (`gh run view 38195032090 --log`, 2026-10-12). A local macOS run has 526 tests with 1 skipped. Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
 | `pnpm -s jm -- <args>` | The built CLI. Use `-s`: plain `pnpm jm --` prints pnpm's banner and breaks JSON | Live Jira at the site in `settings.json`, as the logged-in user. Writes from L4 on. Set `JM_STATE_DIR` to a scratch folder first |
 | `pnpm package` | Builds `apps/desktop/dist/jira-mgr.app`; macOS only | Nothing external. The packaged app, like `pnpm dev`, uses the real state folder and Keychain item unless `JM_STATE_DIR` is set |
@@ -106,6 +106,7 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 | Raised | Decision | Owner |
 |---|---|---|
 | 2026-10-10 | Whether to build Favourites and recents (gap 13) | Shane |
+| 2026-10-12 | #143 M3: whether the selection survives a bulk move out of view ([comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6116549609)) | Shane |
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
