@@ -250,6 +250,7 @@ describe('late read', () => {
     const state = { open, reads: [] as unknown[] }
     const to: ProgressSender = {
       sendProgress: () => undefined,
+      sendBatchProgress: () => undefined,
       isOpen: () => state.open,
       sendLateRead: (read) => state.reads.push(read),
     }

@@ -93,6 +93,189 @@ describe('setSummary', () => {
   })
 })
 
+describe('batch', () => {
+  const status = (n: number) => ({
+    key: `PSAPAC-${String(n)}`,
+    id: String(1000 + n),
+    change: { kind: 'status', statusId: '3' } as const,
+  })
+
+  /** Serves the bulk transition calls of `done` issues, and records every request. */
+  function bulkHttp(options: { submit?: Error } = {}) {
+    const requests: { method: string; path: string; body: unknown }[] = []
+    const http: HttpClient = {
+      request(method, path, init) {
+        requests.push({ method, path, body: init?.body })
+        if (method === 'GET' && path.startsWith('/rest/api/3/bulk/issues/transition')) {
+          return Promise.resolve({
+            availableTransitions: [
+              {
+                transitions: [{ transitionId: 31, to: { statusId: 3 } }],
+                issues: ['PSAPAC-1', 'PSAPAC-2'],
+              },
+            ],
+          })
+        }
+        if (method === 'POST') {
+          return options.submit === undefined
+            ? Promise.resolve({ taskId: '7' })
+            : Promise.reject(options.submit)
+        }
+        return Promise.resolve({
+          status: 'COMPLETE',
+          processedAccessibleIssues: [1001, 1002],
+          failedAccessibleIssues: {},
+        })
+      },
+    }
+    return { http, requests }
+  }
+  const fast = { pollMs: 100, sleep: () => Promise.resolve() }
+
+  it('refuses a key of another project, and a new parent of another project, before any request', async () => {
+    await logIn()
+    const { http, requests } = bulkHttp()
+    const { progress } = progressRecorder()
+    const backend = createBackend({ http, batchPoll: fast })
+    await expect(
+      backend.batch({ batchId: 1, items: [status(1), { ...status(2), key: 'OTHER-2' }] }, progress),
+    ).rejects.toMatchObject({ code: 'validation_failed' })
+    await expect(
+      backend.batch(
+        {
+          batchId: 1,
+          items: [{ ...status(1), change: { kind: 'edit', changes: { parentKey: 'OTHER-9' } } }],
+        },
+        progress,
+      ),
+    ).rejects.toMatchObject({ code: 'validation_failed' })
+    expect(requests).toEqual([])
+  })
+
+  it('refuses a type change on an Epic like a single edit does, before the write', async () => {
+    await logIn()
+    const requests: string[] = []
+    const http: HttpClient = {
+      request(method, path) {
+        requests.push(`${method} ${path}`)
+        return Promise.resolve({
+          id: '1001',
+          key: 'PSAPAC-1',
+          fields: {
+            summary: 'Epic',
+            issuetype: { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 },
+            status: { id: '1', name: 'To Do', statusCategory: { key: 'new' } },
+            labels: [],
+            created: '2026-10-01T00:00:00.000Z',
+            updated: '2026-10-01T00:00:00.000Z',
+          },
+        })
+      },
+    }
+    await expect(
+      createBackend({ http, batchPoll: fast }).batch(
+        {
+          batchId: 1,
+          items: [{ ...status(1), change: { kind: 'edit', changes: { type: 'Story' } } }],
+        },
+        progressRecorder().progress,
+      ),
+    ).rejects.toMatchObject({ code: 'validation_failed' })
+    // One read of the type, and no write.
+    expect(requests).toHaveLength(1)
+    expect(requests[0]).toMatch(/^GET .*PSAPAC-1\?/)
+  })
+
+  it('runs the batch through core and reports each settled issue as progress for its batch id', async () => {
+    await logIn()
+    const { http, requests } = bulkHttp()
+    const { progress, sent } = progressRecorder()
+    const outcome = await createBackend({ http, batchPoll: fast }).batch(
+      { batchId: 7, items: [status(1), status(2)] },
+      progress,
+    )
+    expect(outcome).toEqual({ done: ['PSAPAC-1', 'PSAPAC-2'], refused: [] })
+    expect(requests.filter(({ method }) => method === 'POST')).toEqual([
+      {
+        method: 'POST',
+        path: '/rest/api/3/bulk/issues/transition',
+        body: {
+          bulkTransitionInputs: [
+            { selectedIssueIdsOrKeys: ['PSAPAC-1', 'PSAPAC-2'], transitionId: '31' },
+          ],
+          sendBulkNotification: false,
+        },
+      },
+    ])
+    expect(sent.at(-1)).toEqual({ batchId: 7, done: 2, total: 2 })
+  })
+
+  it('stops reporting progress once the window is gone', async () => {
+    await logIn()
+    const { http } = bulkHttp()
+    const sent: unknown[] = []
+    const gone: ProgressSender = {
+      sendProgress: () => undefined,
+      sendBatchProgress: (p) => sent.push(p),
+      isOpen: () => false,
+      sendLateRead: () => undefined,
+    }
+    await createBackend({ http, batchPoll: fast }).batch(
+      { batchId: 1, items: [status(1), status(2)] },
+      gone,
+    )
+    expect(sent).toEqual([])
+  })
+
+  it('returns a refusal in the outcome instead of throwing', async () => {
+    await logIn()
+    const { http } = bulkHttp({ submit: new Error('Jira is down') })
+    const outcome = await createBackend({ http, batchPoll: fast }).batch(
+      { batchId: 1, items: [status(1), status(2)] },
+      progressRecorder().progress,
+    )
+    expect(outcome.done).toEqual([])
+    expect(outcome.refused.map(({ key }) => key)).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+    expect(outcome.refused[0]?.reason).toContain('Jira is down')
+  })
+
+  it('words a refusal without the request core names in it', async () => {
+    await logIn()
+    const { http } = bulkHttp({
+      submit: new Error('Jira answered 500 to POST /rest/api/3/bulk/issues/transition: Boom.'),
+    })
+    const outcome = await createBackend({ http, batchPoll: fast }).batch(
+      { batchId: 1, items: [status(1)] },
+      progressRecorder().progress,
+    )
+    expect(outcome.refused[0]?.reason).toBe('Jira answered 500: Boom.')
+  })
+
+  it('aborts a running batch on logout, so no request goes out after it', async () => {
+    await logIn()
+    const calls: string[] = []
+    const http: HttpClient = {
+      request(method, path, init) {
+        calls.push(`${method} ${path}`)
+        // The transitions lookup never answers until the batch is aborted.
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(init.signal?.reason as Error)
+          })
+        })
+      },
+    }
+    const backend = createBackend({ http, batchPoll: fast, keychain: fakeKeychain().keychain })
+    const running = expect(
+      backend.batch({ batchId: 1, items: [status(1), status(2)] }, progressRecorder().progress),
+    ).rejects.toMatchObject({ code: 'jira_error' })
+    await expect.poll(() => calls.length).toBe(1)
+    await backend.logout()
+    await running
+    expect(calls).toHaveLength(1)
+  })
+})
+
 function rawIssue(n: number) {
   return {
     id: String(n),
@@ -152,6 +335,9 @@ function progressRecorder() {
   const sent: unknown[] = []
   const progress: ProgressSender = {
     sendProgress(p) {
+      sent.push(p)
+    },
+    sendBatchProgress(p) {
       sent.push(p)
     },
     isOpen: () => true,

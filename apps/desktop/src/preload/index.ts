@@ -1,10 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 import {
+  BATCH_PROGRESS_EVENT,
   CHANNELS,
   ISSUES_PROGRESS_EVENT,
   LATE_READ_EVENT,
   WINDOW_FOCUS_EVENT,
+  type BatchProgress,
   type IssuesProgress,
   type LateRead,
   type JmApi,
@@ -35,6 +37,16 @@ const api = {
     ipcRenderer.on(ISSUES_PROGRESS_EVENT, forward)
     return () => {
       ipcRenderer.removeListener(ISSUES_PROGRESS_EVENT, forward)
+    }
+  },
+  onBatchProgress(listener) {
+    const forward = (_event: unknown, progress: unknown) => {
+      const { batchId, done, total } = progress as BatchProgress
+      listener({ batchId, done, total })
+    }
+    ipcRenderer.on(BATCH_PROGRESS_EVENT, forward)
+    return () => {
+      ipcRenderer.removeListener(BATCH_PROGRESS_EVENT, forward)
     }
   },
   onLateRead(listener) {

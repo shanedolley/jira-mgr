@@ -4,6 +4,7 @@ import { basename } from 'node:path'
 import { JiraMgrError, type Issue } from '@jira-mgr/core'
 import { imageNode, sameAdf, type AdfNode } from '@jira-mgr/core/adf'
 import { createKeychain, getCredentials, login, logout, type Keychain } from '@jira-mgr/core/auth'
+import { runBatch, type BatchOptions } from '@jira-mgr/core/bulk'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import {
   addAttachment,
@@ -100,6 +101,9 @@ import type {
   EditIssueArgs,
   AvatarArgs,
   AvatarImage,
+  BatchArgs,
+  BatchOutcome,
+  BatchProgress,
   EditWorklogArgs,
   FieldChoice,
   FieldOptionsArgs,
@@ -146,6 +150,7 @@ import { desktopMessage } from './messages'
 /** What a handler gives the backend to report on the window that asked. */
 export interface ProgressSender {
   sendProgress(progress: IssuesProgress): void
+  sendBatchProgress(progress: BatchProgress): void
   /** False once the window is gone. */
   isOpen(): boolean
   sendLateRead(read: LateRead): void
@@ -173,6 +178,12 @@ export interface Backend {
   /** One issue with its description and subtasks, read afresh. */
   getIssue(args: KeyArgs): Promise<IssueDetail>
   editIssue(args: EditIssueArgs): Promise<void>
+  /**
+   * Applies each item's change through core's `runBatch`: one bulk call per distinct change where
+   * Jira has one, else one call per issue. Every key and new parent must be in the project, or
+   * nothing is sent. Jira's refusals come back in the outcome, not as a throw. A logout aborts it.
+   */
+  batch(args: BatchArgs, progress: ProgressSender): Promise<BatchOutcome>
   /**
    * Writes the description unless Jira's no longer matches the one the edit started from, in
    * which case nothing is written and Jira's is returned. Jira has no conditional write, so an
@@ -264,6 +275,8 @@ export interface BackendDeps {
   http?: HttpClient
   /** Tests inject a clock for the media index's 30 second windows and the timer's start and stop times. */
   now?: () => number
+  /** Tests and the e2e entry shorten the wait between polls of a bulk task. */
+  batchPoll?: Pick<BatchOptions, 'pollMs' | 'sleep'>
   /** Tests and the e2e entry shorten the wait before a created issue is read again. */
   lateReadMs?: number
   /** Asks the user where to save a file, offering `defaultName`. `null` means they cancelled. */
@@ -347,6 +360,8 @@ export function createBackend(deps: BackendDeps = {}): Backend {
 
   /** The load running for each phase. A newer load of a phase, and a logout, abort it. */
   const loads = new Map<IssuePhase, AbortController>()
+  /** The batches running. A logout aborts them, so no write goes out with a token that is going away. */
+  const batches = new Set<AbortController>()
   /** The text search in flight. The palette types one query at a time, so a new search aborts it. */
   let textSearch: AbortController | undefined
   /** Settings writes in call order, so a second toggle or display change never reads settings from before the first. */
@@ -483,6 +498,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       for (const controller of loads.values()) controller.abort()
       loads.clear()
       textSearch?.abort()
+      for (const controller of batches) controller.abort()
       media.clear()
       clearLateReads()
       dropInbox()
@@ -507,6 +523,39 @@ export function createBackend(deps: BackendDeps = {}): Backend {
         assertTypeChangeAllowed(key, (await getIssue(http, key)).issueType.name)
       }
       await editIssue(http, key, changes)
+    },
+    async batch({ batchId, items }, progress) {
+      // The same guards the CLI applies, checked for every issue before the first request.
+      for (const { key, change } of items) {
+        await assertInProject(key)
+        if (change.kind === 'edit' && change.changes.parentKey !== undefined) {
+          await assertInProject(change.changes.parentKey)
+        }
+        if (change.kind === 'edit' && change.changes.type !== undefined) {
+          assertTypeChangeAllowed(key, (await getIssue(http, key)).issueType.name)
+        }
+      }
+      const controller = new AbortController()
+      batches.add(controller)
+      try {
+        const outcome = await runBatch(http, items, {
+          ...deps.batchPoll,
+          signal: controller.signal,
+          onProgress: ({ done, total }) => {
+            if (progress.isOpen()) progress.sendBatchProgress({ batchId, done, total })
+          },
+        })
+        // A reason crosses IPC inside a result, not as an error, so it loses the request here.
+        return {
+          ...outcome,
+          refused: outcome.refused.map(({ key, reason }) => ({
+            key,
+            reason: desktopMessage(reason),
+          })),
+        }
+      } finally {
+        batches.delete(controller)
+      }
     },
     async setDescription({ key, description, base }) {
       await assertInProject(key)

@@ -297,6 +297,42 @@ export interface EditIssueArgs {
   changes: IssueChanges
 }
 
+/** The change one batch item makes. Core's `runBatch` groups equal changes into one Jira call. */
+export type BatchChange =
+  | { kind: 'edit'; changes: IssueChanges }
+  | { kind: 'status'; statusId: string }
+  /** `sprintId: null` moves the issue to the backlog. */
+  | { kind: 'sprint'; sprintId: number | null }
+
+/** One issue of a batch. `id` is its numeric id, which Jira's bulk task results name it by. */
+export interface BatchItem {
+  key: string
+  id: string
+  change: BatchChange
+}
+
+/** The most issues one `issues:batch` takes, as many as Jira's bulk endpoints do. */
+export const BATCH_MAX = 1000
+
+/** The renderer numbers each batch, so a progress event is told apart from another batch's. */
+export interface BatchArgs {
+  batchId: number
+  items: BatchItem[]
+}
+
+/** Which issues of a batch changed and which Jira refused, in input order. A refusal never throws. */
+export interface BatchOutcome {
+  done: string[]
+  refused: { key: string; reason: string }[]
+}
+
+/** Main to renderer: issues of one batch settled so far, done or refused. */
+export interface BatchProgress {
+  batchId: number
+  done: number
+  total: number
+}
+
 export interface KeyArgs {
   key: string
 }
@@ -424,6 +460,8 @@ export interface IpcContract {
   /** One issue with its description and subtasks, read afresh. */
   'issues:get': { args: KeyArgs; result: IssueDetail }
   'issues:edit': { args: EditIssueArgs; result: null }
+  /** Applies a change to each issue, through Jira's bulk endpoints where it has one. Progress arrives as `BATCH_PROGRESS_EVENT`. */
+  'issues:batch': { args: BatchArgs; result: BatchOutcome }
   /** Writes the description unless Jira's no longer matches `base`. */
   'issues:setDescription': { args: SetDescriptionArgs; result: SetDescriptionResult }
   /** Attaches a dropped image to the issue and returns the `mediaSingle` that embeds it. */
@@ -507,6 +545,7 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'issues:setSummary': true,
   'issues:get': true,
   'issues:edit': true,
+  'issues:batch': true,
   'issues:setDescription': true,
   'attachments:addImage': true,
   'attachments:image': true,
@@ -565,6 +604,9 @@ export const WINDOW_FOCUS_EVENT = 'window:focus'
 /** Main to renderer: an `IssuesProgress` for each page a load fetches. */
 export const ISSUES_PROGRESS_EVENT = 'issues:progress'
 
+/** Main to renderer: a `BatchProgress` as each issue of a running batch settles. */
+export const BATCH_PROGRESS_EVENT = 'issues:batchProgress'
+
 /** Main to renderer: a `LateRead` about 10 s after a create, once the PSAPAC automation has run. */
 export const LATE_READ_EVENT = 'issues:lateRead'
 
@@ -594,6 +636,8 @@ export type JmApi = {
   onWindowFocus(listener: (focused: boolean) => void): () => void
   /** Subscribes to the progress of issue loads. Returns the unsubscribe function. */
   onIssuesProgress(listener: (progress: IssuesProgress) => void): () => void
+  /** Subscribes to the progress of batches. Returns the unsubscribe function. */
+  onBatchProgress(listener: (progress: BatchProgress) => void): () => void
   /** Subscribes to the second read of each created issue. Returns the unsubscribe function. */
   onLateRead(listener: (read: LateRead) => void): () => void
 }
