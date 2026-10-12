@@ -39,8 +39,12 @@ export const commentsQuery = (key: string) => ({
 /** A list from the page's own read, which refetches on window focus like the rest. */
 export const useComments = (key: string) => useQuery(commentsQuery(key))
 
-export const useWorklogs = (key: string) =>
-  useQuery({ queryKey: worklogsKey(key), queryFn: () => call('worklogs:list', { key }) })
+export const useWorklogs = (key: string, options: { enabled?: boolean; staleTime?: number } = {}) =>
+  useQuery({
+    queryKey: worklogsKey(key),
+    queryFn: () => call('worklogs:list', { key }),
+    ...options,
+  })
 
 /** The issue's links and every link type, which the add form offers. */
 export const useLinks = (key: string) =>

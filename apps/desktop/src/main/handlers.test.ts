@@ -67,6 +67,7 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     editComment: record('editComment', {} as never),
     deleteComment: record('deleteComment', undefined),
     listWorklogs: record('listWorklogs', []),
+    getTimeTracking: record('getTimeTracking', null),
     addWorklog: record('addWorklog', {} as never),
     editWorklog: record('editWorklog', {} as never),
     deleteWorklog: record('deleteWorklog', undefined),
@@ -191,6 +192,18 @@ describe('argument validation', () => {
     const result = await createHandlers(backend)['user:me']({ key: 'PSAPAC-1' }, noProgress)
     expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
     expect(calls).toEqual([])
+  })
+
+  it('passes the time tracking settings through and refuses an argument', async () => {
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    expect(await handlers['timetracking:get'](undefined, noProgress)).toEqual({
+      ok: true,
+      data: null,
+    })
+    const refused = await handlers['timetracking:get']({ key: 'PSAPAC-1' }, noProgress)
+    expect(refused).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([{ method: 'getTimeTracking', args: [] }])
   })
 
   it('passes a valid request through, with the summary trimmed', async () => {

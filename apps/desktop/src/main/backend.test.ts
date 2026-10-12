@@ -782,4 +782,22 @@ describe('customers', () => {
       { id: '6', value: 'Beta Ltd' },
     ])
   })
+
+  it('reads the working day and week from the site settings', async () => {
+    const paths: string[] = []
+    const http: HttpClient = {
+      request(_method, path) {
+        paths.push(path)
+        return Promise.resolve({
+          timeTrackingEnabled: true,
+          timeTrackingConfiguration: { workingHoursPerDay: 7.5, workingDaysPerWeek: 5 },
+        })
+      },
+    }
+    expect(await createBackend({ http }).getTimeTracking()).toEqual({
+      workingHoursPerDay: 7.5,
+      workingDaysPerWeek: 5,
+    })
+    expect(paths).toEqual(['/rest/api/3/configuration'])
+  })
 })

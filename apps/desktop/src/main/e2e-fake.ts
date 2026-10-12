@@ -485,7 +485,11 @@ interface RawFields {
   parent: { key: string } | null
   priority: (typeof PRIORITIES)[number]
   duedate: string | null
-  timetracking: { originalEstimateSeconds?: number; remainingEstimateSeconds?: number }
+  timetracking: {
+    originalEstimateSeconds?: number
+    remainingEstimateSeconds?: number
+    timeSpentSeconds?: number
+  }
   description: unknown
   /** The custom fields, by the ids in `FIELDS`. */
   [field: string]: unknown
@@ -669,6 +673,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   removeComment: (key: string, id: number) => void
   /** Adds a worklog by the signed-in user, with this comment document, before a test opens the page. */
   addWorklog: (key: string, comment: unknown) => void
+  /** Adds a worklog of `seconds` that started at the ISO time `started`, by the signed-in user, with no hold and no count. */
+  logWork: (key: string, started: string, seconds: number) => void
+  /** Sets the original estimate in seconds, or clears it with `null`, as if someone else did: no hold and no count. */
+  setEstimate: (key: string, estimate: number | null) => void
   /** Holds each comment and link list read from now on, until `releaseReads`. */
   holdReads: () => void
   /** Answers every held list read, and stops holding. */
@@ -854,6 +862,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     clock++
     target.fields.updated = new Date(Date.UTC(2026, 9, 3, 0, 0, clock)).toISOString()
   }
+  /** Jira sums an issue's worklogs into `timetracking.timeSpentSeconds`, and sends none while it is 0. */
+  const syncSpent = (target: RawIssue) => {
+    const total = (worklogs.get(target.key) ?? []).reduce((sum, w) => sum + w.seconds, 0)
+    if (total > 0) target.fields.timetracking.timeSpentSeconds = total
+    else delete target.fields.timetracking.timeSpentSeconds
+  }
+  for (const target of issues) syncSpent(target)
   const refusal = (field: string, message: string) =>
     json({ errorMessages: [], errors: { [field]: message } }, 400)
 
@@ -968,6 +983,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       // As the live PSAPAC rules do: the remaining estimate follows, and Time remaining (h) with it.
       const total = seconds(estimate)
       target.fields.timetracking = {
+        ...target.fields.timetracking,
         originalEstimateSeconds: total,
         remainingEstimateSeconds: total,
       }
@@ -1001,6 +1017,17 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       await new Promise<void>((resolve) => held.push(resolve))
     }
 
+    if (method === 'GET' && path === '/rest/api/3/configuration') {
+      return json({
+        timeTrackingEnabled: true,
+        timeTrackingConfiguration: {
+          workingHoursPerDay: 8,
+          workingDaysPerWeek: 5,
+          timeFormat: 'pretty',
+          defaultUnit: 'minute',
+        },
+      })
+    }
     if (method === 'GET' && path === '/rest/api/3/myself') {
       return json(USERS.u1)
     }
@@ -1564,6 +1591,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
           updated: now,
         }
         worklogs.set(target.key, [...list, added])
+        syncSpent(target)
         if (adjusting === 'auto') adjust(-added.seconds)
         counts.applied++
         return json(shown(added), 201)
@@ -1578,6 +1606,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         if (input.started !== undefined) found.started = input.started
         if (input.comment !== undefined) found.comment = input.comment
         found.updated = stamp()
+        syncSpent(target)
         if (adjusting === 'auto') adjust(before - found.seconds)
         counts.applied++
         return json(shown(found))
@@ -1590,6 +1619,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
           target.key,
           list.filter((w) => w !== found),
         )
+        syncSpent(target)
         if (adjusting === 'auto') adjust(found.seconds)
         counts.applied++
         return new Response(null, { status: 204 })
@@ -1819,6 +1849,40 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
           updated: when,
         },
       ])
+      const target = find(key)
+      if (target !== undefined) syncSpent(target)
+    },
+    logWork: (key, started, seconds) => {
+      const target = find(key)
+      if (target === undefined) return
+      const when = new Date(Date.UTC(2026, 9, 3, 2, 0, ++clock)).toISOString()
+      worklogs.set(key, [
+        ...(worklogs.get(key) ?? []),
+        {
+          id: FIRST_WORKLOG + 500 + worklogIds++,
+          author: ME,
+          seconds,
+          started,
+          comment: null,
+          created: when,
+          updated: when,
+        },
+      ])
+      syncSpent(target)
+      touch(target)
+    },
+    setEstimate: (key, estimate) => {
+      const target = find(key)
+      if (target === undefined) return
+      const { timeSpentSeconds } = target.fields.timetracking
+      target.fields.timetracking = {
+        ...(estimate !== null && {
+          originalEstimateSeconds: estimate,
+          remainingEstimateSeconds: Math.max(0, estimate - (timeSpentSeconds ?? 0)),
+        }),
+        ...(timeSpentSeconds !== undefined && { timeSpentSeconds }),
+      }
+      touch(target)
     },
     holdReads: () => {
       readsHeld = true

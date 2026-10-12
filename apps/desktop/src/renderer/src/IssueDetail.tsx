@@ -11,6 +11,7 @@ import { Spinner } from './Spinner'
 import { SummaryEditor } from './SummaryEditor'
 import { pressOf } from './timer'
 import { useTimer } from './timerQueries'
+import { TimeTracking } from './TimeTracking'
 import { TypeIcon } from './TypeIcon'
 
 /**
@@ -85,12 +86,10 @@ const READ_DELAY_MS = 180
 const FRESH_MS = 30_000
 
 /**
- * The first three lines of the description as plain text, with no editor. The Peek follows the
- * active row, so the read waits until the user stops on one, and a copy read lately is reused.
- * A copy the cache already holds shows at once, whatever the delay.
+ * True once the Peek has held still on its issue for `READ_DELAY_MS`. The Peek is keyed by the
+ * issue, so it starts again, false, on each row the user moves to.
  */
-function PeekDescription({ issueKey }: { issueKey: string }) {
-  // The Peek is keyed by the issue, so this starts again, unread, on each row the user moves to.
+function useSettled(): boolean {
   const [settled, setSettled] = useState(false)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -100,6 +99,16 @@ function PeekDescription({ issueKey }: { issueKey: string }) {
       clearTimeout(timer)
     }
   }, [])
+  return settled
+}
+
+/**
+ * The first three lines of the description as plain text, with no editor. The Peek follows the
+ * active row, so the read waits until the user stops on one, and a copy read lately is reused.
+ * A copy the cache already holds shows at once, whatever the delay.
+ */
+function PeekDescription({ issueKey }: { issueKey: string }) {
+  const settled = useSettled()
   const detail = useIssueDetail(issueKey, {
     enabled: settled,
     staleTime: FRESH_MS,
@@ -170,6 +179,7 @@ function PeekIssue({
   const fix = useMatchCustomer(issue)
   const timer = useTimer().data?.timer ?? null
   const pending = usePendingFields(issue.key)
+  const settled = useSettled()
   return (
     <div className="space-y-5 px-5 pb-6">
       <div className="space-y-1">
@@ -222,6 +232,7 @@ function PeekIssue({
           {new Date(issue.updated).toLocaleDateString()}
         </Property>
       </dl>
+      <TimeTracking issue={issue} where="peek" load={settled} />
       {blockers !== undefined && blockers.length > 0 && (
         <section aria-label="Blocked by" className="space-y-1">
           <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">Blocked by</h2>

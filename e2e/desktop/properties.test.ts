@@ -32,10 +32,10 @@ async function open() {
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
 }
 
-/** The vertical centre of each of the Peek's property rows, top to bottom. */
+/** The vertical centre of each of the Peek's property rows, top to bottom. The time block's figures are not rows. */
 const rowCentres = () =>
   peek()
-    .locator('dl > div')
+    .locator('dl[data-issue] > div')
     .evaluateAll((rows) =>
       rows.map((row) => {
         const box = row.getBoundingClientRect()
@@ -67,7 +67,7 @@ test('the Peek spaces its property rows 32px apart, with an 8px gap before the r
 test('the Peek shows a chevron on editable rows only', async () => {
   await open()
   await item(/PSAPAC-4,/).click()
-  const rows = peek().locator('dl > div')
+  const rows = peek().locator('dl[data-issue] > div')
   await expect(rows).toHaveCount(8)
   for (const [i, chevron] of [1, 1, 1, 1, 0, 0, 0, 0].entries()) {
     await expect(rows.nth(i).locator('[data-chevron]')).toHaveCount(chevron)
@@ -219,7 +219,7 @@ test('a Peek picker opens 13rem wide and leaves every property name readable', a
   const box = await listbox('Priority').locator('xpath=..').boundingBox()
   expect(box?.width).toBe(208)
   const nameEdges = await peek()
-    .locator('dt')
+    .locator('dl[data-issue] dt')
     .evaluateAll((names) => names.map((name) => name.getBoundingClientRect().right))
   expect(box?.x).toBeGreaterThanOrEqual(Math.max(...nameEdges))
 })

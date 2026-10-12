@@ -76,6 +76,8 @@ interface FakeJira {
   setComment: (key: string, id: number, body: unknown) => void
   removeComment: (key: string, id: number) => void
   addWorklog: (key: string, comment: unknown) => void
+  logWork: (key: string, started: string, seconds: number) => void
+  setEstimate: (key: string, estimate: number | null) => void
   holdReads: () => void
   releaseReads: () => void
   cancelNextDownload: () => void
@@ -294,6 +296,31 @@ export const addWorklog = (app: ElectronApplication, key: string, comment: unkno
       ;(globalThis as unknown as WithFake).__fakeJira.addWorklog(name as string, adf)
     },
     [key, comment],
+  )
+
+/** Logs `seconds` of work started at the ISO time `started`, before the page opens. */
+export const logWork = (app: ElectronApplication, key: string, started: string, seconds: number) =>
+  app.evaluate(
+    (_electron, [name, when, length]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.logWork(
+        name as string,
+        when as string,
+        length as number,
+      )
+    },
+    [key, started, seconds],
+  )
+
+/** Sets an issue's original estimate in seconds, or clears it with `null`, as if someone else did. */
+export const setEstimate = (app: ElectronApplication, key: string, estimate: number | null) =>
+  app.evaluate(
+    (_electron, [name, seconds]) => {
+      ;(globalThis as unknown as WithFake).__fakeJira.setEstimate(
+        name as string,
+        seconds as number | null,
+      )
+    },
+    [key, estimate],
   )
 
 /** Holds each comment and link list read until `releaseReads`, so a test sees the page before a refetch lands. */
