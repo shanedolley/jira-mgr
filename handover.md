@@ -2,11 +2,22 @@
 
 ## Where Work Stands
 
-Checked 2026-10-12. Head `5bc9feb` (`git log --oneline -1 origin/main`, PR [#196](https://github.com/shanedolley/jira-mgr/pull/196), a handover refresh after the desktop bulk bar in #195); main CI run 38196777760 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). No issue is open.
+Checked 2026-10-13. Head `9b26de4` (`git log --oneline -1 origin/main`, PR [#198](https://github.com/shanedolley/jira-mgr/pull/198), which moved the CI-wait trap into AGENTS.md); main CI run 38255417040 succeeded on it. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Four issues are open and unclaimed, all filed by Shane on 2026-10-12: #199, #200, #201 and #202 (see Open Stories).
 
 #143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
-Shane closed #138, #150 and #184 and answered #144 ("keep the neutral capsule with a red icon") and #151 ("Approved") on 2026-10-12; the project manager closed those two.
+Shane closed #138, #143, #150 and #184 and answered #144 ("keep the neutral capsule with a red icon") and #151 ("Approved") on 2026-10-12; the project manager closed those two.
+
+## Open Stories
+
+Each goes to HIL Review for Shane when built, since each shows in the desktop app. Land them one at a time: #199 and #200 both change the Tree rows.
+
+| Issue | Story | Notes |
+|---|---|---|
+| #199 | Hide done hides every Done issue | With Hide done on, no Done issue shows, not even a Done ancestor of an open issue (Shane, 2026-10-12). `buildHierarchy` in `packages/core/src/hierarchy.ts` builds from open issues only, so no `doneChildren` and no "N done" chip. An open issue under a Done parent attaches to its nearest open ancestor, else becomes a root in its own Customer group. Epic and sub-issue progress still counts Done children. Hide done off is unchanged, and so is `jm issue tree`. Replaces the 2026-10-07 decision once built; docs that describe today's behaviour stay true until then |
+| #200 | Show sub-issue progress on issues, not Epics | The ring moves to any Story, Task or Bug with at least one sub-issue; Epics lose it (Shane, 2026-10-12). The guard in `IssueTree.tsx` moves from `hierarchyLevel >= 1` to standard-level issues with an entry in the progress map. No core change. The Epics table, the Customers page and the issue page's "Sub-issue of" line are unchanged |
+| #201 | Open the issue page with a double-click on a Tree row | Opens the page as Enter does, Epic and context rows included. Ignored on the checkbox, status dot, avatar, chevron and with Shift held. Needs an e2e test and docs in `apps/desktop/README.md` and `docs/reference/shortcuts.md` |
+| #202 | Show estimate, time logged and a worklog chart on the Peek and the issue page | Adds a core call: `GET /rest/api/3/configuration/timetracking` for `workingHoursPerDay` and `workingDaysPerWeek` (a day is Jira's working day, Shane, 2026-10-12), with a zod schema and a recorded fixture, plus `timeSpentSeconds` from the search's `timetracking` object. The chart is hand-drawn, with no dependency. Not on Epics |
 
 ## Stories
 
@@ -22,7 +33,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #131 | Focus and selection by fill and a bold key | [#155](https://github.com/shanedolley/jira-mgr/pull/155) | |
 | #132 | Properties sidebar | [#158](https://github.com/shanedolley/jira-mgr/pull/158) | Lows: the `useIssueDetail` guard does not help when no copy is held yet; an image-only description shows "No description" |
 | #133 | Create dialog chip strip | [#163](https://github.com/shanedolley/jira-mgr/pull/163) | |
-| #134 | Toolbar pickers | [#160](https://github.com/shanedolley/jira-mgr/pull/160) | Medium, unverified since 2026-10-12: the toolbar wrapped sooner at 1200 wide with the Peek open; #151 changed the toolbar since |
+| #134 | Toolbar pickers | [#160](https://github.com/shanedolley/jira-mgr/pull/160) | Medium, unverified since 2026-10-13: the toolbar wrapped sooner at 1200 wide with the Peek open; #151 changed the toolbar since |
 | #135 | Shortcut help | [#162](https://github.com/shanedolley/jira-mgr/pull/162) | |
 | #136 | Page type scale | [#161](https://github.com/shanedolley/jira-mgr/pull/161) | |
 | #137 | One button and radius system | [#174](https://github.com/shanedolley/jira-mgr/pull/174) | |
@@ -66,14 +77,14 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Open | 0 | `gh issue list --state open --limit 200` | 2026-10-12 |
-| Closed | 71 | `gh issue list --state closed --limit 300` | 2026-10-12 |
-| In progress | none | `--label status:in-progress` | 2026-10-12 |
-| In HIL Review | none | `--label status:hil-review` | 2026-10-12 |
-| With `question` | none | `--label question` | 2026-10-12 |
-| Open pull requests | none | `gh pr list --state open` | 2026-10-12 |
+| Open | 4 (#199 to #202) | `gh issue list --state open --limit 200` | 2026-10-13 |
+| Closed | 71 | `gh issue list --state closed --limit 300` | 2026-10-13 |
+| In progress | none | `--label status:in-progress` | 2026-10-13 |
+| In HIL Review | none | `--label status:hil-review` | 2026-10-13 |
+| With `question` | none | `--label question` | 2026-10-13 |
+| Open pull requests | none before the sweep PR | `gh pr list --state open` | 2026-10-13 |
 
-`git worktree list` shows the main tree only (2026-10-12). Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree only (2026-10-13). Only `main` exists on origin (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
@@ -81,9 +92,9 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests. Core 1354 pass and 5 skip, desktop 1142, CLI 602 (main CI run 38195032090 on 3d1487f; `gh run view 38195032090 --log`, 2026-10-12) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests. Core 1354 pass and 5 skip, desktop 1142, CLI 602 (main CI run 38255417040 on 9b26de4; `gh run view 38255417040 --log`, 2026-10-13) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | The same plus `*.live.test.ts`, with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only |
-| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38195032090 on 3d1487f: 522 passed, 4 skipped (`gh run view 38195032090 --log`, 2026-10-12). A local macOS run has 526 tests with 1 skipped. Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
+| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38255417040 on 9b26de4: 522 passed, 4 skipped (`gh run view 38255417040 --log`, 2026-10-13). A local macOS run had 526 tests with 1 skipped on 2026-10-12, unverified since 2026-10-13. Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
 | `pnpm -s jm -- <args>` | The built CLI. Use `-s`: plain `pnpm jm --` prints pnpm's banner and breaks JSON | Live Jira at the site in `settings.json`, as the logged-in user. Writes from L4 on. Set `JM_STATE_DIR` to a scratch folder first |
 | `pnpm package` | Builds `apps/desktop/dist/jira-mgr.app`; macOS only | Nothing external. The packaged app, like `pnpm dev`, uses the real state folder and Keychain item unless `JM_STATE_DIR` is set |
@@ -92,12 +103,13 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 State files live in `~/Library/Application Support/jira-mgr/`. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item.
 
-CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`. Confirm a run with `gh run list --workflow ci.yml --branch main --limit 1` and `gh run view <id> --json headSha,conclusion`.
+CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`, all on `ubuntu-latest`, so CI builds no Mac binary. Confirm a run with `gh run list --workflow ci.yml --branch main --limit 1` and `gh run view <id> --json headSha,conclusion`.
 
 ## Environments
 
-- Jira: Collibra site `engineering-collibra.atlassian.net`, project PSAPAC. Its measured shape (issue types, field ids, statuses, link types, sprints) is in [round 2](docs/discovery/2026-10-07-product-grilling/round-2.md), measured 2026-10-07 and unverified since 2026-10-12. Field presence comes from createmeta and editmeta: Sprint (10600) is on every type but Epic; Start date (13808) is on Bug, Story and Epic in createmeta, though a live Subtask edit accepted it. Metadata does not predict what Jira accepts (editmeta lists no Priority for Subtask, yet a live edit changed it). Transition 3 on Epics is named "REVIEW", so match transitions by target status.
-- Credentials: `~/.claude/bin/kj collibra` reads the Keychain item `kothar-jira-collibra` with `COLLIBRA_JIRA_EMAIL` (item present, `security find-generic-password` exit 0, 2026-10-12). The fixture recorder borrows that token through `JM_JIRA_TOKEN`. jira-mgr's own item (service `jira-mgr`, account = the Collibra email) is written by `login` from `@jira-mgr/core/auth`; it exists, so `jm` is logged in on this Mac (exit 0, 2026-10-12).
+- Jira: Collibra site `engineering-collibra.atlassian.net`, project PSAPAC. Its measured shape (issue types, field ids, statuses, link types, sprints) is in [round 2](docs/discovery/2026-10-07-product-grilling/round-2.md), measured 2026-10-07 and unverified since 2026-10-13. Field presence comes from createmeta and editmeta: Sprint (10600) is on every type but Epic; Start date (13808) is on Bug, Story and Epic in createmeta, though a live Subtask edit accepted it. Metadata does not predict what Jira accepts (editmeta lists no Priority for Subtask, yet a live edit changed it). Transition 3 on Epics is named "REVIEW", so match transitions by target status.
+- Credentials: `~/.claude/bin/kj collibra` reads the Keychain item `kothar-jira-collibra` with `COLLIBRA_JIRA_EMAIL` (item present, `security find-generic-password` exit 0, 2026-10-13). The fixture recorder borrows that token through `JM_JIRA_TOKEN`. jira-mgr's own item (service `jira-mgr`, account = the Collibra email) is written by `login` from `@jira-mgr/core/auth`; it exists, so `jm` is logged in on this Mac (exit 0, 2026-10-13).
+- Installed app: Shane had the app packaged and installed to `/Applications/jira-mgr.app` on 2026-10-12 (`pnpm package`, from main at `257a519`, per Shane; the folder exists, its build commit is unverified since 2026-10-13). It lacks every story from #199 on, so rebuild and copy again to see new work ([install guide](docs/how-to/install-desktop-app.md)).
 - Recorded fixtures are committed as recorded, with no scrubbing (Q60). Never record request headers.
 
 ## Open Decisions
@@ -108,16 +120,18 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
+- Pending supersession: #199 (Shane, 2026-10-12) replaces the 2026-10-07 decision below that Hide done keeps a Done ancestor of an open issue as dimmed context. Until #199 merges the code, `docs/design/0002-issue-tree.md`, `CONTEXT.md` and `packages/core/README.md` describe today's behaviour and stay as written; #199 updates them with the code.
+- #200 (Shane, 2026-10-12): the progress ring goes on any Story, Task or Bug with sub-issues, and Epics lose it. #202 (Shane, 2026-10-12): a day is Jira's working day from `/rest/api/3/configuration/timetracking`, and the chart is hand-drawn with no dependency.
 - #131: the light-theme fills stay as built, and the active-only row keeps its fill alone.
 - #143 (Shane, 2026-10-12): M3 option A, the selection stays pruned to the rows shown. Esc clears the selection before it closes the Peek; the selection stays after an action; bulk calls send `sendBulkNotification: false`; checked rows take the selected fill through `aria-checked` while the peeked row keeps `aria-selected` and its bold key. The bar's primary action is Status.
 - #144 (Shane, 2026-10-12): keep the neutral capsule with a red icon. #151 (2026-10-12): approved as built.
 - Review decisions: [docs/discovery/2026-10-10-review-decisions.md](docs/discovery/2026-10-10-review-decisions.md). Shane's answers on #128 to #149 (2026-10-11) sit under his login in `gh issue view <n> --json comments`, as agents post through his account. The ones that shape code: #128 option B (branch on not found and server fault); #131 option C (the bold key); #139 option A (sibling keys plus a `not` object); #142 upload a pasted image after the create and patch the description, and drop onto the dialog; #145 the "No subtasks" section always shows, the UI says "sub-issue", and a lost create is read to confirm before a retry; #146 option A; #147 option B (cap 50); #148 option C (keep the reporter clause); #138 option B (row properties and order persist per view).
-- 2026-10-07: with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors as dimmed context; internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review; Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10; zod is core's validation library and `marked` its Markdown lexer; view filters are multi-value arrays; `internal` errors exit 1.
+- 2026-10-07 (to be replaced by #199, see above): with "Hide done" and "Assignee: me" both on, an open issue of yours keeps its Done ancestors as dimmed context; internal stories close as Done after a passing agent review, while user-facing, security and live-Jira work goes to Shane in HIL Review; Keychain access through `/usr/bin/security`; state files in `~/Library/Application Support/jira-mgr/`; Markdown in the CLI; build order Core, CLI, Desktop; Dependabot majors: merge vite 8, typescript 7 and @types/node 26, ignore plugin-react 6 and eslint 10; zod is core's validation library and `marked` its Markdown lexer; view filters are multi-value arrays; `internal` errors exit 1.
 - CLI (Shane, 2026-10-07): JSON envelope `{"data"}` or `{"error"}`; a timer stop needing confirmation exits 2 without `--confirm` or `--time`; JSON carries `descriptionMarkdown` and `bodyMarkdown` beside the ADF; write commands and `--parent` refuse keys outside the configured project.
 
 ## Traps
 
-Each re-read at its source on 2026-10-12 unless it says otherwise.
+Each re-read at its source on 2026-10-13 unless it says otherwise.
 
 - **Linux CI differs from macOS** (met on #159, #163 and #190; one red CI round each). Now in [AGENTS.md](AGENTS.md).
 - **A release before the write is held is lost** (met after PR #170, fixed by PR #171). The e2e fake's `releaseEdit` is `held.shift()?.()` in `apps/desktop/src/main/e2e-fake.ts`, so releasing before the write is held does nothing and the dialog waits forever. Wait for the write (`settle(n)` or `expect.poll(writes)`) before `releaseEdit`.
@@ -131,21 +145,20 @@ Each re-read at its source on 2026-10-12 unless it says otherwise.
 - **Unanchored row-label locators match Epic progress** (met 2026-10-12 on PR #193, one red CI round). Since #150 an Epic row's label ends "N of M done", so `item(/2 done/)` also matched two Epics and passed only when its poll landed before the Done phase loaded (7 of 8 local runs failed). Match a row label exactly or anchor it (`/^2 done$/`).
 - **The Electron dist can be missing in a new worktree** (nine or more times). The check and fix are in [AGENTS.md](AGENTS.md).
 - **A conditional `border-danger` never wins over another border colour.** In the built CSS `.border-danger` sorts first. Use `aria-invalid:border-danger`, as `IssueProperties.tsx` does.
-- **ship-it** (the merge automation) behaves inconsistently. It merged #38, #40, #42 to #45, #47, #68 and #154 on green, and left #46, #62 to #65, #88 to #95 and #98 alone. It tries to merge a draft and posts "Pull Request is still a draft" failures; the draft is deliberate while a story waits on Shane, so ignore them and do not push. A second merge then reports "merge conflicts" or "already in progress": check `gh pr view <n> --json state` first.
+- **ship-it** (the merge automation) behaves inconsistently. It merged #38, #40, #42 to #45, #47, #68 and #154 on green (unverified since 2026-10-13 for later pull requests), and left #46, #62 to #65, #88 to #95 and #98 alone. It tries to merge a draft and posts "Pull Request is still a draft" failures; the draft is deliberate while a story waits on Shane, so ignore them and do not push. A second merge then reports "merge conflicts" or "already in progress": check `gh pr view <n> --json state` first.
 - **The hooks refuse some command shapes.** A `gh pr create` body quoting test counts the session did not run is refused (attribute counts to the builder or reviewer, or omit them). `gh pr create` takes `--body-file -` with a quoted heredoc; a body file on disk is refused. `gh pr edit` takes `--body "$(cat <<'EOF' ... EOF)"` only, and the claim-check refuses any sentence it cannot verify, a restated review verdict included. `gh issue comment --body` refuses `$(...)` except a quoted heredoc. The ticket guard refuses Bash text that names the Collibra host, shell variables inside a `kj` path and `>|` redirects; run `kj` alone with a plain `>` redirect, then parse the file in a second command. Write commit messages to a file and pass `git commit -F`.
 - **`gh pr checks --watch` exits early** (bit twice, the second time merging #197 on pending checks, 2026-10-12). Now in [AGENTS.md](AGENTS.md).
 - **Retitling a PR does not rerun CI**, so `pr-title` keeps its old result; push a new commit after a retitle. PR title scopes (`ci.yml`, 2026-10-12): `cli`, `desktop`, `core`, `config`, `e2e`, `docs`, `repo`, `deps`, `deps-dev`.
 - **Two PRs on shared desktop files conflict in sequence.** Merge one, rebase the other onto `main`, and trust only a CI run from after the rebase. Land pull requests one at a time.
 - **Squash merges and `git branch -d`.** After a squash merge `-d` refuses. Confirm `git diff <branch-tip> origin/main` is empty, then `KOTHAR_ALLOW_DESTRUCTIVE=1 git branch -D`.
 - **A copied worktree folder moves the original's HEAD.** Make scratch copies with `git worktree add` or `git clone`, never `cp`. Give each agent its own worktree; one left the main tree on its own branch and the commit guard then blocked a commit on `main`.
-- **Node 22 is the default shell node** (2026-10-12: `node` on PATH resolves `~/.local/share/mise/installs/node/22.22.0`; the mise shim gives v24.16.0 inside the repository, from `.nvmrc`, and v22.22.0 outside it). CI uses `.nvmrc` (24) and `engines` requires `>=24`. Put `~/.local/share/mise/installs/node/24.16.0/bin` first on PATH (v24.16.0 confirmed 2026-10-12).
+- **Node 22 is the default shell node** (2026-10-13: `node` on PATH in a bare shell resolves `~/.local/share/mise/installs/node/22.22.0/bin/node` and prints v22.22.0). CI uses `.nvmrc` (24) and `engines` requires `>=24`. Put `~/.local/share/mise/installs/node/24.16.0/bin` first on PATH (v24.16.0 confirmed 2026-10-13).
 - **pnpm forwards `--`.** `pnpm jm -- --help` passes a literal `--`; `scripts/jm.ts` strips it.
-- **Pinned toolchain** (re-read in the package files, 2026-10-12). ESLint stays on 9 for `eslint-plugin-react`. Every package is on TypeScript `~7.0.2` except `packages/config-lint`, which keeps `~6.0.0` for `typescript-eslint`.
+- **Pinned toolchain** (re-read in the package files, 2026-10-13). ESLint stays on 9 for `eslint-plugin-react`. Every package is on TypeScript `~7.0.2` except `packages/config-lint`, which keeps `~6.0.0` for `typescript-eslint`.
 - **msw 3 breaks Vitest's peer range.** `pnpm add -D msw` resolves 3.x; `@jira-mgr/core` pins `msw@^2`.
 - **Weak regression tests.** Reviewers revert each fix in a scratch copy and confirm its test fails; ask for that on every bug fix.
 - **Eager promises in tests.** Build each promise only when you await it, or a later rejection goes unhandled and fails the run intermittently.
 - **Wall-clock test bounds flake on CI.** Size a timing assertion so a slow runner stays well inside it (`timer.test.ts` measured 131 ms against a 50 ms bound; fixed by widening the gap, not the bound).
-- **Timer tests cross local midnight.** Resolved 2026-10-11 by #156: the timer e2e launches Electron with `TZ` set to an `Etc/GMT` zone where it is about noon (`e2e/README.md`).
 - **`security -i` exits 0 on failure and splits long lines.** A bad command still exits 0 and can create a junk item, and stdin past 4095 bytes runs as a second command. `@jira-mgr/core/auth` caps lengths and reads every write back. Probe the Keychain only with throwaway service names and delete what you create.
 - **Recorded search pages never end.** Fixtures recorded mid-phase carry `isLast: false`; tests serve page 2 with the token dropped and `isLast: true`.
 - **Reviewers can be confidently wrong about Jira semantics.** When builder and reviewer disagree and only a write can settle it, ask Shane for one reversible live check.
@@ -153,10 +166,10 @@ Each re-read at its source on 2026-10-12 unless it says otherwise.
 - **Timer guard matches keys, not timers** (accepted). If the CLI stops and restarts the same issue while the app's stop dialog is open, confirming logs the dialog's time against the new timer too. Add an `expectStarted` check if it bites.
 - **`views.json` and `inbox.json` have no lock** (accepted). The app serialises its own writes on one promise chain. A CLI command that writes either must lock first, as core's timer does.
 - **Timer known limit** (accepted). A SIGKILL, power loss or second Ctrl-C between core taking the timer and the worklog finishing can lose the tracked time; one Ctrl-C restores it paused. See `packages/core/README.md`.
-- **PSAPAC automation rewrites new issues** (measured 2026-10-08 and 2026-10-09; unverified since 2026-10-12). An Automation for Jira rule runs after every create: it adds the label `PSAPAC`, sets the original estimate to 14400 with remaining 0, and sets Time remaining (h). On a Task it also replaced the Customer, parent and sprint the CLI sent. Estimates land within about 1 s, the rest within about 10 s, so the read-back inside `issue create` sees none of it. The app's create toast reads once, about 10 s later.
+- **PSAPAC automation rewrites new issues** (measured 2026-10-08 and 2026-10-09; unverified since 2026-10-13). An Automation for Jira rule runs after every create: it adds the label `PSAPAC`, sets the original estimate to 14400 with remaining 0, and sets Time remaining (h). On a Task it also replaced the Customer, parent and sprint the CLI sent. Estimates land within about 1 s, the rest within about 10 s, so the read-back inside `issue create` sees none of it. The app's create toast reads once, about 10 s later.
 - **Estimate edits cascade** (2026-10-08). `--estimate` alone sets the remaining estimate to the same value, and the automation keeps Time remaining (h) equal to it. A direct `--time-remaining` edit stuck.
 - **Runs against the real state folder leave state behind.** An L6 review run left a paused timer on PSAPAC-12. Set `JM_STATE_DIR` to a scratch folder for any hand run of `jm`, and for a live run copy `views.json` and `timer.json` first and compare after. Use `timer start <key> --expect <key>`.
 - **e2e windows take OS focus** unless hidden. The e2e entry opens windows with `showInactive()`, at opacity 0 and ignoring the mouse (macOS keeps 40px of any window on a display, so off-screen positioning fails); tests assert both.
-- **Ghost Electron icons in the Dock** after an e2e run (`lsappinfo list` shows "exited-with-subordinates"). They hold no process. Quit them from the Dock or log out.
-- **Browser tool scope.** `browser-harness` drives only the dedicated automation Chrome on port 9333 (profile `~/.browser-harness-chrome`), not Shane's everyday Chrome. Linear is signed in there.
-- **Subagent writes of findings files in the scratchpad were refused by hooks** (2026-10-10). Have review subagents return findings as message text.
+- **Ghost Electron icons in the Dock** after an e2e run (`lsappinfo list` shows "exited-with-subordinates"; 10 entries on 2026-10-13). They hold no process. Quit them from the Dock or log out.
+- **Browser tool scope.** `browser-harness` drives only the dedicated automation Chrome on port 9333 (profile `~/.browser-harness-chrome`), not Shane's everyday Chrome. Port 9333 listens and the profile folder exists (2026-10-13); the Linear sign-in is unverified since 2026-10-13.
+- **Subagent writes of findings files in the scratchpad were refused by hooks** (2026-10-10; unverified since 2026-10-13). Have review subagents return findings as message text.
