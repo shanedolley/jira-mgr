@@ -82,6 +82,7 @@ const jiraFields = z.object({
     .object({
       originalEstimateSeconds: z.number().optional(),
       remainingEstimateSeconds: z.number().optional(),
+      timeSpentSeconds: z.number().optional(),
     })
     .nullish(),
   duedate: z.string().nullish(),
@@ -155,6 +156,7 @@ export function issueSchema(ids: FieldIds) {
       dueDate: f.duedate ?? null,
       originalEstimateSeconds: f.timetracking?.originalEstimateSeconds ?? null,
       remainingEstimateSeconds: f.timetracking?.remainingEstimateSeconds ?? null,
+      timeSpentSeconds: f.timetracking?.timeSpentSeconds ?? null,
       timeRemainingHours: f.timeRemaining ?? null,
       created: f.created,
       updated: f.updated,

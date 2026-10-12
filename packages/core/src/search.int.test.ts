@@ -152,6 +152,7 @@ describe('searchIssues', () => {
       dueDate: '2026-10-18',
       originalEstimateSeconds: 28800,
       remainingEstimateSeconds: 22200,
+      timeSpentSeconds: 6600,
       timeRemainingHours: null,
       created: '2026-10-06T00:49:43.825Z',
       updated: '2026-10-06T01:56:17.325Z',
@@ -215,6 +216,7 @@ describe('searchIssues', () => {
       sprints: [],
       originalEstimateSeconds: null,
       remainingEstimateSeconds: null,
+      timeSpentSeconds: null,
     })
   })
 
@@ -243,6 +245,7 @@ describe('searchIssues', () => {
         sprints: [],
         originalEstimateSeconds: null,
         remainingEstimateSeconds: null,
+        timeSpentSeconds: null,
       })
     },
   )

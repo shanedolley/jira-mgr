@@ -5,6 +5,7 @@ import { JiraMgrError } from './errors.js'
 import { fetchAll } from './fields.js'
 import { requestBytes, requestMediaId, type BytesResponse, type HttpClient } from './http.js'
 import { jiraTime } from './issue.js'
+import { timeTrackingConfig, type TimeTrackingSettings } from './time-tracking.js'
 import { duration, issueKey, jiraId, parseInput, parseResponse } from './validate.js'
 
 const person = z.object({ accountId: z.string(), displayName: z.string() })
@@ -145,6 +146,19 @@ function worklogBody(input: z.output<typeof editWorklogInput>) {
     ...(input.started !== undefined && { started: jiraStarted(input.started) }),
     ...(input.comment !== undefined && { comment: input.comment }),
   }
+}
+
+/**
+ * The site's working day and week, from the global settings, which any user can read where the
+ * time tracking settings need Administer Jira. `null` when time tracking is off or the settings
+ * carry no configuration.
+ */
+export async function getTimeTracking(http: HttpClient): Promise<TimeTrackingSettings | null> {
+  return parseResponse(
+    timeTrackingConfig,
+    await http.request('GET', '/rest/api/3/configuration'),
+    'time tracking settings',
+  )
 }
 
 /** Every worklog on the issue. */

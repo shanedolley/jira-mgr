@@ -27,6 +27,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Sprint** | A Jira sprint an issue moves into or out of. Hidden on Epics and Subtasks. Closed and undated sprints sit behind "Show all". | iteration, cycle |
 | **Link** | A relation between two issues, of one of Jira's 21 link types. | dependency (unless the type is Blocks) |
 | **Worklog** | A time entry on an issue. Created by hand or by stopping a Timer. Task, Bug, Story and Subtask take worklogs, Epics do not. | time log, timesheet |
+| **Working day** | The length of a day for time tracking, read from the site's time tracking settings (`workingHoursPerDay`, 8 hours on PSAPAC), not 24 hours. An estimate or time logged of one working day or more shows in working days: "3 days" is 3 times 8 hours. | day, 24 hours |
 | **Timer** | The one running clock, on one issue, kept in a state file the app and `jm timer` share. It can pause and resume, and stopping it logs one Worklog with paused time excluded. | stopwatch, tracker |
 | **Rounding step** | The unit a Timer's elapsed time rounds to: none, 5m or 15m, default 5m. It rounds to the nearest step, with one step as the minimum. | increment, granularity |
 | **Attachment** | A file on an issue, up to 100 MB. | upload |

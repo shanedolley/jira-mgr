@@ -47,6 +47,7 @@ function issue(type: keyof typeof TYPES, spec: Partial<Issue> = {}): Issue {
     updated: '2026-10-01T00:00:00.000Z',
     originalEstimateSeconds: null,
     remainingEstimateSeconds: null,
+    timeSpentSeconds: null,
     timeRemaining: null,
     ...spec,
   } as Issue

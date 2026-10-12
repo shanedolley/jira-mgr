@@ -16,6 +16,7 @@ import {
   editComment,
   editWorklog,
   getLink,
+  getTimeTracking,
   listAttachments,
   listComments,
   listLinks,
@@ -251,6 +252,32 @@ describe('worklogs', () => {
     ]
     for (const refusal of refusals) expect((await failure(refusal)).code).toBe('validation_failed')
     expect(requests).toEqual([])
+  })
+})
+
+describe('time tracking settings', () => {
+  it('reads the working day and week from the recorded global settings', async () => {
+    const requests = serveRecorded(() => HttpResponse.json(fixture('configuration')))
+    expect(await getTimeTracking(client)).toEqual({ workingHoursPerDay: 8, workingDaysPerWeek: 5 })
+    expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual(['GET /rest/api/3/configuration'])
+  })
+
+  it('is null when the site turns time tracking off', async () => {
+    serveRecorded(() =>
+      HttpResponse.json({ ...fixture('configuration'), timeTrackingEnabled: false }),
+    )
+    expect(await getTimeTracking(client)).toBeNull()
+  })
+
+  it('is null when the settings carry no time tracking configuration', async () => {
+    const bare = { ...fixture('configuration'), timeTrackingConfiguration: undefined }
+    serveRecorded(() => HttpResponse.json(bare))
+    expect(await getTimeTracking(client)).toBeNull()
+  })
+
+  it('throws jira_error for settings without the enabled flag', async () => {
+    serveRecorded(() => HttpResponse.json({ votingEnabled: true }))
+    expect((await failure(getTimeTracking(client))).code).toBe('jira_error')
   })
 })
 
