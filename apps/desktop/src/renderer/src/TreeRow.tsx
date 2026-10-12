@@ -480,6 +480,8 @@ interface TreeRowProps {
   blocking: number
   /** `toggle` is a click on the checkbox and `range` a Shift+click, which check instead of opening. */
   onClick: (id: string, onChevron: boolean, select?: 'toggle' | 'range') => void
+  /** A double-click on an issue row, which opens its page as Enter does. */
+  onOpen: (id: string) => void
   /** A click on the row's status dot or avatar, after `onClick` has made the row active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
   /** Done over total of the issue's children, which the row shows beside its title, as numbers so the memo holds. */
@@ -503,6 +505,7 @@ export const TreeRow = memo(function TreeRow({
   blockedBy,
   blocking,
   onClick,
+  onOpen,
   onPick,
   done,
   total,
@@ -539,6 +542,16 @@ export const TreeRow = memo(function TreeRow({
         const picked = target.closest<HTMLElement>('[data-pick]')?.dataset.pick
         if (row.kind === 'issue' && (picked === 'status' || picked === 'assignee')) {
           onPick(row.node.issue.key, picked)
+        }
+      }}
+      // The first click made the row active and opened the Peek. The checkbox, the status dot, the
+      // avatar and the chevron keep their own double-click, and Shift is a range check.
+      onDoubleClick={(event) => {
+        if (row.kind !== 'issue' || event.shiftKey) return
+        if (
+          (event.target as Element).closest('[data-check], [data-pick], [data-chevron]') === null
+        ) {
+          onOpen(row.id)
         }
       }}
       data-band={row.kind === 'customer' ? '' : undefined}

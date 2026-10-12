@@ -39,6 +39,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Left` | Collapse; otherwise parent row |
 | `Shift+Left` | Collapse all to the customer |
 | `Enter` | Open the issue page; toggle a header |
+| Double-click | On an issue row, open its page as `Enter` does. The checkbox, the status dot, the avatar, the chevron and a Shift+double-click ignore it, and a header or chip does only what its two clicks do |
 | `Space` | Toggle the Peek |
 | `X` | Check or uncheck the active issue; the checkbox in a row's left gutter does the same |
 | `Shift+Down`, `Shift+Up` | Move to the next or previous row and check the issue rows it crosses |

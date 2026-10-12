@@ -112,6 +112,77 @@ test('Enter opens the full page and Esc returns to the Tree, while Space keeps t
   await expect(peek()).toBeVisible()
 })
 
+/** Where on a summary the pointer lands. The first click opens the Peek, which narrows the row, so the middle of a wide summary can end up under the Peek. */
+const ON_TEXT = { x: 20, y: 8 }
+
+/**
+ * Opens with the Done load finished and a window wide enough that the first click's Peek leaves
+ * the Tree over 700px. The "Loading Done issues" line, or a Tree under 700px, wraps the toolbar
+ * onto another row when the Peek opens, which moves every row under the pointer between the two
+ * clicks of a double-click.
+ */
+async function openSteady() {
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setContentSize(1600, 900)
+  })
+  await expect.poll(() => window.evaluate(() => globalThis.innerWidth)).toBe(1600)
+  await open()
+  await releaseDone(app)
+  await expect(window.getByText('Loading Done issues:')).toHaveCount(0)
+}
+
+test('a double-click on a row opens its page, and Esc returns to the Tree with the row active', async () => {
+  await openSteady()
+  const row = item(/PSAPAC-4,/)
+  await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+  await expect(heading('Migrate the dashboards')).toBeVisible()
+
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await expect(row).toHaveAttribute('data-active', 'true')
+  await expect(tree()).toHaveAttribute('aria-activedescendant', /PSAPAC-4$/)
+
+  // An Epic opens its own page.
+  await item(/PSAPAC-10,/)
+    .getByText('Customer onboarding')
+    .dblclick()
+  await expect(heading('Customer onboarding')).toBeVisible()
+})
+
+test('a double-click on a checkbox, status dot, avatar, chevron or with Shift held opens no page', async () => {
+  await openSteady()
+  const row = item(/PSAPAC-4,/)
+  await row.locator('[data-check]').dblclick({ force: true })
+  await expect(issuePage()).toHaveCount(0)
+  await row
+    .getByText('Migrate the dashboards')
+    .dblclick({ position: ON_TEXT, modifiers: ['Shift'] })
+  await expect(issuePage()).toHaveCount(0)
+  await item(/PSAPAC-10,/)
+    .locator('[data-chevron]')
+    .dblclick()
+  await expect(issuePage()).toHaveCount(0)
+  for (const pick of ['status', 'assignee']) {
+    await row.locator(`[data-pick=${pick}]`).dblclick()
+    await expect(issuePage()).toHaveCount(0)
+    await window.keyboard.press('Escape')
+  }
+
+  // The same row still opens from its summary, so the checks above could have failed.
+  await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+  await expect(heading('Migrate the dashboards')).toBeVisible()
+})
+
+test('a double-click on a Customer header toggles it as two clicks do and opens no page', async () => {
+  await openSteady()
+  const header = item('Acme, 8 issues', true)
+  await expect(header).toHaveAttribute('aria-expanded', 'true')
+  await header.dblclick()
+  await expect(header).toHaveAttribute('aria-expanded', 'true')
+  await expect(issuePage()).toHaveCount(0)
+})
+
 test('Back to issues returns from the page to the Tree', async () => {
   await open()
   await item(/PSAPAC-4,/).click()

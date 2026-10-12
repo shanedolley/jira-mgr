@@ -104,7 +104,7 @@ test('keeps an open Story under No Epic while its Epic is Done and Hide done is 
   await open()
   await expect(item(/PSAPAC-21,/)).toBeVisible()
   await expect(item(/PSAPAC-20,/)).toHaveCount(0)
-  // A Story's progress pill grows when Done loads, so compare the keys.
+  // Compare the keys alone, so a change in the rest of a row's name does not count.
   const keysOf = async () => (await rowNames()).map((l) => l.split(',')[0])
   const before = await keysOf()
 

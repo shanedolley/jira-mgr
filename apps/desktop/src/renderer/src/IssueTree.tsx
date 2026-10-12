@@ -194,6 +194,13 @@ export function IssueTree({
     [rows, state, onChange],
   )
 
+  const onRowOpen = useCallback(
+    (id: string) => {
+      onChange({ ...state, activeId: id, openPage: true })
+    },
+    [state, onChange],
+  )
+
   const activeRow = activeIndex < 0 ? undefined : rows[activeIndex]
   const selectedId = peekedKey === null ? null : `i:${peekedKey}`
 
@@ -237,6 +244,7 @@ export function IssueTree({
                 blockedBy={held?.blockedBy.length ?? 0}
                 blocking={held?.blocking.length ?? 0}
                 onClick={onRowClick}
+                onOpen={onRowOpen}
                 onPick={onPick}
                 onAdd={onAdd}
                 done={children?.done}
