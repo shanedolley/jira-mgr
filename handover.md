@@ -2,7 +2,7 @@
 
 ## Where Work Stands
 
-Checked 2026-10-13. Head `8898adb` (`git log --oneline -1 origin/main`, PR [#207](https://github.com/shanedolley/jira-mgr/pull/207), #202's time tracking). **CI is blocked by GitHub billing** (2026-10-13): main run 38297618791 on 8898adb ran no step; its jobs carry the annotation "The job was not started because recent account payments have failed or your spending limit needs to be increased." Only Shane can fix that, under Billing & plans. PR #208's run 38297895716 carries the same annotation on all three jobs (2026-10-13). The code is green: `git diff 7645d2d 8898adb` is empty, and PR run 38295737240 passed checks and e2e on 7645d2d. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12; all four are merged and wait on him in HIL Review. #199, #201 and #202 also carry `question` (see Open Decisions).
+Checked 2026-10-13. Head `8898adb` (`git log --oneline -1 origin/main`, PR [#207](https://github.com/shanedolley/jira-mgr/pull/207), #202's time tracking). **CI is blocked by GitHub billing** (2026-10-13): main run 38297618791 on 8898adb ran no step; its jobs carry the annotation "The job was not started because recent account payments have failed or your spending limit needs to be increased." Only Shane can fix that, under Billing & plans. PR #208's run 38297895716 carries the same annotation on all three jobs (2026-10-13). The code is green: `git diff 7645d2d 8898adb` is empty, and PR run 38295737240 passed checks and e2e on 7645d2d. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12, all four merged, and approved and closed them on 2026-10-13 (each with the comment "Approved"). No issue is open (2026-10-13). The latest CI run, 38304137626 on 5ded20c, failed with the same payment annotation (`gh run list --limit 3`, 2026-10-13).
 
 #143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
@@ -10,7 +10,7 @@ Shane closed #138, #143, #150 and #184 and answered #144 ("keep the neutral caps
 
 ## Open Stories
 
-None unclaimed (2026-10-13). New work comes from Shane: a new issue, or an answer on a `question` issue.
+None (2026-10-13). New work comes from Shane: a new issue.
 
 | Issue | Story | Notes |
 |---|---|---|
@@ -48,10 +48,10 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | Closed 2026-10-12, approved. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
 | #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | Closed 2026-10-12. Found by 149-sprint-review |
 | #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194), [#195](https://github.com/shanedolley/jira-mgr/pull/195) | Closed 2026-10-12; M3 settled as option A. Low: the same-tick `inFlight` guard in `BulkBar.tsx` has no unit test (no component-test setup). Selection is pruned to the rows shown. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
-| #199 | Hide done hides every Done issue | [#204](https://github.com/shanedolley/jira-mgr/pull/204) | Merged 2026-10-13, in HIL Review with `question`. With Hide done on, `buildHierarchy` builds from open issues only: no Done row, no dimmed Done ancestor, no "N done" chip; an open issue under a Done parent attaches to its nearest open ancestor, else roots in its own Customer group. Progress still counts Done children. `jm issue tree` changes only for an epic filter (`--epic` or a view with `epic`), which loads Done issues and now hides them too; settled as intended, disclosed on the PR. Lows: a mixed open/Done parent cycle still loses issues (as before); a Subtask re-attached under an Epic gets a Customer mismatch check against it |
-| #200 | Show sub-issue progress on issues, not Epics | [#205](https://github.com/shanedolley/jira-mgr/pull/205) | Merged 2026-10-13, in HIL Review. The ring and "N of M done" move to Story, Task and Bug rows with sub-issues (`rowProgress` in `TreeRow.tsx`); Epic and Subtask rows show none. Task and Bug are covered by unit test only: the e2e fake has no Task or Bug with sub-issues |
-| #201 | Open the issue page with a double-click on a Tree row | [#206](https://github.com/shanedolley/jira-mgr/pull/206) | Merged 2026-10-13, in HIL Review with `question`. A double-click opens the issue its first click hit, armed in a ref in `IssueTree` (`onArm` on `event.detail === 1`), so a row shift between the clicks cannot open the wrong issue. Ignored when the first click is on the checkbox, status dot, avatar, chevron, a header, a chip or with Shift held |
-| #202 | Show estimate, time logged and a worklog chart on the Peek and the issue page | [#207](https://github.com/shanedolley/jira-mgr/pull/207) | Merged 2026-10-13, in HIL Review with `question`. The chart's `sr-only` bar text needs a positioned `<li>` (see Traps). Core: `getTimeTracking` in `@jira-mgr/core/extras` reads `GET /rest/api/3/configuration` and returns null when time tracking is off, so the app hides the block; the formatter and bucketing live in the `@jira-mgr/core/time-tracking` subpath. The Peek's worklogs stay fresh for 30 s, which fixed a deleted worklog coming back through its delayed read. Fixture `packages/core/fixtures/configuration.json` |
+| #199 | Hide done hides every Done issue | [#204](https://github.com/shanedolley/jira-mgr/pull/204) | Merged 2026-10-13; Shane approved and closed it 2026-10-13. With Hide done on, `buildHierarchy` builds from open issues only: no Done row, no dimmed Done ancestor, no "N done" chip; an open issue under a Done parent attaches to its nearest open ancestor, else roots in its own Customer group. Progress still counts Done children. `jm issue tree` changes only for an epic filter (`--epic` or a view with `epic`), which loads Done issues and now hides them too; settled as intended, disclosed on the PR. Lows: a mixed open/Done parent cycle still loses issues (as before); a Subtask re-attached under an Epic gets a Customer mismatch check against it |
+| #200 | Show sub-issue progress on issues, not Epics | [#205](https://github.com/shanedolley/jira-mgr/pull/205) | Merged 2026-10-13; Shane approved and closed it 2026-10-13. The ring and "N of M done" move to Story, Task and Bug rows with sub-issues (`rowProgress` in `TreeRow.tsx`); Epic and Subtask rows show none. Task and Bug are covered by unit test only: the e2e fake has no Task or Bug with sub-issues |
+| #201 | Open the issue page with a double-click on a Tree row | [#206](https://github.com/shanedolley/jira-mgr/pull/206) | Merged 2026-10-13; Shane approved and closed it 2026-10-13, requesting no toolbar-wrap story. A double-click opens the issue its first click hit, armed in a ref in `IssueTree` (`onArm` on `event.detail === 1`), so a row shift between the clicks cannot open the wrong issue. Ignored when the first click is on the checkbox, status dot, avatar, chevron, a header, a chip or with Shift held |
+| #202 | Show estimate, time logged and a worklog chart on the Peek and the issue page | [#207](https://github.com/shanedolley/jira-mgr/pull/207) | Merged 2026-10-13; Shane approved and closed it 2026-10-13. The chart's `sr-only` bar text needs a positioned `<li>` (see Traps). Core: `getTimeTracking` in `@jira-mgr/core/extras` reads `GET /rest/api/3/configuration` and returns null when time tracking is off, so the app hides the block; the formatter and bucketing live in the `@jira-mgr/core/time-tracking` subpath. The Peek's worklogs stay fresh for 30 s, which fixed a deleted worklog coming back through its delayed read. Fixture `packages/core/fixtures/configuration.json` |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -77,11 +77,11 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Open | 4 (#199 to #202) | `gh issue list --state open --limit 200` | 2026-10-13 |
-| Closed | 71 | `gh issue list --state closed --limit 300` | 2026-10-13 |
+| Open | 0 | `gh issue list --state open --limit 200` | 2026-10-13 |
+| Closed | 75 | `gh issue list --state closed --limit 300` | 2026-10-13 |
 | In progress | none | `--label status:in-progress` | 2026-10-13 |
-| In HIL Review | #199, #200, #201, #202 | `--label status:hil-review` | 2026-10-13 |
-| With `question` | #199, #201, #202 | `--label question` | 2026-10-13 |
+| In HIL Review | none | `--label status:hil-review` | 2026-10-13 |
+| With `question` | none | `--label question` | 2026-10-13 |
 | Open pull requests | [#208](https://github.com/shanedolley/jira-mgr/pull/208), the handover PR for this stop, and no other | `gh pr list --state open` | 2026-10-13 |
 
 `git worktree list` shows the main tree only (2026-10-13). Origin holds `main` and the branch of PR #208 (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
@@ -117,15 +117,13 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 | Raised | Decision | Owner |
 |---|---|---|
 | 2026-10-10 | Whether to build Favourites and recents (gap 13) | Shane |
-| 2026-10-13 | #201: a story to stop the toolbar wrapping onto a second line when the Peek opens (the #134 Medium) | Shane |
-| 2026-10-13 | #202: keep the `/rest/api/3/configuration` settings path and the new `timeSpentSeconds` `--json` key | Shane |
 | 2026-10-13 | GitHub Actions billing: CI cannot start a job until the payment or spending limit is fixed | Shane |
-| 2026-10-13 | #199: keep the epic-filtered `jm issue tree` hiding Done issues under Hide done, as merged, or restore the old output ([comment](https://github.com/shanedolley/jira-mgr/issues/199#issuecomment-6127638644)) | Shane |
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
 - #199 (Shane, 2026-10-12): with Hide done on, no Done issue shows, not even a Done ancestor of an open issue. It replaces the first clause of the 2026-10-07 decision below; PR #204 updated `docs/design/0002-issue-tree.md`, `CONTEXT.md` and both READMEs with the code.
 - #200 (Shane, 2026-10-12): the progress ring goes on any Story, Task or Bug with sub-issues, and Epics lose it. #202 (Shane, 2026-10-12): a day is Jira's working day from the site's settings, and the chart is hand-drawn with no dependency. The build reads them from `GET /rest/api/3/configuration` (`timeTrackingConfiguration`), since `/configuration/timetracking` answered 403 to a non-admin account (2026-10-13), and adds `timeSpentSeconds` to core's `Issue`, so `jm issue` `--json` gains one key (additive, per git-workflow.md; disclosed for Shane at HIL Review).
+- #199, #201 and #202 (Shane, 2026-10-13): #199, the epic-filtered `jm issue tree` keeps hiding Done issues under Hide done, as merged; #202, keep the `/rest/api/3/configuration` settings path and the additive `timeSpentSeconds` `--json` key; #201, no toolbar-wrap story requested, so the #134 Medium stays a carried known limit.
 - #131: the light-theme fills stay as built, and the active-only row keeps its fill alone.
 - #143 (Shane, 2026-10-12): M3 option A, the selection stays pruned to the rows shown. Esc clears the selection before it closes the Peek; the selection stays after an action; bulk calls send `sendBulkNotification: false`; checked rows take the selected fill through `aria-checked` while the peeked row keeps `aria-selected` and its bold key. The bar's primary action is Status.
 - #144 (Shane, 2026-10-12): keep the neutral capsule with a red icon. #151 (2026-10-12): approved as built.
