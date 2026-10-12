@@ -82,9 +82,9 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 | In progress | none | `--label status:in-progress` | 2026-10-13 |
 | In HIL Review | #199, #200, #201, #202 | `--label status:hil-review` | 2026-10-13 |
 | With `question` | #199, #201, #202 | `--label question` | 2026-10-13 |
-| Open pull requests | the handover PR for this stop only | `gh pr list --state open` | 2026-10-13 |
+| Open pull requests | [#208](https://github.com/shanedolley/jira-mgr/pull/208), the handover PR for this stop, and no other | `gh pr list --state open` | 2026-10-13 |
 
-`git worktree list` shows the main tree only (2026-10-13). Origin holds `main` and the handover PR's branch (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree only (2026-10-13). Origin holds `main` and the branch of PR #208 (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
@@ -103,7 +103,7 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 State files live in `~/Library/Application Support/jira-mgr/`. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item.
 
-CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`, all on `ubuntu-latest`, so CI builds no Mac binary. Confirm a run with `gh run list --workflow ci.yml --branch main --limit 1` and `gh run view <id> --json headSha,conclusion`.
+CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`, all on `ubuntu-latest` (GitHub migrates that label to Ubuntu 26 from 2026-10-19, per a run annotation read 2026-10-13), so CI builds no Mac binary. Confirm a run with `gh run list --workflow ci.yml --branch main --limit 1` and `gh run view <id> --json headSha,conclusion`.
 
 ## Environments
 
