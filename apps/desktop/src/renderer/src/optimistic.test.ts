@@ -3,16 +3,22 @@ import type { IssueDetail } from '@jira-mgr/core/issue'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { BatchItem, BatchOutcome } from '../../shared/ipc'
+
 import {
   applyCreated,
   applyFreshIssue,
   applyUnaskedRead,
+  batchMutation,
+  current,
   deleteMutation,
   doneKey,
+  isEditing,
   issueDetailKey,
   issueMutation,
   pendingFields,
   summaryMutation,
+  type BatchRequestItem,
   unresolvedKey,
 } from './optimistic'
 
@@ -930,6 +936,236 @@ describe('a description edit', () => {
     answer.resolve({ ...detail(issue('PSAPAC-1', 'One')), description: doc('old') })
     await expect(done).rejects.toMatchObject({ code: 'validation_failed' })
     expect(descriptionOf()).toEqual(doc('old'))
+  })
+})
+
+const isEditingKey = (client: QueryClient, key: string) => isEditing(client, key)
+
+describe('batchMutation', () => {
+  const DONE = { id: '3', name: 'Done', category: 'done' } as const
+  const TODO = { id: '1', name: 'To Do', category: 'new' } as const
+
+  const toDone = (key: string): BatchRequestItem => ({
+    key,
+    id: `10${key.slice(-1)}`,
+    change: { kind: 'status', statusId: DONE.id },
+    patch: { status: DONE },
+  })
+
+  /** Three open issues in the list, and a reader that answers each as Jira would after the batch. */
+  function setupBatch(answer: Record<string, Partial<Issue>> = {}) {
+    const client = new QueryClient()
+    client.setQueryData<Issue[]>(unresolvedKey, [
+      issue('PSAPAC-1', 'One'),
+      issue('PSAPAC-2', 'Two'),
+      issue('PSAPAC-3', 'Three'),
+    ])
+    const { read } = reader(
+      Object.fromEntries(
+        ['PSAPAC-1', 'PSAPAC-2', 'PSAPAC-3'].map((key) => [
+          key,
+          detail(issue(key, key, { status: TODO, ...answer[key] })),
+        ]),
+      ),
+    )
+    const statuses = () =>
+      ['PSAPAC-1', 'PSAPAC-2', 'PSAPAC-3'].map(
+        (key) => `${key}:${current(client, key)?.status.name ?? 'gone'}`,
+      )
+    return { client, read, statuses }
+  }
+
+  it('shows every change before Jira answers, sends the items, and reports what changed', async () => {
+    const { client, read, statuses } = setupBatch({
+      'PSAPAC-1': { status: DONE },
+      'PSAPAC-2': { status: DONE },
+    })
+    const request = deferred<BatchOutcome>()
+    const send = vi.fn<(items: BatchItem[]) => Promise<BatchOutcome>>(() => request.promise)
+    const record = vi.fn()
+    const run = batchMutation(client, send, read, [toDone('PSAPAC-1'), toDone('PSAPAC-2')], record)
+    await expect.poll(statuses).toEqual(['PSAPAC-1:Done', 'PSAPAC-2:Done', 'PSAPAC-3:To Do'])
+    expect(send).toHaveBeenCalledExactlyOnceWith([
+      { key: 'PSAPAC-1', id: '101', change: { kind: 'status', statusId: '3' } },
+      { key: 'PSAPAC-2', id: '102', change: { kind: 'status', statusId: '3' } },
+    ])
+    request.resolve({ done: ['PSAPAC-1', 'PSAPAC-2'], refused: [] })
+
+    const result = await run
+    expect(result.refused).toEqual([])
+    expect(result.done.map(({ key }) => key)).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+    expect(result.done[0]).toMatchObject({ patch: { status: DONE }, before: { status: TODO } })
+    expect(record).toHaveBeenCalledExactlyOnceWith(result.done)
+  })
+
+  it('puts back only the issues Jira refused, and names each with its reason', async () => {
+    const { client, read, statuses } = setupBatch({ 'PSAPAC-1': { status: DONE } })
+    // The read-back fails, so what the caches show is the rollback's doing alone.
+    read.mockRejectedValue(new Error('Jira is down.'))
+    const run = batchMutation(
+      client,
+      () =>
+        Promise.resolve({
+          done: ['PSAPAC-1'],
+          refused: [
+            { key: 'PSAPAC-2', reason: 'No transition.' },
+            { key: 'PSAPAC-3', reason: 'Jira skipped it.' },
+          ],
+        }),
+      read,
+      ['PSAPAC-1', 'PSAPAC-2', 'PSAPAC-3'].map(toDone),
+    )
+    const result = await run
+    expect(result.refused).toEqual([
+      { key: 'PSAPAC-2', reason: 'No transition.' },
+      { key: 'PSAPAC-3', reason: 'Jira skipped it.' },
+    ])
+    expect(statuses()).toEqual(['PSAPAC-1:Done', 'PSAPAC-2:To Do', 'PSAPAC-3:To Do'])
+  })
+
+  it('refuses every issue and puts each back when the whole call fails', async () => {
+    const { client, read, statuses } = setupBatch()
+    read.mockRejectedValue(new Error('Jira is down.'))
+    const record = vi.fn()
+    const result = await batchMutation(
+      client,
+      () => Promise.reject(new JiraMgrError('validation_failed', 'Not in the project.')),
+      read,
+      ['PSAPAC-1', 'PSAPAC-2'].map(toDone),
+      record,
+    )
+    expect(result.done).toEqual([])
+    expect(result.refused.map(({ key, reason }) => [key, reason])).toEqual([
+      ['PSAPAC-1', 'Not in the project.'],
+      ['PSAPAC-2', 'Not in the project.'],
+    ])
+    expect(statuses()).toEqual(['PSAPAC-1:To Do', 'PSAPAC-2:To Do', 'PSAPAC-3:To Do'])
+    expect(record).not.toHaveBeenCalled()
+  })
+
+  it('leaves a later edit of a refused issue alone', async () => {
+    const { client, read, statuses } = setupBatch()
+    // The read-back fails, so what the caches show is the rollback's doing alone.
+    read.mockRejectedValue(new Error('Jira is down.'))
+    const request = deferred<BatchOutcome>()
+    const run = batchMutation(client, () => request.promise, read, [toDone('PSAPAC-1')])
+    await expect.poll(statuses).toEqual(['PSAPAC-1:Done', 'PSAPAC-2:To Do', 'PSAPAC-3:To Do'])
+    // Someone moves the issue on while the batch is out.
+    const doing = { id: '2', name: 'In Progress', category: 'indeterminate' } as const
+    client.setQueryData<Issue[]>(unresolvedKey, (issues) =>
+      issues?.map((i) => (i.key === 'PSAPAC-1' ? { ...i, status: doing } : i)),
+    )
+    request.resolve({ done: [], refused: [{ key: 'PSAPAC-1', reason: 'No.' }] })
+    await run
+    expect(statuses()[0]).toBe('PSAPAC-1:In Progress')
+  })
+
+  it('reads each issue back afterwards and takes what Jira holds', async () => {
+    const { client, read, statuses } = setupBatch({
+      'PSAPAC-1': { status: { id: '2', name: 'In Progress', category: 'indeterminate' } },
+    })
+    await batchMutation(
+      client,
+      () => Promise.resolve({ done: ['PSAPAC-1', 'PSAPAC-2'], refused: [] }),
+      read,
+      ['PSAPAC-1', 'PSAPAC-2'].map(toDone),
+    )
+    expect(read.mock.calls.map(([key]) => key).sort()).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+    // Jira's own answers: a cascade made the first In Progress, and the second is back at To Do.
+    expect(statuses()).toEqual(['PSAPAC-1:In Progress', 'PSAPAC-2:To Do', 'PSAPAC-3:To Do'])
+  })
+
+  it('refuses an issue no cache holds without sending it', async () => {
+    const { client, read } = setupBatch()
+    const send = vi.fn(() => Promise.resolve({ done: ['PSAPAC-1'], refused: [] }))
+    const result = await batchMutation(client, send, read, ['PSAPAC-1', 'PSAPAC-9'].map(toDone))
+    expect(send).toHaveBeenCalledExactlyOnceWith([
+      { key: 'PSAPAC-1', id: '101', change: { kind: 'status', statusId: '3' } },
+    ])
+    expect(result.refused).toEqual([{ key: 'PSAPAC-9', reason: 'It is no longer loaded.' }])
+  })
+
+  it('waits for an earlier edit of an issue to settle before it sends, and holds the read until then', async () => {
+    const { client, read } = setupBatch({ 'PSAPAC-1': { status: DONE } })
+    const held = deferred<null>()
+    const edit = new MutationObserver(
+      client,
+      issueMutation(
+        client,
+        () => held.promise,
+        ({ patch }: { key: string; patch: Partial<Issue> }) => patch,
+        read,
+      ),
+    )
+    const editing = edit.mutate({ key: 'PSAPAC-1', patch: { summary: 'Edited' } })
+    await expect
+      .poll(() => client.getQueryData<Issue[]>(unresolvedKey)?.[0]?.summary)
+      .toBe('Edited')
+
+    const send = vi.fn(() => Promise.resolve({ done: ['PSAPAC-1'], refused: [] }))
+    const run = batchMutation(client, send, read, [toDone('PSAPAC-1')])
+    // The batch has not sent: the earlier edit has not been answered.
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(send).not.toHaveBeenCalled()
+
+    held.resolve(null)
+    await editing
+    await run
+    expect(send).toHaveBeenCalledOnce()
+    // Both settled: the issue is read once, after the last of them.
+    expect(read).toHaveBeenCalledTimes(1)
+  })
+
+  it('makes an edit made after it wait, and skips the read while that edit is in flight', async () => {
+    const { client, read } = setupBatch({ 'PSAPAC-1': { status: DONE } })
+    const request = deferred<BatchOutcome>()
+    const run = batchMutation(client, () => request.promise, read, [toDone('PSAPAC-1')])
+    await expect.poll(() => isEditingKey(client, 'PSAPAC-1')).toBe(true)
+
+    const next = deferred<null>()
+    const edit = new MutationObserver(
+      client,
+      issueMutation(
+        client,
+        () => next.promise,
+        ({ patch }: { key: string; patch: Partial<Issue> }) => patch,
+        read,
+      ),
+    )
+    const editing = edit.mutate({ key: 'PSAPAC-1', patch: { summary: 'Later' } })
+    request.resolve({ done: ['PSAPAC-1'], refused: [] })
+    await run
+    // The batch left its turn to the later edit and did not read over it.
+    expect(read).not.toHaveBeenCalled()
+    next.resolve(null)
+    await editing
+    expect(read).toHaveBeenCalledExactlyOnceWith('PSAPAC-1')
+  })
+
+  it('reads at most five issues at once', async () => {
+    const client = new QueryClient()
+    const keys = Array.from({ length: 12 }, (_, n) => `PSAPAC-${String(n + 1)}`)
+    client.setQueryData<Issue[]>(
+      unresolvedKey,
+      keys.map((key) => issue(key, key)),
+    )
+    let running = 0
+    let peak = 0
+    const read = vi.fn(async (key: string) => {
+      running++
+      peak = Math.max(peak, running)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      running--
+      return detail(issue(key, key))
+    })
+    await batchMutation(
+      client,
+      () => Promise.resolve({ done: keys, refused: [] }),
+      read,
+      keys.map(toDone),
+    )
+    expect(read).toHaveBeenCalledTimes(12)
+    expect(peak).toBeLessThanOrEqual(5)
   })
 })
 

@@ -4,7 +4,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import type { CurrentUser, FieldChoice, IssueChanges } from '../../shared/ipc'
+import type { CurrentUser, FieldChoice, IssueChanges, StatusOption } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
 import { Reason } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
@@ -102,16 +102,10 @@ interface PickerProps {
 const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
   (choices ?? []).map((c) => ({ id: c.id, label: c.name }))
 
-/** The statuses the issue can reach now, in Q21 order. Opened by `S`. */
-export function StatusPicker({ issue }: PickerProps) {
-  const setStatus = useSetStatus()
-  const attempt = useAttempt(issue.key)
-  const [open, setOpen] = useState(false)
-  const transitions = useTransitions(issue.key, open)
-
-  const reachable = transitions.data ?? []
+/** The statuses the issue can reach now and its own, in Q21 order. */
+export function statusChoices(issue: Issue, reachable: readonly StatusOption[]): StatusOption[] {
   const all = reachable.some((o) => o.id === issue.status.id)
-    ? reachable
+    ? [...reachable]
     : [
         { id: issue.status.id, name: issue.status.name, category: issue.status.category },
         ...reachable,
@@ -120,13 +114,25 @@ export function StatusPicker({ issue }: PickerProps) {
     const at = STATUS_ORDER.indexOf(name)
     return at < 0 ? STATUS_ORDER.length : at
   }
-  const options: PickerOption[] = [...all]
-    .sort((a, b) => rank(a.name) - rank(b.name))
-    .map((o) => ({
-      id: o.id,
-      label: o.name,
-      leading: <StatusDot status={{ id: o.id, name: o.name, category: o.category ?? 'new' }} />,
-    }))
+  return all.sort((a, b) => rank(a.name) - rank(b.name))
+}
+
+/** The picker's options for `choices`, each with its status dot. */
+export const statusOptions = (choices: readonly StatusOption[]): PickerOption[] =>
+  choices.map((o) => ({
+    id: o.id,
+    label: o.name,
+    leading: <StatusDot status={{ id: o.id, name: o.name, category: o.category ?? 'new' }} />,
+  }))
+
+/** The statuses the issue can reach now, in Q21 order. Opened by `S`. */
+export function StatusPicker({ issue }: PickerProps) {
+  const setStatus = useSetStatus()
+  const attempt = useAttempt(issue.key)
+  const [open, setOpen] = useState(false)
+  const transitions = useTransitions(issue.key, open)
+
+  const options = statusOptions(statusChoices(issue, transitions.data ?? []))
 
   function choose(id: string) {
     const option = transitions.data?.find((o) => o.id === id)

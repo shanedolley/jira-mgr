@@ -4,7 +4,8 @@ import type { IssueDetail } from '@jira-mgr/core/issue'
 import { SWAPPABLE_TYPES, formatEstimate, type SwappableType } from '@jira-mgr/core/issue'
 import type { QueryClient } from '@tanstack/react-query'
 
-import type { IssueChanges } from '../../shared/ipc'
+import type { BatchChange, IssueChanges } from '../../shared/ipc'
+import type { BatchDone, BatchRequestItem } from './optimistic'
 import { currentSprint } from './properties'
 
 /**
@@ -33,6 +34,27 @@ export interface UndoEntry {
   /** `null` when core cannot write the old value back, such as clearing a priority. */
   reversal: Reversal | null
 }
+
+/**
+ * A batch of edits made at once, which one Cmd+Z takes back together. Each part holds its own
+ * issue's prior value, since the issues may have differed before the batch made them alike.
+ */
+export interface BatchEntry {
+  /** The fields the batch changed, in words: "status". */
+  what: string
+  /** What the toast says after the batch: "Status changed to Done on 8 issues". */
+  title: string
+  parts: UndoEntry[]
+}
+
+/** What the stack holds: one issue's edit, or a batch of them. */
+export type StackEntry = UndoEntry | BatchEntry
+
+export const isBatch = (entry: StackEntry): entry is BatchEntry => 'parts' in entry
+
+/** True when an undo of the entry can write something back. */
+export const reversible = (entry: StackEntry): boolean =>
+  isBatch(entry) ? entry.parts.some((part) => part.reversal !== null) : entry.reversal !== null
 
 /** How many edits the stack remembers. The oldest falls off the bottom. */
 export const UNDO_DEPTH = 50
@@ -221,6 +243,60 @@ export function sprintEntry(args: { key: string }, done: Done): UndoEntry {
   }
 }
 
+/** The entry for one issue of a batch, by the kind of change the batch made to it. */
+export function entryOfChange(key: string, change: BatchChange, done: Done): UndoEntry {
+  switch (change.kind) {
+    case 'edit':
+      return editEntry({ key, changes: change.changes }, done)
+    case 'status':
+      return statusEntry({ key }, done)
+    case 'sprint':
+      return sprintEntry({ key }, done)
+  }
+}
+
+/** The batch change that carries out a reversal, or `null` for one a batch cannot send (text). */
+export function changeOfReversal(reversal: Reversal): BatchChange | null {
+  switch (reversal.kind) {
+    case 'edit':
+    case 'status':
+    case 'sprint':
+      return reversal
+    case 'summary':
+    case 'description':
+      return null
+  }
+}
+
+/** The entry for the issues Jira changed in one batch. */
+export function batchEntry(title: string, done: readonly BatchDone[]): BatchEntry {
+  const parts = done.map(({ key, change, patch, before }) =>
+    entryOfChange(key, change, { patch, before }),
+  )
+  return { what: parts[0]?.what ?? '', title, parts }
+}
+
+/**
+ * The batch that undoes `entry`: each issue goes back to its own prior value. An issue is skipped,
+ * and named in `skipped`, when it is no longer loaded, when it changed since the batch (the undo
+ * would overwrite that), or when the batch left no way to put its value back.
+ */
+export function planBatchUndo(
+  entry: BatchEntry,
+  now: (key: string) => Issue | undefined,
+): { items: BatchRequestItem[]; skipped: string[] } {
+  const items: BatchRequestItem[] = []
+  const skipped: string[] = []
+  for (const part of entry.parts) {
+    const issue = now(part.key)
+    const change = part.reversal === null ? null : changeOfReversal(part.reversal)
+    if (issue === undefined || change === null || changedSince(part, issue) !== '') {
+      skipped.push(part.key)
+    } else items.push({ key: part.key, id: issue.id, change, patch: part.before })
+  }
+  return { items, skipped }
+}
+
 /** The entry for a summary edit. */
 export function summaryEntry(args: { key: string }, done: Done): UndoEntry {
   const previous = done.before.summary
@@ -304,26 +380,26 @@ export function changedFields(shown: Fields, current: Fields): string {
 
 /** The edits made in this session, newest on top. It lives in memory and ends with the session. */
 export class UndoStack {
-  private entries: UndoEntry[] = []
-  private listeners = new Set<(entry: UndoEntry) => void>()
+  private entries: StackEntry[] = []
+  private listeners = new Set<(entry: StackEntry) => void>()
 
   get size(): number {
     return this.entries.length
   }
 
-  push(entry: UndoEntry): void {
+  push(entry: StackEntry): void {
     this.entries.push(entry)
     if (this.entries.length > UNDO_DEPTH) this.entries.shift()
     for (const listener of this.listeners) listener(entry)
   }
 
   /** Takes the newest edit off the stack. */
-  pop(): UndoEntry | undefined {
+  pop(): StackEntry | undefined {
     return this.entries.pop()
   }
 
   /** Takes one edit off the stack wherever it sits, such as the one an older toast offers to undo. */
-  take(entry: UndoEntry): UndoEntry | undefined {
+  take(entry: StackEntry): StackEntry | undefined {
     const at = this.entries.indexOf(entry)
     return at === -1 ? undefined : this.entries.splice(at, 1)[0]
   }
@@ -333,7 +409,7 @@ export class UndoStack {
   }
 
   /** Called with each edit as it lands. Returns the unsubscribe function. */
-  onPush(listener: (entry: UndoEntry) => void): () => void {
+  onPush(listener: (entry: StackEntry) => void): () => void {
     this.listeners.add(listener)
     return () => {
       this.listeners.delete(listener)
@@ -352,6 +428,20 @@ export function recorder<A extends { key: string; undoing?: boolean }>(
 ) {
   return (args: A, done: Done) => {
     if (args.undoing !== true) undoStack(client).push(entryOf(args, done))
+  }
+}
+
+/**
+ * What an accepted batch does: its changed issues go on the stack as one entry, which `title` words
+ * from their count. A batch that is itself an undo (`undoing`) is not recorded.
+ */
+export function batchRecorder(
+  client: QueryClient,
+  title: (changed: number) => string,
+  undoing = false,
+) {
+  return (done: BatchDone[]) => {
+    if (!undoing && done.length > 0) undoStack(client).push(batchEntry(title(done.length), done))
   }
 }
 

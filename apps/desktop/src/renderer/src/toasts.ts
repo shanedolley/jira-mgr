@@ -1,5 +1,5 @@
 import type { Notice } from './create'
-import type { UndoEntry } from './undo'
+import type { StackEntry } from './undo'
 
 /** The toasts on screen at once. */
 export const MAX_TOASTS = 2
@@ -8,7 +8,7 @@ export interface ToastItem {
   id: number
   notice: Notice
   openKey: string | null
-  entry?: UndoEntry
+  entry?: StackEntry
   retry?: () => void
 }
 

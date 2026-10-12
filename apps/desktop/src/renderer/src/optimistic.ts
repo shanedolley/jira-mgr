@@ -3,6 +3,9 @@ import type { IssueDetail } from '@jira-mgr/core/issue'
 import type { MutationOptions, QueryClient } from '@tanstack/react-query'
 
 import type {
+  BatchChange,
+  BatchItem,
+  BatchOutcome,
   CreatedIssue,
   DeleteIssueArgs,
   DeletedIssue,
@@ -179,6 +182,67 @@ export function applyFreshIssue(client: QueryClient, fresh: IssueDetail): void {
 }
 
 /**
+ * Joins the line of edits to `key`: the promise resolves when it is this edit's turn to send. It
+ * queues before anything can wait, so edits send in the order they were made.
+ */
+function joinLine(client: QueryClient, key: string, args: object): Promise<void> {
+  const queue = flights(client).get(key) ?? []
+  flights(client).set(key, queue)
+  const turn = new Promise<void>((go) => queue.push({ args, go }))
+  if (queue.length === 1) queue[0]?.go()
+  return turn
+}
+
+/**
+ * Leaves the line once the edit `args` has settled, whatever the outcome. A read while another
+ * edit is in flight would bring back Jira's old value over that edit's optimistic one, so this one
+ * lets the next send and the last to settle reads. An edit whose `onMutate` threw settles before
+ * its turn, so it leaves the line without starting anyone.
+ */
+async function leaveLine(
+  client: QueryClient,
+  key: string,
+  args: object,
+  reread: (key: string) => Promise<IssueDetail>,
+): Promise<void> {
+  const queue = flights(client).get(key) ?? []
+  const at = queue.findIndex((flight) => flight.args === args)
+  if (at !== -1) queue.splice(at, 1)
+  if (queue.length > 0) {
+    if (at === 0) queue[0]?.go()
+    return
+  }
+  flights(client).delete(key)
+  try {
+    // An edit made while this read was out, such as a quick Cmd+Z, keeps its optimistic value
+    // and reads the issue itself once it settles.
+    applyUnaskedRead(client, await reread(key))
+  } catch {
+    if (isEditing(client, key)) return
+    // The edit went through or was refused either way; the lists reload to show what Jira holds.
+    await Promise.all(
+      holding(client, key).map((queryKey) => client.invalidateQueries({ queryKey })),
+    )
+    invalidateSprints(client)
+  }
+}
+
+/** Puts back the fields a refused edit changed, and only those that still show its value. */
+function rollBack(client: QueryClient, rollback: Rollback): void {
+  editEverywhere(client, rollback.key, (issue, detail) => {
+    const back: Partial<IssueDetail> = {}
+    const fields = Object.keys(detail ? rollback.patch : listFields(rollback.patch))
+    for (const field of fields as (keyof IssueDetail)[]) {
+      const shown = (issue as Partial<IssueDetail>)[field]
+      if (same(shown, rollback.patch[field])) {
+        Object.assign(back, { [field]: rollback.previous[field] })
+      }
+    }
+    return { ...issue, ...back }
+  })
+}
+
+/**
  * An edit to one issue that shows at once, rolls back if Jira refuses, and then reads that issue
  * again. `patchOf` names the fields the edit changes, as the issue will show them. The patch goes
  * into every cache that holds the issue (each phase and the page's own read), and a refusal puts
@@ -205,10 +269,7 @@ export function issueMutation<A extends { key: string }>(
       const { key } = args
       // Queued before anything can throw or wait, so the edits send in the order they were made.
       // Two sent at once can reach Jira in either order, and Jira keeps whichever lands last.
-      const queue = flights(client).get(key) ?? []
-      flights(client).set(key, queue)
-      const turn = new Promise<void>((go) => queue.push({ args, go }))
-      if (queue.length === 1) queue[0]?.go()
+      const turn = joinLine(client, key, args)
       const patch = patchOf(args)
       // A refetch landing now would overwrite the optimistic value with Jira's old one.
       await Promise.all(holding(client, key).map((queryKey) => client.cancelQueries({ queryKey })))
@@ -239,46 +300,9 @@ export function issueMutation<A extends { key: string }>(
         record?.(args, { patch: rollback.patch, before: rollback.previous })
     },
     onError(_error, _args, rollback) {
-      if (rollback === undefined) return
-      editEverywhere(client, rollback.key, (issue, detail) => {
-        const back: Partial<IssueDetail> = {}
-        const fields = Object.keys(detail ? rollback.patch : listFields(rollback.patch))
-        for (const field of fields as (keyof IssueDetail)[]) {
-          const shown = (issue as Partial<IssueDetail>)[field]
-          if (same(shown, rollback.patch[field])) {
-            Object.assign(back, { [field]: rollback.previous[field] })
-          }
-        }
-        return { ...issue, ...back }
-      })
+      if (rollback !== undefined) rollBack(client, rollback)
     },
-    async onSettled(_data, _error, args) {
-      const { key } = args
-      // A read while another edit is in flight would bring back Jira's old value over that
-      // edit's optimistic one, so this one lets the next send and the last to settle reads. An
-      // edit whose `onMutate` threw settles before its turn, so it leaves the line without
-      // starting anyone.
-      const queue = flights(client).get(key) ?? []
-      const at = queue.findIndex((flight) => flight.args === args)
-      if (at !== -1) queue.splice(at, 1)
-      if (queue.length > 0) {
-        if (at === 0) queue[0]?.go()
-        return
-      }
-      flights(client).delete(key)
-      try {
-        // An edit made while this read was out, such as a quick Cmd+Z, keeps its optimistic value
-        // and reads the issue itself once it settles.
-        applyUnaskedRead(client, await reread(key))
-      } catch {
-        if (isEditing(client, key)) return
-        // The edit went through or was refused either way; the lists reload to show what Jira holds.
-        await Promise.all(
-          holding(client, key).map((queryKey) => client.invalidateQueries({ queryKey })),
-        )
-        invalidateSprints(client)
-      }
-    },
+    onSettled: (_data, _error, args) => leaveLine(client, args.key, args, reread),
   }
 }
 
@@ -290,6 +314,108 @@ export function summaryMutation<A extends SetSummaryArgs>(
   record?: (args: A, done: { patch: Partial<Issue>; before: Partial<Issue> }) => void,
 ) {
   return issueMutation(client, send, ({ summary }) => ({ summary }), reread, record)
+}
+
+/** One issue of a batch: what to send and what to show while Jira works. */
+export interface BatchRequestItem {
+  key: string
+  /** The issue's numeric id, which Jira's task results name it by. */
+  id: string
+  change: BatchChange
+  /** The fields the change sets, as the issue will show them. */
+  patch: Partial<Issue>
+}
+
+/** An issue Jira changed, with the fields as the batch set them and as they were. */
+export interface BatchDone {
+  key: string
+  change: BatchChange
+  patch: Partial<Issue>
+  before: Partial<Issue>
+}
+
+export interface BatchRun {
+  done: BatchDone[]
+  /** Each issue Jira did not change, in the order sent, with the reason. */
+  refused: { key: string; reason: string }[]
+}
+
+/** Issues re-read at once after a batch, so a batch of 1000 does not open 1000 reads together. */
+const REREAD_AT_ONCE = 5
+
+/**
+ * A change to several issues that shows at once, rolls back for each issue Jira refuses, and then
+ * reads each issue again, as `issueMutation` does for one. The batch takes its turn in the line of
+ * every issue it holds, behind earlier edits and ahead of later ones, so Jira sees each issue's
+ * edits in the order they were made, and the re-read of each skips while a later edit of it is in
+ * flight. An issue no cache holds is refused without a request. A failure of the whole call
+ * refuses every issue. The issues Jira changed go to `record`, which is what an undo needs.
+ */
+export async function batchMutation(
+  client: QueryClient,
+  send: (items: BatchItem[]) => Promise<BatchOutcome>,
+  reread: (key: string) => Promise<IssueDetail>,
+  items: readonly BatchRequestItem[],
+  record?: (done: BatchDone[]) => void,
+): Promise<BatchRun> {
+  const line = {}
+  await Promise.all(items.map(({ key }) => joinLine(client, key, line)))
+  await Promise.all(
+    items.flatMap(({ key }) =>
+      holding(client, key).map((queryKey) => client.cancelQueries({ queryKey })),
+    ),
+  )
+  const shown = new Map<string, Rollback>()
+  const missing = new Set<string>()
+  for (const { key, patch } of items) {
+    const before = current(client, key)
+    if (before === undefined) {
+      missing.add(key)
+      continue
+    }
+    const previous = Object.fromEntries(
+      Object.keys(patch).map((field) => [field, before[field as keyof Issue]]),
+    ) as Partial<IssueDetail>
+    editEverywhere(client, key, (issue, detail) => ({
+      ...issue,
+      ...(detail ? patch : listFields(patch)),
+    }))
+    shown.set(key, { key, patch, previous })
+  }
+
+  const sent = items.filter(({ key }) => shown.has(key))
+  let outcome: BatchOutcome = { done: [], refused: [] }
+  try {
+    if (sent.length > 0) {
+      outcome = await send(sent.map(({ key, id, change }) => ({ key, id, change })))
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    outcome = { done: [], refused: sent.map(({ key }) => ({ key, reason })) }
+  }
+  const reasons = new Map(outcome.refused.map(({ key, reason }) => [key, reason]))
+  for (const key of reasons.keys()) {
+    const rollback = shown.get(key)
+    if (rollback !== undefined) rollBack(client, rollback)
+  }
+  const changed = new Set(outcome.done)
+  const done = sent.flatMap(({ key, change, patch }) =>
+    changed.has(key) ? [{ key, change, patch, before: shown.get(key)?.previous ?? {} }] : [],
+  )
+  if (done.length > 0) record?.(done)
+
+  for (let at = 0; at < items.length; at += REREAD_AT_ONCE) {
+    await Promise.all(
+      items.slice(at, at + REREAD_AT_ONCE).map(({ key }) => leaveLine(client, key, line, reread)),
+    )
+  }
+  return {
+    done,
+    refused: items.flatMap(({ key }) => {
+      const reason = missing.has(key) ? 'It is no longer loaded.' : reasons.get(key)
+      return reason === undefined ? [] : [{ key, reason }]
+    }),
+  }
 }
 
 /**
