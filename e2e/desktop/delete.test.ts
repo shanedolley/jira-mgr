@@ -123,6 +123,8 @@ test('lists every subtask that goes with the issue and deletes them on the casca
 test('says that the children of an Epic stay and lose their parent', async () => {
   await open()
   await releaseDone(app)
+  // Hide done keeps the Done children off the Tree, so turn it off to see them arrive.
+  await window.getByRole('button', { name: 'Hide done', exact: true }).click()
   await expect(item('2 done', true)).toBeVisible()
   await item(/PSAPAC-10,/).click()
   await peek().getByRole('button', { name: 'Delete' }).click()
@@ -202,7 +204,7 @@ test('deletes a Done parent the lists do not hold yet, opened from a child page'
   await expect(dialog('PSAPAC-20')).toHaveCount(0)
   await expect(window.getByRole('button', { name: 'New issue' })).toBeEnabled()
   await releaseDone(app)
-  await expect(item(/PSAPAC-20,/)).toBeVisible()
+  await expect.poll(async () => (await counts(app)).searches.done).toBeGreaterThan(0)
   await expect(dialog('PSAPAC-20')).toHaveCount(0)
   await expect(window.getByRole('dialog')).toHaveCount(0)
 

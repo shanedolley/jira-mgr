@@ -97,7 +97,9 @@ test.describe('progress', () => {
   test('the pill equals the Epic row children plus its Done chip', async () => {
     await open()
     await loadDone()
-    // The chip says two are done and eight sit under the Epic in all: six rows plus the chip's two.
+    // "Hide done" keeps the chip away, so turn it off. The chip says two are done and eight sit
+    // under the Epic in all: six rows plus the chip's two.
+    await window.getByRole('button', { name: 'Hide done', exact: true }).click()
     await expect(item(/^2 done$/).first()).toBeVisible()
     const rows = await tree()
       .getByRole('treeitem')
@@ -118,8 +120,8 @@ test.describe('progress', () => {
   test('only an Epic row has a pill', async () => {
     await open()
     await loadDone()
-    // The Tree holds four Epics and no other parent shows one.
-    await expect(tree().locator('[data-progress]')).toHaveCount(4)
+    // The Tree holds three Epics (the Done one is hidden) and no other parent shows one.
+    await expect(tree().locator('[data-progress]')).toHaveCount(3)
     await expect(item(/PSAPAC-11,/).locator('[data-progress]')).toHaveCount(0)
     await expect(item(/PSAPAC-1,/).locator('[data-progress]')).toHaveCount(0)
   })

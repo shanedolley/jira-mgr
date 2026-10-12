@@ -443,14 +443,14 @@ describe('with buildHierarchy', () => {
     expect(groups[0]?.epics[0]?.children[0]?.contextOnly).toBe(false)
   })
 
-  it('keeps a Done Epic as context for a matching open child without "Assignee: me"', () => {
+  it('hides a Done Epic of a matching open child under "Hide done"', () => {
     const issues = [
       issue('P-1', { type: 'Epic', status: 'Done' }),
       issue('P-2', { parent: 'P-1', labels: ['x'] }),
     ]
     const groups = tree(issues, { label: ['x'] }, true)
-    expect(placed(groups)).toEqual(['P-1', 'P-2'])
-    expect(groups[0]?.epics[0]?.contextOnly).toBe(true)
+    expect(placed(groups)).toEqual(['P-2'])
+    expect(groups[0]?.noEpic[0]?.contextOnly).toBe(false)
   })
 
   it('changes nothing when the filters are empty', () => {

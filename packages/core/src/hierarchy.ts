@@ -28,7 +28,7 @@ export interface HierarchyNode {
   issue: Issue
   /** Open children, then Done children of a Done parent, in display order. */
   children: HierarchyNode[]
-  /** Done children of an open parent, behind the "N done" chip. */
+  /** Done children of an open parent, behind the "N done" chip. Always empty while `hideDone` is on. */
   doneChildren: HierarchyNode[]
   doneCount: number
   /** True when "Assignee: me" or a view's filters kept the issue only as an ancestor of a matching one. */
@@ -116,29 +116,40 @@ function byCustomer(
  */
 export function buildHierarchy(issues: Issue[], options: HierarchyOptions): CustomerGroup[] {
   const sort = comparators(options.order ?? 'key')
-  const byKey = new Map(issues.map((i) => [i.key, i]))
+  const everyKey = new Map(issues.map((i) => [i.key, i]))
+  // "Hide done" builds from the open issues alone, so no Done issue is a row, context or chip.
+  const loaded = options.hideDone ? issues.filter((i) => !isDone(i)) : issues
+  const byKey = new Map(loaded.map((i) => [i.key, i]))
+  /** The key of an issue's parent. With Done hidden, an issue under a Done parent takes the nearest open ancestor. */
+  function parentOf(issue: Issue): string | null {
+    let key = issue.parentKey
+    for (let hops = 0; options.hideDone && hops < issues.length; hops++) {
+      const p = everyKey.get(key ?? '')
+      if (p === undefined || !isDone(p)) break
+      key = p.parentKey
+    }
+    return key
+  }
   /** The loaded ancestors of an issue, nearest first. */
   function ancestors(issue: Issue): Issue[] {
     const found: Issue[] = []
-    for (let p = byKey.get(issue.parentKey ?? ''); p !== undefined && !found.includes(p);) {
+    for (let p = byKey.get(parentOf(issue) ?? ''); p !== undefined && !found.includes(p);) {
       found.push(p)
-      p = byKey.get(p.parentKey ?? '')
+      p = byKey.get(parentOf(p) ?? '')
     }
     return found
   }
   const context = new Set<string>()
-  const keep = new Set<string>(issues.map((i) => i.key))
-  // Done ancestors of an open issue: "Hide done" must not hide that issue, so they stay as context.
-  const rescued = new Set<string>()
+  const keep = new Set<string>(loaded.map((i) => i.key))
 
   const filtered = options.assigneeMe || options.match
   const wanted = filtered
-    ? issues.filter(
+    ? loaded.filter(
         (i) =>
           (!options.assigneeMe || i.assignee?.accountId === options.accountId) &&
           (options.match?.(i) ?? true),
       )
-    : issues
+    : loaded
   const matched = new Set(wanted.map((i) => i.key))
   if (filtered) {
     keep.clear()
@@ -147,29 +158,22 @@ export function buildHierarchy(issues: Issue[], options: HierarchyOptions): Cust
   for (const i of wanted) {
     for (const ancestor of ancestors(i)) {
       if (filtered && !matched.has(ancestor.key)) context.add(ancestor.key)
-      if (!isDone(i) && isDone(ancestor)) {
-        rescued.add(ancestor.key)
-        // With no filter every issue matches, so "Hide done" is what makes the Done ancestor context.
-        if (!filtered && options.hideDone) context.add(ancestor.key)
-      }
     }
   }
   for (const key of context) keep.add(key)
 
   const kids = new Map<string, Issue[]>()
-  for (const i of issues) {
-    if (isEpic(i) || i.parentKey === null || !byKey.has(i.parentKey) || !keep.has(i.key)) continue
-    const siblings = kids.get(i.parentKey)
-    if (siblings === undefined) kids.set(i.parentKey, [i])
+  for (const i of loaded) {
+    const parent = parentOf(i)
+    if (isEpic(i) || parent === null || !byKey.has(parent) || !keep.has(i.key)) continue
+    const siblings = kids.get(parent)
+    if (siblings === undefined) kids.set(parent, [i])
     else siblings.push(i)
   }
 
   function node(issue: Issue, epic: Issue | null): HierarchyNode {
     const open = !isDone(issue)
-    const listed = kids.get(issue.key) ?? []
-    // A Done parent shows only as context, so its Done children stay hidden unless rescued.
-    const all =
-      open || !options.hideDone ? listed : listed.filter((c) => !isDone(c) || rescued.has(c.key))
+    const all = kids.get(issue.key) ?? []
     const build = (list: Issue[]) =>
       list.sort(sort.others).map((c) => node(c, isEpic(issue) ? issue : null))
     const doneChildren = open ? build(all.filter(isDone)) : []
@@ -197,10 +201,12 @@ export function buildHierarchy(issues: Issue[], options: HierarchyOptions): Cust
   }
 
   // A root is an Epic, or an issue whose parent is not loaded.
-  const roots = issues.filter((i) => isEpic(i) || i.parentKey === null || !byKey.has(i.parentKey))
+  const roots = loaded.filter((i) => {
+    const parent = parentOf(i)
+    return isEpic(i) || parent === null || !byKey.has(parent)
+  })
   for (const root of roots) {
-    const shown =
-      keep.has(root.key) && !(options.hideDone && isDone(root) && !rescued.has(root.key))
+    const shown = keep.has(root.key)
     if (!shown && options.hideEmptyCustomers) continue
     const g = group(root.customer)
     if (!shown) continue

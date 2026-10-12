@@ -40,7 +40,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **No Epic group** | The group under a Customer for stories without an Epic. | orphans, unparented |
 | **Mismatch badge** | The mark on a child whose Customer differs from its Epic's, with a one-click fix that copies the Epic's Customer. | warning |
 | **Done chip** | The "N done" chip under an open parent that reveals its hidden Done children. | |
-| **Hide done** | The toggle that hides Done parents with their whole subtree, except a Done parent of an open issue, which stays as dimmed context. On at first launch. | archive |
+| **Hide done** | The toggle that removes every Done issue from the Tree: no Done row, no dimmed Done ancestor and no Done chip. An open issue under a Done parent shows under its nearest open ancestor, else as a root in its own Customer group. Progress still counts Done children. On at first launch. | archive |
 | **Row property** | A field a Tree row shows after its title, chosen from the Display menu: labels, sprint, due date, created date or updated date. Updated shows by default. The priority glyph is not one: it shows when the priority is not Medium. | column, field |
 | **Order** | How issues sort within an Epic, among an Epic's children and in No Epic: by key, priority, updated or due date. Customer groups keep their own order. A saved view may carry its row properties and order. | sort, rank |
 | **Starter view** | One of the five views a user with no `views.json` sees: My issues, Created by me, Current sprint, Active and Backlog. The first change writes them to the file, and they become ordinary views. | default view |

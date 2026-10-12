@@ -6,7 +6,7 @@
 
 ## Problem
 
-D1 (#28, merged in #68) shows a flat list of unresolved issues, loaded in full before anything renders, beside an always-open detail pane. The main view Q5 asks for is the Tree: Customer, then Epic, then Story, Task or Bug, then Subtask, in collapsible groups, with mismatch badges (Q15), a No Epic group (Q17), Done chips (Q27), three remembered toggles (Q28), a filter bar, `J`/`K` navigation and a space-bar Peek. Core's `buildHierarchy` (C7) and `issueMatcher` (C8) already compute the tree and the filters, and `jm issue tree` prints them. The app has to load all of PSAPAC without making the user wait for the 2029 Done issues, and render up to about 3200 rows without lag.
+D1 (#28, merged in #68) shows a flat list of unresolved issues, loaded in full before anything renders, beside an always-open detail pane. The main view Q5 asks for is the Tree: Customer, then Epic, then Story, Task or Bug, then Subtask, in collapsible groups, with mismatch badges (Q15), a No Epic group (Q17), Done chips (Q27, shown only while "Hide done" is off), three remembered toggles (Q28), a filter bar, `J`/`K` navigation and a space-bar Peek. Core's `buildHierarchy` (C7) and `issueMatcher` (C8) already compute the tree and the filters, and `jm issue tree` prints them. The app has to load all of PSAPAC without making the user wait for the 2029 Done issues, and render up to about 3200 rows without lag.
 
 ## Goals
 
@@ -23,7 +23,7 @@ D1 (#28, merged in #68) shows a flat list of unresolved issues, loaded in full b
 ### Layout
 
 ```
-packages/core/src/hierarchy.ts  exports STATUS_ORDER; Done ancestors of open issues stay as context
+packages/core/src/hierarchy.ts  exports STATUS_ORDER; Hide done builds from open issues only
 apps/desktop/src/
   shared/ipc.ts               issues:list takes a phase and a load id; new channels and the progress event
   main/backend.ts             per-phase loads with progress and abort; me, customers, serialised toggles
@@ -45,10 +45,11 @@ apps/desktop/src/
 
 Two changes to `@jira-mgr/core/hierarchy`, both in this story:
 
-- **Done ancestors stay as context.** Under "Hide done", an open issue keeps its Done ancestors as dimmed `contextOnly` rows, with their other Done children dropped, whether or not a filter or "Assignee: me" is on. Today `buildHierarchy` rescues Done ancestors only inside its `assigneeMe || match` branch (`hierarchy.ts:89-104`), so with no filter a Done Epic drops with its open Story; once the app loads Done issues, that Story vanishes. This extends the orchestrator decision of 2026-10-07 for "Assignee: me" (handover, Open Decisions) to every case, decided by the orchestrator on 2026-10-09. The pinned test `drops a Done Epic with its whole subtree` becomes `keeps a Done Epic as context for its open child`, beside a new `drops a Done Epic whose children are all Done`. Core's README changes to match.
+- **Hide done removes every Done issue** *(amended 2026-10-12, build of #199, by Shane; replaces the next paragraph)*. With "Hide done" on, `buildHierarchy` builds the tree from the open issues alone. A Done issue is never matched, never context and never a row, and no node has `doneChildren`, so no "N done" chip renders. An open issue under a Done parent attaches to its nearest open ancestor, else it is a root in its own Customer group, and a group left with no rows follows "Hide empty Customers". "Assignee: me" and a view's filters match open issues only, so a Done match keeps no ancestor: an open Epic of someone else whose only child is my Done Story shows nothing. Progress still counts Done children, because `childProgress` reads the issues, not the Tree. With "Hide done" off nothing changes. The superseded rule follows.
+- **~~Done ancestors stay as context.~~** Under "Hide done", an open issue keeps its Done ancestors as dimmed `contextOnly` rows, with their other Done children dropped, whether or not a filter or "Assignee: me" is on. Today `buildHierarchy` rescues Done ancestors only inside its `assigneeMe || match` branch (`hierarchy.ts:89-104`), so with no filter a Done Epic drops with its open Story; once the app loads Done issues, that Story vanishes. This extends the orchestrator decision of 2026-10-07 for "Assignee: me" (handover, Open Decisions) to every case, decided by the orchestrator on 2026-10-09. The pinned test `drops a Done Epic with its whole subtree` becomes `keeps a Done Epic as context for its open child`, beside a new `drops a Done Epic whose children are all Done`. Core's README changes to match.
 - **`STATUS_ORDER` is exported,** so the status filter lists statuses in the Q21 order without copying the list. A test pins the order.
 
-The CLI's output does not change: with Done hidden it never loads the Done phase, so no Done ancestor is in its input. One difference remains. `jm issue tree` prints an open Story whose Epic is Done under No Epic, with no Done chips, while the app shows it under its dimmed Epic, with chips. The app shows it under No Epic too until its Done issues arrive, then moves it under the Epic; scroll anchoring keeps the rows in view steady when that happens.
+The CLI's output does not change: with Done hidden it never loads the Done phase, so no Done issue is in its input. Since #199 the app and the CLI agree: an open Story whose Epic is Done shows under No Epic in both, with no Done chips and no dimmed Epic, whether or not the app's Done issues have loaded.
 
 ### Channels
 
@@ -73,8 +74,8 @@ PSAPAC holds 2793 issues: 764 unresolved and 2029 Done (round 2, measured 2026-1
 
 1. The Shell starts `['issues', 'unresolved']`, `['toggles']` and `['me']` at once.
 2. The Tree renders once the unresolved phase and the toggles have data, and `me` too when "Assignee: me" is on or the assignee filter holds `me`. Until then the list shows `Loading issues: 300` from the progress events. A partial phase never renders, because it can hold a Story whose Epic is on a later page.
-3. `['issues', 'done']` is enabled once the unresolved query holds data. It runs whatever "Hide done" says, because Done chips need the Done issues under open parents (Q27). `jm issue tree` skips the Done phase when hiding Done, and so prints no chips.
-4. While Done first loads, the toolbar shows `Loading Done issues: 600`. The Tree works meanwhile with no chips. When the phase completes, the Tree rebuilds and the chips appear. A later Done reload shows no count, and the existing chips stay until its data lands.
+3. `['issues', 'done']` is enabled once the unresolved query holds data. It runs whatever "Hide done" says, because progress counts need the Done issues and, with "Hide done" off, the Tree shows them as chips under open parents (Q27). `jm issue tree` skips the Done phase when hiding Done.
+4. While Done first loads, the toolbar shows `Loading Done issues: 600`. The Tree works meanwhile with no chips. When the phase completes with "Hide done" off, the Tree rebuilds and the chips appear; with it on, the Tree does not change. A later Done reload shows no count, and the existing chips stay until its data lands.
 
 The visible count is the text of an `aria-hidden` span, shown only while its query has no data. A `role="status"` region announces only the start and end of each first load, so a screen reader hears two messages, not 29.
 
@@ -161,7 +162,7 @@ A count is the number of issues in the subtree, context rows included and issues
 
 | Case | Rows |
 |---|---|
-| Default: "Hide done" on, all expanded | up to 764 issues, 42 Customer and up to 42 No Epic headers, plus one chip per open parent with Done children: about 1000 |
+| Default: "Hide done" on, all expanded | up to 764 issues, 42 Customer and up to 42 No Epic headers, with no chips, since Hide done removes them: about 800 |
 | "Hide done" off, every chip revealed | 2793 issues, 84 headers and the chips: about 3200 |
 | Rows in view in an 800-pixel window | about 22 |
 
@@ -266,8 +267,10 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 
 | File | Test |
 |---|---|
-| `core/src/hierarchy.test.ts` | `keeps a Done Epic as context for its open child` (replaces `drops a Done Epic with its whole subtree`) |
-| | `drops a Done Epic whose children are all Done` |
+| `core/src/hierarchy.test.ts` | `drops a Done Epic and attaches its open child as a root in its own Customer group` (#199; D2 first pinned `keeps a Done Epic as context for its open child`) |
+| | `attaches an open issue to its nearest open ancestor, past Done ones` (#199) |
+| | `shows no Done row and no chip anywhere` (#199) |
+| | `drops a group whose only match is a Done child of someone else's Epic` (#199) |
 | | `STATUS_ORDER runs Opportunity, To Do, In Progress, Review, Hold, Done` |
 | `renderer/src/tree.test.ts` | `keeps one copy of an issue both phases hold, the later updated` |
 | | `keeps the unresolved copy when both have the same updated` |
@@ -329,8 +332,8 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 | Test |
 |---|
 | `groups issues by Customer with the internal Customer last` |
-| `shows the Tree before Done issues load, then their N done chips` |
-| `moves an open Story under its Done Epic once Done issues load` |
+| `shows the Tree before Done issues load, then their N done chips once Hide done is off` |
+| `keeps an open Story under No Epic while its Epic is Done and Hide done is on` |
 | `reveals a parent's Done children from its chip` |
 | `marks a Story whose Customer differs from its Epic's` |
 | `collapses and expands groups by click, by arrow keys and with Collapse all` |
@@ -363,7 +366,8 @@ The bounded-rows test launches with `JM_E2E_BULK=2000`, so the 2000 issues are o
 | **Two phase queries, progress pushed as events** (chosen) | Unresolved renders first; core's generator pages unchanged; a running count | One more event in preload |
 | One query loading both phases | Least code | Nothing shows until all 29 pages load, against ADR-0002 |
 | Renderer-driven paging, one IPC call per page with Jira's token | The renderer controls cancellation | Core keeps its paging state inside the generator; exposing tokens changes core's API, and refetching stored tokens assumes they never expire |
-| **Done ancestors kept as context in core** (chosen) | One rule for the CLI and the app; an open issue never vanishes | Changes a pinned C7 behaviour; the app moves the issue once Done loads |
+| **Hide done builds from open issues only** (chosen, #199) | One rule for the CLI and the app; no Done row or chip while Hide done is on; the Tree never shifts when Done loads | A Done Epic no longer labels its open children |
+| ~~Done ancestors kept as context in core~~ (D2's choice, replaced by #199) | An open issue kept its Epic's label | A Done match pulled in an open Epic of someone else, and its Customer group with it |
 | Leave core alone; the app shows such issues under No Epic | No core change | The issue vanishes from the app once Done loads, since core then drops it with its Epic |
 | **`role="tree"`, flat treeitems, `aria-activedescendant`** (chosen) | Matches the interaction: rows are selected, not their cells; survives virtualisation | The row's columns are not separate cells to a screen reader |
 | `role="treegrid"` | Cell-level navigation | Needs a cell focus model no D2 interaction uses |
@@ -391,4 +395,4 @@ The same pull request updates `apps/desktop/README.md` (layout table, IPC sectio
 
 ## Open Questions
 
-None. The orchestrator settled the two that remained on 2026-10-09: an open issue keeps its Done ancestors as context under "Hide done" (Core Changes), and collapse state lasts for the session only, revisited if Shane asks.
+None. Collapse state lasts for the session only, revisited if Shane asks. The 2026-10-09 decision that an open issue keeps its Done ancestors as context under "Hide done" was replaced on 2026-10-12 (Core Changes, #199).
