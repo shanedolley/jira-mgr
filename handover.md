@@ -84,7 +84,7 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 | With `question` | #199, #201 | `--label question` | 2026-10-13 |
 | Open pull requests | #207 only | `gh pr list --state open` | 2026-10-13 |
 
-`git worktree list` shows the main tree only (2026-10-13). Only `main` exists on origin (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree only (2026-10-13). Origin holds `main` and the open PR's branch, `202-time-tracking` (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
@@ -175,3 +175,4 @@ Each re-read at its source on 2026-10-13 unless it says otherwise.
 - **Browser tool scope.** `browser-harness` drives only the dedicated automation Chrome on port 9333 (profile `~/.browser-harness-chrome`), not Shane's everyday Chrome. Port 9333 listens and the profile folder exists (2026-10-13); the Linear sign-in is unverified since 2026-10-13.
 - **Subagent writes of findings files in the scratchpad were refused by hooks** (2026-10-10; unverified since 2026-10-13). Have review subagents return findings as message text.
 - **The ticket guard reads inline scripts as Jira calls** (2026-10-13). A `python3 - <<EOF` edit whose text named a Jira permission was refused as a Jira request. Put such an edit in a script file in the scratchpad and run `python3 -I <file>`.
+- **`sr-only` text escapes a scroller that is not positioned** (2026-10-13). Tailwind's `sr-only` is `position: absolute`; inside a scrolling panel with no positioned ancestor it stretched the document by 127px. macOS overlay scrollbars hid it, and Linux CI failed two `narrow.test.ts` width checks by 15px (PR #207). Give the element holding `sr-only` text `relative`, and reproduce Linux widths on macOS by injecting `*::-webkit-scrollbar{width:15px}`.
