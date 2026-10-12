@@ -1,7 +1,7 @@
 import type { Issue } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
-import { rowName } from './TreeRow'
+import { rowName, rowProgress } from './TreeRow'
 import type { TreeRow } from './tree'
 
 function row(over: Partial<Issue>): TreeRow {
@@ -71,16 +71,43 @@ describe('rowName', () => {
     )
   })
 
-  it('combines the blockers and the progress of an Epic: blockers before the priority, progress last', () => {
-    const epic = row({
-      key: 'PSAPAC-10',
-      summary: 'Customer onboarding',
-      issueType: { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 },
-      priority: { id: '2', name: 'High' },
-      dueDate: '2026-10-14',
-    })
-    expect(rowName(epic, ['due'], { blockedBy: 2, blocking: 1 }, { done: 2, total: 8 })).toBe(
-      'PSAPAC-10, Epic, To Do, Customer onboarding, unassigned, blocked by 2 issues, blocking 1 issue, priority High, due 2026-10-14, 2 of 8 done',
+  it('combines the blockers and the progress of a Story: blockers before the priority, progress last', () => {
+    const story = row({ priority: { id: '2', name: 'High' }, dueDate: '2026-10-14' })
+    expect(rowName(story, ['due'], { blockedBy: 2, blocking: 1 }, { done: 2, total: 8 })).toBe(
+      'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, blocked by 2 issues, blocking 1 issue, priority High, due 2026-10-14, 2 of 8 done',
     )
+  })
+})
+
+describe('rowProgress', () => {
+  const typed = (name: string, hierarchyLevel: number, subtask = false) =>
+    row({ issueType: { id: '9', name, subtask, hierarchyLevel } })
+  const entries = new Map([['PSAPAC-11', { done: 3, total: 8 }]])
+
+  it('gives a Story with 8 sub-issues, 3 Done, "3 of 8 done" in its name', () => {
+    const story = row({})
+    expect(rowProgress(story, entries)).toEqual({ done: 3, total: 8 })
+    expect(rowName(story, [], undefined, rowProgress(story, entries))).toMatch(/, 3 of 8 done$/)
+  })
+
+  it('gives a Task and a Bug with sub-issues the same', () => {
+    for (const name of ['Task', 'Bug']) {
+      expect(rowProgress(typed(name, 0), entries)).toEqual({ done: 3, total: 8 })
+    }
+  })
+
+  it('gives an Epic none, though it has an entry', () => {
+    expect(rowProgress(typed('Epic', 1), entries)).toBeUndefined()
+  })
+
+  it('gives a Subtask none', () => {
+    expect(rowProgress(typed('Subtask', -1, true), entries)).toBeUndefined()
+  })
+
+  it('gives an issue with no sub-issues, and a row that is not an issue, none', () => {
+    expect(rowProgress(row({ key: 'PSAPAC-12' }), entries)).toBeUndefined()
+    expect(
+      rowProgress({ kind: 'chip', doneCount: 2 } as unknown as TreeRow, entries),
+    ).toBeUndefined()
   })
 })

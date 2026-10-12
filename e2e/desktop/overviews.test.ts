@@ -78,51 +78,46 @@ async function loadDone() {
 const pill = (row: Locator) => row.locator('[data-progress]')
 
 test.describe('progress', () => {
-  test('an Epic row shows done over total, which grows when the Done issues load', async () => {
+  test('a Story row shows done over its sub-issues', async () => {
     await open()
-    // PSAPAC-10 has six open Stories, Tasks and Bugs loaded, and two Done ones still to come.
-    await expect(pill(item(/PSAPAC-10,/))).toHaveAttribute('data-progress', '0/6')
-    await expect(item(/PSAPAC-10,/)).toHaveAccessibleName(/, 0 of 6 done$/)
-
-    await loadDone()
-    await expect(pill(item(/PSAPAC-10,/))).toHaveAttribute('data-progress', '2/8')
-    await expect(item(/PSAPAC-10,/)).toHaveAccessibleName(/, 2 of 8 done$/)
-    await expect(pill(item(/PSAPAC-10,/))).toHaveText('2/8')
+    // PSAPAC-11 has one Subtask, still open.
+    const story = item(/PSAPAC-11,/)
+    await expect(pill(story)).toHaveAttribute('data-progress', '0/1')
+    await expect(story).toHaveAccessibleName(/, 0 of 1 done$/)
+    await expect(pill(story)).toHaveText('0/1')
     // Reading "done" from the title as well as the name, so the numbers are not bare.
-    await expect(pill(item(/PSAPAC-10,/))).toHaveAttribute('title', '2 of 8 done')
-    await expect(pill(item(/PSAPAC-30,/))).toHaveAttribute('data-progress', '0/2')
-    await expect(pill(item(/PSAPAC-50,/))).toHaveAttribute('data-progress', '0/1')
+    await expect(pill(story)).toHaveAttribute('title', '0 of 1 done')
+
+    await loadDone()
+    await expect(pill(story)).toHaveAttribute('data-progress', '0/1')
   })
 
-  test('the pill equals the Epic row children plus its Done chip', async () => {
+  test('a Done sub-issue counts while Hide done removes its row', async () => {
     await open()
     await loadDone()
-    // "Hide done" keeps the chip away, so turn it off. The chip says two are done and eight sit
-    // under the Epic in all: six rows plus the chip's two.
-    await window.getByRole('button', { name: 'Hide done', exact: true }).click()
-    await expect(item(/^2 done$/).first()).toBeVisible()
-    const rows = await tree()
-      .getByRole('treeitem')
-      .evaluateAll((all) =>
-        all.map((r) => [r.getAttribute('aria-level'), r.getAttribute('aria-label')]),
-      )
-    const epic = rows.findIndex(([, name]) => name?.startsWith('PSAPAC-10,'))
-    // Level 3 rows after the Epic and before the next level 2 row are its children.
-    let children = 0
-    for (const [level, name] of rows.slice(epic + 1)) {
-      if (level === '2') break
-      if (level === '3' && name?.startsWith('PSAPAC-')) children++
+    await item(/PSAPAC-12,/).click()
+    await window.keyboard.press('Enter')
+    await expect(issuePage().getByRole('heading', { name: 'Outline the sections' })).toBeVisible()
+    await window.keyboard.press('s')
+    await window.getByRole('option', { name: /Done/ }).click()
+    await window.keyboard.press('Escape')
+
+    await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+    await expect(pill(item(/PSAPAC-11,/))).toHaveAttribute('data-progress', '1/1')
+    await expect(item(/PSAPAC-11,/)).toHaveAccessibleName(/, 1 of 1 done$/)
+  })
+
+  test('an Epic row and an issue with no sub-issues have no pill', async () => {
+    await open()
+    await loadDone()
+    // Only PSAPAC-11 holds a sub-issue, so it carries the Tree's one pill. The three Epics each
+    // hold children and show none.
+    await expect(tree().locator('[data-progress]')).toHaveCount(1)
+    await expect(item(/PSAPAC-11,/).locator('[data-progress]')).toHaveCount(1)
+    for (const epic of [/PSAPAC-10,/, /PSAPAC-30,/, /PSAPAC-50,/]) {
+      await expect(item(epic).locator('[data-progress]')).toHaveCount(0)
+      await expect(item(epic)).not.toHaveAccessibleName(/ done$/)
     }
-    expect(children).toBe(6)
-    await expect(pill(item(/PSAPAC-10,/))).toHaveAttribute('data-progress', '2/8')
-  })
-
-  test('only an Epic row has a pill', async () => {
-    await open()
-    await loadDone()
-    // The Tree holds three Epics (the Done one is hidden) and no other parent shows one.
-    await expect(tree().locator('[data-progress]')).toHaveCount(3)
-    await expect(item(/PSAPAC-11,/).locator('[data-progress]')).toHaveCount(0)
     await expect(item(/PSAPAC-1,/).locator('[data-progress]')).toHaveCount(0)
   })
 
@@ -224,11 +219,11 @@ test.describe('Epics table', () => {
     ])
   })
 
-  test('the percent done matches the Epic’s pill in the Tree', async () => {
+  test('the percent done counts the Epic’s Done children once they load', async () => {
     await open()
     await loadDone()
     await link('Epics').click()
-    // 2 of 8, as the Tree row says.
+    // Two of the eight children are Done.
     await expect(epicRow('PSAPAC-10').getByRole('cell').last()).toHaveText('25%')
     await expect(epicRow('PSAPAC-10').getByRole('cell').last()).toHaveAttribute(
       'title',
@@ -641,11 +636,12 @@ test.describe('load states', () => {
 
   test('a failed Done load says so on the Epics and Customers pages, hides what needs Done and retries', async () => {
     await open()
+    await expect(pill(item(/PSAPAC-11,/))).toHaveCount(1)
     await failDone(app)
     await releaseDone(app)
     // The Tree's own banner sits under the covered list, so look from the page.
     await expect(banner()).toBeVisible()
-    await expect(pill(item(/PSAPAC-10,/))).toHaveCount(0)
+    await expect(pill(item(/PSAPAC-11,/))).toHaveCount(0)
 
     await link('Epics').click()
     await expect(epicsPage().getByRole('alert')).toContainText(
