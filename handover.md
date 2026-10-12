@@ -2,9 +2,9 @@
 
 ## Where Work Stands
 
-Checked 2026-10-12. Head `4729a20` (`git log --oneline -1 origin/main`, PR [#193](https://github.com/shanedolley/jira-mgr/pull/193), a handover refresh plus an e2e locator fix). Every story from #9 to #184 is closed except #143. #143 is the one open issue, In Progress on branch `143-bulk-edit`.
+Checked 2026-10-12. Head `e595ef0` (`git log --oneline -1 origin/main`, PR [#194](https://github.com/shanedolley/jira-mgr/pull/194), core's batch module); main CI run 38187354069 succeeded on it. Every story from #9 to #184 is closed except #143. #143 is the one open issue, In Progress on branch `143-bulk-desktop`.
 
-#143 lands as two pull requests. PR 1, core's batch module `@jira-mgr/core/bulk`, is built on `143-bulk-edit` and in review. PR 2, the desktop selection and bulk bar, is not started. Its plan is [the #143 build plan comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115369790), and Shane's four design answers are in [the decisions comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115196580). Both live bulk probes ran with Shane present on 2026-10-12 ([first](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115035335), [second](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115308481)), so PR 2 needs no further live write.
+#143 lands as two pull requests. PR 1, core's batch module `@jira-mgr/core/bulk`, merged as [#194](https://github.com/shanedolley/jira-mgr/pull/194) (`e595ef0`). PR 2, the desktop selection, bulk bar and batch undo, is built on `143-bulk-desktop` (`git log --oneline origin/main..143-bulk-desktop`). Reviewer 143-desktop-review passed it on 2026-10-12 with three Mediums and four Lows; the builder fixed M1, M2 and L1 to L4 in a follow-up commit, which the reviewer passed again. M3 waits for Shane: under the default Hide done, a bulk move to Done empties the selection, because the selection is pruned to the rows shown (plan item 2), which reads against his answer that the selection stays after an action. Its plan is [the #143 build plan comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115369790), and Shane's four design answers are in [the decisions comment](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115196580). Both live bulk probes ran with Shane present on 2026-10-12 ([first](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115035335), [second](https://github.com/shanedolley/jira-mgr/issues/143#issuecomment-6115308481)), so PR 2 needs no further live write.
 
 Shane closed #138, #150 and #184 and answered #144 ("keep the neutral capsule with a red icon") and #151 ("Approved") on 2026-10-12; the project manager closed those two. Nothing waits in HIL Review.
 
@@ -40,7 +40,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #150 | Epic progress, Epics table, Customers page | [#189](https://github.com/shanedolley/jira-mgr/pull/189) | Closed 2026-10-12. Open Lows L4 and L5 (see the #150 review comments). No "No Customer" row; progress counts direct children |
 | #151 | Narrow layout | [#190](https://github.com/shanedolley/jira-mgr/pull/190) | Closed 2026-10-12, approved. Lows: L6 (traffic-light padding unverified on a real window) and `useTreeTop` reading layout on every render. At narrow widths the Peek card covers the right edge of rows, pills included |
 | #184 | Bug: the palette and sidebar acted on the hidden Tree under the Inbox or a Sprint page | [#186](https://github.com/shanedolley/jira-mgr/pull/186) | Closed 2026-10-12. Found by 149-sprint-review |
-| #143 | Select and edit several issues at once | PR 1 on `143-bulk-edit` | In Progress. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
+| #143 | Select and edit several issues at once | [#194](https://github.com/shanedolley/jira-mgr/pull/194); PR 2 on `143-bulk-desktop` | In Progress. Proven live 2026-10-12: bulk priority, label ADD, status transitions, assignee and unassign, Customer and Engagement. Dates and label removal go one issue at a time by design. Fixtures `packages/core/fixtures/bulk-*.json`; throwaways PSAPAC-3141 to 3144 deleted |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -74,7 +74,7 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 | Open blockers of #143 | none | `gh api repos/shanedolley/jira-mgr/issues/143/dependencies/blocked_by --jq '[.[]\|select(.state=="open")\|.number]'` | 2026-10-12 |
 | Open pull requests | none | `gh pr list --state open` | 2026-10-12 |
 
-`git worktree list` shows the main tree only (2026-10-12). Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree only, on `143-bulk-desktop` (2026-10-12). Only `main` exists on origin. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
@@ -82,9 +82,9 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests. Core 1310 pass and 5 skip, desktop 1074, CLI 602 on main (CI run 38175877383 on df420cf; `gh run view 38175877383 --log`). On `143-bulk-edit` core has 1353 pass and 5 skip (local run, 2026-10-12) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests. Core 1353 pass and 5 skip, desktop 1074, CLI 602 (main CI run 38187354069 on e595ef0; `gh run view 38187354069 --log`, 2026-10-12). On `143-bulk-desktop` core 1354 and 5 skip, desktop 1142, CLI 602 (builder's local run, 2026-10-12) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | The same plus `*.live.test.ts`, with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only |
-| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38175877383 on df420cf: 503 passed, 4 skipped (`gh run view 38175877383 --log`, 2026-10-12). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
+| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). CI run 38187354069 on e595ef0: 503 passed, 4 skipped (`gh run view 38187354069 --log`, 2026-10-12). On `143-bulk-desktop`: 526 tests, 525 passed, 1 skipped (local, 1 worker, 2026-10-12). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
 | `pnpm -s jm -- <args>` | The built CLI. Use `-s`: plain `pnpm jm --` prints pnpm's banner and breaks JSON | Live Jira at the site in `settings.json`, as the logged-in user. Writes from L4 on. Set `JM_STATE_DIR` to a scratch folder first |
 | `pnpm package` | Builds `apps/desktop/dist/jira-mgr.app`; macOS only | Nothing external. The packaged app, like `pnpm dev`, uses the real state folder and Keychain item unless `JM_STATE_DIR` is set |
@@ -126,7 +126,7 @@ Each re-read at its source on 2026-10-12 unless it says otherwise.
 - **Reproduce CI-only races with CPU throttling.** `throttle()` in `e2e/desktop/keyboard.test.ts`, `palette.test.ts` and `toast.test.ts` sets CDP `Emulation.setCPUThrottlingRate` to 20. Never read derived rows in an event handler right after a state change (#159: Tree rows built from `useDeferredValue(filters)` read a render late).
 - **Wait out ProseMirror's focus timer before a caret key in e2e.** `focusSettled()` in `e2e/desktop/editor.test.ts` does it (#103).
 - **Single-file e2e runs test stale code.** `npx playwright test desktop/<file>` inside `e2e/` runs the last build in `apps/desktop/out`. Run `pnpm build` first; `pnpm e2e` builds first.
-- **Parallel e2e runs starve Electron.** Several worktrees at once make 5 to 25 tests time out in `beforeEach`. Use `--workers=1` and the shared `lockf` lock, and rerun on a quiet machine before treating a `beforeEach` timeout as real.
+- **Parallel e2e runs starve Electron.** Several worktrees at once make 5 to 25 tests time out in `beforeEach`. Use `--workers=1` and the shared `lockf` lock, and rerun on a quiet machine before treating a `beforeEach` timeout as real. Met again 2026-10-12: a builder without the lock lost two full runs (SIGTERM, exit 137) while another agent held it; name the lock path in every dispatch that runs e2e.
 - **Read the failing test's name and assertion before rerunning.** A rerun that passes can hide a real bug (a date committed twice failed 15 of 40 runs before its fix; the caret bug was another).
 - **Delete hover colour flake** (once, 2026-10-11): `e2e/desktop/buttons.test.ts` failed once and passed 60 of 60 on rerun. If it recurs, re-hover inside the `expect.poll`.
 - **Unanchored row-label locators match Epic progress** (met 2026-10-12 on PR #193, one red CI round). Since #150 an Epic row's label ends "N of M done", so `item(/2 done/)` also matched two Epics and passed only when its poll landed before the Done phase loaded (7 of 8 local runs failed). Match a row label exactly or anchor it (`/^2 done$/`).
