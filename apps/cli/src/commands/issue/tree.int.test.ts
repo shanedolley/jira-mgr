@@ -132,6 +132,26 @@ describe('jm issue tree as JSON', () => {
       ])
     })
 
+    it('an epic-filtered view loads Done to climb, yet shows no Done chip or row', async () => {
+      const requests = serveReads()
+      await writeViews([
+        {
+          id: 'epic',
+          name: 'Epic',
+          filters: { epic: ['PSAPAC-3099'] },
+          toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
+        },
+      ])
+      const groups = await tree('--view', 'epic')
+      // The climb needs the Done phase, and PSAPAC-3099 has four Done children in it.
+      expect(searchPhases(requests)).toContain('done')
+      const all = (nodes: Node[]): Node[] =>
+        nodes.flatMap((n) => [n, ...all(n.children), ...all(n.doneChildren)])
+      const nodes = groups.flatMap((g) => all([...g.epics, ...g.noEpic]))
+      expect(keysOf(nodes)).toEqual(['PSAPAC-3099', 'PSAPAC-3106', 'PSAPAC-3105', 'PSAPAC-3104'])
+      expect(nodes.every((n) => n.doneCount === 0 && n.doneChildren.length === 0)).toBe(true)
+    })
+
     it('a view that shows Done loads the done phase', async () => {
       const requests = serveReads()
       await writeViews([

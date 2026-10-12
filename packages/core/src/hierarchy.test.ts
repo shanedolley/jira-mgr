@@ -339,6 +339,19 @@ describe('buildHierarchy', () => {
       ).toEqual([{ customer: ACME, epics: [], noEpic: [] }])
     })
 
+    it('drops a group whose only view match is a Done child of an open Epic', () => {
+      const tree = build(
+        [
+          issue('P-1', { type: 'Epic', customer: ACME }),
+          issue('P-2', { parent: 'P-1', status: 'Done', customer: ACME }),
+          issue('P-3', { parent: 'P-1', customer: ACME }),
+        ],
+        { hideDone: true, match: (i) => i.key === 'P-2' },
+      )
+
+      expect(tree).toEqual([])
+    })
+
     it('keeps everything when off', () => {
       const tree = build(issues)
 

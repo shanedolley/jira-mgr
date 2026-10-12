@@ -11,7 +11,7 @@ D1 (#28, merged in #68) shows a flat list of unresolved issues, loaded in full b
 ## Goals
 
 - The Tree renders from core's `buildHierarchy`, with no grouping, sorting or Done rules of its own. Its mismatch badges and Done chips match `jm issue tree` for the same issues and toggles.
-- The unresolved issues show as soon as their phase loads. Done issues then load in the background with a running count, and the Done chips appear when they arrive.
+- The unresolved issues show as soon as their phase loads. Done issues then load in the background with a running count, and, while "Hide done" is off, the Done chips appear when they arrive.
 - The list renders only the rows in view, so a keypress or a scroll costs the same with 3200 rows as with 30.
 - "Hide done", "Assignee: me" and "Hide empty Customers" persist in `settings.json` under the existing `toggles` key.
 - The filter bar holds core's `ViewFilters` shape, so D8 saves it as a view unchanged.
@@ -49,7 +49,7 @@ Two changes to `@jira-mgr/core/hierarchy`, both in this story:
 - **~~Done ancestors stay as context.~~** Under "Hide done", an open issue keeps its Done ancestors as dimmed `contextOnly` rows, with their other Done children dropped, whether or not a filter or "Assignee: me" is on. Today `buildHierarchy` rescues Done ancestors only inside its `assigneeMe || match` branch (`hierarchy.ts:89-104`), so with no filter a Done Epic drops with its open Story; once the app loads Done issues, that Story vanishes. This extends the orchestrator decision of 2026-10-07 for "Assignee: me" (handover, Open Decisions) to every case, decided by the orchestrator on 2026-10-09. The pinned test `drops a Done Epic with its whole subtree` becomes `keeps a Done Epic as context for its open child`, beside a new `drops a Done Epic whose children are all Done`. Core's README changes to match.
 - **`STATUS_ORDER` is exported,** so the status filter lists statuses in the Q21 order without copying the list. A test pins the order.
 
-The CLI's output does not change: with Done hidden it never loads the Done phase, so no Done issue is in its input. Since #199 the app and the CLI agree: an open Story whose Epic is Done shows under No Epic in both, with no Done chips and no dimmed Epic, whether or not the app's Done issues have loaded.
+The CLI's output does not change by default: with Done hidden it never loads the Done phase, so no Done issue is in its input. One case changes: an `epic` or `not.epic` filter loads the Done phase to climb from a Subtask, so under Hide done `jm issue tree` now drops the Done chips and Done context rows that `buildHierarchy` used to build from it (#199, decided by Shane as intended). Since #199 the app and the CLI agree: an open Story whose Epic is Done shows under No Epic in both, with no Done chips and no dimmed Epic, whether or not the app's Done issues have loaded.
 
 ### Channels
 

@@ -231,8 +231,9 @@ export interface Progress {
 /**
  * Done over total of each parent's direct children, by parent key. It counts the children
  * `buildHierarchy` nests under a parent (an Epic is never a child), whatever the toggles and
- * filters hide, so an Epic's `children` and `doneCount` add up to `total`. Done is the status
- * category. A parent with no loaded child has no entry.
+ * filters hide. With `hideDone` off and no filter, an Epic's `children` and `doneCount` add up to
+ * `total`; with `hideDone` on the Tree holds fewer, since Done children leave it. Done is the
+ * status category. A parent with no loaded child has no entry.
  */
 export function childProgress(issues: readonly Issue[]): Map<string, Progress> {
   const byKey = new Map(issues.map((i) => [i.key, i]))
