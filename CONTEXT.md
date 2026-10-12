@@ -39,7 +39,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | **Customer group** | A top-level tree group for one Customer. Sorted alphabetically, with the two Collibra internal groups last. | folder |
 | **No Epic group** | The group under a Customer for stories without an Epic. | orphans, unparented |
 | **Mismatch badge** | The mark on a child whose Customer differs from its Epic's, with a one-click fix that copies the Epic's Customer. | warning |
-| **Done chip** | The "N done" chip under an open parent that reveals its hidden Done children. | |
+| **Done chip** | The "N done" chip under an open parent that reveals its hidden Done children. It shows only while Hide done is off. | |
 | **Hide done** | The toggle that removes every Done issue from the Tree: no Done row, no dimmed Done ancestor and no Done chip. An open issue under a Done parent shows under its nearest open ancestor, else as a root in its own Customer group. Progress still counts Done children. On at first launch. | archive |
 | **Row property** | A field a Tree row shows after its title, chosen from the Display menu: labels, sprint, due date, created date or updated date. Updated shows by default. The priority glyph is not one: it shows when the priority is not Medium. | column, field |
 | **Order** | How issues sort within an Epic, among an Epic's children and in No Epic: by key, priority, updated or due date. Customer groups keep their own order. A saved view may carry its row properties and order. | sort, rank |
