@@ -439,6 +439,8 @@ test('the bar fits the Tree in a wide font, on one line, clear of the toast and 
 
   // The last row scrolls clear of the bar.
   await window.getByLabel('Filter by key or summary').fill('')
+  // End moves to the last row the Tree holds, so wait for the unfiltered Tree before pressing it.
+  await expect(item(/Customer onboarding/)).toBeVisible()
   await tree().focus()
   await window.keyboard.press('End')
   const last = await window.evaluate(() => {
