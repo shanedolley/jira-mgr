@@ -275,6 +275,7 @@ An array of issues.
       "dueDate": "2026-10-14",
       "originalEstimateSeconds": 28800,
       "remainingEstimateSeconds": 14400,
+      "timeSpentSeconds": 14400,
       "timeRemainingHours": null,
       "created": "2026-09-28T01:02:03.000Z",
       "updated": "2026-10-06T23:10:00.000Z"
@@ -404,6 +405,7 @@ An array of Customer groups, each with its Epics and the issues under no Epic.
             "dueDate": "2026-10-14",
             "originalEstimateSeconds": 28800,
             "remainingEstimateSeconds": 14400,
+            "timeSpentSeconds": 14400,
             "timeRemainingHours": null,
             "created": "2026-09-28T01:02:03.000Z",
             "updated": "2026-10-06T23:10:00.000Z"
@@ -527,6 +529,7 @@ The issue, its description as ADF and as Markdown, its subtasks and its URL.
     "dueDate": "2026-10-14",
     "originalEstimateSeconds": 28800,
     "remainingEstimateSeconds": 14400,
+    "timeSpentSeconds": 14400,
     "timeRemainingHours": null,
     "created": "2026-09-28T01:02:03.000Z",
     "updated": "2026-10-06T23:10:00.000Z",
@@ -680,6 +683,7 @@ The new issue, read back after the create: the same object as `jm issue get`. It
     "dueDate": "2026-10-14",
     "originalEstimateSeconds": 28800,
     "remainingEstimateSeconds": 14400,
+    "timeSpentSeconds": 14400,
     "timeRemainingHours": null,
     "created": "2026-09-28T01:02:03.000Z",
     "updated": "2026-10-06T23:10:00.000Z",

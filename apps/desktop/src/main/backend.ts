@@ -18,6 +18,7 @@ import {
   editComment,
   editWorklog,
   getLink,
+  getTimeTracking,
   listAttachments,
   listComments,
   listLinks,
@@ -61,6 +62,7 @@ import {
   type SavedView,
   type Settings,
 } from '@jira-mgr/core/state'
+import type { TimeTrackingSettings } from '@jira-mgr/core/time-tracking'
 import {
   startTimer as startCoreTimer,
   stopAndLog,
@@ -199,6 +201,8 @@ export interface Backend {
   editComment(args: EditCommentArgs): Promise<CommentItem>
   deleteComment(args: CommentIdArgs): Promise<void>
   listWorklogs(args: KeyArgs): Promise<WorklogItem[]>
+  /** The site's working day and week. `null` when time tracking is off or unconfigured. */
+  getTimeTracking(): Promise<TimeTrackingSettings | null>
   /** Logs work with `adjustEstimate=auto`, so the remaining estimate falls by the time logged. */
   addWorklog(args: AddWorklogArgs): Promise<WorklogItem>
   editWorklog(args: EditWorklogArgs): Promise<WorklogItem>
@@ -602,6 +606,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       await deleteComment(http, key, commentId)
     },
     listWorklogs: ({ key }) => listWorklogs(http, key),
+    getTimeTracking: () => getTimeTracking(http),
     async addWorklog({ key, timeSpent, started, comment }) {
       await assertInProject(key)
       return addWorklog(http, key, {

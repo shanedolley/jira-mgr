@@ -23,6 +23,7 @@
     "./test/adf-fixtures": "./test/adf-fixtures.ts",
     "./test/msw": "./test/msw.ts",
     "./test/setup": "./test/setup.ts",
+    "./time-tracking": "./src/time-tracking.ts",
     "./timer": "./src/timer.ts",
     "./timer-calc": "./src/timer-calc.ts",
     "./view-filter": "./src/view-filter.ts",

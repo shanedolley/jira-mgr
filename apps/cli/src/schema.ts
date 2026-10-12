@@ -112,6 +112,7 @@ const ISSUE = {
   dueDate: '2026-10-14',
   originalEstimateSeconds: 28800,
   remainingEstimateSeconds: 14400,
+  timeSpentSeconds: 14400,
   timeRemainingHours: null,
   created: '2026-09-28T01:02:03.000Z',
   updated: '2026-10-06T23:10:00.000Z',

@@ -30,6 +30,7 @@ function issue(key: string, summary: string, extra: Partial<Issue> = {}): Issue 
     assignee: null,
     originalEstimateSeconds: null,
     remainingEstimateSeconds: null,
+    timeSpentSeconds: null,
     ...extra,
   } as Issue
 }

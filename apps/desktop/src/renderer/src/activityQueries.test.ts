@@ -1,6 +1,6 @@
 import { JiraMgrError, type Issue } from '@jira-mgr/core'
 import type { IssueDetail } from '@jira-mgr/core/issue'
-import { MutationObserver, QueryClient } from '@tanstack/react-query'
+import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { CommentItem, LinksResult } from '../../shared/ipc'
@@ -8,12 +8,14 @@ import {
   commentsQuery,
   editCommentMutation,
   linkSettled,
+  peekWorklogOptions,
   readIssue,
   removeMutation,
+  worklogsQuery,
 } from './activityQueries'
 import { clearDrafts, commentDraftKey, getDraft, newCommentDraftKey, putDraft } from './drafts'
 import { issueDetailKey, summaryMutation, unresolvedKey } from './optimistic'
-import { activityKey, clearAccountData, commentsKey, linksKey } from './queries'
+import { activityKey, clearAccountData, commentsKey, linksKey, worklogsKey } from './queries'
 
 const calls = vi.hoisted(() => vi.fn<(channel: string, args?: unknown) => Promise<unknown>>())
 vi.mock('./ipc', () => ({ call: calls }))
@@ -76,6 +78,62 @@ describe('removeMutation', () => {
     )
     await new MutationObserver(client, options).mutate('PSAPAC-2').catch(() => undefined)
     expect(seen).toEqual(['PSAPAC-2'])
+  })
+})
+
+describe('peekWorklogOptions', () => {
+  it("starts the Peek's delayed read over a delete in flight without bringing the row back", async () => {
+    const client = new QueryClient()
+    const key = worklogsKey('PSAPAC-1')
+    // Jira still holds both rows while the delete waits for its answer.
+    calls.mockReset()
+    calls.mockResolvedValue([{ id: '1' }, { id: '2' }])
+    await client.query(worklogsQuery('PSAPAC-1'))
+    const peek = new QueryObserver(client, {
+      ...worklogsQuery('PSAPAC-1'),
+      ...peekWorklogOptions(false),
+    })
+    const stop = peek.subscribe(() => undefined)
+    let answer!: () => void
+    const held = new Promise<void>((resolve) => {
+      answer = resolve
+    })
+    const pending = new MutationObserver(
+      client,
+      removeMutation<Row[], string>(client, key, () => held, without),
+    ).mutate('2')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(client.getQueryData<Row[]>(key)).toEqual([{ id: '1' }])
+    calls.mockClear()
+
+    // The Peek has now held still on its row.
+    peek.setOptions({ ...worklogsQuery('PSAPAC-1'), ...peekWorklogOptions(true) })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(calls).not.toHaveBeenCalled()
+    expect(client.getQueryData<Row[]>(key)).toEqual([{ id: '1' }])
+    answer()
+    await pending
+    stop()
+  })
+
+  it('reads on the Peek the first time, once it has held still', async () => {
+    const client = new QueryClient()
+    calls.mockReset()
+    calls.mockResolvedValue([{ id: '1' }])
+    const peek = new QueryObserver(client, {
+      ...worklogsQuery('PSAPAC-2'),
+      ...peekWorklogOptions(false),
+    })
+    const stop = peek.subscribe(() => undefined)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(calls).not.toHaveBeenCalled()
+
+    peek.setOptions({ ...worklogsQuery('PSAPAC-2'), ...peekWorklogOptions(true) })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(calls).toHaveBeenCalledWith('worklogs:list', { key: 'PSAPAC-2' })
+    stop()
   })
 })
 

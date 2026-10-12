@@ -6,6 +6,7 @@ import type { InboxEntry } from '@jira-mgr/core/inbox'
 import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
 import type { SprintReport } from '@jira-mgr/core/sprints'
 import type { Display, SavedView } from '@jira-mgr/core/state'
+import type { TimeTrackingSettings } from '@jira-mgr/core/time-tracking'
 import type { RunningTimer, TimerSettings, WorklogDraft } from '@jira-mgr/core/timer-calc'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
@@ -473,6 +474,8 @@ export interface IpcContract {
   'comments:edit': { args: EditCommentArgs; result: CommentItem }
   'comments:delete': { args: CommentIdArgs; result: null }
   'worklogs:list': { args: KeyArgs; result: WorklogItem[] }
+  /** The site's working day and week, or `null` when time tracking is off or unconfigured. */
+  'timetracking:get': { args: undefined; result: TimeTrackingSettings | null }
   /** Logs work and lowers the remaining estimate by it (`adjustEstimate=auto`). */
   'worklogs:add': { args: AddWorklogArgs; result: WorklogItem }
   'worklogs:edit': { args: EditWorklogArgs; result: WorklogItem }
@@ -554,6 +557,7 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'comments:edit': true,
   'comments:delete': true,
   'worklogs:list': true,
+  'timetracking:get': true,
   'worklogs:add': true,
   'worklogs:edit': true,
   'worklogs:delete': true,

@@ -27,6 +27,7 @@ import { useTimer } from './timerQueries'
 import { useIssueDetail } from './queries'
 import { TypeIcon } from './TypeIcon'
 import { removeUploadsOf } from './uploads'
+import { TimeTracking } from './TimeTracking'
 import { WorklogsSection } from './WorklogsSection'
 
 interface IssuePageProps {
@@ -180,6 +181,7 @@ function PageBody({
             onNotice={onNotice}
           />
           <LinksSection issueKey={issue.key} issues={issues} onOpen={onOpen} onNotice={onNotice} />
+          <TimeTracking issue={issue} where="page" />
           {worklogs && <WorklogsSection issueKey={issue.key} me={me} onNotice={onNotice} />}
           <CommentsSection issueKey={issue.key} me={me} onLeave={onLeave} onNotice={onNotice} />
           <AttachmentsSection

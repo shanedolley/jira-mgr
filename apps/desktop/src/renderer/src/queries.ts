@@ -87,6 +87,7 @@ export function useSession() {
 export const meKey = ['me'] as const
 export const customersKey = ['customers'] as const
 export const togglesKey = ['toggles'] as const
+export const timeTrackingKey = ['time-tracking'] as const
 
 /** Done issues change only when something resolves or reopens, which the unresolved refetch sees. */
 const DONE_STALE_MS = 5 * 60_000
@@ -212,6 +213,16 @@ export function useCustomers(enabled: boolean) {
   })
 }
 
+/** The site's working day, read once per session: it changes only when an admin edits the site. */
+export function useTimeTracking() {
+  return useQuery({
+    queryKey: timeTrackingKey,
+    queryFn: () => call('timetracking:get'),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  })
+}
+
 export function useToggles() {
   return useQuery({
     queryKey: togglesKey,
@@ -288,6 +299,7 @@ export function clearAccountData(client: QueryClient): void {
   client.removeQueries({ queryKey: issuesKey })
   client.removeQueries({ queryKey: meKey })
   client.removeQueries({ queryKey: customersKey })
+  client.removeQueries({ queryKey: timeTrackingKey })
   client.removeQueries({ queryKey: pickerKey })
   // The previous account's read state and changes.
   client.removeQueries({ queryKey: inboxKey })

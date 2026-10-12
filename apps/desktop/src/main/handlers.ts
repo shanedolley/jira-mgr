@@ -427,6 +427,7 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'comments:edit': editCommentArgs,
   'comments:delete': commentIdArgs,
   'worklogs:list': keyArgs,
+  'timetracking:get': z.undefined(),
   'worklogs:add': addWorklogArgs,
   'worklogs:edit': editWorklogArgs,
   'worklogs:delete': worklogIdArgs,
@@ -578,6 +579,7 @@ export function createHandlers(
       return null
     }),
     'worklogs:list': handle('worklogs:list', (args) => backend.listWorklogs(args)),
+    'timetracking:get': handle('timetracking:get', () => backend.getTimeTracking()),
     'worklogs:add': handle('worklogs:add', (args) => backend.addWorklog(args)),
     'worklogs:edit': handle('worklogs:edit', (args) => backend.editWorklog(args)),
     'worklogs:delete': handle('worklogs:delete', async (args) => {
