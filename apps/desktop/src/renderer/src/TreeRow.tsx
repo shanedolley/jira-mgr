@@ -187,6 +187,10 @@ function AddButton({ row, onAdd }: { row: Row; onAdd: (row: Row) => void }) {
         event.stopPropagation()
         onAdd(row)
       }}
+      // The row's double-click must not open the issue an earlier click armed.
+      onDoubleClick={(event) => {
+        event.stopPropagation()
+      }}
       className="btn btn-sm btn-icon btn-ghost opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 group-data-[active=true]/row:opacity-100"
     >
       <svg
@@ -479,7 +483,20 @@ interface TreeRowProps {
   blockedBy: number
   blocking: number
   /** `toggle` is a click on the checkbox and `range` a Shift+click, which check instead of opening. */
-  onClick: (id: string, onChevron: boolean, select?: 'toggle' | 'range') => void
+  onClick: (
+    id: string,
+    onChevron: boolean,
+    select: 'toggle' | 'range' | undefined,
+    detail: number,
+  ) => void
+  /**
+   * The issue a double-click opens, set by a first click: the row's issue, or `null` for a header,
+   * a chip, the checkbox, the status dot, the avatar, the chevron or a Shift+click, which keep
+   * their own double-click.
+   */
+  onArm: (id: string | null) => void
+  /** A double-click, which opens the armed issue's page as Enter does. */
+  onOpen: () => void
   /** A click on the row's status dot or avatar, after `onClick` has made the row active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
   /** Done over total of the issue's children, which the row shows beside its title, as numbers so the memo holds. */
@@ -503,6 +520,8 @@ export const TreeRow = memo(function TreeRow({
   blockedBy,
   blocking,
   onClick,
+  onArm,
+  onOpen,
   onPick,
   done,
   total,
@@ -533,14 +552,21 @@ export const TreeRow = memo(function TreeRow({
       }}
       onClick={(event) => {
         const target = event.target as Element
+        if (event.detail === 1) {
+          const own = target.closest('[data-check], [data-pick], [data-chevron]') !== null
+          onArm(row.kind === 'issue' && !own && !event.shiftKey ? row.id : null)
+        }
         const select =
           target.closest('[data-check]') !== null ? 'toggle' : event.shiftKey ? 'range' : undefined
-        onClick(row.id, target.closest('[data-chevron]') !== null, select)
+        onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
         const picked = target.closest<HTMLElement>('[data-pick]')?.dataset.pick
         if (row.kind === 'issue' && (picked === 'status' || picked === 'assignee')) {
           onPick(row.node.issue.key, picked)
         }
       }}
+      // A double-click opens the issue its first click hit, not the row under the pointer by then:
+      // the Peek opening can move the rows between the two clicks.
+      onDoubleClick={onOpen}
       data-band={row.kind === 'customer' ? '' : undefined}
       style={{
         // A header's slot starts with the gap above it, so the band sits at the slot's foot.

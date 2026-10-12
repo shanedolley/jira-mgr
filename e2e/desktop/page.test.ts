@@ -112,6 +112,99 @@ test('Enter opens the full page and Esc returns to the Tree, while Space keeps t
   await expect(peek()).toBeVisible()
 })
 
+/** Where on a summary the pointer lands: on its text, which the Peek's narrowing leaves in the Tree. */
+const ON_TEXT = { x: 20, y: 8 }
+
+test('a double-click on a row opens its page, and Esc returns to the Tree with the row active', async () => {
+  await open()
+  const row = item(/PSAPAC-4,/)
+  await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+  await expect(heading('Migrate the dashboards')).toBeVisible()
+
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await expect(row).toHaveAttribute('data-active', 'true')
+  await expect(tree()).toHaveAttribute('aria-activedescendant', /PSAPAC-4$/)
+
+  // An Epic opens its own page.
+  await item(/PSAPAC-10,/)
+    .getByText('Customer onboarding')
+    .dblclick()
+  await expect(heading('Customer onboarding')).toBeVisible()
+})
+
+/** Slows the renderer, so a render can land between the two clicks of a double-click. */
+async function throttle(rate: number) {
+  const session = await window.context().newCDPSession(window)
+  await session.send('Emulation.setCPUThrottlingRate', { rate })
+}
+
+for (const rate of [1, 20]) {
+  test(`a double-click opens the issue its first click hit when the Peek moves the rows, at ${String(rate)}x CPU`, async () => {
+    await open()
+    await throttle(rate)
+    const row = item(/PSAPAC-4,/)
+    const before = (await row.boundingBox())?.y ?? 0
+    // While Done loads, the first click's Peek wraps the toolbar's status line onto its own row,
+    // so the second click lands on the row above.
+    await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+    await expect(heading('Migrate the dashboards')).toBeVisible()
+    expect((await row.boundingBox())?.y ?? 0).toBeGreaterThan(before)
+
+    await window.keyboard.press('Escape')
+    await expect(item(/PSAPAC-4,/)).toHaveAttribute('data-active', 'true')
+  })
+}
+
+for (const rate of [1, 20]) {
+  test(`a double-click whose second click lands on a Customer header opens the first issue and leaves the Customer expanded, at ${String(rate)}x CPU`, async () => {
+    await open()
+    await throttle(rate)
+    const header = item('Acme, 8 issues', true)
+    // The Peek's toolbar wrap moves the Customer header under the second click.
+    await item(/PSAPAC-10,/).dblclick({ position: { x: 90, y: 8 } })
+    await expect(heading('Customer onboarding')).toBeVisible()
+
+    await window.keyboard.press('Escape')
+    await expect(header).toHaveAttribute('aria-expanded', 'true')
+    await expect(item(/PSAPAC-10,/)).toHaveAttribute('data-active', 'true')
+  })
+}
+
+test('a double-click on a checkbox, status dot, avatar, chevron or with Shift held opens no page', async () => {
+  await open()
+  const row = item(/PSAPAC-4,/)
+  await row.locator('[data-check]').dblclick({ force: true })
+  await expect(issuePage()).toHaveCount(0)
+  await row
+    .getByText('Migrate the dashboards')
+    .dblclick({ position: ON_TEXT, modifiers: ['Shift'] })
+  await expect(issuePage()).toHaveCount(0)
+  await item(/PSAPAC-10,/)
+    .locator('[data-chevron]')
+    .dblclick()
+  await expect(issuePage()).toHaveCount(0)
+  for (const pick of ['status', 'assignee']) {
+    await row.locator(`[data-pick=${pick}]`).dblclick()
+    await expect(issuePage()).toHaveCount(0)
+    await window.keyboard.press('Escape')
+  }
+
+  // The same row still opens from its summary, so the checks above could have failed.
+  await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+  await expect(heading('Migrate the dashboards')).toBeVisible()
+})
+
+test('a double-click on a Customer header toggles it as two clicks do and opens no page', async () => {
+  await open()
+  const header = item('Acme, 8 issues', true)
+  await expect(header).toHaveAttribute('aria-expanded', 'true')
+  await header.dblclick()
+  await expect(header).toHaveAttribute('aria-expanded', 'true')
+  await expect(issuePage()).toHaveCount(0)
+})
+
 test('Back to issues returns from the page to the Tree', async () => {
   await open()
   await item(/PSAPAC-4,/).click()
