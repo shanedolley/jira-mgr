@@ -91,6 +91,7 @@ describe('rowProgress', () => {
   })
 
   it('gives a Task and a Bug with sub-issues the same', () => {
+    // The guard reads hierarchyLevel, not the name: this pins Task and Bug at level 0 passing.
     for (const name of ['Task', 'Bug']) {
       expect(rowProgress(typed(name, 0), entries)).toEqual({ done: 3, total: 8 })
     }

@@ -338,7 +338,7 @@ export function Shell({ session }: { session: Session }) {
     return new Map(issues.map((i) => [i.key, openBlocks(i, byKey)]))
   }, [issues])
   const doneFailed = done.isError && done.data === undefined
-  // Done over total of each parent's children, which Epic rows and the issue page show. With no
+  // Done over total of each parent's children, which Story, Task and Bug rows and the issue page show. With no
   // Done issues to count, a total of the open ones alone would mislead, so the Tree hides them.
   const progress = useMemo(
     () => (doneFailed ? new Map<string, Progress>() : childProgress(issues)),

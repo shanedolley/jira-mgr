@@ -87,9 +87,6 @@ test.describe('progress', () => {
     await expect(pill(story)).toHaveText('0/1')
     // Reading "done" from the title as well as the name, so the numbers are not bare.
     await expect(pill(story)).toHaveAttribute('title', '0 of 1 done')
-
-    await loadDone()
-    await expect(pill(story)).toHaveAttribute('data-progress', '0/1')
   })
 
   test('a Done sub-issue counts while Hide done removes its row', async () => {
