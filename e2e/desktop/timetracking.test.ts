@@ -159,3 +159,35 @@ test('shows no time block on an Epic, in the Peek or on its page', async () => {
   await expect(page().getByRole('heading', { name: 'Customer onboarding' })).toBeVisible()
   await expect(block(page())).toHaveCount(0)
 })
+
+/** Sets the window's content size. The app's own minimum is 900px, so the test lifts it, as `narrow.test.ts` does. */
+async function resize(width: number, height: number) {
+  await app.evaluate(
+    ({ BrowserWindow }, [w, h]) => {
+      const win = BrowserWindow.getAllWindows()[0]
+      win?.setMinimumSize(1, 1)
+      win?.setContentSize(w ?? 0, h ?? 0)
+    },
+    [width, height],
+  )
+  await expect.poll(() => window.evaluate(() => globalThis.innerWidth)).toBe(width)
+}
+
+/** How far the document scrolls. A classic scrollbar (Linux) takes 15px for any amount, so it must be 0. */
+const documentScroll = () =>
+  window.evaluate(
+    () => document.documentElement.scrollHeight - document.documentElement.clientHeight,
+  )
+
+test('the chart leaves the document unscrolled in a narrow, short window', async () => {
+  // PSAPAC-2 holds worklogs, so the chart draws. Its screen-reader text must stay inside the scroller.
+  await openPeek(/PSAPAC-2,/)
+  await resize(959, 700)
+  await expect(bars(peek())).toHaveCount(14)
+  expect(await documentScroll()).toBe(0)
+
+  await peek().getByRole('button', { name: 'Open', exact: true }).click()
+  await resize(720, 700)
+  await expect(bars(page())).toHaveCount(14)
+  expect(await documentScroll()).toBe(0)
+})

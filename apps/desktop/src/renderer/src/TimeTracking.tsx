@@ -28,7 +28,11 @@ function Bars({ bars, noun }: { bars: ChartBar[]; noun: string }) {
         {bars.map((bar) => {
           const text = barText(bar)
           return (
-            <li key={bar.start} title={text} className="flex h-full min-w-0 flex-1 items-end">
+            <li
+              key={bar.start}
+              title={text}
+              className="relative flex h-full min-w-0 flex-1 items-end"
+            >
               <span className="sr-only">{text}</span>
               <div
                 aria-hidden
