@@ -74,5 +74,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Electron fetches its binary on first use, so parallel workers would each fetch it at once.
       - run: pnpm --filter @jira-mgr/e2e exec install-electron
-      # Xvfb resets whenever its last client closes, and an app launched during a reset fails.
-      - run: xvfb-run --auto-servernum --server-args='-screen 0 1280x1024x24 -noreset' pnpm e2e
+      # On Linux each worker starts its own Xvfb (e2e/desktop/harness.ts).
+      - run: pnpm e2e
