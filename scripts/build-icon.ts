@@ -2,7 +2,7 @@
 // icon.icns for `pnpm package`. Electron renders the SVG, so the script runs inside it:
 // `pnpm icon`.
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -82,7 +82,7 @@ async function main(): Promise<void> {
   const png = (size: number): Buffer => renders.get(size) ?? fail(`no ${String(size)} px render.`)
 
   const iconset = join(mkdtempSync(join(tmpdir(), 'jira-mgr-icon-')), 'icon.iconset')
-  execFileSync('mkdir', [iconset])
+  mkdirSync(iconset)
   for (const [name, size] of Object.entries(ICONSET)) writeFileSync(join(iconset, name), png(size))
   execFileSync('iconutil', ['-c', 'icns', iconset, '-o', join(build, 'icon.icns')])
   rmSync(iconset, { recursive: true, force: true })
