@@ -391,7 +391,7 @@ describe('levelCollapsed', () => {
     expect(ids(rows)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-4', 'd:P-1', 'n:1', 'i:P-6'])
   })
 
-  it('applies the level unless the filter bar narrows, and context issues always open', () => {
+  it('applies the level unless the filter bar narrows, and context issues at Story depth or below always open', () => {
     const rows = (
       g: CustomerGroup[],
       level: Parameters<typeof levelCollapsed>[1],

@@ -240,8 +240,9 @@ export function levelCollapsed(
   for (const group of groups) {
     const key = customerId(group.customer)
     if (from <= 1 && (group.epics.length > 0 || group.noEpic.length > 0)) ids.add(`c:${key}`)
+    // A filter keeps every issue and the No Epic header open, as it keeps Epics open (the No Epic
+    // header is the Epic level's peer), so only the Customer header above follows the level.
     if (filtering) continue
-    // The No Epic header is the Epic level's peer, so a filter keeps it open as it keeps Epics open.
     if (from <= 2 && group.noEpic.length > 0) ids.add(`n:${key}`)
     group.epics.forEach((epic) => {
       walk(epic, 2)
