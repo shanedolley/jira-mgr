@@ -12,7 +12,7 @@
 
 - `pnpm-lock.yaml` is committed, and CI installs with `--frozen-lockfile`.
 - pnpm refuses versions published less than seven days ago (`minimumReleaseAge`). Dependabot waits the same seven days.
-- pnpm blocks install scripts by default. Allow one package at a time in `onlyBuiltDependencies`, with the reason in the pull request. Electron and its build tooling need entries for their download and packaging scripts.
+- pnpm blocks install scripts by default. Allow one package at a time in `onlyBuiltDependencies`, with the reason in the pull request. esbuild has an entry for its binary. Electron has no install script and downloads its binary on first use, so CI runs `pnpm --filter @jira-mgr/e2e exec install-electron` before e2e.
 
 ## Updates
 

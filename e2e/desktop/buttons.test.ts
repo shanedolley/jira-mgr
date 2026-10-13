@@ -452,8 +452,7 @@ test.describe('delete controls', () => {
     await row.hover()
     await expect.poll(() => opacityOf(bin)).toBe(1)
     expect(await colourOf(bin)).not.toBe(red)
-    await bin.hover()
-    await expect.poll(() => colourOf(bin)).toBe(red)
+    await expect.poll(() => hoveredColourOf(bin)).toBe(red)
 
     await window.mouse.move(0, 0)
     await expect.poll(() => opacityOf(bin)).toBe(0)
@@ -472,8 +471,7 @@ test.describe('delete controls', () => {
     await log.hover()
     await expect.poll(() => opacityOf(del)).toBe(1)
     expect(await colourOf(del)).not.toBe(red)
-    await del.hover()
-    await expect.poll(() => colourOf(del)).toBe(red)
+    await expect.poll(() => hoveredColourOf(del)).toBe(red)
     expect(await del.evaluate((e) => getComputedStyle(e).borderTopColor)).toBe('rgba(0, 0, 0, 0)')
 
     await issuePage().getByRole('button', { name: 'Back to issues' }).click()
@@ -488,8 +486,7 @@ test.describe('delete controls', () => {
     expect(await opacityOf(remove)).toBe(0)
     await comment.getByRole('button', { name: 'Edit comment' }).focus()
     expect(await opacityOf(remove)).toBe(1)
-    await remove.hover()
-    await expect.poll(() => colourOf(remove)).toBe(red)
+    await expect.poll(() => hoveredColourOf(remove)).toBe(red)
   })
 
   test('the issue Delete is red only on hover on the page and in the Peek, and solid red in its confirm', async () => {
