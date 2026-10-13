@@ -18,6 +18,7 @@ const desktop = fileURLToPath(new URL('../apps/desktop/', import.meta.url))
 const out = join(desktop, 'out')
 const target = join(desktop, 'dist', 'jira-mgr.app')
 const NAME = 'jira-mgr'
+const ICON = join(desktop, 'build', 'icon.icns')
 const ID = 'au.com.koinon.jira-mgr'
 /** Test code and the fake Jira. The real entry must hold none of it. */
 const E2E_ENTRY = join(out, 'main', 'e2e.js')
@@ -34,6 +35,7 @@ function fail(message: string): never {
 }
 
 if (process.platform !== 'darwin') fail('the app packages on macOS only.')
+if (!existsSync(ICON)) fail('apps/desktop/build/icon.icns is missing. Run `pnpm icon`.')
 if (!existsSync(join(out, 'main', 'index.js'))) {
   fail('apps/desktop/out is missing. Run `pnpm package`, which builds it first.')
 }
@@ -68,6 +70,11 @@ for (const [key, value] of [
 ] as const) {
   execFileSync('/usr/libexec/PlistBuddy', ['-c', `Set :${key} ${value}`, plist])
 }
+// Replace Electron's icon with ours. The Finder and the Dock read it from the bundle.
+const resources = join(target, 'Contents', 'Resources')
+rmSync(join(resources, 'electron.icns'))
+cpSync(ICON, join(resources, `${NAME}.icns`))
+execFileSync('/usr/libexec/PlistBuddy', ['-c', `Set :CFBundleIconFile ${NAME}.icns`, plist])
 // macOS marks every file this app writes as downloaded (quarantine), so an attachment saved from
 // Jira asks before it opens, as a browser download does. Electron's plist does not set it.
 execFileSync('/usr/libexec/PlistBuddy', ['-c', 'Add :LSFileQuarantineEnabled bool true', plist])

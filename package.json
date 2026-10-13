@@ -19,6 +19,7 @@
     "test:live": "JM_LIVE_JIRA=1 pnpm -r test",
     "e2e": "pnpm --filter @jira-mgr/desktop build && pnpm --filter @jira-mgr/e2e e2e",
     "jm": "node scripts/jm.ts",
+    "icon": "pnpm --filter @jira-mgr/desktop exec electron ../../scripts/build-icon.ts",
     "package": "pnpm --filter @jira-mgr/desktop build && node scripts/package.ts",
     "docs:reference": "pnpm --filter @jira-mgr/cli build && node scripts/gen-reference.ts",
     "fixture:record": "node packages/core/scripts/record-fixture.ts"
