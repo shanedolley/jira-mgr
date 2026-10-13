@@ -240,6 +240,8 @@ test("collapses and expands groups by click, by arrow keys and with the Groups m
   }
   await pick('Customers')
   await expect(tree().locator('[role=treeitem]')).toHaveCount(3)
+  // The Customer header of the active row becomes the active row.
+  await expect(tree()).toHaveAttribute('aria-activedescendant', 'tree-row-c:1')
   await pick('Epics')
   await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'false')
   await expect(item(/PSAPAC-2,/)).toHaveCount(0)
@@ -587,6 +589,23 @@ test('Assignee: me keeps my issues with their ancestors dimmed', async () => {
   // No filter narrows, so the Stories level applies, but a context ancestor never closes: the
   // other person's Story stays open to show my Subtask. The fake has no Story of mine with a
   // Subtask of mine, so the closed own Story is covered by the unit test.
+  await expect(item(/PSAPAC-11,.*context/)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+})
+
+test('Assignee: me lets an Epic shown only as context follow the level', async () => {
+  await openWithDone()
+  await toggle('Assignee: me').click()
+  const epic = item(/PSAPAC-10,.*context/)
+  await expect(epic).toHaveAttribute('aria-expanded', 'true')
+
+  // The Epic is not mine, so Epics closes it; its Story, context for my Subtask, stays open below.
+  await pickLevel('Epics')
+  await expect(epic).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+
+  await pickLevel('Stories')
+  await expect(epic).toHaveAttribute('aria-expanded', 'true')
   await expect(item(/PSAPAC-11,.*context/)).toHaveAttribute('aria-expanded', 'true')
   await expect(item(/PSAPAC-12,/)).toBeVisible()
 })

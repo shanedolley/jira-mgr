@@ -56,7 +56,10 @@ export interface SearchTextArgs {
 export type Toggles = Pick<HierarchyOptions, 'hideDone' | 'assigneeMe' | 'hideEmptyCustomers'>
 
 /** The row properties and issue order `settings.json` remembers, and a saved view may carry. */
-export type { Display, TreeLevel }
+export type { Display }
+
+/** How far the Tree opens, which `settings.json` remembers and no saved view carries. */
+export type { TreeLevel }
 
 /** A saved view as `views.json` holds it, the file `jm view list` reads. */
 export type { SavedView }

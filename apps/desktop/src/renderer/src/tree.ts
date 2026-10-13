@@ -198,7 +198,10 @@ export function flattenTree(groups: readonly CustomerGroup[], expansion: Expansi
   return rows
 }
 
-/** The depth from which each Tree level closes rows: Customer headers are 1, Epics and No Epic 2, Stories 3. */
+/**
+ * The depth from which each Tree level closes rows, in `flattenTree`'s row levels: Customer
+ * headers are 1, Epics and No Epic 2, Stories 3.
+ */
 const CLOSED_FROM: Record<Exclude<TreeLevel, 'all'>, number> = {
   customers: 1,
   epics: 2,
@@ -207,11 +210,12 @@ const CLOSED_FROM: Record<Exclude<TreeLevel, 'all'>, number> = {
 
 /**
  * The row ids a level closes, shown or not: every row that can expand at its depth or below.
- * An issue shown only as dimmed context never closes, since closing it would hide the match
- * below it, whatever narrows the Tree ("Assignee: me" included). While the filter bar narrows
- * the Tree (`filtering`), no issue closes, so a match nested under a match shows. With neither,
- * the level applies. The Customer and No Epic headers always follow the level. Done children sit
- * two levels under their parent, behind its chip.
+ * While the filter bar narrows the Tree (`filtering`), no issue and no No Epic header closes, so a
+ * match nested under a match shows; the Customer headers still follow the level. Otherwise an
+ * issue shown only as dimmed context at Story depth or below never closes, since closing it
+ * would hide the match below it ("Assignee: me" included). A context Epic follows the level, and
+ * so does every row the user owns. Done children sit two levels under their parent, behind
+ * their chip.
  */
 export function levelCollapsed(
   groups: readonly CustomerGroup[],
@@ -222,12 +226,8 @@ export function levelCollapsed(
   if (level === 'all') return ids
   const from = CLOSED_FROM[level]
   function walk(node: HierarchyNode, depth: number) {
-    if (
-      !filtering &&
-      !node.contextOnly &&
-      depth >= from &&
-      (node.children.length > 0 || node.doneCount > 0)
-    ) {
+    const keptOpen = node.contextOnly && depth >= CLOSED_FROM.stories
+    if (!keptOpen && depth >= from && (node.children.length > 0 || node.doneCount > 0)) {
       ids.add(`i:${node.issue.key}`)
     }
     node.children.forEach((child) => {
@@ -240,8 +240,9 @@ export function levelCollapsed(
   for (const group of groups) {
     const key = customerId(group.customer)
     if (from <= 1 && (group.epics.length > 0 || group.noEpic.length > 0)) ids.add(`c:${key}`)
+    if (filtering) continue
     // The No Epic header is the Epic level's peer, so a filter keeps it open as it keeps Epics open.
-    if (!filtering && from <= 2 && group.noEpic.length > 0) ids.add(`n:${key}`)
+    if (from <= 2 && group.noEpic.length > 0) ids.add(`n:${key}`)
     group.epics.forEach((epic) => {
       walk(epic, 2)
     })
@@ -272,16 +273,17 @@ export function withOverrides(
 }
 
 /**
- * The overrides with the rows whose state differs between `from` and `to` recorded. A row put back
- * to the state `base` (the level's closed rows) gives drops its override, so it follows the level
- * again. Overrides for rows missing from the current groups, such as a Story a filter hides, stay.
+ * The overrides with the rows whose state differs between the Tree now (`base` with `overrides`
+ * applied) and `to` recorded. A row put back to the state `base` (the level's closed rows) gives
+ * it drops its override, so it follows the level again. Overrides for rows missing from the
+ * current groups, such as a Story a filter hides, stay as they are.
  */
 export function changeOverrides(
   overrides: ExpansionOverrides,
   base: ReadonlySet<string>,
-  from: ReadonlySet<string>,
   to: ReadonlySet<string>,
 ): ExpansionOverrides {
+  const from = withOverrides(base, overrides)
   const next = new Map(overrides)
   const record = (id: string, closed: boolean) => {
     if (closed === base.has(id)) next.delete(id)
@@ -459,17 +461,9 @@ export function moveActive(
   const selectAll =
     (input.metaKey || input.ctrlKey) && !input.altKey && !input.shiftKey && /^a$/i.test(input.key)
   if (!selectAll && (input.metaKey || input.ctrlKey || input.altKey)) return null
-  if (rows.length === 0) {
-    // With no row shown, the level keys still set the level, since the Groups menu can.
-    if (!input.shiftKey || (input.key !== 'ArrowLeft' && input.key !== 'ArrowRight')) return null
-    const left = input.key === 'ArrowLeft'
-    return {
-      ...state,
-      revealed: left ? new Set() : state.revealed,
-      level: left ? 'customers' : 'all',
-      openPage: false,
-    }
-  }
+  // With no row shown the level keys still set the level, since the Groups menu can.
+  const levelKey = input.shiftKey && (input.key === 'ArrowLeft' || input.key === 'ArrowRight')
+  if (rows.length === 0 && !levelKey) return null
   const index = rows.findIndex((r) => r.id === state.activeId)
   const row = rows[index]
   const last = rows.length - 1

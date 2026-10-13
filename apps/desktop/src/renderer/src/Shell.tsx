@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { DEFAULT_TREE_LEVEL } from '@jira-mgr/core/display'
 import {
   buildHierarchy,
   childProgress,
@@ -401,7 +402,7 @@ export function Shell({ session }: { session: Session }) {
   ])
 
   const levelRows = useMemo(
-    () => levelCollapsed(groups, level ?? 'stories', filtering),
+    () => levelCollapsed(groups, level ?? DEFAULT_TREE_LEVEL, filtering),
     [groups, level, filtering],
   )
   const collapsed = useMemo(() => withOverrides(levelRows, overrides), [levelRows, overrides])
@@ -430,7 +431,6 @@ export function Shell({ session }: { session: Session }) {
         changeOverrides(
           overrides,
           levelRows,
-          collapsed,
           new Set([...collapsed].filter((id) => !hidden.includes(id))),
         ),
       )
@@ -458,7 +458,7 @@ export function Shell({ session }: { session: Session }) {
     setTrack((t) => ({ ...t, activeId: next.activeId }))
     if (next.level !== undefined) chooseLevel(next.level)
     else if (next.collapsed !== collapsed) {
-      setOverrides(changeOverrides(overrides, levelRows, collapsed, next.collapsed))
+      setOverrides(changeOverrides(overrides, levelRows, next.collapsed))
     }
     setRevealed(next.revealed)
     setPeekOpen(next.peekOpen)
@@ -1238,6 +1238,11 @@ export function Shell({ session }: { session: Session }) {
         {setDisplay.isError && (
           <p role="alert" className="shrink-0 border-b border-line px-4 py-1.5 text-xs text-danger">
             Could not save the display. {setDisplay.error.message}
+          </p>
+        )}
+        {setLevel.isError && (
+          <p role="alert" className="shrink-0 border-b border-line px-4 py-1.5 text-xs text-danger">
+            Could not save the level. {setLevel.error.message}
           </p>
         )}
         {refreshFailed && <Banner onRetry={retryAll}>Could not refresh.</Banner>}

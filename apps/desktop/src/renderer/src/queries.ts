@@ -301,6 +301,8 @@ export function treeLevelMutation(
 ): MutationOptions<TreeLevel, JiraMgrError, TreeLevel> {
   return {
     mutationFn: send,
+    // The Shell's `chooseLevel` writes the cache first, so no render sits between clearing the
+    // hand toggles and this async write; this write also covers any other caller.
     async onMutate(level) {
       await client.cancelQueries({ queryKey: treeLevelKey })
       client.setQueryData<TreeLevel>(treeLevelKey, level)

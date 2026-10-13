@@ -15,6 +15,7 @@ import {
 } from 'react'
 
 import type { Display, Toggles } from '../../shared/ipc'
+import { CHECK, Icon } from './Icon'
 import {
   FIELD_LABELS,
   FILTER_FIELDS,
@@ -451,6 +452,7 @@ export function TreeToolbar({
                 className="flex h-8 w-full items-center rounded border border-transparent px-2 text-left hover:bg-hover aria-pressed:border-accent/40 aria-pressed:bg-selected"
               >
                 {label}
+                {level === value && <Icon path={CHECK} className="ml-auto size-3.5" />}
               </button>
             ))}
           </div>

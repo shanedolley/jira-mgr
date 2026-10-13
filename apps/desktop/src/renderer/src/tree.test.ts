@@ -418,15 +418,27 @@ describe('levelCollapsed', () => {
     )
     expect([...levelCollapsed(assigneeMe, 'stories')]).toEqual(['i:P-2'])
     expect(rows(assigneeMe, 'stories', false)).toEqual(['c:1', 'i:P-1', 'i:P-4', 'i:P-5', 'i:P-2'])
-    // The Epic is context too, so Epics closes my Story but not the rows above my Subtask.
-    expect(rows(assigneeMe, 'epics', false)).toEqual(['c:1', 'i:P-1', 'i:P-4', 'i:P-5', 'i:P-2'])
+    // The Epic is context too, but only Story depth and below stay open: at Epics it closes,
+    // which hides my Stories as well, so Epics no longer equals Stories.
+    expect([...levelCollapsed(assigneeMe, 'epics')].sort()).toEqual(['i:P-1', 'i:P-2'])
+    expect(rows(assigneeMe, 'epics', false)).toEqual(['c:1', 'i:P-1'])
+    expect(rows(assigneeMe, 'epics', true)).toEqual([
+      'c:1',
+      'i:P-1',
+      'i:P-4',
+      'i:P-5',
+      'i:P-2',
+      'i:P-3',
+    ])
 
-    // P-3 matches under the context rows P-1 and P-2, at any level and with or without the flag.
+    // P-3 matches under the context rows P-1 and P-2, at the Stories level with or without the flag.
     const context = groupsOf(SAMPLE, { match: (i) => i.key === 'P-3' })
     for (const filtering of [false, true]) {
       expect(rows(context, 'stories', filtering)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
-      expect(rows(context, 'epics', filtering)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
     }
+    // Under the filter bar the Epic stays open too; under Assignee: me alone it follows Epics.
+    expect(rows(context, 'epics', true)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    expect(rows(context, 'epics', false)).toEqual(['c:1', 'i:P-1'])
 
     // Filter text matching the Story P-2 and its Subtask P-3: nothing is context, so only the
     // filter bar's flag opens P-2.
@@ -449,16 +461,15 @@ describe('levelCollapsed', () => {
     const closedSet = withOverrides(base, overrides)
 
     expect([...closedSet].sort()).toEqual(['i:P-1'])
-    expect(changeOverrides(new Map(), base, base, closedSet)).toEqual(overrides)
-    expect(changeOverrides(overrides, base, closedSet, closedSet)).toEqual(overrides)
+    expect(changeOverrides(new Map(), base, closedSet)).toEqual(overrides)
+    expect(changeOverrides(overrides, base, closedSet)).toEqual(overrides)
   })
 
   it('keeps an override for a row the groups no longer hold when another row changes', () => {
     // S is open by hand but absent from the filtered groups, which close T by level.
     const overrides = new Map([['S', false]])
-    const collapsed = withOverrides(new Set(['T']), overrides)
 
-    expect(changeOverrides(overrides, new Set(['T']), collapsed, new Set())).toEqual(
+    expect(changeOverrides(overrides, new Set(['T']), new Set())).toEqual(
       new Map([
         ['S', false],
         ['T', false],
@@ -468,9 +479,9 @@ describe('levelCollapsed', () => {
 
   it('drops an override when a row goes back to the level, so it follows the level again', () => {
     // Under a filter the level closes nothing; the user closes X and then opens it again.
-    const closedByHand = changeOverrides(new Map(), new Set(), new Set(), new Set(['X']))
+    const closedByHand = changeOverrides(new Map(), new Set(), new Set(['X']))
     expect(closedByHand).toEqual(new Map([['X', true]]))
-    expect(changeOverrides(closedByHand, new Set(), new Set(['X']), new Set()).size).toBe(0)
+    expect(changeOverrides(closedByHand, new Set(), new Set()).size).toBe(0)
   })
 
   it('keeps the No Epic header open while a filter narrows, and closes it at Epics otherwise', () => {
