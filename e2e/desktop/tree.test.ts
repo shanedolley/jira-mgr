@@ -304,6 +304,34 @@ test('a filter opens a Story whose Subtask also matches, and a hand toggle still
   await expect(item(/PSAPAC-12,/)).toBeVisible()
 })
 
+test('a filter at the Epics level still shows a match with no Epic', async () => {
+  await open()
+  await pickLevel('Epics')
+
+  // PSAPAC-40 has no Epic, so it sits under Beta's No Epic header, which the level would close.
+  await filterBox().fill('Tidy the wiki')
+  await expect(item(/PSAPAC-40,/)).toBeVisible()
+
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-40,/)).toHaveCount(0)
+})
+
+test('closing and reopening a Story under a filter leaves it following the level once the filter clears', async () => {
+  await open()
+
+  await filterBox().fill('PSAPAC-1')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+  const story = item(/PSAPAC-11,/)
+  await story.locator('[data-chevron]').click()
+  await expect(story).toHaveAttribute('aria-expanded', 'false')
+  await story.locator('[data-chevron]').click()
+  await expect(story).toHaveAttribute('aria-expanded', 'true')
+
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+})
+
 test('a toggle by hand survives a filter and the chevrons used under it', async () => {
   await open()
   await item(/PSAPAC-11,/)

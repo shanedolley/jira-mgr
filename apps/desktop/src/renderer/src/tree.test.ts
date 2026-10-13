@@ -449,8 +449,8 @@ describe('levelCollapsed', () => {
     const closedSet = withOverrides(base, overrides)
 
     expect([...closedSet].sort()).toEqual(['i:P-1'])
-    expect(changeOverrides(new Map(), base, closedSet)).toEqual(overrides)
-    expect(changeOverrides(overrides, closedSet, closedSet)).toEqual(overrides)
+    expect(changeOverrides(new Map(), base, base, closedSet)).toEqual(overrides)
+    expect(changeOverrides(overrides, base, closedSet, closedSet)).toEqual(overrides)
   })
 
   it('keeps an override for a row the groups no longer hold when another row changes', () => {
@@ -458,12 +458,34 @@ describe('levelCollapsed', () => {
     const overrides = new Map([['S', false]])
     const collapsed = withOverrides(new Set(['T']), overrides)
 
-    expect(changeOverrides(overrides, collapsed, new Set())).toEqual(
+    expect(changeOverrides(overrides, new Set(['T']), collapsed, new Set())).toEqual(
       new Map([
         ['S', false],
         ['T', false],
       ]),
     )
+  })
+
+  it('drops an override when a row goes back to the level, so it follows the level again', () => {
+    // Under a filter the level closes nothing; the user closes X and then opens it again.
+    const closedByHand = changeOverrides(new Map(), new Set(), new Set(), new Set(['X']))
+    expect(closedByHand).toEqual(new Map([['X', true]]))
+    expect(changeOverrides(closedByHand, new Set(), new Set(['X']), new Set()).size).toBe(0)
+  })
+
+  it('keeps the No Epic header open while a filter narrows, and closes it at Epics otherwise', () => {
+    // P-6 has no Epic, so it sits under n:1.
+    const filtered = groupsOf(SAMPLE, { match: (i) => i.key === 'P-6' })
+    expect([...levelCollapsed(filtered, 'epics', true)]).toEqual([])
+    expect(
+      ids(
+        flattenTree(filtered, {
+          collapsed: levelCollapsed(filtered, 'epics', true),
+          revealed: new Set(),
+        }),
+      ),
+    ).toEqual(['c:1', 'n:1', 'i:P-6'])
+    expect(closed('epics')).toContain('n:1')
   })
 })
 

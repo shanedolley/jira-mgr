@@ -240,7 +240,8 @@ export function levelCollapsed(
   for (const group of groups) {
     const key = customerId(group.customer)
     if (from <= 1 && (group.epics.length > 0 || group.noEpic.length > 0)) ids.add(`c:${key}`)
-    if (from <= 2 && group.noEpic.length > 0) ids.add(`n:${key}`)
+    // The No Epic header is the Epic level's peer, so a filter keeps it open as it keeps Epics open.
+    if (!filtering && from <= 2 && group.noEpic.length > 0) ids.add(`n:${key}`)
     group.epics.forEach((epic) => {
       walk(epic, 2)
     })
@@ -271,17 +272,23 @@ export function withOverrides(
 }
 
 /**
- * The overrides with the rows whose state differs between `from` and `to` added. Overrides for
- * rows missing from the current groups, such as a Story a filter hides, stay as they are.
+ * The overrides with the rows whose state differs between `from` and `to` recorded. A row put back
+ * to the state `base` (the level's closed rows) gives drops its override, so it follows the level
+ * again. Overrides for rows missing from the current groups, such as a Story a filter hides, stay.
  */
 export function changeOverrides(
   overrides: ExpansionOverrides,
+  base: ReadonlySet<string>,
   from: ReadonlySet<string>,
   to: ReadonlySet<string>,
 ): ExpansionOverrides {
   const next = new Map(overrides)
-  for (const id of to) if (!from.has(id)) next.set(id, true)
-  for (const id of from) if (!to.has(id)) next.set(id, false)
+  const record = (id: string, closed: boolean) => {
+    if (closed === base.has(id)) next.delete(id)
+    else next.set(id, closed)
+  }
+  for (const id of to) if (!from.has(id)) record(id, true)
+  for (const id of from) if (!to.has(id)) record(id, false)
   return next
 }
 

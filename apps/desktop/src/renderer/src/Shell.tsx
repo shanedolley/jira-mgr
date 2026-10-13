@@ -429,6 +429,7 @@ export function Shell({ session }: { session: Session }) {
       setOverrides(
         changeOverrides(
           overrides,
+          levelRows,
           collapsed,
           new Set([...collapsed].filter((id) => !hidden.includes(id))),
         ),
@@ -457,7 +458,7 @@ export function Shell({ session }: { session: Session }) {
     setTrack((t) => ({ ...t, activeId: next.activeId }))
     if (next.level !== undefined) chooseLevel(next.level)
     else if (next.collapsed !== collapsed) {
-      setOverrides(changeOverrides(overrides, collapsed, next.collapsed))
+      setOverrides(changeOverrides(overrides, levelRows, collapsed, next.collapsed))
     }
     setRevealed(next.revealed)
     setPeekOpen(next.peekOpen)
