@@ -2,7 +2,7 @@
 
 ## Where Work Stands
 
-Checked 2026-10-14. Head `01cb5ef` (`git log --oneline -1 origin/main`, PR [#213](https://github.com/shanedolley/jira-mgr/pull/213), the app icon). The GitHub billing block of 2026-10-13 is resolved: a rerun of run 38342542826 started its jobs at 05:40 UTC on 2026-10-13 (`gh run view 38342542826 --json jobs`). That run then failed e2e on three CI-only flakes, which Shane's request to try CI again surfaced. #211 found four causes and PR [#214](https://github.com/shanedolley/jira-mgr/pull/214) fixed them (merged as 4d07ceb; #211 closed as Done 2026-10-13): Electron's lazy binary download raced between two workers (`spawn ETXTBSY`), Xvfb reset between clients, a Delete hover test hovered once, and two workers shared one X display and so one clipboard. Every story from #9 to #202 is closed except #209 (`gh issue list --state all --limit 300`, 2026-10-14). Shane asked for an app icon on 2026-10-13 and chose an original Jira-inspired mark (#212); PR #213 merged it, and #212 waits on Shane in HIL Review, where he checks the `pnpm dev` Dock icon by eye. #209 (the Tree's expansion level) is built on `209-tree-level`: PR [#210](https://github.com/shanedolley/jira-mgr/pull/210) was rebased onto 01cb5ef on 2026-10-14, carries PR #208's handover commits and supersedes #208. It needs a PASS verdict newer than its head and a green CI run, then merges, and #209 goes to Shane in HIL Review.
+Checked 2026-10-14. Head `a519347` (`git log --oneline -1 origin/main`, PR [#210](https://github.com/shanedolley/jira-mgr/pull/210), #209's Tree level); main runs 38371131756 on 4d07ceb and 38480777789 on 01cb5ef passed (`gh run list --branch main --limit 3`, 2026-10-14). The GitHub billing block of 2026-10-13 is resolved: a rerun of run 38342542826 started its jobs at 05:40 UTC on 2026-10-13 (`gh run view 38342542826 --json jobs`). That run then failed e2e on three CI-only flakes, which Shane's request to try CI again surfaced. #211 found four causes and PR [#214](https://github.com/shanedolley/jira-mgr/pull/214) fixed them (merged as 4d07ceb; #211 closed as Done 2026-10-13): Electron's lazy binary download raced between two workers (`spawn ETXTBSY`), Xvfb reset between clients, a Delete hover test hovered once, and two workers shared one X display and so one clipboard. Every story from #9 to #211 is closed except #209 and #212, which wait on Shane (`gh issue list --state all --limit 300`, 2026-10-14). Shane asked for an app icon on 2026-10-13 and chose an original Jira-inspired mark (#212); PR #213 merged it, and #212 waits on Shane in HIL Review, where he checks the `pnpm dev` Dock icon by eye. #209 (the Tree's expansion level) merged on 2026-10-14 as a519347, after a rebase onto 01cb5ef, a PASS from `210-rebase-review` and green CI run 38482079210 on 2 workers. PR #210 carried PR #208's handover commits, so #208 is closed. #209 waits on Shane in HIL Review with a `question`: keep the autonomously decided filter rule (recommended) or let the level apply under a filter.
 
 #143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
@@ -10,12 +10,12 @@ Shane closed #138, #143, #150 and #184 and answered #144 ("keep the neutral caps
 
 ## Open Stories
 
-Two (`gh issue list --state open --limit 200`, 2026-10-14). New work beyond them comes from Shane: a new issue.
+Two, both in HIL Review with `question` (`gh issue list --state open --limit 200`, 2026-10-14). Nothing is claimable: new work comes from Shane, as a new issue or an answer that reopens one.
 
 | Issue | Story | Notes |
 |---|---|---|
-| #209 | Remember the Tree's expansion level across launches | Built on `209-tree-level`, PR [#210](https://github.com/shanedolley/jira-mgr/pull/210). `pr-review` passed ce4122f ([review](https://github.com/shanedolley/jira-mgr/pull/210#pullrequestreview-5498030197)) and a re-review passed dd8b6ff ([review](https://github.com/shanedolley/jira-mgr/pull/210#pullrequestreview-5498159564)); later commits are docs only until the 2026-10-14 rebase onto 01cb5ef, which hand-resolved a conflict in `apps/desktop/README.md` (table padding, see Traps). Next: a PASS verdict newer than the head, green CI, merge, close #208, then Shane at HIL Review |
-| #212 | Give the desktop app its own icon | Merged in PR [#213](https://github.com/shanedolley/jira-mgr/pull/213) (01cb5ef), CI run 38371202297 green. In HIL Review since 2026-10-13, labelled `status:hil-review`: Shane checks the `pnpm dev` Dock icon, which no agent could see (screen capture is denied), and closes it |
+| #209 | Remember the Tree's expansion level across launches | Merged in PR [#210](https://github.com/shanedolley/jira-mgr/pull/210) (a519347). In HIL Review since 2026-10-14 with `question`: keep the filter rule as built (option 1, recommended) or let the level apply under a filter (option 2, a small follow-up story in `levelCollapsed`). See the [question](https://github.com/shanedolley/jira-mgr/issues/209#issuecomment-6157174209) and [recommendation](https://github.com/shanedolley/jira-mgr/issues/209#issuecomment-6157180117) |
+| #212 | Give the desktop app its own icon | Merged in PR [#213](https://github.com/shanedolley/jira-mgr/pull/213) (01cb5ef), CI run 38371202297 green. In HIL Review since 2026-10-13 with `question`: Shane checks the `pnpm dev` Dock icon, which no agent could see (screen capture is denied), and closes it |
 
 ## Stories
 
@@ -54,7 +54,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #200 | Show sub-issue progress on issues, not Epics | [#205](https://github.com/shanedolley/jira-mgr/pull/205) | Merged 2026-10-13; Shane approved and closed it 2026-10-13. The ring and "N of M done" move to Story, Task and Bug rows with sub-issues (`rowProgress` in `TreeRow.tsx`); Epic and Subtask rows show none. Task and Bug are covered by unit test only: the e2e fake has no Task or Bug with sub-issues |
 | #201 | Open the issue page with a double-click on a Tree row | [#206](https://github.com/shanedolley/jira-mgr/pull/206) | Merged 2026-10-13; Shane approved and closed it 2026-10-13, requesting no toolbar-wrap story. A double-click opens the issue its first click hit, armed in a ref in `IssueTree` (`onArm` on `event.detail === 1`), so a row shift between the clicks cannot open the wrong issue. Ignored when the first click is on the checkbox, status dot, avatar, chevron, a header, a chip or with Shift held |
 | #202 | Show estimate, time logged and a worklog chart on the Peek and the issue page | [#207](https://github.com/shanedolley/jira-mgr/pull/207) | Merged 2026-10-13; Shane approved and closed it 2026-10-13. The chart's `sr-only` bar text needs a positioned `<li>` (see Traps). Core: `getTimeTracking` in `@jira-mgr/core/extras` reads `GET /rest/api/3/configuration` and returns null when time tracking is off, so the app hides the block; the formatter and bucketing live in the `@jira-mgr/core/time-tracking` subpath. The Peek's worklogs stay fresh for 30 s, which fixed a deleted worklog coming back through its delayed read. Fixture `packages/core/fixtures/configuration.json` |
-| #209 | Remember the Tree's expansion level across launches | [#210](https://github.com/shanedolley/jira-mgr/pull/210) | Built 2026-10-13 by `209-tree-level-build`, three review rounds with `209-tree-level-review`, then a nine-seat `pr-review` (PASS, Comment Only, on ce4122f) whose fixes are in 5796dfa; a re-review passed dd8b6ff. Open pending CI and Shane. Carried Lows: L10 a Done match behind an "N done" chip stays behind the chip (pre-existing); the e2e fixture has no Story and Subtask both assigned to the user, so "an own Story stays closed under Assignee: me" is covered by unit test only. Settings gain an optional `treeLevel` key (see `docs/reference/config.md`) |
+| #209 | Remember the Tree's expansion level across launches | [#210](https://github.com/shanedolley/jira-mgr/pull/210) | Built 2026-10-13 by `209-tree-level-build`, three review rounds with `209-tree-level-review`, then a nine-seat `pr-review` (PASS, Comment Only, on ce4122f) whose fixes are in 5796dfa; a re-review passed dd8b6ff and `210-rebase-review` passed the rebased head 69858b2. Merged 2026-10-14 as a519347; HIL Review. Carried Lows: L10 a Done match behind an "N done" chip stays behind the chip (pre-existing); the e2e fixture has no Story and Subtask both assigned to the user, so "an own Story stays closed under Assignee: me" is covered by unit test only. Settings gain an optional `treeLevel` key (see `docs/reference/config.md`) |
 | #211 | Bug: e2e on CI failed while Electron downloaded its binary mid-run | [#214](https://github.com/shanedolley/jira-mgr/pull/214) | Closed as Done 2026-10-13. CI runs `pnpm --filter @jira-mgr/e2e exec install-electron` before e2e, and each worker starts its own Xvfb (`workerDisplay()` in `e2e/desktop/harness.ts`, Linux only), so CI runs plain `pnpm e2e`. Hover colour tests poll `hoveredColourOf`. Lows: a SIGKILLed worker orphans its Xvfb; Xvfb dying after startup shows as "Missing X server"; on macOS parallel workers still share the pasteboard |
 | #212 | Give the desktop app its own icon | [#213](https://github.com/shanedolley/jira-mgr/pull/213) | HIL Review. Source `apps/desktop/build/icon.svg`; `pnpm icon` rebuilds `icon.png` and `icon.icns`; `scripts/package.ts` installs `jira-mgr.icns`; `setDevDockIcon` sets the dev Dock icon when the PNG exists, since the packaged app keeps Electron's executable name and reports `isPackaged` false. Lows: `icon.icns` changes on every `pnpm icon` run (iconutil re-encodes); the 16 px render is soft |
 
@@ -84,12 +84,12 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Open | 2 (#209, #212) | `gh issue list --state open --limit 200` | 2026-10-14 |
 | Closed | 76 | `gh issue list --state closed --limit 300` | 2026-10-14 |
-| In progress | #209 | `--label status:in-progress` | 2026-10-14 |
-| In HIL Review | #212 | `--label status:hil-review` | 2026-10-14 |
-| With `question` | none | `--label question` | 2026-10-14 |
-| Open pull requests | [#210](https://github.com/shanedolley/jira-mgr/pull/210) (#209) and [#208](https://github.com/shanedolley/jira-mgr/pull/208), the handover PR for the 2026-10-13 stop, which #210 supersedes | `gh pr list --state open` | 2026-10-14 |
+| In progress | none | `--label status:in-progress` | 2026-10-14 |
+| In HIL Review | #209, #212 | `--label status:hil-review` | 2026-10-14 |
+| With `question` | #209, #212 | `--label question` | 2026-10-14 |
+| Open pull requests | this handover PR only | `gh pr list --state open` | 2026-10-14 |
 
-`git worktree list` shows the main tree only (2026-10-14). Origin holds `main`, `209-tree-level` and the branch of PR #208 (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree only (2026-10-14). Origin holds `main` and this handover branch (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
@@ -97,9 +97,9 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests. On `209-tree-level` rebased onto 01cb5ef, `209-rebase-verify` ran core 1396 passed and 5 skipped, desktop 1170 and CLI 603, and `pnpm e2e --workers=1` passed 552 of 552 (2026-10-14) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests. On `209-tree-level` rebased onto 01cb5ef, now main at a519347, `209-rebase-verify` ran core 1396 passed and 5 skipped, desktop 1170 and CLI 603, and `pnpm e2e --workers=1` passed 552 of 552 (2026-10-14) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | The same plus `*.live.test.ts`, with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only |
-| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). PR #213's run 38371202297 on 321a7a1 ran 2 workers: 537 passed, 4 skipped (`gh run view 38371202297 --log`, 2026-10-14). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1`. On Linux each worker starts its own Xvfb, so Xvfb must be installed and `xvfb-run` is not needed | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
+| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). PR #210's run 38482079210 on 69858b2, the tree now on main, ran 2 workers: 548 passed (`gh run view 38482079210 --log`, 2026-10-14). Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1`. On Linux each worker starts its own Xvfb, so Xvfb must be installed and `xvfb-run` is not needed | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
 | `pnpm -s jm -- <args>` | The built CLI. Use `-s`: plain `pnpm jm --` prints pnpm's banner and breaks JSON | Live Jira at the site in `settings.json`, as the logged-in user. Writes from L4 on. Set `JM_STATE_DIR` to a scratch folder first |
 | `pnpm icon` | Rebuilds `apps/desktop/build/icon.png` and `icon.icns` from `icon.svg`, rendered in Electron; macOS only (`iconutil`) | Nothing external |
@@ -107,7 +107,7 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 | `pnpm docs:reference` | Regenerates `docs/reference/cli.md` and `errors.md` | Nothing external |
 | `pnpm fixture:record -- <name> <GET\|POST> <path> [body]` | Records one response body to `packages/core/fixtures/` | Live Jira at `JM_JIRA_SITE`, reads only |
 
-State files live in `~/Library/Application Support/jira-mgr/`. `settings.json` gains an optional `treeLevel` key with #209 (not yet on main, 2026-10-14): `jm` and an older build ignore it. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item.
+State files live in `~/Library/Application Support/jira-mgr/`. `settings.json` holds an optional `treeLevel` key since #209 (on main from a519347): `jm` and an older build ignore it. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item.
 
 CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`, all on `ubuntu-latest` (GitHub migrates that label to Ubuntu 26 from 2026-10-19, per a run annotation read 2026-10-13), so CI builds no Mac binary. The e2e job installs the Electron binary with `install-electron`, then runs `pnpm e2e` on 2 workers. Confirm a run with `gh run list --branch <branch> --limit 3` and `gh run view <id> --json headSha,conclusion`.
 
@@ -123,7 +123,7 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 | Raised | Decision | Owner |
 |---|---|---|
 | 2026-10-10 | Whether to build Favourites and recents (gap 13) | Shane |
-| 2026-10-13 | The filter rule of #209, decided autonomously by the orchestrator: Shane can override it at HIL Review (see Settled) | Shane |
+| 2026-10-13 | The filter rule of #209, decided autonomously by the orchestrator; asked on #209 with `question` 2026-10-14, option 1 (keep) recommended (see Settled) | Shane |
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
 
