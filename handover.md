@@ -2,7 +2,7 @@
 
 ## Where Work Stands
 
-Checked 2026-10-13. Head `8898adb` (`git log --oneline -1 origin/main`, PR [#207](https://github.com/shanedolley/jira-mgr/pull/207), #202's time tracking). **CI is blocked by GitHub billing** (2026-10-13): main run 38297618791 on 8898adb ran no step; its jobs carry the annotation "The job was not started because recent account payments have failed or your spending limit needs to be increased." Only Shane can fix that, under Billing & plans. PR #208's run 38297895716 carries the same annotation on all three jobs (2026-10-13). The code is green: `git diff 7645d2d 8898adb` is empty, and PR run 38295737240 passed checks and e2e on 7645d2d. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12, all four merged, and approved and closed them on 2026-10-13 (each with the comment "Approved"). No issue is open (2026-10-13). The latest CI run, 38322001814 on 30dfd65, failed with the same payment annotation (`gh run list --limit 3`, 2026-10-13).
+Checked 2026-10-13. Head `8898adb` (`git log --oneline -1 origin/main`, PR [#207](https://github.com/shanedolley/jira-mgr/pull/207), #202's time tracking). **CI is blocked by GitHub billing** (2026-10-13): main run 38297618791 on 8898adb ran no step; its jobs carry the annotation "The job was not started because recent account payments have failed or your spending limit needs to be increased." Only Shane can fix that, under Billing & plans. PR #208's run 38297895716 carries the same annotation on all three jobs (2026-10-13). The code is green: `git diff 7645d2d 8898adb` is empty, and PR run 38295737240 passed checks and e2e on 7645d2d. Every story from #9 to #184 is closed, #143 included (Shane, 2026-10-12). Shane filed #199 to #202 on 2026-10-12, all four merged, and approved and closed them on 2026-10-13 (each with the comment "Approved"). Shane filed #209 (the Tree's expansion level) on 2026-10-13 and settled its design. It is built on branch `209-tree-level`: pull request [#PRN](https://github.com/shanedolley/jira-mgr/pull/PRN) awaits CI, which billing blocks, and then Shane at HIL Review. It carries PR #208's handover commits and supersedes #208. The issue is open and labelled `status:in-progress`; the project manager moves it to AI Review once CI runs (`gh issue list --state open --limit 200`, 2026-10-13). The latest CI run on main, 38322001814 on 30dfd65, failed with the same payment annotation (`gh run list --limit 3`, 2026-10-13).
 
 #143 shipped as two pull requests: core's batch module [#194](https://github.com/shanedolley/jira-mgr/pull/194) and the desktop selection, bulk bar and batch undo [#195](https://github.com/shanedolley/jira-mgr/pull/195). Shane answered the M3 question with option A on 2026-10-12: the selection stays pruned to the rows shown, so a bulk move to Done under Hide done empties it.
 
@@ -10,10 +10,11 @@ Shane closed #138, #143, #150 and #184 and answered #144 ("keep the neutral caps
 
 ## Open Stories
 
-None (2026-10-13). New work comes from Shane: a new issue.
+One (`gh issue list --state open --limit 200`, 2026-10-13). New work beyond it comes from Shane: a new issue.
 
 | Issue | Story | Notes |
 |---|---|---|
+| #209 | Remember the Tree's expansion level across launches | Built on `209-tree-level`, PR [#PRN](https://github.com/shanedolley/jira-mgr/pull/PRN), reviewed PASS on head 5f05963. Waits on CI (billing), then on Shane at HIL Review. It needs no further build |
 
 ## Stories
 
@@ -52,6 +53,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #200 | Show sub-issue progress on issues, not Epics | [#205](https://github.com/shanedolley/jira-mgr/pull/205) | Merged 2026-10-13; Shane approved and closed it 2026-10-13. The ring and "N of M done" move to Story, Task and Bug rows with sub-issues (`rowProgress` in `TreeRow.tsx`); Epic and Subtask rows show none. Task and Bug are covered by unit test only: the e2e fake has no Task or Bug with sub-issues |
 | #201 | Open the issue page with a double-click on a Tree row | [#206](https://github.com/shanedolley/jira-mgr/pull/206) | Merged 2026-10-13; Shane approved and closed it 2026-10-13, requesting no toolbar-wrap story. A double-click opens the issue its first click hit, armed in a ref in `IssueTree` (`onArm` on `event.detail === 1`), so a row shift between the clicks cannot open the wrong issue. Ignored when the first click is on the checkbox, status dot, avatar, chevron, a header, a chip or with Shift held |
 | #202 | Show estimate, time logged and a worklog chart on the Peek and the issue page | [#207](https://github.com/shanedolley/jira-mgr/pull/207) | Merged 2026-10-13; Shane approved and closed it 2026-10-13. The chart's `sr-only` bar text needs a positioned `<li>` (see Traps). Core: `getTimeTracking` in `@jira-mgr/core/extras` reads `GET /rest/api/3/configuration` and returns null when time tracking is off, so the app hides the block; the formatter and bucketing live in the `@jira-mgr/core/time-tracking` subpath. The Peek's worklogs stay fresh for 30 s, which fixed a deleted worklog coming back through its delayed read. Fixture `packages/core/fixtures/configuration.json` |
+| #209 | Remember the Tree's expansion level across launches | [#PRN](https://github.com/shanedolley/jira-mgr/pull/PRN) | Built 2026-10-13 by `209-tree-level-build`, three review rounds with `209-tree-level-review`, final PASS on 5f05963; open pending CI and Shane. Carried Lows: L5 a failed level write snaps back with no notice, as the toggles do; L10 a Done match behind an "N done" chip stays behind the chip (pre-existing); the e2e fixture has no Story and Subtask both assigned to the user, so "an own Story stays closed under Assignee: me" is covered by unit test only. Settings gain an optional `treeLevel` key (see `docs/reference/config.md`) |
 
 Not built, by decision: gap 13 (Favourites and recents) is undecided and gap 14 (Activity feed) is Later. Do not build either.
 
@@ -77,14 +79,14 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 
 | Measure | Value | Command | Date |
 |---|---|---|---|
-| Open | 0 | `gh issue list --state open --limit 200` | 2026-10-13 |
+| Open | 1 (#209) | `gh issue list --state open --limit 200` | 2026-10-13 |
 | Closed | 75 | `gh issue list --state closed --limit 300` | 2026-10-13 |
-| In progress | none | `--label status:in-progress` | 2026-10-13 |
+| In progress | #209 | `--label status:in-progress` | 2026-10-13 |
 | In HIL Review | none | `--label status:hil-review` | 2026-10-13 |
 | With `question` | none | `--label question` | 2026-10-13 |
-| Open pull requests | [#208](https://github.com/shanedolley/jira-mgr/pull/208), the handover PR for this stop, and no other | `gh pr list --state open` | 2026-10-13 |
+| Open pull requests | [#PRN](https://github.com/shanedolley/jira-mgr/pull/PRN) (#209) and [#208](https://github.com/shanedolley/jira-mgr/pull/208), the handover PR for the last stop, which #PRN supersedes | `gh pr list --state open` | 2026-10-13 |
 
-`git worktree list` shows the main tree only (2026-10-13). Origin holds `main` and the branch of PR #208 (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree only (2026-10-13). Origin holds `main`, the branch of PR #208 and `209-tree-level` (`git ls-remote --heads origin`). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
@@ -92,16 +94,16 @@ From the repository root, under Node 24 (see Traps). No database exists or is pl
 
 | Command | Does | Reaches |
 |---|---|---|
-| `pnpm test` | Vitest unit tests. Core 1391 pass and 5 skip, desktop 1152, CLI 603 (PR run 38295737240 on 7645d2d, the tree now on main; `gh run view 38295737240 --log`, 2026-10-13) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
+| `pnpm test` | Vitest unit tests. Core 1391 pass and 5 skip, desktop 1152, CLI 603 (PR run 38295737240 on 7645d2d, the tree now on main; `gh run view 38295737240 --log`, 2026-10-13). On `209-tree-level` (5f05963) the builder and the reviewer each reported core 1396 pass and 5 skip, desktop 1164 and CLI 603 (2026-10-13, not re-run here) | Nothing external: core and CLI Jira calls hit the MSW fake, which fails any unhandled request; desktop tests use fake backends |
 | `pnpm test:live` | The same plus `*.live.test.ts`, with `JM_LIVE_JIRA=1` | Live PSAPAC, read-only |
-| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). PR run 38295737240 on 7645d2d: 537 passed, 4 skipped (`gh run view 38295737240 --log`, 2026-10-13). A local macOS run had 526 tests with 1 skipped on 2026-10-12, unverified since 2026-10-13. Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
+| `pnpm e2e --workers=1` | Builds the app and runs the Playwright Electron suites in `e2e/desktop/` (`e2e/README.md` lists them). PR run 38295737240 on 7645d2d: 537 passed, 4 skipped (`gh run view 38295737240 --log`, 2026-10-13). On `209-tree-level` the builder reported 551 passed on one worker and the reviewer 550 passed and 1 skipped (`package.test.ts`), 2026-10-13. A local macOS run had 526 tests with 1 skipped on 2026-10-12, unverified since 2026-10-13. Serialise across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` | A local Electron window over an in-memory fake Jira and a fake Keychain, state in a temp `JM_STATE_DIR`; no network |
 | `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, `pnpm build` | Checks and builds | Nothing external |
 | `pnpm -s jm -- <args>` | The built CLI. Use `-s`: plain `pnpm jm --` prints pnpm's banner and breaks JSON | Live Jira at the site in `settings.json`, as the logged-in user. Writes from L4 on. Set `JM_STATE_DIR` to a scratch folder first |
 | `pnpm package` | Builds `apps/desktop/dist/jira-mgr.app`; macOS only | Nothing external. The packaged app, like `pnpm dev`, uses the real state folder and Keychain item unless `JM_STATE_DIR` is set |
 | `pnpm docs:reference` | Regenerates `docs/reference/cli.md` and `errors.md` | Nothing external |
 | `pnpm fixture:record -- <name> <GET\|POST> <path> [body]` | Records one response body to `packages/core/fixtures/` | Live Jira at `JM_JIRA_SITE`, reads only |
 
-State files live in `~/Library/Application Support/jira-mgr/`. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item.
+State files live in `~/Library/Application Support/jira-mgr/`. `settings.json` gains an optional `treeLevel` key with #209 (not yet on main): `jm` and an older build ignore it. `JM_LIVE_KEYCHAIN=1` on macOS runs `auth.live.test.ts`, which writes and deletes a throwaway Keychain item.
 
 CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requests and on pushes to `main`, all on `ubuntu-latest` (GitHub migrates that label to Ubuntu 26 from 2026-10-19, per a run annotation read 2026-10-13), so CI builds no Mac binary. Confirm a run with `gh run list --workflow ci.yml --branch main --limit 1` and `gh run view <id> --json headSha,conclusion`.
 
@@ -117,6 +119,7 @@ CI (`.github/workflows/ci.yml`) runs `pr-title`, `checks` and `e2e` on pull requ
 | Raised | Decision | Owner |
 |---|---|---|
 | 2026-10-10 | Whether to build Favourites and recents (gap 13) | Shane |
+| 2026-10-13 | The filter rule of #209, decided autonomously by the orchestrator: Shane can override it at HIL Review (see Settled) | Shane |
 | 2026-10-13 | GitHub Actions billing: CI cannot start a job until the payment or spending limit is fixed | Shane |
 
 Settled, with the sources for the rest. Accepted answers live in each issue's comments.
@@ -124,6 +127,7 @@ Settled, with the sources for the rest. Accepted answers live in each issue's co
 - #199 (Shane, 2026-10-12): with Hide done on, no Done issue shows, not even a Done ancestor of an open issue. It replaces the first clause of the 2026-10-07 decision below; PR #204 updated `docs/design/0002-issue-tree.md`, `CONTEXT.md` and both READMEs with the code.
 - #200 (Shane, 2026-10-12): the progress ring goes on any Story, Task or Bug with sub-issues, and Epics lose it. #202 (Shane, 2026-10-12): a day is Jira's working day from the site's settings, and the chart is hand-drawn with no dependency. The build reads them from `GET /rest/api/3/configuration` (`timeTrackingConfiguration`), since `/configuration/timetracking` answered 403 to a non-admin account (2026-10-13), and adds `timeSpentSeconds` to core's `Issue`, so `jm issue` `--json` gains one key (additive, per git-workflow.md; disclosed for Shane at HIL Review).
 - #199, #201 and #202 (Shane, 2026-10-13): #199, the epic-filtered `jm issue tree` keeps hiding Done issues under Hide done, as merged; #202, keep the `/rest/api/3/configuration` settings path and the additive `timeSpentSeconds` `--json` key; #201, no toolbar-wrap story requested, so the #134 Medium stays a carried known limit.
+- #209 (Shane, 2026-10-13): the Tree's expansion is a level, not row state; Stories is the default (Customers, Epics and No Epic open, each Story, Task and Bug closed); one level for the app, which saved views neither carry nor change; stored in `settings.json` as `treeLevel`, replacing the "collapse state for the session only" decision in `docs/design/0002-issue-tree.md`. The filter rule is the orchestrator's, not Shane's, recorded in that design doc: a dimmed context row is always open; while the filter bar narrows, no issue and no No Epic header closes; otherwise the level applies, Assignee: me alone included; only the Customers level can hide matches, behind a header with a count.
 - #131: the light-theme fills stay as built, and the active-only row keeps its fill alone.
 - #143 (Shane, 2026-10-12): M3 option A, the selection stays pruned to the rows shown. Esc clears the selection before it closes the Peek; the selection stays after an action; bulk calls send `sendBulkNotification: false`; checked rows take the selected fill through `aria-checked` while the peeked row keeps `aria-selected` and its bold key. The bar's primary action is Status.
 - #144 (Shane, 2026-10-12): keep the neutral capsule with a red icon. #151 (2026-10-12): approved as built.
@@ -135,6 +139,7 @@ Settled, with the sources for the rest. Accepted answers live in each issue's co
 
 Each re-read at its source on 2026-10-13 unless it says otherwise.
 
+- **A Tree level default changes the rows every e2e sees at launch** (#209, 2026-10-13). A fresh launch opens at Stories, so Subtasks and Done chips start hidden. A suite that needs Subtasks calls `showEverything` from `e2e/desktop/harness.ts`; five suites needed it.
 - **Linux CI differs from macOS** (met on #159, #163 and #190; one red CI round each). Now in [AGENTS.md](AGENTS.md).
 - **A release before the write is held is lost** (met after PR #170, fixed by PR #171). The e2e fake's `releaseEdit` is `held.shift()?.()` in `apps/desktop/src/main/e2e-fake.ts`, so releasing before the write is held does nothing and the dialog waits forever. Wait for the write (`settle(n)` or `expect.poll(writes)`) before `releaseEdit`.
 - **An edit's read-back must skip while a newer edit of the issue is in flight.** A read that lands late overwrites the newer edit on screen. Any new read-back of an issue uses `applyUnaskedRead` (`optimistic.ts`; fixed by #114).
