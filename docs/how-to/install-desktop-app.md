@@ -13,6 +13,8 @@ pnpm package
 
 macOS only. The script uses `ditto`, `PlistBuddy` and `codesign`.
 
+The app's icon is `apps/desktop/build/icon.icns`, built from `apps/desktop/build/icon.svg`. After editing the SVG, run `pnpm icon` and commit the SVG, `icon.png` and `icon.icns` together.
+
 ## Install
 
 ```
