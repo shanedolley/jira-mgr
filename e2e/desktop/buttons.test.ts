@@ -154,6 +154,11 @@ async function expectSystem(where: string, minimum: number) {
 }
 
 const colourOf = (button: Locator) => button.evaluate((element) => getComputedStyle(element).color)
+/** Hovers, then reads the colour, so `expect.poll` hovers again on each try. */
+async function hoveredColourOf(button: Locator) {
+  await button.hover()
+  return colourOf(button)
+}
 /** The opacity a viewer sees: the element's own times every ancestor's. */
 const opacityOf = (target: Locator) =>
   target.evaluate((element) => {
@@ -493,15 +498,13 @@ test.describe('delete controls', () => {
     await item(/PSAPAC-4,/).click()
     const inPeek = peek().getByRole('button', { name: 'Delete' })
     expect(await colourOf(inPeek)).not.toBe(red)
-    await inPeek.hover()
-    await expect.poll(() => colourOf(inPeek)).toBe(red)
+    await expect.poll(() => hoveredColourOf(inPeek)).toBe(red)
 
     await window.keyboard.press('Enter')
     const onPage = issuePage().getByRole('button', { name: 'Delete', exact: true })
     await window.mouse.move(0, 0)
     expect(await colourOf(onPage)).not.toBe(red)
-    await onPage.hover()
-    await expect.poll(() => colourOf(onPage)).toBe(red)
+    await expect.poll(() => hoveredColourOf(onPage)).toBe(red)
 
     await onPage.click()
     const confirm = window.getByRole('button', { name: 'Delete issue' })
