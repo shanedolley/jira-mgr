@@ -207,21 +207,27 @@ const CLOSED_FROM: Record<Exclude<TreeLevel, 'all'>, number> = {
 
 /**
  * The row ids a level closes, shown or not: every row that can expand at its depth or below.
- * While a filter or "Assignee: me" narrows the Tree (`narrowed`, core's own test), no issue
- * closes: each issue still shown has a match below it or is one, and closing it would hide that
- * match. The Customer and No Epic headers still follow the level. Done children sit two levels
- * under their parent, behind its chip.
+ * An issue shown only as dimmed context never closes, since closing it would hide the match
+ * below it, whatever narrows the Tree ("Assignee: me" included). While the filter bar narrows
+ * the Tree (`filtering`), no issue closes, so a match nested under a match shows. With neither,
+ * the level applies. The Customer and No Epic headers always follow the level. Done children sit
+ * two levels under their parent, behind its chip.
  */
 export function levelCollapsed(
   groups: readonly CustomerGroup[],
   level: TreeLevel,
-  narrowed = false,
+  filtering = false,
 ): Set<string> {
   const ids = new Set<string>()
   if (level === 'all') return ids
   const from = CLOSED_FROM[level]
   function walk(node: HierarchyNode, depth: number) {
-    if (!narrowed && depth >= from && (node.children.length > 0 || node.doneCount > 0)) {
+    if (
+      !filtering &&
+      !node.contextOnly &&
+      depth >= from &&
+      (node.children.length > 0 || node.doneCount > 0)
+    ) {
       ids.add(`i:${node.issue.key}`)
     }
     node.children.forEach((child) => {

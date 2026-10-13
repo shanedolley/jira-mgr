@@ -391,20 +391,52 @@ describe('levelCollapsed', () => {
     expect(ids(rows)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-4', 'd:P-1', 'n:1', 'i:P-6'])
   })
 
-  it('closes no issue while a filter narrows the Tree, so every match shows', () => {
-    const rows = (g: CustomerGroup[], level: Parameters<typeof levelCollapsed>[1]) =>
-      ids(flattenTree(g, { collapsed: levelCollapsed(g, level, true), revealed: new Set() }))
-    // P-3 matches under the context rows P-1 and P-2.
+  it('applies the level unless the filter bar narrows, and context issues always open', () => {
+    const rows = (
+      g: CustomerGroup[],
+      level: Parameters<typeof levelCollapsed>[1],
+      filtering: boolean,
+    ) =>
+      ids(flattenTree(g, { collapsed: levelCollapsed(g, level, filtering), revealed: new Set() }))
+    const mine = { accountId: 'me', displayName: 'Me', avatarUrl: null }
+    const own = (key: string, spec: Parameters<typeof issue>[1]) => ({
+      ...issue(key, spec),
+      assignee: mine,
+    })
+
+    // Assignee: me alone, with no filter. My Story P-2 keeps its Subtask P-3 behind a closed row;
+    // P-4 is another person's Story, a context ancestor of my Subtask P-5, so it stays open.
+    const assigneeMe = groupsOf(
+      [
+        issue('P-1', { type: 'Epic', customer: ACME }),
+        own('P-2', { parent: 'P-1', customer: ACME }),
+        own('P-3', { type: 'Subtask', parent: 'P-2', customer: ACME }),
+        issue('P-4', { parent: 'P-1', customer: ACME }),
+        own('P-5', { type: 'Subtask', parent: 'P-4', customer: ACME }),
+      ],
+      { assigneeMe: true },
+    )
+    expect([...levelCollapsed(assigneeMe, 'stories')]).toEqual(['i:P-2'])
+    expect(rows(assigneeMe, 'stories', false)).toEqual(['c:1', 'i:P-1', 'i:P-4', 'i:P-5', 'i:P-2'])
+    // The Epic is context too, so Epics closes my Story but not the rows above my Subtask.
+    expect(rows(assigneeMe, 'epics', false)).toEqual(['c:1', 'i:P-1', 'i:P-4', 'i:P-5', 'i:P-2'])
+
+    // P-3 matches under the context rows P-1 and P-2, at any level and with or without the flag.
     const context = groupsOf(SAMPLE, { match: (i) => i.key === 'P-3' })
-    expect(rows(context, 'stories')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
-    expect(rows(context, 'epics')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
-    // The Story P-2 and its Subtask P-3 both match, so no row is context and P-2 still opens.
+    for (const filtering of [false, true]) {
+      expect(rows(context, 'stories', filtering)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+      expect(rows(context, 'epics', filtering)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    }
+
+    // Filter text matching the Story P-2 and its Subtask P-3: nothing is context, so only the
+    // filter bar's flag opens P-2.
     const nested = groupsOf(SAMPLE, { match: (i) => ['P-1', 'P-2', 'P-3'].includes(i.key) })
     expect(nested.flatMap((g) => g.epics.map((e) => e.contextOnly))).toEqual([false])
-    expect(rows(nested, 'stories')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
-    // Unnarrowed, the level closes the Story and hides the Subtask.
+    expect(rows(nested, 'stories', true)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    expect(rows(nested, 'stories', false)).toEqual(['c:1', 'i:P-1', 'i:P-2'])
+
+    // No narrowing: the level applies, and the headers always follow it.
     expect(closed('stories')).toEqual(['i:P-2'])
-    // The headers still follow the level.
     expect([...levelCollapsed(nested, 'customers', true)]).toEqual(['c:1'])
   })
 

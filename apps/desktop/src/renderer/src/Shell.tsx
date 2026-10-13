@@ -375,8 +375,8 @@ export function Shell({ session }: { session: Session }) {
         : undefined,
     [treeReady, deferredFilters, accountId, issues, today],
   )
-  // Core keeps context rows exactly when a matcher or "Assignee: me" narrows the Tree.
-  const narrowed = toggles?.assigneeMe === true || match !== undefined
+  // Only the filter bar counts: "Assignee: me" is on in daily use, and the level must still apply.
+  const filtering = match !== undefined
   const groups = useMemo(() => {
     if (!treeReady) return []
     return buildHierarchy(issues, {
@@ -401,8 +401,8 @@ export function Shell({ session }: { session: Session }) {
   ])
 
   const levelRows = useMemo(
-    () => levelCollapsed(groups, level ?? 'stories', narrowed),
-    [groups, level, narrowed],
+    () => levelCollapsed(groups, level ?? 'stories', filtering),
+    [groups, level, filtering],
   )
   const collapsed = useMemo(() => withOverrides(levelRows, overrides), [levelRows, overrides])
   const rows = useMemo(

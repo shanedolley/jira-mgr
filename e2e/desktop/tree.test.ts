@@ -556,6 +556,11 @@ test('Assignee: me keeps my issues with their ancestors dimmed', async () => {
   await expect(item(/PSAPAC-11,.*context/)).toBeVisible()
   await expect(item(/PSAPAC-10,.*context/)).toBeVisible()
   await expect(item(/PSAPAC-20,/)).toHaveCount(0)
+  // No filter narrows, so the Stories level applies, but a context ancestor never closes: the
+  // other person's Story stays open to show my Subtask. The fake has no Story of mine with a
+  // Subtask of mine, so the closed own Story is covered by the unit test.
+  await expect(item(/PSAPAC-11,.*context/)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
 })
 
 test('turning Hide empty Customers off shows the Customer with no issues', async () => {
