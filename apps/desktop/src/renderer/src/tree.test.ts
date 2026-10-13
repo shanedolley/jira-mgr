@@ -391,17 +391,21 @@ describe('levelCollapsed', () => {
     expect(ids(rows)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-4', 'd:P-1', 'n:1', 'i:P-6'])
   })
 
-  it('never closes an issue shown only as context, so a filter keeps its matches', () => {
-    const filtered = groupsOf(SAMPLE, { match: (i) => i.key === 'P-3' })
-    const rows = (level: Parameters<typeof levelCollapsed>[1]) =>
-      ids(
-        flattenTree(filtered, { collapsed: levelCollapsed(filtered, level), revealed: new Set() }),
-      )
-
-    // P-1 and P-2 are context rows, open at every level that shows them.
-    expect([...levelCollapsed(filtered, 'stories')]).toEqual([])
-    expect(rows('stories')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
-    expect(rows('epics')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+  it('closes no issue while a filter narrows the Tree, so every match shows', () => {
+    const rows = (g: CustomerGroup[], level: Parameters<typeof levelCollapsed>[1]) =>
+      ids(flattenTree(g, { collapsed: levelCollapsed(g, level, true), revealed: new Set() }))
+    // P-3 matches under the context rows P-1 and P-2.
+    const context = groupsOf(SAMPLE, { match: (i) => i.key === 'P-3' })
+    expect(rows(context, 'stories')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    expect(rows(context, 'epics')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    // The Story P-2 and its Subtask P-3 both match, so no row is context and P-2 still opens.
+    const nested = groupsOf(SAMPLE, { match: (i) => ['P-1', 'P-2', 'P-3'].includes(i.key) })
+    expect(nested.flatMap((g) => g.epics.map((e) => e.contextOnly))).toEqual([false])
+    expect(rows(nested, 'stories')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    // Unnarrowed, the level closes the Story and hides the Subtask.
+    expect(closed('stories')).toEqual(['i:P-2'])
+    // The headers still follow the level.
+    expect([...levelCollapsed(nested, 'customers', true)]).toEqual(['c:1'])
   })
 
   it('layers hand overrides on the level, and a change keeps overrides for rows out of view', () => {

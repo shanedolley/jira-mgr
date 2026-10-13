@@ -283,6 +283,27 @@ test('a filter keeps its matches under the default level, and clearing it restor
   await expect(item(/PSAPAC-12,/)).toHaveCount(0)
 })
 
+test('a filter opens a Story whose Subtask also matches, and a hand toggle still closes it', async () => {
+  await open()
+
+  // The key text matches the Story and its Subtask, so neither is context.
+  await filterBox().fill('PSAPAC-1')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+  await expect(item(/PSAPAC-11,/)).not.toHaveAttribute('aria-label', /context/)
+  // A hand toggle wins over the filter for the session.
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  // Clearing the filter returns to the level, with the Story still closed by hand.
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+})
+
 test('a toggle by hand survives a filter and the chevrons used under it', async () => {
   await open()
   await item(/PSAPAC-11,/)

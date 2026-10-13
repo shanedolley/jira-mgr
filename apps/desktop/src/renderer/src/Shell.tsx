@@ -363,14 +363,22 @@ export function Shell({ session }: { session: Session }) {
   const choices = useMemo(() => filterChoices(issues, customerNames), [issues, customerNames])
 
   const order = display?.order
+  // Overdue and the date windows read `today`, so the matcher rebuilds at local midnight.
+  const match = useMemo(
+    () =>
+      treeReady
+        ? issueMatcher(deferredFilters, {
+            accountId: accountId ?? '',
+            issues,
+            now: new Date(`${today}T12:00:00`),
+          })
+        : undefined,
+    [treeReady, deferredFilters, accountId, issues, today],
+  )
+  // Core keeps context rows exactly when a matcher or "Assignee: me" narrows the Tree.
+  const narrowed = toggles?.assigneeMe === true || match !== undefined
   const groups = useMemo(() => {
     if (!treeReady) return []
-    // Overdue and the date windows read `today`, so they rebuild at local midnight.
-    const match = issueMatcher(deferredFilters, {
-      accountId: accountId ?? '',
-      issues,
-      now: new Date(`${today}T12:00:00`),
-    })
     return buildHierarchy(issues, {
       ...toggles,
       // Without the Customer list, empty Customers stay hidden.
@@ -385,15 +393,17 @@ export function Shell({ session }: { session: Session }) {
     issues,
     toggles,
     order,
-    deferredFilters,
+    match,
     accountId,
     customersFailed,
     showEmptyCustomers,
     customersQuery.data,
-    today,
   ])
 
-  const levelRows = useMemo(() => levelCollapsed(groups, level ?? 'stories'), [groups, level])
+  const levelRows = useMemo(
+    () => levelCollapsed(groups, level ?? 'stories', narrowed),
+    [groups, level, narrowed],
+  )
   const collapsed = useMemo(() => withOverrides(levelRows, overrides), [levelRows, overrides])
   const rows = useMemo(
     () => flattenTree(groups, { collapsed, revealed }),

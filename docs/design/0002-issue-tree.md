@@ -158,7 +158,7 @@ A count is the number of issues in the subtree, context rows included and issues
 
 **Level.** The level is one of Customers, Epics, Stories or Everything, and the default is Stories. Customers closes every Customer header. Epics keeps the Customer headers open and closes each Epic and No Epic header. Stories keeps those open and closes each Story, Task and Bug (every level 3 issue), so their Subtasks and the Done chips under them stay hidden; an Epic's own Done chip shows. Everything closes nothing. The Shell stores it in `settings.json` as `treeLevel` through `settings:getTreeLevel` and `settings:setTreeLevel`, with the same optimistic mutation as the toggles, and shows "Loading settings" until it reads. Saved views do not carry the level and applying a view leaves the expansion alone. The CLI ignores it.
 
-**A filter keeps its matches.** A row shown only as dimmed context, an ancestor of a match that does not match itself, is always open, whatever the level, so a filter never hides its own matches (decided 2026-10-13, #209). With no filter narrowing the Tree there are no context rows and the level applies untouched. The rule lives in `levelCollapsed`, not in the hand overrides, so clearing the filter returns the Tree to the level. A matching Story with a matching Subtask still hides the Subtask at Stories, and the Customer and No Epic headers follow the level.
+**A filter keeps its matches.** While a filter or "Assignee: me" narrows the Tree, no issue is closed by the level: every issue still shown is a match with a match below it, or a dimmed context ancestor of one, so a filter never hides its own matches (decided 2026-10-13, #209). The signal is core's own test for keeping context rows, a `match` function or `assigneeMe`, which the Shell reads from `issueMatcher` and the toggle. With nothing narrowing the Tree the level applies untouched. The rule lives in `levelCollapsed(groups, level, narrowed)`, not in the hand overrides, so clearing the filter returns the Tree to the level, and a row closed by hand stays closed for the session. The Customer and No Epic headers still follow the level, so Customers hides the matches under a closed header.
 
 **Active row fallback.** When a rebuild removes the active row, `fallbackRow(previousRows, rows, id)` picks the next surviving sibling, then the nearest ancestor still in the rows, then the row now at the old index.
 
@@ -296,7 +296,7 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 | | `Shift+ArrowLeft sets the Customers level and activates the Customer header; Shift+ArrowRight sets Everything` |
 | | `closes the rows below the level, shown or not` |
 | | `shows Stories as Customer, Epic, Story and No Epic rows, with the Epic's Done chip shown and Subtasks hidden` |
-| | `never closes an issue shown only as context, so a filter keeps its matches` |
+| | `closes no issue while a filter narrows the Tree, so every match shows` |
 | | `layers hand overrides on the level, and a change keeps overrides for rows out of view` |
 | | `keeps an override for a row the groups no longer hold when another row changes` |
 | | `Shift+ArrowLeft and Shift+ArrowRight set the level with no row shown, and other keys do nothing` |
