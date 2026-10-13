@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -90,15 +91,40 @@ interface WithFake {
   __fakeJira: FakeJira
 }
 
+let display: Promise<string> | undefined
+
+/**
+ * On Linux each worker starts its own Xvfb, so apps in two workers never share an X clipboard.
+ * `-noreset` keeps it up between apps: Xvfb resets when its last client closes, and refuses an app
+ * that connects during the reset.
+ */
+function workerDisplay(): Promise<string> {
+  display ??= new Promise((resolve, reject) => {
+    const args = ['-displayfd', '3', '-screen', '0', '1280x1024x24', '-nolisten', 'tcp', '-noreset']
+    const xvfb = spawn('Xvfb', args, { stdio: ['ignore', 'ignore', 'ignore', 'pipe'] })
+    process.on('exit', () => xvfb.kill())
+    xvfb.on('error', reject)
+    xvfb.on('exit', (code) => {
+      reject(new Error(`Xvfb exited with ${String(code)}`))
+    })
+    xvfb.stdio[3]?.once('data', (number) => {
+      resolve(`:${String(number).trim()}`)
+    })
+  })
+  return display
+}
+
 /** Launches the e2e entry on `stateDir`. `env` adds to the app's environment, such as `JM_E2E_BULK`. */
 export async function launch(
   stateDir: string,
   env: Record<string, string> = {},
 ): Promise<{ app: ElectronApplication; window: Page }> {
+  const own: Record<string, string> =
+    process.platform === 'linux' ? { DISPLAY: await workerDisplay() } : {}
   const app = await electron.launch({
     // GitHub's Linux runners lack the setuid sandbox helper, so CI runs without it.
     args: process.env.CI ? ['--no-sandbox', entry] : [entry],
-    env: { ...process.env, ...env, JM_STATE_DIR: stateDir },
+    env: { ...process.env, ...own, ...env, JM_STATE_DIR: stateDir },
   })
   const window = await app.firstWindow()
   // The first window arrives before its page has loaded, and a read of computed style before the

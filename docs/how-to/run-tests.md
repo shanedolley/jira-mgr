@@ -7,10 +7,10 @@ Run every suite with Node 24 (`.nvmrc`). Install first with `pnpm install --froz
 | Command | Runs | Needs |
 |---|---|---|
 | `pnpm test` | Core, CLI and desktop unit and integration tests | Nothing external: core and CLI tests run against the MSW fake |
-| `pnpm e2e` | Playwright against the built desktop app | Electron's binary, downloaded on first launch |
+| `pnpm e2e` | Playwright against the built desktop app | Electron's binary, from `pnpm --filter @jira-mgr/e2e exec install-electron` |
 | `pnpm test:live` | The read-only PSAPAC tests | [A stored token](run-live-tests.md) |
 
-`pnpm test` runs `pnpm -r test`. The CLI package builds its bundle with `tsup` first, because a few tests spawn the built binary (`apps/cli/package.json`). `pnpm e2e` builds the desktop app first. On Linux without a display, use `xvfb-run --auto-servernum pnpm e2e`, as CI does.
+`pnpm test` runs `pnpm -r test`. The CLI package builds its bundle with `tsup` first, because a few tests spawn the built binary (`apps/cli/package.json`). `pnpm e2e` builds the desktop app first. On Linux, install Xvfb: each e2e worker starts its own display.
 
 CI also runs `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm build` and `pnpm docs:reference`, and fails when `docs/reference` differs from the committed files (`.github/workflows/ci.yml`). Run the same before you push.
 

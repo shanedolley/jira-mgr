@@ -72,4 +72,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: xvfb-run --auto-servernum pnpm e2e
+      # Electron fetches its binary on first use, so parallel workers would each fetch it at once.
+      - run: pnpm --filter @jira-mgr/e2e exec install-electron
+      # On Linux each worker starts its own Xvfb (e2e/desktop/harness.ts).
+      - run: pnpm e2e
