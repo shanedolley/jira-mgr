@@ -8,9 +8,15 @@ export const ISSUE_ORDERS = ['key', 'priority', 'updated', 'due'] as const
 
 export type IssueOrder = (typeof ISSUE_ORDERS)[number]
 
+/** How far the Tree opens: Customers only, down to Epics, down to Stories, or every level. */
+export const TREE_LEVELS = ['customers', 'epics', 'stories', 'all'] as const
+
+export type TreeLevel = (typeof TREE_LEVELS)[number]
+
 /** What the Tree shows while `settings.json` and the applied view say nothing. */
 export const DEFAULT_PROPERTIES: readonly RowProperty[] = ['updated']
 export const DEFAULT_ORDER: IssueOrder = 'key'
+export const DEFAULT_TREE_LEVEL: TreeLevel = 'stories'
 
 /** The names in `ROW_PROPERTIES` out of a list, each once, in row order. Unknown names drop. */
 export function keepKnownProperties(names: readonly string[]): RowProperty[] {

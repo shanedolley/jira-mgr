@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { IssueDetail } from '@jira-mgr/core/issue'
 
-import type { Display, Toggles } from '../../shared/ipc'
+import type { Display, Toggles, TreeLevel } from '../../shared/ipc'
 import { doneKey, issueDetailKey, unresolvedKey } from './optimistic'
 import {
   attachmentsKey,
@@ -23,6 +23,8 @@ import {
   displayKey,
   displayMutation,
   togglesMutation,
+  treeLevelKey,
+  treeLevelMutation,
   unresolvedQuery,
   watchImageUrls,
 } from './queries'
@@ -242,6 +244,50 @@ describe('displayMutation', () => {
     await expect(failing.mutate(chosen)).rejects.toBeInstanceOf(JiraMgrError)
 
     await expect.poll(() => client.getQueryData(displayKey)).toEqual(stored)
+    unsubscribe()
+  })
+})
+
+describe('treeLevelMutation', () => {
+  const stored: TreeLevel = 'stories'
+  const chosen: TreeLevel = 'epics'
+
+  it('shows the level at once, before the write answers', async () => {
+    const client = new QueryClient()
+    client.setQueryData(treeLevelKey, stored)
+    let finish!: () => void
+    const write = new Promise<TreeLevel>((resolve) => {
+      finish = () => {
+        resolve(chosen)
+      }
+    })
+    const done = new MutationObserver(
+      client,
+      treeLevelMutation(client, () => write),
+    ).mutate(chosen)
+    await expect.poll(() => client.getQueryData(treeLevelKey)).toEqual(chosen)
+    finish()
+    await done
+  })
+
+  it('a failed write refetches what the file holds', async () => {
+    const client = new QueryClient()
+    client.setQueryData(treeLevelKey, stored)
+    const read = vi.fn(() => Promise.resolve(stored))
+    const observer = new QueryObserver(client, {
+      queryKey: treeLevelKey,
+      queryFn: read,
+      staleTime: Infinity,
+    })
+    const unsubscribe = observer.subscribe(() => undefined)
+
+    const failing = new MutationObserver(
+      client,
+      treeLevelMutation(client, () => Promise.reject(new JiraMgrError('internal', 'Disk full.'))),
+    )
+    await expect(failing.mutate(chosen)).rejects.toBeInstanceOf(JiraMgrError)
+
+    await expect.poll(() => client.getQueryData(treeLevelKey)).toEqual(stored)
     unsubscribe()
   })
 })

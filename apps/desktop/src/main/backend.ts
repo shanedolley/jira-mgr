@@ -138,6 +138,7 @@ import type {
   TimerOutcome,
   TimerSnapshot,
   Toggles,
+  TreeLevel,
   UpdateViewArgs,
   UserOption,
   WorklogIdArgs,
@@ -242,6 +243,8 @@ export interface Backend {
   setToggles(toggles: Toggles): Promise<Toggles>
   getDisplay(): Promise<Display>
   setDisplay(display: Display): Promise<Display>
+  getTreeLevel(): Promise<TreeLevel>
+  setTreeLevel(level: TreeLevel): Promise<TreeLevel>
   /** The saved views, the starters when `views.json` does not exist yet. */
   listViews(): Promise<SavedView[]>
   createView(args: CreateViewArgs): Promise<SavedView>
@@ -368,10 +371,10 @@ export function createBackend(deps: BackendDeps = {}): Backend {
   const batches = new Set<AbortController>()
   /** The text search in flight. The palette types one query at a time, so a new search aborts it. */
   let textSearch: AbortController | undefined
-  /** Settings writes in call order, so a second toggle or display change never reads settings from before the first. */
+  /** Settings writes in call order, so a second toggle, display or level change never reads settings from before the first. */
   let settingsWrites: Promise<unknown> = Promise.resolve()
   /** Changes one part of `settings.json`, keeping the rest, and returns that part. */
-  function inSettingsOrder<K extends 'toggles' | 'display'>(
+  function inSettingsOrder<K extends 'toggles' | 'display' | 'treeLevel'>(
     key: K,
     value: Settings[K],
   ): Promise<Settings[K]> {
@@ -808,6 +811,10 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       return (await readSettings()).display
     },
     setDisplay: (display) => inSettingsOrder('display', display),
+    async getTreeLevel() {
+      return (await readSettings()).treeLevel
+    },
+    setTreeLevel: (level) => inSettingsOrder('treeLevel', level),
     listViews: () => inViewOrder(readViews),
     createView: ({ name, filters, toggles, display }) =>
       inViewOrder(() => createView(name, { filters, toggles, display })),

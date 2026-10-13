@@ -35,9 +35,9 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `PageDown`, `PageUp` | Move one page |
 | `Home`, `End` | First or last row |
 | `Right` | Expand; on an expanded row, next row |
-| `Shift+Right` | Expand all |
+| `Shift+Right` | Open everything (the Everything level, stored) |
 | `Left` | Collapse; otherwise parent row |
-| `Shift+Left` | Collapse all to the customer |
+| `Shift+Left` | Close to the Customer headers (the Customers level, stored) |
 | `Enter` | Open the issue page; toggle a header |
 | Double-click | On an issue row, open its page as `Enter` does, the issue the first click hit. The checkbox, the status dot, the avatar, the chevron and a Shift+double-click ignore it, and a header or chip does only what its two clicks do |
 | `Space` | Toggle the Peek |

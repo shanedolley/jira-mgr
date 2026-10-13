@@ -4,19 +4,21 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ancestorIds,
+  changeOverrides,
   clickRow,
-  expandableIds,
   fallbackRow,
   flattenTree,
   indexNodes,
   issuesShown,
   layoutOf,
   layoutRows,
+  levelCollapsed,
   mergeIssues,
   moveActive,
   pruneChecked,
   rowAtOffset,
   windowRange,
+  withOverrides,
   type KeyInput,
   type MoveContext,
   type TreeRow,
@@ -368,11 +370,133 @@ describe('ancestorIds', () => {
   })
 })
 
-describe('expandableIds', () => {
-  it('lists every expandable row, shown or not', () => {
-    const list = expandableIds(groupsOf(SAMPLE))
+describe('levelCollapsed', () => {
+  const groups = groupsOf(SAMPLE)
+  const closed = (level: Parameters<typeof levelCollapsed>[1]) =>
+    [...levelCollapsed(groups, level)].sort()
 
-    expect([...list].sort()).toEqual(['c:1', 'i:P-1', 'i:P-2', 'n:1'])
+  it('closes the rows below the level, shown or not', () => {
+    expect(closed('customers')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'n:1'])
+    expect(closed('epics')).toEqual(['i:P-1', 'i:P-2', 'n:1'])
+    expect(closed('stories')).toEqual(['i:P-2'])
+    expect(closed('all')).toEqual([])
+  })
+
+  it("shows Stories as Customer, Epic, Story and No Epic rows, with the Epic's Done chip shown and Subtasks hidden", () => {
+    const rows = flattenTree(groups, {
+      collapsed: levelCollapsed(groups, 'stories'),
+      revealed: new Set(),
+    })
+
+    expect(ids(rows)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-4', 'd:P-1', 'n:1', 'i:P-6'])
+  })
+
+  it('applies the level unless the filter bar narrows, and context issues at Story depth or below always open', () => {
+    const rows = (
+      g: CustomerGroup[],
+      level: Parameters<typeof levelCollapsed>[1],
+      filtering: boolean,
+    ) =>
+      ids(flattenTree(g, { collapsed: levelCollapsed(g, level, filtering), revealed: new Set() }))
+    const mine = { accountId: 'me', displayName: 'Me', avatarUrl: null }
+    const own = (key: string, spec: Parameters<typeof issue>[1]) => ({
+      ...issue(key, spec),
+      assignee: mine,
+    })
+
+    // Assignee: me alone, with no filter. My Story P-2 keeps its Subtask P-3 behind a closed row;
+    // P-4 is another person's Story, a context ancestor of my Subtask P-5, so it stays open.
+    const assigneeMe = groupsOf(
+      [
+        issue('P-1', { type: 'Epic', customer: ACME }),
+        own('P-2', { parent: 'P-1', customer: ACME }),
+        own('P-3', { type: 'Subtask', parent: 'P-2', customer: ACME }),
+        issue('P-4', { parent: 'P-1', customer: ACME }),
+        own('P-5', { type: 'Subtask', parent: 'P-4', customer: ACME }),
+      ],
+      { assigneeMe: true },
+    )
+    expect([...levelCollapsed(assigneeMe, 'stories')]).toEqual(['i:P-2'])
+    expect(rows(assigneeMe, 'stories', false)).toEqual(['c:1', 'i:P-1', 'i:P-4', 'i:P-5', 'i:P-2'])
+    // The Epic is context too, but only Story depth and below stay open: at Epics it closes,
+    // which hides my Stories as well, so Epics no longer equals Stories.
+    expect([...levelCollapsed(assigneeMe, 'epics')].sort()).toEqual(['i:P-1', 'i:P-2'])
+    expect(rows(assigneeMe, 'epics', false)).toEqual(['c:1', 'i:P-1'])
+    expect(rows(assigneeMe, 'epics', true)).toEqual([
+      'c:1',
+      'i:P-1',
+      'i:P-4',
+      'i:P-5',
+      'i:P-2',
+      'i:P-3',
+    ])
+
+    // P-3 matches under the context rows P-1 and P-2, at the Stories level with or without the flag.
+    const context = groupsOf(SAMPLE, { match: (i) => i.key === 'P-3' })
+    for (const filtering of [false, true]) {
+      expect(rows(context, 'stories', filtering)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    }
+    // Under the filter bar the Epic stays open too; under Assignee: me alone it follows Epics.
+    expect(rows(context, 'epics', true)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    expect(rows(context, 'epics', false)).toEqual(['c:1', 'i:P-1'])
+
+    // Filter text matching the Story P-2 and its Subtask P-3: nothing is context, so only the
+    // filter bar's flag opens P-2.
+    const nested = groupsOf(SAMPLE, { match: (i) => ['P-1', 'P-2', 'P-3'].includes(i.key) })
+    expect(nested.flatMap((g) => g.epics.map((e) => e.contextOnly))).toEqual([false])
+    expect(rows(nested, 'stories', true)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    expect(rows(nested, 'stories', false)).toEqual(['c:1', 'i:P-1', 'i:P-2'])
+
+    // No narrowing: the level applies, and the headers always follow it.
+    expect(closed('stories')).toEqual(['i:P-2'])
+    expect([...levelCollapsed(nested, 'customers', true)]).toEqual(['c:1'])
+  })
+
+  it('layers hand overrides on the level, and a change keeps overrides for rows out of view', () => {
+    const base = levelCollapsed(groups, 'stories')
+    const overrides = new Map([
+      ['i:P-2', false],
+      ['i:P-1', true],
+    ])
+    const closedSet = withOverrides(base, overrides)
+
+    expect([...closedSet].sort()).toEqual(['i:P-1'])
+    expect(changeOverrides(new Map(), base, closedSet)).toEqual(overrides)
+    expect(changeOverrides(overrides, base, closedSet)).toEqual(overrides)
+  })
+
+  it('keeps an override for a row the groups no longer hold when another row changes', () => {
+    // S is open by hand but absent from the filtered groups, which close T by level.
+    const overrides = new Map([['S', false]])
+
+    expect(changeOverrides(overrides, new Set(['T']), new Set())).toEqual(
+      new Map([
+        ['S', false],
+        ['T', false],
+      ]),
+    )
+  })
+
+  it('drops an override when a row goes back to the level, so it follows the level again', () => {
+    // Under a filter the level closes nothing; the user closes X and then opens it again.
+    const closedByHand = changeOverrides(new Map(), new Set(), new Set(['X']))
+    expect(closedByHand).toEqual(new Map([['X', true]]))
+    expect(changeOverrides(closedByHand, new Set(), new Set()).size).toBe(0)
+  })
+
+  it('keeps the No Epic header open while a filter narrows, and closes it at Epics otherwise', () => {
+    // P-6 has no Epic, so it sits under n:1.
+    const filtered = groupsOf(SAMPLE, { match: (i) => i.key === 'P-6' })
+    expect([...levelCollapsed(filtered, 'epics', true)]).toEqual([])
+    expect(
+      ids(
+        flattenTree(filtered, {
+          collapsed: levelCollapsed(filtered, 'epics', true),
+          revealed: new Set(),
+        }),
+      ),
+    ).toEqual(['c:1', 'n:1', 'i:P-6'])
+    expect(closed('epics')).toContain('n:1')
   })
 })
 
@@ -395,7 +519,7 @@ const state = (activeId: string | null, extra: Partial<TreeState> = {}): TreeSta
 describe('moveActive', () => {
   const groups = groupsOf(SAMPLE)
   const rows = flattenTree(groups, NONE)
-  const context: MoveContext = { pageSize: 3, expandable: expandableIds(groups) }
+  const context: MoveContext = { pageSize: 3 }
   // The rows always match the state, as in the Shell, which flattens from the same sets.
   const move = (active: string | null, input: KeyInput, extra: Partial<TreeState> = {}) =>
     moveActive(
@@ -484,19 +608,26 @@ describe('moveActive', () => {
     expect(result?.activeId).toBe('d:P-1')
   })
 
-  it('Shift+ArrowLeft collapses all and activates the Customer header; Shift+ArrowRight expands all', () => {
+  it('Shift+ArrowLeft sets the Customers level and activates the Customer header; Shift+ArrowRight sets Everything', () => {
     const closed = move('i:P-3', press('ArrowLeft', { shiftKey: true }), {
       revealed: new Set(['d:P-1']),
     })
+    expect(closed?.level).toBe('customers')
     expect(closed?.activeId).toBe('c:1')
-    expect([...(closed?.collapsed ?? [])].sort()).toEqual(['c:1', 'i:P-1', 'i:P-2', 'n:1'])
     expect([...(closed?.revealed ?? [])]).toEqual([])
 
-    const opened = move('c:1', press('ArrowRight', { shiftKey: true }), {
-      collapsed: new Set(['c:1', 'i:P-1']),
-    })
-    expect([...(opened?.collapsed ?? [])]).toEqual([])
+    const opened = move('c:1', press('ArrowRight', { shiftKey: true }))
+    expect(opened?.level).toBe('all')
     expect(opened?.activeId).toBe('c:1')
+  })
+
+  it('Shift+ArrowLeft and Shift+ArrowRight set the level with no row shown, and other keys do nothing', () => {
+    const none = (input: KeyInput) => moveActive([], state(null), input, context)
+
+    expect(none(press('ArrowLeft', { shiftKey: true }))?.level).toBe('customers')
+    expect(none(press('ArrowRight', { shiftKey: true }))?.level).toBe('all')
+    expect(none(press('ArrowLeft'))).toBeNull()
+    expect(none(press('j'))).toBeNull()
   })
 
   it('Home and End move to the first and last row', () => {
@@ -558,7 +689,7 @@ describe('selection keys', () => {
   // Rows: c:1, P-1, P-2, P-3, P-4, d:P-1, n:1, P-6. Issue rows are P-1, P-2, P-3, P-4 and P-6.
   const groups = groupsOf(SAMPLE)
   const rows = flattenTree(groups, NONE)
-  const context: MoveContext = { pageSize: 3, expandable: expandableIds(groups) }
+  const context: MoveContext = { pageSize: 3 }
   const move = (active: string | null, input: KeyInput, extra: Partial<TreeState> = {}) =>
     moveActive(rows, state(active, extra), input, context)
   const checked = (result: { checked: ReadonlySet<string> } | null) =>

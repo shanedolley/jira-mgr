@@ -13,6 +13,7 @@ import {
   moveIssue,
   notices,
   releaseEdit,
+  showEverything,
 } from './harness.js'
 
 let app: ElectronApplication
@@ -49,6 +50,8 @@ async function openPage(row: RegExp, title: string) {
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   // The fake holds the first Done page, so this text stays and the toolbar stops reflowing.
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
+  // Subtasks show only from the Everything level.
+  await showEverything(window)
   await item(row).click()
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('heading', { name: title })).toBeVisible()

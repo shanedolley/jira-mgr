@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { DEFAULT_TREE_LEVEL } from '@jira-mgr/core/display'
 import {
   buildHierarchy,
   childProgress,
@@ -33,6 +34,7 @@ import type {
   Session,
   TimerSnapshot,
   Toggles,
+  TreeLevel,
 } from '../../shared/ipc'
 import { issueUrl } from '../../shared/links'
 import { Banner } from './Banner'
@@ -97,8 +99,11 @@ import {
   useMe,
   useDisplay,
   useSetDisplay,
+  useSetTreeLevel,
   useSetToggles,
   useToggles,
+  useTreeLevel,
+  treeLevelKey,
   useUnresolvedIssues,
 } from './queries'
 import { NotifyContext, type Notify } from './notify'
@@ -107,7 +112,9 @@ import { describeEdit, isBatch, reversible, undoStack, type StackEntry } from '.
 import { useUndo } from './useUndo'
 import {
   ancestorIds,
-  expandableIds,
+  levelCollapsed,
+  changeOverrides,
+  withOverrides,
   fallbackRow,
   flattenTree,
   indexNodes,
@@ -115,6 +122,7 @@ import {
   mergeIssues,
   moveActive,
   pruneChecked,
+  type ExpansionOverrides,
   type MoveResult,
   type TreeRow,
   type TreeState,
@@ -224,11 +232,14 @@ export function Shell({ session }: { session: Session }) {
   const setToggles = useSetToggles()
   const displayQuery = useDisplay()
   const setDisplay = useSetDisplay()
+  const levelQuery = useTreeLevel()
+  const setLevel = useSetTreeLevel()
   const meQuery = useMe()
   const unresolved = useUnresolvedIssues()
   const done = useDoneIssues(unresolved.data !== undefined)
   const toggles = togglesQuery.data
   const display = displayQuery.data
+  const level = levelQuery.data
   const savedViews = useViews().data
   /** The view applied last, so a duplicate of the view the bar matches can be the lit one. */
   const [appliedViewId, setAppliedViewId] = useState<string>()
@@ -243,7 +254,8 @@ export function Shell({ session }: { session: Session }) {
 
   const [filters, setFilters] = useState<ViewFilters>({})
   const deferredFilters = useDeferredValue(filters)
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
+  // The rows opened or closed by hand this session, on top of the stored level.
+  const [overrides, setOverrides] = useState<ExpansionOverrides>(() => new Map())
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set())
   const [peekOpen, setPeekOpen] = useState(false)
   // The issues checked for a bulk action, by key, and the one a Shift+click range starts from.
@@ -352,14 +364,22 @@ export function Shell({ session }: { session: Session }) {
   const choices = useMemo(() => filterChoices(issues, customerNames), [issues, customerNames])
 
   const order = display?.order
+  // Overdue and the date windows read `today`, so the matcher rebuilds at local midnight.
+  const match = useMemo(
+    () =>
+      treeReady
+        ? issueMatcher(deferredFilters, {
+            accountId: accountId ?? '',
+            issues,
+            now: new Date(`${today}T12:00:00`),
+          })
+        : undefined,
+    [treeReady, deferredFilters, accountId, issues, today],
+  )
+  // Only the filter bar counts: "Assignee: me" is on in daily use, and the level must still apply.
+  const filtering = match !== undefined
   const groups = useMemo(() => {
     if (!treeReady) return []
-    // Overdue and the date windows read `today`, so they rebuild at local midnight.
-    const match = issueMatcher(deferredFilters, {
-      accountId: accountId ?? '',
-      issues,
-      now: new Date(`${today}T12:00:00`),
-    })
     return buildHierarchy(issues, {
       ...toggles,
       // Without the Customer list, empty Customers stay hidden.
@@ -374,19 +394,22 @@ export function Shell({ session }: { session: Session }) {
     issues,
     toggles,
     order,
-    deferredFilters,
+    match,
     accountId,
     customersFailed,
     showEmptyCustomers,
     customersQuery.data,
-    today,
   ])
 
+  const levelRows = useMemo(
+    () => levelCollapsed(groups, level ?? DEFAULT_TREE_LEVEL, filtering),
+    [groups, level, filtering],
+  )
+  const collapsed = useMemo(() => withOverrides(levelRows, overrides), [levelRows, overrides])
   const rows = useMemo(
     () => flattenTree(groups, { collapsed, revealed }),
     [groups, collapsed, revealed],
   )
-  const expandable = useMemo(() => expandableIds(groups), [groups])
   const nodes = useMemo(() => indexNodes(groups), [groups])
 
   // The active row survives a rebuild by falling back to a neighbour (state adjusted in render).
@@ -403,8 +426,15 @@ export function Shell({ session }: { session: Session }) {
   if (pendingSelect !== null && issues.some((i) => i.key === pendingSelect)) {
     setPendingSelect(null)
     const hidden = ancestorIds(groups, revealed, pendingSelect).filter((id) => collapsed.has(id))
-    if (hidden.length > 0)
-      setCollapsed(new Set([...collapsed].filter((id) => !hidden.includes(id))))
+    if (hidden.length > 0) {
+      setOverrides(
+        changeOverrides(
+          overrides,
+          levelRows,
+          new Set([...collapsed].filter((id) => !hidden.includes(id))),
+        ),
+      )
+    }
     if (nodes.has(pendingSelect)) {
       setTrack((t) => ({ ...t, activeId: `i:${pendingSelect}` }))
       setLastIssueKey(pendingSelect)
@@ -426,7 +456,10 @@ export function Shell({ session }: { session: Session }) {
   function apply(next: MoveResult) {
     setEnterPending(false)
     setTrack((t) => ({ ...t, activeId: next.activeId }))
-    setCollapsed(next.collapsed)
+    if (next.level !== undefined) chooseLevel(next.level)
+    else if (next.collapsed !== collapsed) {
+      setOverrides(changeOverrides(overrides, levelRows, next.collapsed))
+    }
     setRevealed(next.revealed)
     setPeekOpen(next.peekOpen)
     setSelection((held) =>
@@ -440,6 +473,34 @@ export function Shell({ session }: { session: Session }) {
       setLastIssueKey(row.node.issue.key)
       if (next.openPage) setPageKey(row.node.issue.key)
     }
+  }
+
+  /**
+   * Stores a level and reshapes the Tree to it, dropping the rows opened or closed by hand and,
+   * short of Everything, the revealed chips.
+   */
+  function chooseLevel(next: TreeLevel) {
+    setOverrides(new Map())
+    if (next !== 'all') setRevealed(new Set())
+    if (next === level) return
+    // At once, so no render shows the old level between dropping the hand toggles and the write.
+    client.setQueryData<TreeLevel>(treeLevelKey, next)
+    setLevel.mutate(next)
+  }
+
+  /** A level from the Groups menu. Customers also makes the row's Customer header active, as Shift+Left does. */
+  function pickLevel(next: TreeLevel) {
+    chooseLevel(next)
+    if (next !== 'customers') return
+    const input = {
+      key: 'ArrowLeft',
+      shiftKey: true,
+      metaKey: false,
+      ctrlKey: false,
+      altKey: false,
+    }
+    const placed = moveActive(rows, state, input, { pageSize: 1 })
+    if (placed !== null) setTrack((t) => ({ ...t, activeId: placed.activeId }))
   }
 
   function focusTree() {
@@ -460,13 +521,6 @@ export function Shell({ session }: { session: Session }) {
     setEnterPending(false)
     const first = rows.find((r) => r.kind === 'issue') ?? rows[0]
     if (first !== undefined) apply({ ...state, activeId: first.id, openPage: false })
-  }
-
-  /** Collapse all and Expand all are the Shift+Arrow keys, so the menu and the keys agree. */
-  function groupsKey(key: 'ArrowLeft' | 'ArrowRight') {
-    const input = { key, shiftKey: true, metaKey: false, ctrlKey: false, altKey: false }
-    const next = moveActive(rows, state, input, { pageSize: 1, expandable })
-    if (next !== null) apply(next)
   }
 
   // Focus follows the page: into it whenever it opens or shows another issue, whose controls
@@ -973,8 +1027,8 @@ export function Shell({ session }: { session: Session }) {
   let body
   // The empty-Tree panel, with its own Clear filters, shows only over the Tree.
   let emptyPanel = false
-  if (toggles === undefined || display === undefined) {
-    const failed = togglesQuery.isError ? togglesQuery : displayQuery
+  if (toggles === undefined || display === undefined || level === undefined) {
+    const failed = [togglesQuery, displayQuery, levelQuery].find((q) => q.isError) ?? togglesQuery
     body = failed.isError ? (
       <LoadError what="your settings" error={failed.error} onRetry={() => void failed.refetch()} />
     ) : (
@@ -1007,7 +1061,6 @@ export function Shell({ session }: { session: Session }) {
         properties={display.properties}
         today={today}
         blocks={blocks}
-        expandable={expandable}
         onChange={apply}
         onPick={(key, property) => {
           openProperty(property, key)
@@ -1152,7 +1205,7 @@ export function Shell({ session }: { session: Session }) {
           </div>
         </header>
         <ViewTabs filters={filters} toggles={toggles} applied={appliedViewId} onApply={applyView} />
-        {toggles !== undefined && display !== undefined && (
+        {toggles !== undefined && display !== undefined && level !== undefined && (
           <TreeToolbar
             toggles={toggles}
             onToggle={(name) => {
@@ -1168,12 +1221,8 @@ export function Shell({ session }: { session: Session }) {
             onFilterMenuOpen={() => {
               setFilterMenuOpened(true)
             }}
-            onCollapseAll={() => {
-              groupsKey('ArrowLeft')
-            }}
-            onExpandAll={() => {
-              groupsKey('ArrowRight')
-            }}
+            level={level}
+            onLevel={pickLevel}
             onActed={focusTree}
             onEnterTree={enterTree}
             inputRef={filterRef}
@@ -1189,6 +1238,11 @@ export function Shell({ session }: { session: Session }) {
         {setDisplay.isError && (
           <p role="alert" className="shrink-0 border-b border-line px-4 py-1.5 text-xs text-danger">
             Could not save the display. {setDisplay.error.message}
+          </p>
+        )}
+        {setLevel.isError && (
+          <p role="alert" className="shrink-0 border-b border-line px-4 py-1.5 text-xs text-danger">
+            Could not save the level. {setLevel.error.message}
           </p>
         )}
         {refreshFailed && <Banner onRetry={retryAll}>Could not refresh.</Banner>}

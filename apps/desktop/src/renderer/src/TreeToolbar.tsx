@@ -3,6 +3,7 @@ import {
   ROW_PROPERTIES,
   type IssueOrder,
   type RowProperty,
+  type TreeLevel,
 } from '@jira-mgr/core/display'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 import {
@@ -14,6 +15,7 @@ import {
 } from 'react'
 
 import type { Display, Toggles } from '../../shared/ipc'
+import { CHECK, Icon } from './Icon'
 import {
   FIELD_LABELS,
   FILTER_FIELDS,
@@ -35,6 +37,14 @@ const TOGGLE_LABELS: Record<keyof Toggles, string> = {
   assigneeMe: 'Assignee: me',
   hideEmptyCustomers: 'Hide empty Customers',
 }
+
+/** The Groups menu's levels, shallowest first. */
+const LEVELS: { value: TreeLevel; label: string }[] = [
+  { value: 'customers', label: 'Customers' },
+  { value: 'epics', label: 'Epics' },
+  { value: 'stories', label: 'Stories' },
+  { value: 'all', label: 'Everything' },
+]
 
 const ORDER_LABELS: Record<IssueOrder, string> = {
   key: 'Key',
@@ -69,8 +79,9 @@ interface TreeToolbarProps {
   onFilters: (filters: ViewFilters) => void
   /** The Filter menu opened, so its choices may load. */
   onFilterMenuOpen: () => void
-  onCollapseAll: () => void
-  onExpandAll: () => void
+  /** How far the Tree opens, and a pick of another level. */
+  level: TreeLevel
+  onLevel: (level: TreeLevel) => void
   /** A toolbar control acted, or a menu closed: focus goes back to the Tree. */
   onActed: () => void
   /** Enter or Down in the text field: focus goes to the first row, with the query kept. */
@@ -264,8 +275,8 @@ export function TreeToolbar({
   choices,
   onFilters,
   onFilterMenuOpen,
-  onCollapseAll,
-  onExpandAll,
+  level,
+  onLevel,
   onActed,
   onEnterTree,
   inputRef,
@@ -427,26 +438,23 @@ export function TreeToolbar({
               onMenuToggle(event, onActed)
             }}
           >
-            <button
-              type="button"
-              popoverTarget="groups-menu"
-              popoverTargetAction="hide"
-              onClick={onCollapseAll}
-              data-row
-              className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover"
-            >
-              Collapse all
-            </button>
-            <button
-              type="button"
-              popoverTarget="groups-menu"
-              popoverTargetAction="hide"
-              onClick={onExpandAll}
-              data-row
-              className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover"
-            >
-              Expand all
-            </button>
+            {LEVELS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                popoverTarget="groups-menu"
+                popoverTargetAction="hide"
+                aria-pressed={level === value}
+                onClick={() => {
+                  onLevel(value)
+                }}
+                data-row
+                className="flex h-8 w-full items-center rounded border border-transparent px-2 text-left hover:bg-hover aria-pressed:border-accent/40 aria-pressed:bg-selected"
+              >
+                {label}
+                {level === value && <Icon path={CHECK} className="ml-auto size-3.5" />}
+              </button>
+            ))}
           </div>
 
           <button

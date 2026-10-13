@@ -375,6 +375,12 @@ export async function logIn(window: Page, token = TOKEN) {
   await window.getByRole('button', { name: 'Log in' }).click()
 }
 
+/** Opens the Tree to its deepest level from the Groups menu, which shows the Subtasks a first launch hides. */
+export async function showEverything(window: Page) {
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await window.getByRole('button', { name: 'Everything', exact: true }).click()
+}
+
 /** Moves an issue to another status in the fake Jira, as if someone else did. The next refetch sees it. */
 export const moveIssue = (
   app: ElectronApplication,

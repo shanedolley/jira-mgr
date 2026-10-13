@@ -30,6 +30,7 @@ import type {
   SessionState,
   Display,
   Toggles,
+  TreeLevel,
 } from '../../shared/ipc'
 import { clearDrafts } from './drafts'
 import { inboxKey } from './inboxQueries'
@@ -279,6 +280,42 @@ export function displayMutation(
       await client.invalidateQueries({ queryKey: displayKey })
     },
   }
+}
+
+export const treeLevelKey = ['treeLevel'] as const
+
+/** How far the Tree opens, which `settings.json` remembers. */
+export function useTreeLevel() {
+  return useQuery({
+    queryKey: treeLevelKey,
+    queryFn: () => call('settings:getTreeLevel'),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/** Shows a level at once, then writes it. A failed write refetches what the file holds. */
+export function treeLevelMutation(
+  client: QueryClient,
+  send: (level: TreeLevel) => Promise<TreeLevel>,
+): MutationOptions<TreeLevel, JiraMgrError, TreeLevel> {
+  return {
+    mutationFn: send,
+    // The Shell's `chooseLevel` writes the cache first, so no render sits between clearing the
+    // hand toggles and this async write; this write also covers any other caller.
+    async onMutate(level) {
+      await client.cancelQueries({ queryKey: treeLevelKey })
+      client.setQueryData<TreeLevel>(treeLevelKey, level)
+    },
+    async onError() {
+      await client.invalidateQueries({ queryKey: treeLevelKey })
+    },
+  }
+}
+
+export function useSetTreeLevel() {
+  const client = useQueryClient()
+  return useMutation(treeLevelMutation(client, (level) => call('settings:setTreeLevel', level)))
 }
 
 export function useSetDisplay() {

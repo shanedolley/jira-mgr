@@ -93,6 +93,8 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     setToggles: record('setToggles', TOGGLES),
     getDisplay: record('getDisplay', DISPLAY),
     setDisplay: record('setDisplay', DISPLAY),
+    getTreeLevel: record('getTreeLevel', 'stories'),
+    setTreeLevel: record('setTreeLevel', 'stories'),
     listViews: record('listViews', []),
     createView: record('createView', VIEW),
     renameView: record('renameView', VIEW),
@@ -547,6 +549,24 @@ describe('display', () => {
     const result = await createHandlers(backend)['settings:setDisplay'](DISPLAY, noProgress)
     expect(result).toEqual({ ok: true, data: DISPLAY })
     expect(calls).toEqual([{ method: 'setDisplay', args: [DISPLAY] }])
+  })
+
+  it.each([
+    ['an unknown level', 'galaxy'],
+    ['a number', 3],
+    ['no argument', undefined],
+  ])('settings:setTreeLevel refuses %s', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['settings:setTreeLevel'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('settings:setTreeLevel passes a known level to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['settings:setTreeLevel']('epics', noProgress)
+    expect(result).toMatchObject({ ok: true })
+    expect(calls).toEqual([{ method: 'setTreeLevel', args: ['epics'] }])
   })
 
   it('views:update accepts a display and refuses a bad one', async () => {

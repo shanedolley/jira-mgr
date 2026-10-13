@@ -15,6 +15,7 @@ import {
   logIn,
   releaseDone,
   releaseUnresolved,
+  showEverything,
 } from './harness.js'
 
 let app: ElectronApplication
@@ -67,6 +68,8 @@ async function open() {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
+  // Subtasks show only from the Everything level.
+  await showEverything(window)
 }
 
 /** Lets the Done phase load and waits for its progress line to go. */

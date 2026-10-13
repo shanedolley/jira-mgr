@@ -4,7 +4,15 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, failDone, launch, logIn, readState, releaseDone } from './harness.js'
+import {
+  counts,
+  failDone,
+  launch,
+  logIn,
+  readState,
+  releaseDone,
+  showEverything,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -65,17 +73,35 @@ test('groups issues by Customer with the internal Customer last', async () => {
     'Beta Ltd, 5 issues',
     'Collibra (Internal team), 2 issues',
   ])
-  // The Epic sits under its Customer, with the child types and the Subtask below it.
+  // The Epic sits under its Customer, with the child types below it.
   const labels = await rowNames()
   expect(labels.indexOf('Acme, 8 issues')).toBeLessThan(
     labels.findIndex((l) => l.startsWith('PSAPAC-10, Epic')),
   )
-  await expect(item(/PSAPAC-12, Subtask/)).toHaveAttribute('aria-level', '4')
   await expect(item(/PSAPAC-3, Bug/)).toHaveAttribute('aria-level', '3')
+  // The Subtask sits one level below its Story, and shows from the Everything level.
+  await showEverything(window)
+  await expect(item(/PSAPAC-12, Subtask/)).toHaveAttribute('aria-level', '4')
+})
+
+test('opens at the Stories level on a first launch', async () => {
+  await open()
+
+  // Customers, Epics and Stories open; each Story is closed, so no Subtask shows.
+  await expect(item(/^Acme, /)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await expect(window.getByRole('button', { name: 'Stories', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
 })
 
 test("shows each row's type icon by its accessible name", async () => {
   await open()
+  await showEverything(window)
   await expect(item(/PSAPAC-10, Epic/).getByRole('img', { name: 'Epic' })).toBeVisible()
   await expect(item(/PSAPAC-3, Bug/).getByRole('img', { name: 'Bug' })).toBeVisible()
   await expect(item(/PSAPAC-12, Subtask/).getByRole('img', { name: 'Subtask' })).toBeVisible()
@@ -186,7 +212,7 @@ test('draws To Do, In Progress and Done as three distinct shapes', async () => {
   expect(a?.equals(c ?? Buffer.alloc(0))).toBe(false)
 })
 
-test('collapses and expands groups by click, by arrow keys and with Collapse all', async () => {
+test("collapses and expands groups by click, by arrow keys and with the Groups menu's levels", async () => {
   await open()
   const epic = item(/PSAPAC-10,/)
   await expect(epic).toHaveAttribute('aria-expanded', 'true')
@@ -206,14 +232,180 @@ test('collapses and expands groups by click, by arrow keys and with Collapse all
   await window.keyboard.press('ArrowRight')
   await expect(tree()).toHaveAttribute('aria-activedescendant', /PSAPAC-/)
 
-  // By the Groups menu.
-  await window.getByRole('button', { name: 'Groups' }).click()
-  await window.getByRole('button', { name: 'Collapse all' }).click()
+  // By the Groups menu, one level at a time.
+  const pick = async (level: string) => {
+    await window.getByRole('button', { name: 'Groups', exact: true }).click()
+    await window.getByRole('button', { name: level, exact: true }).click()
+    await expect(tree()).toBeFocused()
+  }
+  await pick('Customers')
   await expect(tree().locator('[role=treeitem]')).toHaveCount(3)
-  await expect(tree()).toBeFocused()
-  await window.getByRole('button', { name: 'Groups' }).click()
-  await window.getByRole('button', { name: 'Expand all' }).click()
+  // The Customer header of the active row becomes the active row.
+  await expect(tree()).toHaveAttribute('aria-activedescendant', 'tree-row-c:1')
+  await pick('Epics')
+  await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-2,/)).toHaveCount(0)
+  await pick('Stories')
   await expect(item(/PSAPAC-2,/)).toBeVisible()
+  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  await pick('Everything')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+
+  // Shift+Left and Shift+Right set the Customers and Everything levels.
+  await window.keyboard.press('Shift+ArrowLeft')
+  await expect(tree().locator('[role=treeitem]')).toHaveCount(3)
+  await window.keyboard.press('Shift+ArrowRight')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+
+  // A row opened by hand shows its children at the Stories level, where the level closes it.
+  await pick('Stories')
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+})
+
+const filterBox = () => window.getByLabel('Filter by key or summary')
+const pickLevel = async (level: string) => {
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await window.getByRole('button', { name: level, exact: true }).click()
+}
+
+test('a filter keeps its matches under the default level, and clearing it restores the level', async () => {
+  await open()
+
+  await filterBox().fill('PSAPAC-12')
+  // The Story is context for its Subtask, so it stays open at the Stories level.
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+  await expect(item(/PSAPAC-11,.*context/)).toHaveAttribute('aria-expanded', 'true')
+
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+})
+
+test('a filter opens a Story whose Subtask also matches, and a hand toggle still closes it', async () => {
+  await open()
+
+  // The key text matches the Story and its Subtask, so neither is context.
+  await filterBox().fill('PSAPAC-1')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+  await expect(item(/PSAPAC-11,/)).not.toHaveAttribute('aria-label', /context/)
+  // A hand toggle wins over the filter for the session.
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  // Clearing the filter returns to the level, with the Story still closed by hand.
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+})
+
+test('a filter at the Epics level still shows a match with no Epic', async () => {
+  await open()
+  await pickLevel('Epics')
+
+  // PSAPAC-40 has no Epic, so it sits under Beta's No Epic header, which the level would close.
+  await filterBox().fill('Tidy the wiki')
+  await expect(item(/PSAPAC-40,/)).toBeVisible()
+
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-40,/)).toHaveCount(0)
+})
+
+test('closing and reopening a Story under a filter leaves it following the level once the filter clears', async () => {
+  await open()
+
+  await filterBox().fill('PSAPAC-1')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+  const story = item(/PSAPAC-11,/)
+  await story.locator('[data-chevron]').click()
+  await expect(story).toHaveAttribute('aria-expanded', 'false')
+  await story.locator('[data-chevron]').click()
+  await expect(story).toHaveAttribute('aria-expanded', 'true')
+
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+})
+
+test('a toggle by hand survives a filter and the chevrons used under it', async () => {
+  await open()
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+
+  // PSAPAC-11 has no match here, so the groups do not hold it while the chevrons are used.
+  await filterBox().fill('data model')
+  const epic = item(/PSAPAC-10,/)
+  await expect(epic).toBeVisible()
+  await expect(item(/PSAPAC-11,/)).toHaveCount(0)
+  await epic.locator('[data-chevron]').click()
+  await expect(epic).toHaveAttribute('aria-expanded', 'false')
+  await epic.locator('[data-chevron]').click()
+  await expect(epic).toHaveAttribute('aria-expanded', 'true')
+
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+})
+
+test('a level picked with no row shown is kept and stored', async () => {
+  await open()
+
+  await filterBox().fill('zzzz-no-such-issue')
+  await expect(window.getByText('No issues match')).toBeVisible()
+  await pickLevel('Everything')
+  await filterBox().fill('')
+
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+  await expect
+    .poll(
+      async () => (await readState<{ treeLevel?: unknown }>(stateDir, 'settings.json'))?.treeLevel,
+    )
+    .toBe('all')
+})
+
+test('picking a level hides the revealed chips unless it is Everything', async () => {
+  await openWithChips()
+  await item('2 done', true).click()
+  await expect(item(/PSAPAC-14,/)).toBeVisible()
+
+  await pickLevel('Epics')
+  await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'false')
+  await pickLevel('Stories')
+  // The Epic's chip comes back hidden.
+  await expect(item('2 done', true)).toContainText('2 done')
+  await expect(item('2 done', true)).not.toContainText('Hide')
+  await expect(item(/PSAPAC-14,/)).toHaveCount(0)
+
+  await item('2 done', true).click()
+  await expect(item(/PSAPAC-14,/)).toBeVisible()
+  await pickLevel('Everything')
+  await expect(item(/PSAPAC-14,/)).toBeVisible()
+})
+
+test('keeps a row opened by hand when Done issues load, and new rows follow the level', async () => {
+  await open()
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+
+  await releaseDone(app)
+  await expect(window.getByText('Loading Done issues:')).toHaveCount(0)
+  await toggle('Hide done').click()
+
+  // The Done Epic that appears follows the level: open, with its Story showing.
+  await expect(item(/PSAPAC-20, Epic, Done/)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-22,/)).toBeVisible()
+  // The Story opened by hand keeps its Subtask.
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
 })
 
 test('moves with J and K and peeks with the space bar', async () => {
@@ -355,6 +547,7 @@ const iconColour = (row: RegExp, type: string) =>
 
 test('type icons are grey at rest except Bug, and show their type colour on hover', async () => {
   await openWithDone()
+  await showEverything(window)
   const types: [RegExp, string, string][] = [
     [/PSAPAC-10, Epic/, 'Epic', '--type-epic'],
     [/PSAPAC-4, Story/, 'Story', '--type-story'],
@@ -393,6 +586,28 @@ test('Assignee: me keeps my issues with their ancestors dimmed', async () => {
   await expect(item(/PSAPAC-11,.*context/)).toBeVisible()
   await expect(item(/PSAPAC-10,.*context/)).toBeVisible()
   await expect(item(/PSAPAC-20,/)).toHaveCount(0)
+  // No filter narrows, so the Stories level applies, but a context Story stays open: the other
+  // person's Story shows my Subtask. The fake has no Story of mine with a
+  // Subtask of mine, so the closed own Story is covered by the unit test.
+  await expect(item(/PSAPAC-11,.*context/)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+})
+
+test('Assignee: me lets an Epic shown only as context follow the level', async () => {
+  await openWithDone()
+  await toggle('Assignee: me').click()
+  const epic = item(/PSAPAC-10,.*context/)
+  await expect(epic).toHaveAttribute('aria-expanded', 'true')
+
+  // The Epic is not mine, so Epics closes it; its Story, context for my Subtask, stays open below.
+  await pickLevel('Epics')
+  await expect(epic).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+
+  await pickLevel('Stories')
+  await expect(epic).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-11,.*context/)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
 })
 
 test('turning Hide empty Customers off shows the Customer with no issues', async () => {
@@ -426,6 +641,32 @@ test('remembers the toggles across a relaunch', async () => {
   await expect(toggle('Hide done')).toHaveAttribute('aria-pressed', 'false')
   await expect(toggle('Assignee: me')).toHaveAttribute('aria-pressed', 'false')
   await expect(toggle('Hide empty Customers')).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('remembers the expansion level across a relaunch', async () => {
+  await open()
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await window.getByRole('button', { name: 'Epics', exact: true }).click()
+  await expect(item(/PSAPAC-2,/)).toHaveCount(0)
+  // The write lands in the settings file under treeLevel.
+  await expect
+    .poll(
+      async () => (await readState<{ treeLevel?: unknown }>(stateDir, 'settings.json'))?.treeLevel,
+    )
+    .toBe('epics')
+
+  // The fake Keychain lives in the process, so the relaunch logs in again.
+  await app.close()
+  ;({ app, window } = await launch(stateDir))
+  await logIn(window)
+
+  await expect(item(/^Acme, /)).toBeVisible()
+  await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'false')
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await expect(window.getByRole('button', { name: 'Epics', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
 })
 
 test('filters by status and by text, keeping ancestors as context', async () => {

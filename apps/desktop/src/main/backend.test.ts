@@ -622,6 +622,18 @@ describe('toggles', () => {
     expect(await backend.getDisplay()).toEqual(display)
   })
 
+  it('getTreeLevel reads stories, and setTreeLevel and setToggles keep each other', async () => {
+    await logIn()
+    const backend = createBackend()
+    expect(await backend.getTreeLevel()).toBe('stories')
+    const toggles = { hideDone: false, assigneeMe: true, hideEmptyCustomers: false }
+    await Promise.all([backend.setTreeLevel('epics'), backend.setToggles(toggles)])
+    const settings = await readSettings()
+    expect(settings.treeLevel).toBe('epics')
+    expect(settings.toggles).toEqual(toggles)
+    expect(await backend.getTreeLevel()).toBe('epics')
+  })
+
   it('keeps writing after one write fails', async () => {
     await logIn()
     const backend = createBackend()
