@@ -33,6 +33,7 @@ import type {
   Session,
   TimerSnapshot,
   Toggles,
+  TreeLevel,
 } from '../../shared/ipc'
 import { issueUrl } from '../../shared/links'
 import { Banner } from './Banner'
@@ -97,8 +98,11 @@ import {
   useMe,
   useDisplay,
   useSetDisplay,
+  useSetTreeLevel,
   useSetToggles,
   useToggles,
+  useTreeLevel,
+  treeLevelKey,
   useUnresolvedIssues,
 } from './queries'
 import { NotifyContext, type Notify } from './notify'
@@ -107,7 +111,9 @@ import { describeEdit, isBatch, reversible, undoStack, type StackEntry } from '.
 import { useUndo } from './useUndo'
 import {
   ancestorIds,
-  expandableIds,
+  levelCollapsed,
+  overridesFor,
+  withOverrides,
   fallbackRow,
   flattenTree,
   indexNodes,
@@ -115,6 +121,7 @@ import {
   mergeIssues,
   moveActive,
   pruneChecked,
+  type ExpansionOverrides,
   type MoveResult,
   type TreeRow,
   type TreeState,
@@ -224,11 +231,14 @@ export function Shell({ session }: { session: Session }) {
   const setToggles = useSetToggles()
   const displayQuery = useDisplay()
   const setDisplay = useSetDisplay()
+  const levelQuery = useTreeLevel()
+  const setLevel = useSetTreeLevel()
   const meQuery = useMe()
   const unresolved = useUnresolvedIssues()
   const done = useDoneIssues(unresolved.data !== undefined)
   const toggles = togglesQuery.data
   const display = displayQuery.data
+  const level = levelQuery.data
   const savedViews = useViews().data
   /** The view applied last, so a duplicate of the view the bar matches can be the lit one. */
   const [appliedViewId, setAppliedViewId] = useState<string>()
@@ -243,7 +253,8 @@ export function Shell({ session }: { session: Session }) {
 
   const [filters, setFilters] = useState<ViewFilters>({})
   const deferredFilters = useDeferredValue(filters)
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
+  // The rows opened or closed by hand this session, on top of the stored level.
+  const [overrides, setOverrides] = useState<ExpansionOverrides>(() => new Map())
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(() => new Set())
   const [peekOpen, setPeekOpen] = useState(false)
   // The issues checked for a bulk action, by key, and the one a Shift+click range starts from.
@@ -382,11 +393,12 @@ export function Shell({ session }: { session: Session }) {
     today,
   ])
 
+  const levelRows = useMemo(() => levelCollapsed(groups, level ?? 'stories'), [groups, level])
+  const collapsed = useMemo(() => withOverrides(levelRows, overrides), [levelRows, overrides])
   const rows = useMemo(
     () => flattenTree(groups, { collapsed, revealed }),
     [groups, collapsed, revealed],
   )
-  const expandable = useMemo(() => expandableIds(groups), [groups])
   const nodes = useMemo(() => indexNodes(groups), [groups])
 
   // The active row survives a rebuild by falling back to a neighbour (state adjusted in render).
@@ -403,8 +415,11 @@ export function Shell({ session }: { session: Session }) {
   if (pendingSelect !== null && issues.some((i) => i.key === pendingSelect)) {
     setPendingSelect(null)
     const hidden = ancestorIds(groups, revealed, pendingSelect).filter((id) => collapsed.has(id))
-    if (hidden.length > 0)
-      setCollapsed(new Set([...collapsed].filter((id) => !hidden.includes(id))))
+    if (hidden.length > 0) {
+      setOverrides(
+        overridesFor(levelRows, new Set([...collapsed].filter((id) => !hidden.includes(id)))),
+      )
+    }
     if (nodes.has(pendingSelect)) {
       setTrack((t) => ({ ...t, activeId: `i:${pendingSelect}` }))
       setLastIssueKey(pendingSelect)
@@ -426,7 +441,8 @@ export function Shell({ session }: { session: Session }) {
   function apply(next: MoveResult) {
     setEnterPending(false)
     setTrack((t) => ({ ...t, activeId: next.activeId }))
-    setCollapsed(next.collapsed)
+    if (next.level !== undefined) chooseLevel(next.level)
+    else if (next.collapsed !== collapsed) setOverrides(overridesFor(levelRows, next.collapsed))
     setRevealed(next.revealed)
     setPeekOpen(next.peekOpen)
     setSelection((held) =>
@@ -440,6 +456,14 @@ export function Shell({ session }: { session: Session }) {
       setLastIssueKey(row.node.issue.key)
       if (next.openPage) setPageKey(row.node.issue.key)
     }
+  }
+
+  /** Stores a level and reshapes the Tree to it, dropping the rows opened or closed by hand. */
+  function chooseLevel(next: TreeLevel) {
+    setOverrides(new Map())
+    // At once, so no render shows the old level between dropping the hand toggles and the write.
+    client.setQueryData<TreeLevel>(treeLevelKey, next)
+    setLevel.mutate(next)
   }
 
   function focusTree() {
@@ -462,10 +486,10 @@ export function Shell({ session }: { session: Session }) {
     if (first !== undefined) apply({ ...state, activeId: first.id, openPage: false })
   }
 
-  /** Collapse all and Expand all are the Shift+Arrow keys, so the menu and the keys agree. */
+  /** Customers and Everything are the Shift+Arrow keys, so the menu and the keys agree. */
   function groupsKey(key: 'ArrowLeft' | 'ArrowRight') {
     const input = { key, shiftKey: true, metaKey: false, ctrlKey: false, altKey: false }
-    const next = moveActive(rows, state, input, { pageSize: 1, expandable })
+    const next = moveActive(rows, state, input, { pageSize: 1 })
     if (next !== null) apply(next)
   }
 
@@ -973,8 +997,8 @@ export function Shell({ session }: { session: Session }) {
   let body
   // The empty-Tree panel, with its own Clear filters, shows only over the Tree.
   let emptyPanel = false
-  if (toggles === undefined || display === undefined) {
-    const failed = togglesQuery.isError ? togglesQuery : displayQuery
+  if (toggles === undefined || display === undefined || level === undefined) {
+    const failed = [togglesQuery, displayQuery, levelQuery].find((q) => q.isError) ?? togglesQuery
     body = failed.isError ? (
       <LoadError what="your settings" error={failed.error} onRetry={() => void failed.refetch()} />
     ) : (
@@ -1007,7 +1031,6 @@ export function Shell({ session }: { session: Session }) {
         properties={display.properties}
         today={today}
         blocks={blocks}
-        expandable={expandable}
         onChange={apply}
         onPick={(key, property) => {
           openProperty(property, key)
@@ -1152,7 +1175,7 @@ export function Shell({ session }: { session: Session }) {
           </div>
         </header>
         <ViewTabs filters={filters} toggles={toggles} applied={appliedViewId} onApply={applyView} />
-        {toggles !== undefined && display !== undefined && (
+        {toggles !== undefined && display !== undefined && level !== undefined && (
           <TreeToolbar
             toggles={toggles}
             onToggle={(name) => {
@@ -1168,11 +1191,11 @@ export function Shell({ session }: { session: Session }) {
             onFilterMenuOpen={() => {
               setFilterMenuOpened(true)
             }}
-            onCollapseAll={() => {
-              groupsKey('ArrowLeft')
-            }}
-            onExpandAll={() => {
-              groupsKey('ArrowRight')
+            level={level}
+            onLevel={(next) => {
+              if (next === 'customers') groupsKey('ArrowLeft')
+              else if (next === 'all') groupsKey('ArrowRight')
+              else chooseLevel(next)
             }}
             onActed={focusTree}
             onEnterTree={enterTree}

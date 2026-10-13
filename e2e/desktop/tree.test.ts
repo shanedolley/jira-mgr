@@ -4,7 +4,15 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, failDone, launch, logIn, readState, releaseDone } from './harness.js'
+import {
+  counts,
+  failDone,
+  launch,
+  logIn,
+  readState,
+  releaseDone,
+  showEverything,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -65,17 +73,35 @@ test('groups issues by Customer with the internal Customer last', async () => {
     'Beta Ltd, 5 issues',
     'Collibra (Internal team), 2 issues',
   ])
-  // The Epic sits under its Customer, with the child types and the Subtask below it.
+  // The Epic sits under its Customer, with the child types below it.
   const labels = await rowNames()
   expect(labels.indexOf('Acme, 8 issues')).toBeLessThan(
     labels.findIndex((l) => l.startsWith('PSAPAC-10, Epic')),
   )
-  await expect(item(/PSAPAC-12, Subtask/)).toHaveAttribute('aria-level', '4')
   await expect(item(/PSAPAC-3, Bug/)).toHaveAttribute('aria-level', '3')
+  // The Subtask sits one level below its Story, and shows from the Everything level.
+  await showEverything(window)
+  await expect(item(/PSAPAC-12, Subtask/)).toHaveAttribute('aria-level', '4')
+})
+
+test('opens at the Stories level on a first launch', async () => {
+  await open()
+
+  // Customers, Epics and Stories open; each Story is closed, so no Subtask shows.
+  await expect(item(/^Acme, /)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await expect(window.getByRole('button', { name: 'Stories', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
 })
 
 test("shows each row's type icon by its accessible name", async () => {
   await open()
+  await showEverything(window)
   await expect(item(/PSAPAC-10, Epic/).getByRole('img', { name: 'Epic' })).toBeVisible()
   await expect(item(/PSAPAC-3, Bug/).getByRole('img', { name: 'Bug' })).toBeVisible()
   await expect(item(/PSAPAC-12, Subtask/).getByRole('img', { name: 'Subtask' })).toBeVisible()
@@ -186,7 +212,7 @@ test('draws To Do, In Progress and Done as three distinct shapes', async () => {
   expect(a?.equals(c ?? Buffer.alloc(0))).toBe(false)
 })
 
-test('collapses and expands groups by click, by arrow keys and with Collapse all', async () => {
+test("collapses and expands groups by click, by arrow keys and with the Groups menu's levels", async () => {
   await open()
   const epic = item(/PSAPAC-10,/)
   await expect(epic).toHaveAttribute('aria-expanded', 'true')
@@ -206,14 +232,36 @@ test('collapses and expands groups by click, by arrow keys and with Collapse all
   await window.keyboard.press('ArrowRight')
   await expect(tree()).toHaveAttribute('aria-activedescendant', /PSAPAC-/)
 
-  // By the Groups menu.
-  await window.getByRole('button', { name: 'Groups' }).click()
-  await window.getByRole('button', { name: 'Collapse all' }).click()
+  // By the Groups menu, one level at a time.
+  const pick = async (level: string) => {
+    await window.getByRole('button', { name: 'Groups', exact: true }).click()
+    await window.getByRole('button', { name: level, exact: true }).click()
+    await expect(tree()).toBeFocused()
+  }
+  await pick('Customers')
   await expect(tree().locator('[role=treeitem]')).toHaveCount(3)
-  await expect(tree()).toBeFocused()
-  await window.getByRole('button', { name: 'Groups' }).click()
-  await window.getByRole('button', { name: 'Expand all' }).click()
+  await pick('Epics')
+  await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-2,/)).toHaveCount(0)
+  await pick('Stories')
   await expect(item(/PSAPAC-2,/)).toBeVisible()
+  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  await pick('Everything')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+
+  // Shift+Left and Shift+Right set the Customers and Everything levels.
+  await window.keyboard.press('Shift+ArrowLeft')
+  await expect(tree().locator('[role=treeitem]')).toHaveCount(3)
+  await window.keyboard.press('Shift+ArrowRight')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+
+  // A row opened by hand keeps its state across a level it does not belong to.
+  await pick('Stories')
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
 })
 
 test('moves with J and K and peeks with the space bar', async () => {
@@ -355,6 +403,7 @@ const iconColour = (row: RegExp, type: string) =>
 
 test('type icons are grey at rest except Bug, and show their type colour on hover', async () => {
   await openWithDone()
+  await showEverything(window)
   const types: [RegExp, string, string][] = [
     [/PSAPAC-10, Epic/, 'Epic', '--type-epic'],
     [/PSAPAC-4, Story/, 'Story', '--type-story'],
@@ -426,6 +475,32 @@ test('remembers the toggles across a relaunch', async () => {
   await expect(toggle('Hide done')).toHaveAttribute('aria-pressed', 'false')
   await expect(toggle('Assignee: me')).toHaveAttribute('aria-pressed', 'false')
   await expect(toggle('Hide empty Customers')).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('remembers the expansion level across a relaunch', async () => {
+  await open()
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await window.getByRole('button', { name: 'Epics', exact: true }).click()
+  await expect(item(/PSAPAC-2,/)).toHaveCount(0)
+  // The write lands in the settings file under treeLevel.
+  await expect
+    .poll(
+      async () => (await readState<{ treeLevel?: unknown }>(stateDir, 'settings.json'))?.treeLevel,
+    )
+    .toBe('epics')
+
+  // The fake Keychain lives in the process, so the relaunch logs in again.
+  await app.close()
+  ;({ app, window } = await launch(stateDir))
+  await logIn(window)
+
+  await expect(item(/^Acme, /)).toBeVisible()
+  await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'false')
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await expect(window.getByRole('button', { name: 'Epics', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
 })
 
 test('filters by status and by text, keeping ancestors as context', async () => {

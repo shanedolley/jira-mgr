@@ -69,6 +69,7 @@ describe('absent files', () => {
       timer: { rounding: '5m', reminderThresholdHours: 8, reminderIntervalMinutes: 60 },
       toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
       display: { properties: ['updated'], order: 'key' },
+      treeLevel: 'stories',
     })
   })
 
@@ -457,6 +458,28 @@ describe('view management', () => {
       await deleteView(id)
     }
     expect(await names()).toEqual(['Extra'])
+  })
+})
+
+describe('treeLevel', () => {
+  it.each([
+    ['missing', {}],
+    ['unknown', { treeLevel: 'galaxy' }],
+    ['a number', { treeLevel: 3 }],
+    ['null', { treeLevel: null }],
+  ])('reads a %s level as stories and never fails the file', async (_name, raw) => {
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({ siteUrl: 'https://x.test', ...raw }),
+    )
+    const settings = await readSettings()
+    expect(settings.treeLevel).toBe('stories')
+    expect(settings.siteUrl).toBe('https://x.test')
+  })
+
+  it('keeps a known level through a write', async () => {
+    await writeSettings({ ...(await readSettings()), treeLevel: 'epics' })
+    expect((await readSettings()).treeLevel).toBe('epics')
   })
 })
 

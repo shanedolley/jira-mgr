@@ -5,7 +5,14 @@ import { join } from 'node:path'
 
 import { z } from 'zod'
 
-import { DEFAULT_ORDER, DEFAULT_PROPERTIES, ISSUE_ORDERS, keepKnownProperties } from './display.js'
+import {
+  DEFAULT_ORDER,
+  DEFAULT_PROPERTIES,
+  DEFAULT_TREE_LEVEL,
+  ISSUE_ORDERS,
+  TREE_LEVELS,
+  keepKnownProperties,
+} from './display.js'
 import { JiraMgrError } from './errors.js'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from './view-filter.js'
 
@@ -74,6 +81,8 @@ const settingsSchema = z.object({
     .prefault({}),
   toggles,
   display: settingsDisplay,
+  /** How far the Tree opens. A value this build does not know reads as Stories. */
+  treeLevel: z.enum(TREE_LEVELS).default(DEFAULT_TREE_LEVEL).catch(DEFAULT_TREE_LEVEL),
 })
 
 const filterLists = z.object(

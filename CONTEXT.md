@@ -37,6 +37,7 @@ The words jira-mgr's code, CLI, UI and docs use. Use the **term**, not the *avoi
 | Term | Meaning | Avoid |
 |---|---|---|
 | **Tree** | The list's hierarchy: Customer, then Epic, then Story, Task or Bug, then Subtask, in collapsible groups. | board, outline |
+| **Tree level** | How far the Tree opens: Customers, Epics, Stories or Everything, set from the Groups menu or by `Shift` with Left or Right. One level for the app, kept in `settings.json`, default Stories. | expansion state, collapse all |
 | **Customer group** | A top-level tree group for one Customer. Sorted alphabetically, with the two Collibra internal groups last. | folder |
 | **No Epic group** | The group under a Customer for stories without an Epic. | orphans, unparented |
 | **Mismatch badge** | The mark on a child whose Customer differs from its Epic's, with a one-click fix that copies the Epic's Customer. | warning |

@@ -1,6 +1,6 @@
 import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
 import { adfDocSchema, type AdfDoc } from '@jira-mgr/core/adf'
-import { ISSUE_ORDERS, ROW_PROPERTIES } from '@jira-mgr/core/display'
+import { ISSUE_ORDERS, ROW_PROPERTIES, TREE_LEVELS } from '@jira-mgr/core/display'
 import { DURATION_PATTERN, SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { TEXT_QUERY_MAX } from '@jira-mgr/core/search'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from '@jira-mgr/core/view-filter'
@@ -453,6 +453,8 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'settings:setToggles': togglesArgs,
   'settings:getDisplay': z.undefined(),
   'settings:setDisplay': displayArgs,
+  'settings:getTreeLevel': z.undefined(),
+  'settings:setTreeLevel': z.enum(TREE_LEVELS),
   'views:list': z.undefined(),
   'views:create': createViewArgs,
   'views:rename': renameViewArgs,
@@ -624,6 +626,8 @@ export function createHandlers(
     'settings:setToggles': handle('settings:setToggles', (args) => backend.setToggles(args)),
     'settings:getDisplay': handle('settings:getDisplay', () => backend.getDisplay()),
     'settings:setDisplay': handle('settings:setDisplay', (args) => backend.setDisplay(args)),
+    'settings:getTreeLevel': handle('settings:getTreeLevel', () => backend.getTreeLevel()),
+    'settings:setTreeLevel': handle('settings:setTreeLevel', (args) => backend.setTreeLevel(args)),
     'views:list': handle('views:list', () => backend.listViews()),
     'views:create': handle('views:create', (args) => backend.createView(args)),
     'views:rename': handle('views:rename', (args) => backend.renameView(args)),

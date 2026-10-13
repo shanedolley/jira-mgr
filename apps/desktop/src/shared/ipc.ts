@@ -5,6 +5,7 @@ import type { CustomerOption, HierarchyOptions } from '@jira-mgr/core/hierarchy'
 import type { InboxEntry } from '@jira-mgr/core/inbox'
 import type { IssueDetail, SwappableType } from '@jira-mgr/core/issue'
 import type { SprintReport } from '@jira-mgr/core/sprints'
+import type { TreeLevel } from '@jira-mgr/core/display'
 import type { Display, SavedView } from '@jira-mgr/core/state'
 import type { TimeTrackingSettings } from '@jira-mgr/core/time-tracking'
 import type { RunningTimer, TimerSettings, WorklogDraft } from '@jira-mgr/core/timer-calc'
@@ -55,7 +56,7 @@ export interface SearchTextArgs {
 export type Toggles = Pick<HierarchyOptions, 'hideDone' | 'assigneeMe' | 'hideEmptyCustomers'>
 
 /** The row properties and issue order `settings.json` remembers, and a saved view may carry. */
-export type { Display }
+export type { Display, TreeLevel }
 
 /** A saved view as `views.json` holds it, the file `jm view list` reads. */
 export type { SavedView }
@@ -510,6 +511,8 @@ export interface IpcContract {
   'settings:setToggles': { args: Toggles; result: Toggles }
   'settings:getDisplay': { args: undefined; result: Display }
   'settings:setDisplay': { args: Display; result: Display }
+  'settings:getTreeLevel': { args: undefined; result: TreeLevel }
+  'settings:setTreeLevel': { args: TreeLevel; result: TreeLevel }
   'views:list': { args: undefined; result: SavedView[] }
   'views:create': { args: CreateViewArgs; result: SavedView }
   'views:rename': { args: RenameViewArgs; result: SavedView }
@@ -583,6 +586,8 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'settings:setToggles': true,
   'settings:getDisplay': true,
   'settings:setDisplay': true,
+  'settings:getTreeLevel': true,
+  'settings:setTreeLevel': true,
   'views:list': true,
   'views:create': true,
   'views:rename': true,

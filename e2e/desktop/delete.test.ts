@@ -4,7 +4,16 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, dropIssue, launch, logIn, notices, releaseDone, releaseEdit } from './harness.js'
+import {
+  counts,
+  dropIssue,
+  launch,
+  logIn,
+  notices,
+  releaseDone,
+  releaseEdit,
+  showEverything,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -35,6 +44,8 @@ async function open() {
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   // The fake holds the first Done page, so the toolbar stops reflowing under a click.
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
+  // Subtasks show only from the Everything level.
+  await showEverything(window)
 }
 
 /** Opens the full page of the issue whose row matches, with Enter. */

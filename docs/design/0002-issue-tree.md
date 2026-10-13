@@ -154,7 +154,9 @@ A count is the number of issues in the subtree, context rows included and issues
 
 **Done chip.** Shown exactly when `node.doneCount > 0`, the condition `jm issue tree` prints as `+N done`. It reads "N done", and "Hide N done" while revealed.
 
-**Tree state.** The Shell holds the active row id, the Peek's issue key, and two `Set<string>` of row ids: `collapsed` (every group starts expanded) and `revealed` (every chip starts hidden). Holding them in the Shell keeps them through refetches, failures, toggles and filters. They last for the session and reset on restart; the Groups menu's Collapse all and Expand all make a fresh start cheap to reshape. A collapse is never written to Jira or a file.
+**Tree state.** The Shell holds the active row id, the Peek's issue key, `revealed` (a `Set<string>` of chip ids; every chip starts hidden) and the overrides: a `Map<string, boolean>` of the rows the user opened or closed by hand, `true` for closed. The set `collapsed` is derived on each render: `levelCollapsed(groups, level)` closes every expandable row at or below the stored level, and `withOverrides` layers the hand toggles on top. A row that appears later, from a refetch or from loading Done issues, follows the level, and a row toggled by hand keeps its state. Holding the overrides in the Shell keeps them through refetches, failures, toggles and filters; they last for the session. Picking a level clears them, and clears `revealed` unless the level is Everything. A chevron click is never written to Jira or a file.
+
+**Level.** The level is one of Customers, Epics, Stories or Everything, and the default is Stories. Customers closes every Customer header. Epics keeps the Customer headers open and closes each Epic and No Epic header. Stories keeps those open and closes each Story, Task and Bug (every level 3 issue), so their Subtasks and Done chips stay hidden. Everything closes nothing. The Shell stores it in `settings.json` as `treeLevel` through `settings:getTreeLevel` and `settings:setTreeLevel`, with the same optimistic mutation as the toggles, and shows "Loading settings" until it reads. Saved views do not carry the level and applying a view leaves the expansion alone. The CLI ignores it.
 
 **Active row fallback.** When a rebuild removes the active row, `fallbackRow(previousRows, rows, id)` picks the next surviving sibling, then the nearest ancestor still in the rows, then the row now at the old index.
 
@@ -162,7 +164,7 @@ A count is the number of issues in the subtree, context rows included and issues
 
 | Case | Rows |
 |---|---|
-| Default: "Hide done" on, all expanded | up to 764 issues, 42 Customer and up to 42 No Epic headers, with no chips, since Hide done removes them: about 800 |
+| Worst case: "Hide done" on, Everything level | up to 764 issues, 42 Customer and up to 42 No Epic headers, with no chips, since Hide done removes them: about 800 |
 | "Hide done" off, every chip revealed | 2793 issues, 84 headers and the chips: about 3200 |
 | Rows in view in an 800-pixel window | about 22 |
 
@@ -194,7 +196,7 @@ The toolbar above the Tree holds three toggle buttons, a Filter menu, a Groups m
 
 The filter can only match loaded issues, so choices other than statuses come from them and need no channel. The Filter button opens a native `popover` listing the five fields; each opens a checkbox list of its choices. Each active field shows as a chip such as "Status: To Do, In Progress", with a remove button, and "Clear" empties every field. As in `jm issue tree`, a matching issue keeps its ancestors as dimmed context rows, so a matching Story keeps its Epic.
 
-**Groups.** A menu with Collapse all, which collapses every expandable row and hides every revealed chip, and Expand all, which clears `collapsed`.
+**Groups.** A menu with the four levels, shallowest first: Customers, Epics, Stories and Everything. The current level is pressed (`aria-pressed`, as the Display menu's buttons are). Picking one stores it, clears the rows opened or closed by hand and, unless it is Everything, hides every revealed chip. Customers and Everything are the `Shift+ArrowLeft` and `Shift+ArrowRight` keys, so Customers also makes the row's Customer header active.
 
 **Feedback.** After a toggle or filter change settles for 500 milliseconds, a `role="status"` region announces "N issues shown". When nothing matches, the Tree area reads "No issues match", names the toggles that are on ("Hide done and Assignee: me are on"), and offers Clear filters when a filter is active.
 
@@ -206,7 +208,7 @@ Filters reset on restart. Q28 asks only the toggles to persist, and saving filte
 
 ### Keyboard and Focus
 
-The Tree is one focusable element, `role="tree"` with `aria-label="Issues"` and `tabIndex={0}`, and it takes focus when it first renders. It tracks the active row with `aria-activedescendant` rather than moving DOM focus row to row, because the window unmounts rows. Its `onKeyDown` calls `moveActive(rows, state, event)`, a pure function returning the next active id, collapsed set, revealed set and Peek state, or `null` for a key it does not handle.
+The Tree is one focusable element, `role="tree"` with `aria-label="Issues"` and `tabIndex={0}`, and it takes focus when it first renders. It tracks the active row with `aria-activedescendant` rather than moving DOM focus row to row, because the window unmounts rows. Its `onKeyDown` calls `moveActive(rows, state, event)`, a pure function returning the next active id, collapsed set, revealed set, Peek state and, for `Shift` with the side arrows, the level to set, or `null` for a key it does not handle.
 
 | Key | On an issue row | On a header or chip |
 |---|---|---|
@@ -215,7 +217,7 @@ The Tree is one focusable element, `role="tree"` with `aria-label="Issues"` and 
 | `PageDown`, `PageUp` | One window height down or up | The same |
 | `ArrowRight` | Expands; when expanded, moves to the first child | The same; a chip reveals |
 | `ArrowLeft` | Collapses; when collapsed or a leaf, moves to the parent row | The same; a chip hides |
-| `Shift+ArrowLeft`, `Shift+ArrowRight` | Collapse all, Expand all; Collapse all makes the row's Customer header active | The same |
+| `Shift+ArrowLeft`, `Shift+ArrowRight` | Set the Customers level, set the Everything level; Customers makes the row's Customer header active. Both are stored | The same |
 | `Home`, `End` | First or last row | First or last row |
 | `Enter` | Opens the issue: the Peek until D3, the issue page after. With the Peek open, moves focus into it | Expands or collapses; a chip reveals or hides |
 | `Space` | Opens or closes the Peek | Nothing |
@@ -247,7 +249,7 @@ Rows contain no buttons, since a `treeitem` holds no focusable children: the Tre
 
 **Boundary with D7.** The handler sits on the Tree element, so it never sees a keystroke typed into the text filter or the Peek's summary field, which the React standard requires. It ignores any event with `metaKey`, `ctrlKey` or `altKey`, so `Cmd+K` and `Cmd+Z` pass through. D7's global shortcuts (`C`, `S`, `A`, `L`, `P`, `E`, and `T` in D9) share no key with it. D2 lifts the active issue key to the Shell, where D7 reads it as the target of `S`, `A` and the rest. When D7 adds its global `Esc`, it skips events already handled (`defaultPrevented`).
 
-Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Close button for `Esc` and `Space`, the chevron and chip for the arrows, and the Groups menu for `Shift` with the arrows.
+Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Close button for `Esc` and `Space`, the chevron and chip for the arrows, and the Groups menu's Customers and Everything for `Shift` with the side arrows.
 
 ### Peek
 
@@ -289,7 +291,10 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 | | `PageDown and PageUp move one window height` |
 | | `ArrowRight expands a collapsed row, then moves to its first child` |
 | | `ArrowLeft collapses an expanded row, then moves to its parent` |
-| | `Shift+ArrowLeft collapses all and activates the Customer header; Shift+ArrowRight expands all` |
+| | `Shift+ArrowLeft sets the Customers level and activates the Customer header; Shift+ArrowRight sets Everything` |
+| | `closes the rows below the level, shown or not` |
+| | `shows Stories as Customer, Epic, Story and No Epic rows, with Subtasks and the Done chip hidden` |
+| | `layers hand overrides on the level and reads them back from a closed set` |
 | | `Home and End move to the first and last row` |
 | | `Enter toggles a header or chip and opens an issue` |
 | | `Space toggles the Peek on an issue row only` |
@@ -336,13 +341,15 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 | `keeps an open Story under No Epic while its Epic is Done and Hide done is on` |
 | `reveals a parent's Done children from its chip` |
 | `marks a Story whose Customer differs from its Epic's` |
-| `collapses and expands groups by click, by arrow keys and with Collapse all` |
+| `opens at the Stories level on a first launch` |
+| `collapses and expands groups by click, by arrow keys and with the Groups menu's levels` |
 | `moves with J and K and peeks with the space bar` |
 | `Esc clears the text filter, then returns focus to the Tree` |
 | `turning Hide done off shows the Done Epic with its subtree` |
 | `Assignee: me keeps my issues with their ancestors dimmed` |
 | `turning Hide empty Customers off shows the Customer with no issues` |
 | `remembers the toggles across a relaunch` |
+| `remembers the expansion level across a relaunch` |
 | `filters by status and by text, keeping ancestors as context` |
 | `shows No issues match with Clear filters when nothing matches` |
 | `keeps the Tree and offers Retry when the Done load fails` |
@@ -374,8 +381,9 @@ The bounded-rows test launches with `JM_E2E_BULK=2000`, so the 2000 issues are o
 | Nested `ul` of buttons, as D1 | Semantic HTML | Cannot virtualise without losing nesting, and a roving tabindex breaks when the focused row unmounts |
 | **Done refetched when stale (5 minutes) or when an issue leaves the unresolved set** (chosen) | Focus refetch costs 8 requests, not 29; a resolved issue never blinks out | A Done issue edited elsewhere shows its old summary for up to 5 minutes |
 | Done refetched on every focus | Simplest | 29 requests and about 15 seconds of loading on every switch back |
-| **Collapse state for the session only** (chosen) | No file or contract change; Collapse all reshapes a fresh start in one action | Collapsed groups open again on each launch |
-| Collapse state in `settings.json` or `localStorage` | Survives a restart | A settings shape change (Ask First), or against the React standard's rule for view state |
+| **One expansion level in `settings.json`, hand toggles for the session** (chosen, 2026-10-13, #209) | The Tree opens at the level picked last, at Stories on a first launch; one optional key the CLI and older builds ignore | A settings shape change (Ask First), settled by Shane |
+| ~~Collapse state for the session only~~ (D2's choice, replaced by #209) | No file or contract change | The Tree opened fully expanded on each launch |
+| Every collapsed row id in `settings.json` or `localStorage` | Survives a restart exactly | Ids go stale as issues move, and view state against the React standard |
 | **Mismatch fix in D3** (chosen) | D3 builds the Customer edit, its rollback and its picker | The badge ships a story before its fix |
 | **Peek replaces the always-open pane** (chosen) | Q5 asks for a page plus a peek; the Tree gets the width | D1's e2e assertions change |
 
@@ -395,4 +403,4 @@ The same pull request updates `apps/desktop/README.md` (layout table, IPC sectio
 
 ## Open Questions
 
-None. Collapse state lasts for the session only, revisited if Shane asks. The 2026-10-09 decision that an open issue keeps its Done ancestors as context under "Hide done" was replaced on 2026-10-12 (Core Changes, #199).
+None. On 2026-10-13 Shane replaced session-only collapse with a stored expansion level (#209); a chevron click still lasts for the session only. The 2026-10-09 decision that an open issue keeps its Done ancestors as context under "Hide done" was replaced on 2026-10-12 (Core Changes, #199).

@@ -50,8 +50,6 @@ interface IssueTreeProps {
   today: string
   /** The open blockers of each loaded issue, by key. */
   blocks: ReadonlyMap<string, OpenBlocks>
-  /** Every expandable row id, for Collapse all. */
-  expandable: readonly string[]
   /** Called with the next state after a key or a click. */
   onChange: (next: MoveResult) => void
   /** A click on an issue row's status dot or avatar, made after the row became active. */
@@ -85,7 +83,6 @@ export function IssueTree({
   properties,
   today,
   blocks,
-  expandable,
   onChange,
   onPick,
   onAdd,
@@ -178,7 +175,7 @@ export function IssueTree({
         ctrlKey: event.ctrlKey,
         altKey: event.altKey,
       },
-      { pageSize, expandable },
+      { pageSize },
     )
     if (next === null) return
     // Space and the page keys would otherwise scroll the container by themselves.

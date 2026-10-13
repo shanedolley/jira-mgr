@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, releaseDone } from './harness.js'
+import { counts, launch, logIn, releaseDone, showEverything } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -29,6 +29,8 @@ const toggle = (name: string) => window.getByRole('button', { name, exact: true 
 async function open() {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
+  // Subtasks show only from the Everything level.
+  await showEverything(window)
 }
 
 /** Opens the Filter menu with the button and opens one field's list. */

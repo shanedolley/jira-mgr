@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, readState, releaseEdit } from './harness.js'
+import { counts, launch, logIn, readState, releaseEdit, showEverything } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -44,6 +44,8 @@ const savedViews = async () =>
 async function open() {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
+  // Subtasks show only from the Everything level.
+  await showEverything(window)
 }
 
 /** Opens the Display menu, runs `choose`, and closes it, which hands focus back to the Tree. */

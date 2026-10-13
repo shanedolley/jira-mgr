@@ -18,10 +18,13 @@ The state folder is `~/Library/Application Support/jira-mgr/`. `JM_STATE_DIR` re
 | `toggles.hideEmptyCustomers` | boolean | `true` |
 | `display.properties` | array of `labels`, `sprint`, `due`, `created`, `updated` | `["updated"]` |
 | `display.order` | `key`, `priority`, `updated` or `due` | `key` |
+| `treeLevel` | `customers`, `epics`, `stories` or `all` | `stories` |
 
 `fieldOverrides` is described under [Settings File](../architecture/auth-and-keychain.md#settings-file).
 
 `display` is what the Tree shows while no saved view is applied: the row properties after the title, and how issues sort within an Epic, among an Epic's children and in No Epic. `jm` ignores it, as it ignores `toggles`. Every Jira request reads this file, so a value the build does not know never fails it: unknown property names drop, an unknown `order` reads as `key`, and a `display` that is not an object reads as the defaults. The properties are kept once each, in the order above. An older build reads a file with `display` without error but drops the key, and its next write loses it.
+
+`treeLevel` is how far the Tree opens, set from the Groups menu or by `Shift+Left` (`customers`) and `Shift+Right` (`all`). `stories` opens Customers, Epics and No Epic and closes each Story, Task and Bug. `jm` ignores it, and a saved view neither carries it nor changes it. A missing key, or a value the build does not know, reads as `stories` and never fails the file. An older build drops the key, and its next write loses it.
 
 ## views.json
 

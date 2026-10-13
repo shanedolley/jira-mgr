@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import type { TreeLevel } from '@jira-mgr/core/display'
 import type { CustomerGroup, CustomerOption, HierarchyNode } from '@jira-mgr/core/hierarchy'
 
 /** Every row has this height, since summaries truncate to one line and the rest sits inline. */
@@ -197,22 +198,74 @@ export function flattenTree(groups: readonly CustomerGroup[], expansion: Expansi
   return rows
 }
 
-/** Every row id that can expand, shown or not, for Collapse all. */
-export function expandableIds(groups: readonly CustomerGroup[]): string[] {
-  const ids: string[] = []
-  function walk(node: HierarchyNode) {
-    if (node.children.length > 0 || node.doneCount > 0) ids.push(`i:${node.issue.key}`)
-    node.children.forEach(walk)
-    node.doneChildren.forEach(walk)
+/** The depth from which each Tree level closes rows: Customer headers are 1, Epics and No Epic 2, Stories 3. */
+const CLOSED_FROM: Record<Exclude<TreeLevel, 'all'>, number> = {
+  customers: 1,
+  epics: 2,
+  stories: 3,
+}
+
+/**
+ * The row ids a level closes, shown or not: every row that can expand at its depth or below.
+ * Done children sit two levels under their parent, behind its chip.
+ */
+export function levelCollapsed(groups: readonly CustomerGroup[], level: TreeLevel): Set<string> {
+  const ids = new Set<string>()
+  if (level === 'all') return ids
+  const from = CLOSED_FROM[level]
+  function walk(node: HierarchyNode, depth: number) {
+    if (depth >= from && (node.children.length > 0 || node.doneCount > 0)) {
+      ids.add(`i:${node.issue.key}`)
+    }
+    node.children.forEach((child) => {
+      walk(child, depth + 1)
+    })
+    node.doneChildren.forEach((child) => {
+      walk(child, depth + 2)
+    })
   }
   for (const group of groups) {
     const key = customerId(group.customer)
-    if (group.epics.length > 0 || group.noEpic.length > 0) ids.push(`c:${key}`)
-    if (group.noEpic.length > 0) ids.push(`n:${key}`)
-    group.epics.forEach(walk)
-    group.noEpic.forEach(walk)
+    if (from <= 1 && (group.epics.length > 0 || group.noEpic.length > 0)) ids.add(`c:${key}`)
+    if (from <= 2 && group.noEpic.length > 0) ids.add(`n:${key}`)
+    group.epics.forEach((epic) => {
+      walk(epic, 2)
+    })
+    group.noEpic.forEach((node) => {
+      walk(node, 3)
+    })
   }
   return ids
+}
+
+/**
+ * The rows the user opened or closed by hand, by id: `true` closed, `false` opened. They sit on top
+ * of the level's rule, so rows that appear later follow the level.
+ */
+export type ExpansionOverrides = ReadonlyMap<string, boolean>
+
+/** The level's closed rows with the hand overrides applied. */
+export function withOverrides(
+  base: ReadonlySet<string>,
+  overrides: ExpansionOverrides,
+): Set<string> {
+  const closed = new Set(base)
+  for (const [id, shut] of overrides) {
+    if (shut) closed.add(id)
+    else closed.delete(id)
+  }
+  return closed
+}
+
+/** The overrides that turn the level's closed rows into `closed`. */
+export function overridesFor(
+  base: ReadonlySet<string>,
+  closed: ReadonlySet<string>,
+): ExpansionOverrides {
+  const overrides = new Map<string, boolean>()
+  for (const id of closed) if (!base.has(id)) overrides.set(id, true)
+  for (const id of base) if (!closed.has(id)) overrides.set(id, false)
+  return overrides
 }
 
 /** Every node in the Tree by issue key, including the Done children behind a chip. */
@@ -274,6 +327,8 @@ export interface KeyInput {
 }
 
 export interface MoveResult extends TreeState {
+  /** Shift+Left or Shift+Right: the Shell sets this level, clearing the rows opened by hand. */
+  level?: TreeLevel
   /** Enter on an issue row: the Shell opens the active issue's full page. */
   openPage: boolean
 }
@@ -281,8 +336,6 @@ export interface MoveResult extends TreeState {
 export interface MoveContext {
   /** Rows in one window height, for PageDown and PageUp. */
   pageSize: number
-  /** Every expandable row id, for Collapse all. */
-  expandable: readonly string[]
 }
 
 /** An issue row a bulk action can take: not a header, a chip or an ancestor shown only as context. */
@@ -429,7 +482,7 @@ export function moveActive(
     case 'End':
       return to(last)
     case 'ArrowRight': {
-      if (input.shiftKey) return stay({ ...state, collapsed: new Set() })
+      if (input.shiftKey) return { ...state, level: 'all', openPage: false }
       if (row === undefined) return to(0)
       if (!row.expandable) return stay()
       if (!row.expanded) return stay(expand(row, state))
@@ -437,12 +490,13 @@ export function moveActive(
     }
     case 'ArrowLeft': {
       if (input.shiftKey) {
-        return stay({
+        return {
           ...state,
           activeId: row === undefined ? (rows[0]?.id ?? null) : customerOf(rows, row).id,
-          collapsed: new Set(context.expandable),
           revealed: new Set(),
-        })
+          level: 'customers',
+          openPage: false,
+        }
       }
       if (row === undefined) return to(0)
       if (row.expandable && row.expanded) return stay(collapse(row, state))

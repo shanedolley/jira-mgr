@@ -5,18 +5,20 @@ import { describe, expect, it } from 'vitest'
 import {
   ancestorIds,
   clickRow,
-  expandableIds,
   fallbackRow,
   flattenTree,
   indexNodes,
   issuesShown,
   layoutOf,
   layoutRows,
+  levelCollapsed,
   mergeIssues,
   moveActive,
+  overridesFor,
   pruneChecked,
   rowAtOffset,
   windowRange,
+  withOverrides,
   type KeyInput,
   type MoveContext,
   type TreeRow,
@@ -368,11 +370,38 @@ describe('ancestorIds', () => {
   })
 })
 
-describe('expandableIds', () => {
-  it('lists every expandable row, shown or not', () => {
-    const list = expandableIds(groupsOf(SAMPLE))
+describe('levelCollapsed', () => {
+  const groups = groupsOf(SAMPLE)
+  const closed = (level: Parameters<typeof levelCollapsed>[1]) =>
+    [...levelCollapsed(groups, level)].sort()
 
-    expect([...list].sort()).toEqual(['c:1', 'i:P-1', 'i:P-2', 'n:1'])
+  it('closes the rows below the level, shown or not', () => {
+    expect(closed('customers')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'n:1'])
+    expect(closed('epics')).toEqual(['i:P-1', 'i:P-2', 'n:1'])
+    expect(closed('stories')).toEqual(['i:P-2'])
+    expect(closed('all')).toEqual([])
+  })
+
+  it('shows Stories as Customer, Epic, Story and No Epic rows, with Subtasks and the Done chip hidden', () => {
+    const rows = flattenTree(groups, {
+      collapsed: levelCollapsed(groups, 'stories'),
+      revealed: new Set(),
+    })
+
+    expect(ids(rows)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-4', 'd:P-1', 'n:1', 'i:P-6'])
+  })
+
+  it('layers hand overrides on the level and reads them back from a closed set', () => {
+    const base = levelCollapsed(groups, 'stories')
+    const overrides = new Map([
+      ['i:P-2', false],
+      ['i:P-1', true],
+    ])
+    const closedSet = withOverrides(base, overrides)
+
+    expect([...closedSet].sort()).toEqual(['i:P-1'])
+    expect(overridesFor(base, closedSet)).toEqual(overrides)
+    expect(overridesFor(base, base).size).toBe(0)
   })
 })
 
@@ -395,7 +424,7 @@ const state = (activeId: string | null, extra: Partial<TreeState> = {}): TreeSta
 describe('moveActive', () => {
   const groups = groupsOf(SAMPLE)
   const rows = flattenTree(groups, NONE)
-  const context: MoveContext = { pageSize: 3, expandable: expandableIds(groups) }
+  const context: MoveContext = { pageSize: 3 }
   // The rows always match the state, as in the Shell, which flattens from the same sets.
   const move = (active: string | null, input: KeyInput, extra: Partial<TreeState> = {}) =>
     moveActive(
@@ -484,18 +513,16 @@ describe('moveActive', () => {
     expect(result?.activeId).toBe('d:P-1')
   })
 
-  it('Shift+ArrowLeft collapses all and activates the Customer header; Shift+ArrowRight expands all', () => {
+  it('Shift+ArrowLeft sets the Customers level and activates the Customer header; Shift+ArrowRight sets Everything', () => {
     const closed = move('i:P-3', press('ArrowLeft', { shiftKey: true }), {
       revealed: new Set(['d:P-1']),
     })
+    expect(closed?.level).toBe('customers')
     expect(closed?.activeId).toBe('c:1')
-    expect([...(closed?.collapsed ?? [])].sort()).toEqual(['c:1', 'i:P-1', 'i:P-2', 'n:1'])
     expect([...(closed?.revealed ?? [])]).toEqual([])
 
-    const opened = move('c:1', press('ArrowRight', { shiftKey: true }), {
-      collapsed: new Set(['c:1', 'i:P-1']),
-    })
-    expect([...(opened?.collapsed ?? [])]).toEqual([])
+    const opened = move('c:1', press('ArrowRight', { shiftKey: true }))
+    expect(opened?.level).toBe('all')
     expect(opened?.activeId).toBe('c:1')
   })
 
@@ -558,7 +585,7 @@ describe('selection keys', () => {
   // Rows: c:1, P-1, P-2, P-3, P-4, d:P-1, n:1, P-6. Issue rows are P-1, P-2, P-3, P-4 and P-6.
   const groups = groupsOf(SAMPLE)
   const rows = flattenTree(groups, NONE)
-  const context: MoveContext = { pageSize: 3, expandable: expandableIds(groups) }
+  const context: MoveContext = { pageSize: 3 }
   const move = (active: string | null, input: KeyInput, extra: Partial<TreeState> = {}) =>
     moveActive(rows, state(active, extra), input, context)
   const checked = (result: { checked: ReadonlySet<string> } | null) =>

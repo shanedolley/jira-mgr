@@ -204,7 +204,7 @@ test.describe('button system', () => {
     await expectSystem('peek', 12)
 
     await window.getByRole('button', { name: 'Groups', exact: true }).click()
-    await expect(window.getByRole('button', { name: 'Collapse all' })).toBeVisible()
+    await expect(window.getByRole('button', { name: 'Customers', exact: true })).toBeVisible()
     await expectSystem('groups menu', 12)
     await window.keyboard.press('Escape')
 
