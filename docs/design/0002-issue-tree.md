@@ -154,9 +154,11 @@ A count is the number of issues in the subtree, context rows included and issues
 
 **Done chip.** Shown exactly when `node.doneCount > 0`, the condition `jm issue tree` prints as `+N done`. It reads "N done", and "Hide N done" while revealed.
 
-**Tree state.** The Shell holds the active row id, the Peek's issue key, `revealed` (a `Set<string>` of chip ids; every chip starts hidden) and the overrides: a `Map<string, boolean>` of the rows the user opened or closed by hand, `true` for closed. The set `collapsed` is derived on each render: `levelCollapsed(groups, level)` closes every expandable row at or below the stored level, and `withOverrides` layers the hand toggles on top. A row that appears later, from a refetch or from loading Done issues, follows the level, and a row toggled by hand keeps its state. Holding the overrides in the Shell keeps them through refetches, failures, toggles and filters; they last for the session. Picking a level clears them, and clears `revealed` unless the level is Everything. A chevron click is never written to Jira or a file.
+**Tree state.** The Shell holds the active row id, the Peek's issue key, `revealed` (a `Set<string>` of chip ids; every chip starts hidden) and the overrides: a `Map<string, boolean>` of the rows the user opened or closed by hand, `true` for closed. The set `collapsed` is derived on each render: `levelCollapsed(groups, level)` closes every expandable row at or below the stored level, except an issue shown only as dimmed context, and `withOverrides` layers the hand toggles on top. `changeOverrides` records a toggle by adding only the rows whose state changed, so an override for a row a filter hides survives. A row that appears later, from a refetch or from loading Done issues, follows the level, and a row toggled by hand keeps its state. Holding the overrides in the Shell keeps them through refetches, failures, toggles and filters; they last for the session. Picking a level clears them, and clears `revealed` unless the level is Everything. A chevron click is never written to Jira or a file.
 
-**Level.** The level is one of Customers, Epics, Stories or Everything, and the default is Stories. Customers closes every Customer header. Epics keeps the Customer headers open and closes each Epic and No Epic header. Stories keeps those open and closes each Story, Task and Bug (every level 3 issue), so their Subtasks and Done chips stay hidden. Everything closes nothing. The Shell stores it in `settings.json` as `treeLevel` through `settings:getTreeLevel` and `settings:setTreeLevel`, with the same optimistic mutation as the toggles, and shows "Loading settings" until it reads. Saved views do not carry the level and applying a view leaves the expansion alone. The CLI ignores it.
+**Level.** The level is one of Customers, Epics, Stories or Everything, and the default is Stories. Customers closes every Customer header. Epics keeps the Customer headers open and closes each Epic and No Epic header. Stories keeps those open and closes each Story, Task and Bug (every level 3 issue), so their Subtasks and the Done chips under them stay hidden; an Epic's own Done chip shows. Everything closes nothing. The Shell stores it in `settings.json` as `treeLevel` through `settings:getTreeLevel` and `settings:setTreeLevel`, with the same optimistic mutation as the toggles, and shows "Loading settings" until it reads. Saved views do not carry the level and applying a view leaves the expansion alone. The CLI ignores it.
+
+**A filter keeps its matches.** A row shown only as dimmed context, an ancestor of a match that does not match itself, is always open, whatever the level, so a filter never hides its own matches (decided 2026-10-13, #209). With no filter narrowing the Tree there are no context rows and the level applies untouched. The rule lives in `levelCollapsed`, not in the hand overrides, so clearing the filter returns the Tree to the level. A matching Story with a matching Subtask still hides the Subtask at Stories, and the Customer and No Epic headers follow the level.
 
 **Active row fallback.** When a rebuild removes the active row, `fallbackRow(previousRows, rows, id)` picks the next surviving sibling, then the nearest ancestor still in the rows, then the row now at the old index.
 
@@ -196,7 +198,7 @@ The toolbar above the Tree holds three toggle buttons, a Filter menu, a Groups m
 
 The filter can only match loaded issues, so choices other than statuses come from them and need no channel. The Filter button opens a native `popover` listing the five fields; each opens a checkbox list of its choices. Each active field shows as a chip such as "Status: To Do, In Progress", with a remove button, and "Clear" empties every field. As in `jm issue tree`, a matching issue keeps its ancestors as dimmed context rows, so a matching Story keeps its Epic.
 
-**Groups.** A menu with the four levels, shallowest first: Customers, Epics, Stories and Everything. The current level is pressed (`aria-pressed`, as the Display menu's buttons are). Picking one stores it, clears the rows opened or closed by hand and, unless it is Everything, hides every revealed chip. Customers and Everything are the `Shift+ArrowLeft` and `Shift+ArrowRight` keys, so Customers also makes the row's Customer header active.
+**Groups.** A menu with the four levels, shallowest first: Customers, Epics, Stories and Everything. The current level is pressed (`aria-pressed`, as the Display menu's buttons are). Picking one stores it (picking the current level writes nothing), clears the rows opened or closed by hand and, unless it is Everything, hides every revealed chip. It works with no row shown. Customers and Everything are the `Shift+ArrowLeft` and `Shift+ArrowRight` keys, so Customers also makes the row's Customer header active.
 
 **Feedback.** After a toggle or filter change settles for 500 milliseconds, a `role="status"` region announces "N issues shown". When nothing matches, the Tree area reads "No issues match", names the toggles that are on ("Hide done and Assignee: me are on"), and offers Clear filters when a filter is active.
 
@@ -293,8 +295,11 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 | | `ArrowLeft collapses an expanded row, then moves to its parent` |
 | | `Shift+ArrowLeft sets the Customers level and activates the Customer header; Shift+ArrowRight sets Everything` |
 | | `closes the rows below the level, shown or not` |
-| | `shows Stories as Customer, Epic, Story and No Epic rows, with Subtasks and the Done chip hidden` |
-| | `layers hand overrides on the level and reads them back from a closed set` |
+| | `shows Stories as Customer, Epic, Story and No Epic rows, with the Epic's Done chip shown and Subtasks hidden` |
+| | `never closes an issue shown only as context, so a filter keeps its matches` |
+| | `layers hand overrides on the level, and a change keeps overrides for rows out of view` |
+| | `keeps an override for a row the groups no longer hold when another row changes` |
+| | `Shift+ArrowLeft and Shift+ArrowRight set the level with no row shown, and other keys do nothing` |
 | | `Home and End move to the first and last row` |
 | | `Enter toggles a header or chip and opens an issue` |
 | | `Space toggles the Peek on an issue row only` |
@@ -350,6 +355,11 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 | `turning Hide empty Customers off shows the Customer with no issues` |
 | `remembers the toggles across a relaunch` |
 | `remembers the expansion level across a relaunch` |
+| `a filter keeps its matches under the default level, and clearing it restores the level` |
+| `a toggle by hand survives a filter and the chevrons used under it` |
+| `a level picked with no row shown is kept and stored` |
+| `picking a level hides the revealed chips unless it is Everything` |
+| `keeps a row opened by hand when Done issues load, and new rows follow the level` |
 | `filters by status and by text, keeping ancestors as context` |
 | `shows No issues match with Clear filters when nothing matches` |
 | `keeps the Tree and offers Retry when the Done load fails` |

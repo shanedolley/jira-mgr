@@ -112,7 +112,7 @@ import { useUndo } from './useUndo'
 import {
   ancestorIds,
   levelCollapsed,
-  overridesFor,
+  changeOverrides,
   withOverrides,
   fallbackRow,
   flattenTree,
@@ -417,7 +417,11 @@ export function Shell({ session }: { session: Session }) {
     const hidden = ancestorIds(groups, revealed, pendingSelect).filter((id) => collapsed.has(id))
     if (hidden.length > 0) {
       setOverrides(
-        overridesFor(levelRows, new Set([...collapsed].filter((id) => !hidden.includes(id)))),
+        changeOverrides(
+          overrides,
+          collapsed,
+          new Set([...collapsed].filter((id) => !hidden.includes(id))),
+        ),
       )
     }
     if (nodes.has(pendingSelect)) {
@@ -442,7 +446,9 @@ export function Shell({ session }: { session: Session }) {
     setEnterPending(false)
     setTrack((t) => ({ ...t, activeId: next.activeId }))
     if (next.level !== undefined) chooseLevel(next.level)
-    else if (next.collapsed !== collapsed) setOverrides(overridesFor(levelRows, next.collapsed))
+    else if (next.collapsed !== collapsed) {
+      setOverrides(changeOverrides(overrides, collapsed, next.collapsed))
+    }
     setRevealed(next.revealed)
     setPeekOpen(next.peekOpen)
     setSelection((held) =>
@@ -458,12 +464,32 @@ export function Shell({ session }: { session: Session }) {
     }
   }
 
-  /** Stores a level and reshapes the Tree to it, dropping the rows opened or closed by hand. */
+  /**
+   * Stores a level and reshapes the Tree to it, dropping the rows opened or closed by hand and,
+   * short of Everything, the revealed chips.
+   */
   function chooseLevel(next: TreeLevel) {
     setOverrides(new Map())
+    if (next !== 'all') setRevealed(new Set())
+    if (next === level) return
     // At once, so no render shows the old level between dropping the hand toggles and the write.
     client.setQueryData<TreeLevel>(treeLevelKey, next)
     setLevel.mutate(next)
+  }
+
+  /** A level from the Groups menu. Customers also makes the row's Customer header active, as Shift+Left does. */
+  function pickLevel(next: TreeLevel) {
+    chooseLevel(next)
+    if (next !== 'customers') return
+    const input = {
+      key: 'ArrowLeft',
+      shiftKey: true,
+      metaKey: false,
+      ctrlKey: false,
+      altKey: false,
+    }
+    const placed = moveActive(rows, state, input, { pageSize: 1 })
+    if (placed !== null) setTrack((t) => ({ ...t, activeId: placed.activeId }))
   }
 
   function focusTree() {
@@ -484,13 +510,6 @@ export function Shell({ session }: { session: Session }) {
     setEnterPending(false)
     const first = rows.find((r) => r.kind === 'issue') ?? rows[0]
     if (first !== undefined) apply({ ...state, activeId: first.id, openPage: false })
-  }
-
-  /** Customers and Everything are the Shift+Arrow keys, so the menu and the keys agree. */
-  function groupsKey(key: 'ArrowLeft' | 'ArrowRight') {
-    const input = { key, shiftKey: true, metaKey: false, ctrlKey: false, altKey: false }
-    const next = moveActive(rows, state, input, { pageSize: 1 })
-    if (next !== null) apply(next)
   }
 
   // Focus follows the page: into it whenever it opens or shows another issue, whose controls
@@ -1192,11 +1211,7 @@ export function Shell({ session }: { session: Session }) {
               setFilterMenuOpened(true)
             }}
             level={level}
-            onLevel={(next) => {
-              if (next === 'customers') groupsKey('ArrowLeft')
-              else if (next === 'all') groupsKey('ArrowRight')
-              else chooseLevel(next)
-            }}
+            onLevel={pickLevel}
             onActed={focusTree}
             onEnterTree={enterTree}
             inputRef={filterRef}

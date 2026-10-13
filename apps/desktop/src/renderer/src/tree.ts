@@ -206,15 +206,17 @@ const CLOSED_FROM: Record<Exclude<TreeLevel, 'all'>, number> = {
 }
 
 /**
- * The row ids a level closes, shown or not: every row that can expand at its depth or below.
- * Done children sit two levels under their parent, behind its chip.
+ * The row ids a level closes, shown or not: every row that can expand at its depth or below,
+ * except an issue shown only as dimmed context. A filter keeps the ancestors of its matches, and
+ * closing one would hide the match, so those stay open at any level. Done children sit two levels
+ * under their parent, behind its chip.
  */
 export function levelCollapsed(groups: readonly CustomerGroup[], level: TreeLevel): Set<string> {
   const ids = new Set<string>()
   if (level === 'all') return ids
   const from = CLOSED_FROM[level]
   function walk(node: HierarchyNode, depth: number) {
-    if (depth >= from && (node.children.length > 0 || node.doneCount > 0)) {
+    if (depth >= from && !node.contextOnly && (node.children.length > 0 || node.doneCount > 0)) {
       ids.add(`i:${node.issue.key}`)
     }
     node.children.forEach((child) => {
@@ -257,15 +259,19 @@ export function withOverrides(
   return closed
 }
 
-/** The overrides that turn the level's closed rows into `closed`. */
-export function overridesFor(
-  base: ReadonlySet<string>,
-  closed: ReadonlySet<string>,
+/**
+ * The overrides with the rows whose state differs between `from` and `to` added. Overrides for
+ * rows missing from the current groups, such as a Story a filter hides, stay as they are.
+ */
+export function changeOverrides(
+  overrides: ExpansionOverrides,
+  from: ReadonlySet<string>,
+  to: ReadonlySet<string>,
 ): ExpansionOverrides {
-  const overrides = new Map<string, boolean>()
-  for (const id of closed) if (!base.has(id)) overrides.set(id, true)
-  for (const id of base) if (!closed.has(id)) overrides.set(id, false)
-  return overrides
+  const next = new Map(overrides)
+  for (const id of to) if (!from.has(id)) next.set(id, true)
+  for (const id of from) if (!to.has(id)) next.set(id, false)
+  return next
 }
 
 /** Every node in the Tree by issue key, including the Done children behind a chip. */
@@ -435,7 +441,17 @@ export function moveActive(
   const selectAll =
     (input.metaKey || input.ctrlKey) && !input.altKey && !input.shiftKey && /^a$/i.test(input.key)
   if (!selectAll && (input.metaKey || input.ctrlKey || input.altKey)) return null
-  if (rows.length === 0) return null
+  if (rows.length === 0) {
+    // With no row shown, the level keys still set the level, since the Groups menu can.
+    if (!input.shiftKey || (input.key !== 'ArrowLeft' && input.key !== 'ArrowRight')) return null
+    const left = input.key === 'ArrowLeft'
+    return {
+      ...state,
+      revealed: left ? new Set() : state.revealed,
+      level: left ? 'customers' : 'all',
+      openPage: false,
+    }
+  }
   const index = rows.findIndex((r) => r.id === state.activeId)
   const row = rows[index]
   const last = rows.length - 1

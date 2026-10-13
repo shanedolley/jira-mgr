@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ancestorIds,
+  changeOverrides,
   clickRow,
   fallbackRow,
   flattenTree,
@@ -14,7 +15,6 @@ import {
   levelCollapsed,
   mergeIssues,
   moveActive,
-  overridesFor,
   pruneChecked,
   rowAtOffset,
   windowRange,
@@ -382,7 +382,7 @@ describe('levelCollapsed', () => {
     expect(closed('all')).toEqual([])
   })
 
-  it('shows Stories as Customer, Epic, Story and No Epic rows, with Subtasks and the Done chip hidden', () => {
+  it("shows Stories as Customer, Epic, Story and No Epic rows, with the Epic's Done chip shown and Subtasks hidden", () => {
     const rows = flattenTree(groups, {
       collapsed: levelCollapsed(groups, 'stories'),
       revealed: new Set(),
@@ -391,7 +391,20 @@ describe('levelCollapsed', () => {
     expect(ids(rows)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-4', 'd:P-1', 'n:1', 'i:P-6'])
   })
 
-  it('layers hand overrides on the level and reads them back from a closed set', () => {
+  it('never closes an issue shown only as context, so a filter keeps its matches', () => {
+    const filtered = groupsOf(SAMPLE, { match: (i) => i.key === 'P-3' })
+    const rows = (level: Parameters<typeof levelCollapsed>[1]) =>
+      ids(
+        flattenTree(filtered, { collapsed: levelCollapsed(filtered, level), revealed: new Set() }),
+      )
+
+    // P-1 and P-2 are context rows, open at every level that shows them.
+    expect([...levelCollapsed(filtered, 'stories')]).toEqual([])
+    expect(rows('stories')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+    expect(rows('epics')).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-3'])
+  })
+
+  it('layers hand overrides on the level, and a change keeps overrides for rows out of view', () => {
     const base = levelCollapsed(groups, 'stories')
     const overrides = new Map([
       ['i:P-2', false],
@@ -400,8 +413,21 @@ describe('levelCollapsed', () => {
     const closedSet = withOverrides(base, overrides)
 
     expect([...closedSet].sort()).toEqual(['i:P-1'])
-    expect(overridesFor(base, closedSet)).toEqual(overrides)
-    expect(overridesFor(base, base).size).toBe(0)
+    expect(changeOverrides(new Map(), base, closedSet)).toEqual(overrides)
+    expect(changeOverrides(overrides, closedSet, closedSet)).toEqual(overrides)
+  })
+
+  it('keeps an override for a row the groups no longer hold when another row changes', () => {
+    // S is open by hand but absent from the filtered groups, which close T by level.
+    const overrides = new Map([['S', false]])
+    const collapsed = withOverrides(new Set(['T']), overrides)
+
+    expect(changeOverrides(overrides, collapsed, new Set())).toEqual(
+      new Map([
+        ['S', false],
+        ['T', false],
+      ]),
+    )
   })
 })
 
@@ -524,6 +550,15 @@ describe('moveActive', () => {
     const opened = move('c:1', press('ArrowRight', { shiftKey: true }))
     expect(opened?.level).toBe('all')
     expect(opened?.activeId).toBe('c:1')
+  })
+
+  it('Shift+ArrowLeft and Shift+ArrowRight set the level with no row shown, and other keys do nothing', () => {
+    const none = (input: KeyInput) => moveActive([], state(null), input, context)
+
+    expect(none(press('ArrowLeft', { shiftKey: true }))?.level).toBe('customers')
+    expect(none(press('ArrowRight', { shiftKey: true }))?.level).toBe('all')
+    expect(none(press('ArrowLeft'))).toBeNull()
+    expect(none(press('j'))).toBeNull()
   })
 
   it('Home and End move to the first and last row', () => {

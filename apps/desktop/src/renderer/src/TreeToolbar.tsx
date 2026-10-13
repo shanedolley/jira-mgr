@@ -448,7 +448,7 @@ export function TreeToolbar({
                   onLevel(value)
                 }}
                 data-row
-                className="flex h-8 w-full items-center rounded px-2 text-left hover:bg-hover aria-pressed:bg-selected"
+                className="flex h-8 w-full items-center rounded border border-transparent px-2 text-left hover:bg-hover aria-pressed:border-accent/40 aria-pressed:bg-selected"
               >
                 {label}
               </button>

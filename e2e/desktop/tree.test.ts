@@ -256,11 +256,104 @@ test("collapses and expands groups by click, by arrow keys and with the Groups m
   await window.keyboard.press('Shift+ArrowRight')
   await expect(item(/PSAPAC-12,/)).toBeVisible()
 
-  // A row opened by hand keeps its state across a level it does not belong to.
+  // A row opened by hand shows its children at the Stories level, where the level closes it.
   await pick('Stories')
   await item(/PSAPAC-11,/)
     .locator('[data-chevron]')
     .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+})
+
+const filterBox = () => window.getByLabel('Filter by key or summary')
+const pickLevel = async (level: string) => {
+  await window.getByRole('button', { name: 'Groups', exact: true }).click()
+  await window.getByRole('button', { name: level, exact: true }).click()
+}
+
+test('a filter keeps its matches under the default level, and clearing it restores the level', async () => {
+  await open()
+
+  await filterBox().fill('PSAPAC-12')
+  // The Story is context for its Subtask, so it stays open at the Stories level.
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+  await expect(item(/PSAPAC-11,.*context/)).toHaveAttribute('aria-expanded', 'true')
+
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-expanded', 'false')
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+})
+
+test('a toggle by hand survives a filter and the chevrons used under it', async () => {
+  await open()
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+
+  // PSAPAC-11 has no match here, so the groups do not hold it while the chevrons are used.
+  await filterBox().fill('data model')
+  const epic = item(/PSAPAC-10,/)
+  await expect(epic).toBeVisible()
+  await expect(item(/PSAPAC-11,/)).toHaveCount(0)
+  await epic.locator('[data-chevron]').click()
+  await expect(epic).toHaveAttribute('aria-expanded', 'false')
+  await epic.locator('[data-chevron]').click()
+  await expect(epic).toHaveAttribute('aria-expanded', 'true')
+
+  await filterBox().fill('')
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+})
+
+test('a level picked with no row shown is kept and stored', async () => {
+  await open()
+
+  await filterBox().fill('zzzz-no-such-issue')
+  await expect(window.getByText('No issues match')).toBeVisible()
+  await pickLevel('Everything')
+  await filterBox().fill('')
+
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+  await expect
+    .poll(
+      async () => (await readState<{ treeLevel?: unknown }>(stateDir, 'settings.json'))?.treeLevel,
+    )
+    .toBe('all')
+})
+
+test('picking a level hides the revealed chips unless it is Everything', async () => {
+  await openWithChips()
+  await item('2 done', true).click()
+  await expect(item(/PSAPAC-14,/)).toBeVisible()
+
+  await pickLevel('Epics')
+  await expect(item(/PSAPAC-10, Epic/)).toHaveAttribute('aria-expanded', 'false')
+  await pickLevel('Stories')
+  // The Epic's chip comes back hidden.
+  await expect(item('2 done', true)).toContainText('2 done')
+  await expect(item('2 done', true)).not.toContainText('Hide')
+  await expect(item(/PSAPAC-14,/)).toHaveCount(0)
+
+  await item('2 done', true).click()
+  await expect(item(/PSAPAC-14,/)).toBeVisible()
+  await pickLevel('Everything')
+  await expect(item(/PSAPAC-14,/)).toBeVisible()
+})
+
+test('keeps a row opened by hand when Done issues load, and new rows follow the level', async () => {
+  await open()
+  await item(/PSAPAC-11,/)
+    .locator('[data-chevron]')
+    .click()
+  await expect(item(/PSAPAC-12,/)).toBeVisible()
+
+  await releaseDone(app)
+  await expect(window.getByText('Loading Done issues:')).toHaveCount(0)
+  await toggle('Hide done').click()
+
+  // The Done Epic that appears follows the level: open, with its Story showing.
+  await expect(item(/PSAPAC-20, Epic, Done/)).toHaveAttribute('aria-expanded', 'true')
+  await expect(item(/PSAPAC-22,/)).toBeVisible()
+  // The Story opened by hand keeps its Subtask.
   await expect(item(/PSAPAC-12,/)).toBeVisible()
 })
 
