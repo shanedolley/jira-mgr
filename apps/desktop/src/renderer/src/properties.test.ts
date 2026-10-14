@@ -318,6 +318,9 @@ describe('Time remaining as a duration', () => {
     [1.5, '1h 30m'],
     [2, '2h'],
     [1 / 3, '20m'],
+    [0.005, '0m'],
+    [0.01, '1m'],
+    [1000, '1000h'],
   ])('shows %j hours as %j', (hours, text) => {
     expect(hoursText(hours)).toBe(text)
   })
@@ -330,6 +333,7 @@ describe('Time remaining as a duration', () => {
     ['1h 30m', 1.5],
     ['2h', 2],
     ['1d', 8],
+    ['1w', 40],
   ])('reads %j as %j hours', (text, hours) => {
     expect(hoursFromText(text)).toBe(hours)
   })

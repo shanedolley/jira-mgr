@@ -76,7 +76,7 @@ const NAMES: Partial<Record<keyof IssueDetail, string>> = {
   startDate: 'start date',
   dueDate: 'due date',
   originalEstimateSeconds: 'original estimate',
-  timeRemainingHours: 'time remaining',
+  timeRemainingHours: 'time left',
 }
 
 const fieldsOf = (fields: Fields) => Object.keys(fields) as (keyof IssueDetail)[]

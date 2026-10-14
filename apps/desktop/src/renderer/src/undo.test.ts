@@ -117,6 +117,15 @@ describe('the entries', () => {
     expect(describeUndo(entry)).toBe('Undid P-1: assignee back to Ann Lee')
   })
 
+  it('words Time left as a duration', () => {
+    const entry = editEntry(
+      { key: 'P-1', changes: { timeRemainingHours: 1.5 } },
+      { patch: { timeRemainingHours: 1.5 }, before: { timeRemainingHours: 0.25 } },
+    )
+    expect(describeEdit(entry)).toBe('P-1: time left changed to 1h 30m')
+    expect(describeUndo(entry)).toBe('Undid P-1: time left back to 15m')
+  })
+
   it('names several fields', () => {
     const entry = editEntry(
       { key: 'P-1', changes: { parentKey: 'P-2', customerId: '9' } },

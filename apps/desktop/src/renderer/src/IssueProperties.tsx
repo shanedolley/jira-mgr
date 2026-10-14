@@ -79,7 +79,7 @@ interface TextFieldProps {
   label: string
   /** What the field holds now. A change from outside replaces the draft. */
   value: string
-  type?: 'text' | 'date' | 'number'
+  type?: 'text' | 'date'
   /** Shown while the field is empty. A date field draws it itself, since the browser's is a format. */
   placeholder?: string
   /** A clock before the text, for durations. */
@@ -115,7 +115,7 @@ function TextField({
   const sent = useRef<string | null>(null)
 
   function commit(input: HTMLInputElement) {
-    // A date or number field the user has half edited reports "" as its value, which is also what
+    // A date field the user has half edited reports "" as its value, which is also what
     // an emptied field reports. Only an emptied one clears the property, so a half edit reverts.
     if (input.validity.badInput) {
       setDraft(value)
@@ -158,7 +158,6 @@ function TextField({
             commit(event.currentTarget)
           }}
           onKeyDown={onKeyDown}
-          {...(type === 'number' ? { min: 0, step: 0.25 } : {})}
           className={`${FIELD} aria-invalid:border-danger ${clock ? 'pl-7' : ''} ${emptyDate ? 'date-empty' : ''}`}
         />
         {emptyDate && placeholder !== undefined && (
@@ -542,7 +541,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
                   hint="Use a duration such as 2h 30m."
                   onCommit={(draft) => {
                     const hours = hoursFromText(draft)
-                    if (hours === undefined) return
+                    if (hours === undefined || hours === issue.timeRemainingHours) return
                     change(
                       'Time remaining',
                       { timeRemainingHours: hours },

@@ -659,12 +659,19 @@ test('edits the estimate, shows the remaining estimate Jira cascades, and refuse
   await settle(2)
   expect(await lastBody()).toEqual({ fields: { customfield_5: 1.5 } })
   await expect.poll(async () => (await counts(app)).issueReads.length).toBe(4)
+  // The page renders a tick after Jira answers, and the re-read replaces the draft: type again
+  // only once the toast and the settled row show it.
+  await expect(notices(window).getByText('PSAPAC-4: time left changed to 1h 30m')).toBeVisible()
+  await expect(props().locator('[data-pending]')).toHaveCount(0)
   await expect(remaining).toHaveValue('1h 30m')
 
   await remaining.fill('15m')
   await window.keyboard.press('Enter')
   await settle(3)
   expect(await lastBody()).toEqual({ fields: { customfield_5: 0.25 } })
+  await expect.poll(async () => (await counts(app)).issueReads.length).toBe(5)
+  await expect(notices(window).getByText('PSAPAC-4: time left changed to 15m')).toBeVisible()
+  await expect(props().locator('[data-pending]')).toHaveCount(0)
   await expect(remaining).toHaveValue('15m')
 
   await remaining.fill('1.5')
