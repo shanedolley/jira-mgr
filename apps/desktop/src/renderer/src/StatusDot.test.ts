@@ -4,12 +4,21 @@ import { statusShape } from './StatusDot'
 
 describe('statusShape', () => {
   it('gives each category its own shape', () => {
-    expect(statusShape('new')).toBe('ring')
-    expect(statusShape('indeterminate')).toBe('half')
-    expect(statusShape('done')).toBe('check')
+    expect(statusShape({ name: 'To Do', category: 'new' })).toBe('ring')
+    expect(statusShape({ name: 'In Progress', category: 'indeterminate' })).toBe('half')
+    expect(statusShape({ name: 'Done', category: 'done' })).toBe('check')
   })
 
   it('draws an unknown category as the To Do ring', () => {
-    expect(statusShape('undefined')).toBe('ring')
+    expect(statusShape({ name: 'Backlog', category: 'undefined' })).toBe('ring')
+  })
+
+  it('draws Hold as its own dotted ring, whatever the case', () => {
+    expect(statusShape({ name: 'Hold', category: 'new' })).toBe('hold')
+    expect(statusShape({ name: ' hold ', category: 'new' })).toBe('hold')
+  })
+
+  it('leaves a name that only contains Hold alone', () => {
+    expect(statusShape({ name: 'Holding', category: 'new' })).toBe('ring')
   })
 })

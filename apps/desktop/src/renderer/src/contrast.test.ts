@@ -118,7 +118,7 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
   })
 
   it('keeps the status glyphs at 3:1 on every row background', () => {
-    for (const glyph of ['status-new', 'status-doing', 'status-done']) {
+    for (const glyph of ['status-new', 'status-doing', 'status-done', 'danger']) {
       for (const surface of ROW_SURFACES) {
         expect(
           contrast(token(glyph, theme), token(surface, theme)),
