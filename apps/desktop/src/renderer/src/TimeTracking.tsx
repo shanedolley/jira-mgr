@@ -8,10 +8,14 @@ import {
   type ChartBar,
   type ChartPeriod,
 } from '@jira-mgr/core/time-tracking'
-import { peekWorklogOptions, useWorklogs } from './activityQueries'
+import { useRef, useState } from 'react'
+
+import { blankWorklog } from './activity'
+import { peekWorklogOptions, useAddWorklog, useWorklogs } from './activityQueries'
 import { useTimeTracking } from './queries'
-import { QueryBody, Section } from './Section'
+import { AddAction, QueryBody, Section } from './Section'
 import { setChartPeriod, useChartPeriod } from './timePeriod'
+import { WorklogFormRow } from './WorklogsSection'
 
 const PERIODS: { id: ChartPeriod; label: string; range: string; noun: string }[] = [
   { id: 'days', label: 'Days', range: 'Last 14 days', noun: 'day' },
@@ -133,12 +137,44 @@ interface TimeTrackingProps {
  */
 export function TimeTracking({ issue, where, load = true }: TimeTrackingProps) {
   const settings = useTimeTracking().data
+  // Held by key, so a Peek that moves to another row does not carry an open form to it.
+  const [loggingFor, setLoggingFor] = useState<string | null>(null)
+  const logging = loggingFor === issue.key
+  const add = useAddWorklog(issue.key)
+  const addButton = useRef<HTMLButtonElement>(null)
   if (!propertyRules(issue.issueType).estimates || settings == null) return null
   const hours = settings.workingHoursPerDay
   const logged = issue.timeSpentSeconds ?? 0
   const percent = percentUsed(logged, issue.originalEstimateSeconds)
+  function close() {
+    setLoggingFor(null)
+    addButton.current?.focus()
+  }
+  const action = (
+    <AddAction
+      ref={addButton}
+      label="Log work"
+      onClick={() => {
+        setLoggingFor(issue.key)
+      }}
+    />
+  )
   const body = (
     <div className="space-y-3">
+      {logging && (
+        <WorklogFormRow
+          key={issue.key}
+          name="Log work"
+          submitLabel="Log work"
+          initial={blankWorklog()}
+          hadComment={false}
+          onSubmit={async (input) => {
+            await add.mutateAsync(input)
+            close()
+          }}
+          onCancel={close}
+        />
+      )}
       <dl className="grid grid-cols-3 gap-2">
         <Figure name="Estimate">
           {issue.originalEstimateSeconds === null
@@ -152,10 +188,17 @@ export function TimeTracking({ issue, where, load = true }: TimeTrackingProps) {
     </div>
   )
   return where === 'page' ? (
-    <Section title="Time tracking">{body}</Section>
+    <Section title="Time tracking" actions={action}>
+      {body}
+    </Section>
   ) : (
     <section aria-label="Time tracking" className="space-y-1">
-      <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">Time tracking</h2>
+      <div className="flex min-h-6 items-center gap-2">
+        <h2 className="text-[11px] font-medium uppercase tracking-wide text-muted">
+          Time tracking
+        </h2>
+        {action}
+      </div>
       {body}
     </section>
   )

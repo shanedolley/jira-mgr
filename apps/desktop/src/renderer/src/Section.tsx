@@ -1,5 +1,5 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 
 import { Icon, PLUS } from './Icon'
 import { LoadError } from './LoadError'
@@ -17,9 +17,19 @@ interface SectionProps {
 export const SECTION_HEADING = 'text-[13px] font-semibold leading-5 text-ink'
 
 /** The "+" at a section heading's right edge: how a section adds its first or next item. */
-export function AddAction({ label, onClick }: { label: string; onClick: () => void }) {
+export function AddAction({
+  label,
+  onClick,
+  ref,
+}: {
+  label: string
+  onClick: () => void
+  /** Lets the caller return focus here when the form it opened closes. */
+  ref?: Ref<HTMLButtonElement>
+}) {
   return (
     <button
+      ref={ref}
       type="button"
       aria-label={label}
       title={label}

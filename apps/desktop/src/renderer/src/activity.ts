@@ -1,5 +1,5 @@
 import { adfToMarkdown, type AdfDoc, type AdfNode } from '@jira-mgr/core/adf'
-import { DURATION_PATTERN } from '@jira-mgr/core/issue'
+import { parseDuration } from '@jira-mgr/core/issue'
 
 import type { LinkItem, LinkTypeItem, WorklogItem } from '../../shared/ipc'
 import type { Notice } from './create'
@@ -97,15 +97,19 @@ export const textFromAdf = (doc: AdfDoc | null): string =>
 
 /** The worklog form's fields as typed. */
 export interface WorklogForm {
+  /** A duration as typed, such as `1h15m` or `1.25 hours`. */
   timeSpent: string
-  /** A `datetime-local` value: `2026-10-10T14:30`, in local time. */
+  /**
+   * A `datetime-local` value, `2026-10-10T14:30`, in local time. A new worklog holds a date,
+   * `2026-10-10`, and starts at that day's current time of day.
+   */
   started: string
   comment: string
 }
 
 export type WorklogRequest =
   | { ok: true; timeSpent: string; started: string | undefined; comment: AdfDoc | undefined }
-  | { ok: false; message: string }
+  | { ok: false; message: string; field: keyof WorklogForm }
 
 /** `datetime-local` text for an instant, in local time. */
 export function toInputTime(iso: string): string {
@@ -114,10 +118,10 @@ export function toInputTime(iso: string): string {
   return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-/** What the form holds for a new worklog: now, nothing logged and no comment. */
+/** What the form holds for a new worklog: today, nothing logged and no comment. */
 export const blankWorklog = (now: Date = new Date()): WorklogForm => ({
   timeSpent: '',
-  started: toInputTime(now.toISOString()),
+  started: toInputTime(now.toISOString()).slice(0, 10),
   comment: '',
 })
 
@@ -129,21 +133,42 @@ export const worklogForm = (worklog: WorklogItem): WorklogForm => ({
 })
 
 /**
- * Reads the form into a request, or says what is wrong. An edit drops a comment the user
- * emptied, because Jira's worklog write cannot clear one here (`hadComment`).
+ * Reads the form into a request, or says what is wrong and in which field. Time spent is sent in
+ * Jira's format, so "1.25 hours" goes as "1h 15m". A date with no time starts at `now`'s time of
+ * day. An edit drops a comment the user emptied, because Jira's worklog write cannot clear one
+ * here (`hadComment`).
  */
-export function readWorklogForm(form: WorklogForm, hadComment = false): WorklogRequest {
-  const timeSpent = form.timeSpent.trim()
-  if (!DURATION_PATTERN.test(timeSpent)) {
-    return { ok: false, message: 'Time spent must be a duration such as 1h 30m.' }
+export function readWorklogForm(
+  form: WorklogForm,
+  hadComment = false,
+  now: Date = new Date(),
+): WorklogRequest {
+  const timeSpent = parseDuration(form.timeSpent)
+  if (timeSpent === null) {
+    return {
+      ok: false,
+      field: 'timeSpent',
+      message: 'Time spent must be a duration such as 1h 30m, 1.5 hours or 90m.',
+    }
   }
-  const started = new Date(form.started)
+  const dated = /^\d{4}-\d{2}-\d{2}$/.test(form.started)
+  const started = new Date(
+    dated ? `${form.started}T${toInputTime(now.toISOString()).slice(11)}` : form.started,
+  )
   if (form.started === '' || Number.isNaN(started.getTime())) {
-    return { ok: false, message: 'Started must be a date and time.' }
+    return {
+      ok: false,
+      field: 'started',
+      message: 'Started must be a valid date.',
+    }
   }
   const comment = adfFromText(form.comment)
   if (comment === null && hadComment) {
-    return { ok: false, message: 'A worklog comment cannot be removed here. Edit it in Jira.' }
+    return {
+      ok: false,
+      field: 'comment',
+      message: 'A worklog comment cannot be removed here. Edit it in Jira.',
+    }
   }
   return {
     ok: true,

@@ -241,6 +241,36 @@ export function parseEstimate(text: string): number | null {
     )
 }
 
+const DURATION_TERM =
+  /(\d{1,5}(?:\.\d+)?)\s*(weeks?|wks?|w|days?|d|hours?|hrs?|h|minutes?|mins?|m)(?![a-z])/gi
+
+/**
+ * A duration as people type it - "1h15m", "1.25 hours", "90m", "1 hour 15 minutes", "30 mins" - as
+ * Jira's format ("1h 15m"), or `null` when `text` is not one or comes to nothing. Whole weeks, days
+ * and hours keep their unit, so "2d" stays "2d" whatever a day is on the site. A fraction becomes
+ * minutes, rounded to the nearest, and 60 minutes carry into an hour.
+ */
+// ponytail: a fraction of a day or week assumes 8-hour days and 5-day weeks, as `parseEstimate` does.
+export function parseDuration(text: string): string | null {
+  const terms = [...text.matchAll(DURATION_TERM)]
+  if (terms.length === 0 || text.replace(DURATION_TERM, '').replace(/[\s,]|and/gi, '') !== '') {
+    return null
+  }
+  const parts = { w: 0, d: 0, h: 0, m: 0 }
+  for (const [, amount = '', word = ''] of terms) {
+    const unit = word.charAt(0).toLowerCase() as keyof typeof parts
+    const whole = Math.floor(Number(amount))
+    parts[unit] += whole
+    parts.m += Math.round((Number(amount) - whole) * (UNIT_SECONDS[unit] / 60))
+  }
+  parts.h += Math.floor(parts.m / 60)
+  parts.m %= 60
+  const written = (['w', 'd', 'h', 'm'] as const)
+    .filter((unit) => parts[unit] > 0)
+    .map((unit) => `${String(parts[unit])}${unit}`)
+  return written.length === 0 ? null : written.join(' ')
+}
+
 /** Seconds as hours and minutes, such as `1h 30m`. Hours and minutes alone need no working-day length. */
 export function formatEstimate(seconds: number): string {
   const minutes = Math.round(seconds / 60)
