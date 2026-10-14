@@ -2,7 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 
 type Category = Issue['status']['category']
 
-/** The glyph drawn for a status. Each differs by shape, so colour is never the only cue. */
+/** The glyph drawn for a status. Each differs by shape, so colour is never the only cue, except Hold. */
 export type StatusShape = 'ring' | 'half' | 'check' | 'hold'
 
 /** Hold sits in the To Do category, so the name alone tells it from To Do. */
@@ -19,13 +19,16 @@ const COLOURS: Record<StatusShape, string> = {
   ring: 'var(--status-new)',
   half: 'var(--status-doing)',
   check: 'var(--status-done)',
-  hold: 'var(--danger)',
+  hold: 'var(--status-new)',
 }
+
+/** Shane's call of 2026-10-14 (#217): Hold is the To Do ring at half opacity. */
+export const HOLD_OPACITY = 0.5
 
 /**
  * The status category: To Do an empty ring, In Progress a ring with its right half filled, Done a
- * solid circle with a check cut out in the canvas colour, Hold a red dotted ring. The name is the
- * accessible label.
+ * solid circle with a check cut out in the canvas colour, Hold the To Do ring at half opacity. The
+ * name is the accessible label.
  */
 export function StatusDot({ status }: { status: Issue['status'] }) {
   const shape = statusShape(status)
@@ -41,6 +44,7 @@ export function StatusDot({ status }: { status: Issue['status'] }) {
       fill="none"
       stroke={colour}
       strokeWidth="1.5"
+      opacity={shape === 'hold' ? HOLD_OPACITY : undefined}
     >
       {shape === 'check' ? (
         <>
@@ -53,13 +57,7 @@ export function StatusDot({ status }: { status: Issue['status'] }) {
           />
         </>
       ) : (
-        <circle
-          cx="7"
-          cy="7"
-          r="5.5"
-          // Zero-length dashes with round caps draw ten dots round the 34.56px circumference.
-          {...(shape === 'hold' && { strokeDasharray: '0 3.456', strokeLinecap: 'round' })}
-        />
+        <circle cx="7" cy="7" r="5.5" />
       )}
       {shape === 'half' && <path d="M7 1.5a5.5 5.5 0 0 1 0 11z" fill={colour} stroke="none" />}
     </svg>

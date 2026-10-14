@@ -13,7 +13,7 @@ describe('statusShape', () => {
     expect(statusShape({ name: 'Backlog', category: 'undefined' })).toBe('ring')
   })
 
-  it('draws Hold as its own dotted ring, whatever the case', () => {
+  it('draws Hold as its own shape, whatever the case', () => {
     expect(statusShape({ name: 'Hold', category: 'new' })).toBe('hold')
     expect(statusShape({ name: ' hold ', category: 'new' })).toBe('hold')
   })

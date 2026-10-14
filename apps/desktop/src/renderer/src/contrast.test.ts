@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { avatarColor, avatarFill } from './Avatar'
+import { HOLD_OPACITY } from './StatusDot'
 
 type Rgb = [number, number, number]
 type Theme = 'light' | 'dark'
@@ -118,13 +119,26 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
   })
 
   it('keeps the status glyphs at 3:1 on every row background', () => {
-    for (const glyph of ['status-new', 'status-doing', 'status-done', 'danger']) {
+    for (const glyph of ['status-new', 'status-doing', 'status-done']) {
       for (const surface of ROW_SURFACES) {
         expect(
           contrast(token(glyph, theme), token(surface, theme)),
           `${glyph} on ${surface}`,
         ).toBeGreaterThanOrEqual(3)
       }
+    }
+  })
+
+  // Exempt from the 3:1 rule by Shane's decision of 2026-10-14 (#217): Hold is the To Do ring at
+  // 50% opacity, and the faded ring measures 1.66 to 2.19 against the row surfaces. With the shape
+  // equal to To Do, opacity is the only cue. The floor catches a token change that erases it.
+  it('keeps the faded Hold ring (50% opacity, an exemption from 3:1) visible on every row', () => {
+    expect(HOLD_OPACITY).toBe(0.5)
+    for (const surface of ROW_SURFACES) {
+      const ring = token('status-new', theme)
+      const bg = token(surface, theme)
+      const faded = ring.map((c, i) => HOLD_OPACITY * c + (1 - HOLD_OPACITY) * (bg[i] ?? 0)) as Rgb
+      expect(contrast(faded, bg), `faded status-new on ${surface}`).toBeGreaterThanOrEqual(1.5)
     }
   })
 
