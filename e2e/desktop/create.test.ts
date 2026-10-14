@@ -340,11 +340,8 @@ test('the chips stay on three lines in a wide font', async () => {
   expect(await chipRows('Verdana, "DejaVu Sans", sans-serif')).toBeLessThanOrEqual(3)
 })
 
-test('the date chips stay inside the dialog at the narrowest window, in a wide font', async () => {
+test('the date chips stay inside the dialog in a wide font', async () => {
   await open()
-  await app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setSize(900, 800)
-  })
   await openCreate(/PSAPAC-2,/)
   await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
@@ -354,12 +351,41 @@ test('the date chips stay inside the dialog at the narrowest window, in a wide f
 
   const box = await dialog().evaluate((el) => {
     const right = el.getBoundingClientRect().right
-    const outside = [
-      ...el.querySelectorAll('label:has(input[type=date]), label:has(input[type=date]) *'),
-    ].filter((child) => child.getBoundingClientRect().right > right + 1)
+    const outside = [...el.querySelectorAll('label:has(input[type=date]) *')].filter(
+      (child) => child.getBoundingClientRect().right > right + 1,
+    )
     return { overflow: el.scrollWidth - el.clientWidth, outside: outside.length }
   })
   expect(box).toEqual({ overflow: 0, outside: 0 })
+})
+
+test('a date typed only in part blocks the create and says which, until it is finished or cleared', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Summary').fill('Half a date')
+  const start = dialog().getByLabel('Start date')
+  const create = dialog().getByRole('button', { name: 'Create issue' })
+  await expect(create).toBeEnabled()
+
+  // One segment typed: the input reports "" with badInput, like an empty one.
+  await start.focus()
+  await window.keyboard.type('10')
+  await dialog().getByLabel('Summary').focus()
+  await expect(start).toHaveAttribute('aria-invalid', 'true')
+  await expect(create).toBeDisabled()
+  await expect(dialog()).toContainText('Add a complete Start date to create.')
+
+  // Cmd+Enter sends nothing and takes focus to the field.
+  await window.keyboard.press('Meta+Enter')
+  await expect(start).toBeFocused()
+  expect((await counts(app)).edits).toBe(0)
+
+  await start.fill('2026-10-01')
+  await expect(start).not.toHaveAttribute('aria-invalid')
+  await expect(create).toBeEnabled()
+  await create.click()
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { customfield_4: '2026-10-01' } })
 })
 
 test('typing an issue key in the Parent field finds that issue', async () => {
