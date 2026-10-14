@@ -139,7 +139,7 @@ The Shell derives everything during render, with `useMemo`:
 
 `filters` passes through `useDeferredValue`, so typing in the text filter stays responsive while the Tree rebuilds.
 
-`flattenTree` turns `CustomerGroup[]` into the visible rows, in this order: each Customer header; its Epics, each followed by its children (open first, as core orders them), then the Epic's Done chip; then its No Epic header and those issues. A node's subtree and chip appear only when the node is expanded. A chip's Done children appear only when the chip is revealed, one level below it.
+`flattenTree` turns `CustomerGroup[]` into the visible rows, in this order: each Customer header; its Epics, each followed by its children (in the chosen order, as core orders them), then the Epic's Done chip; then its No Epic header and those issues. A node's subtree and chip appear only when the node is expanded. A chip's Done children appear only when the chip is revealed, one level below it.
 
 | Kind | Id | Level | Shows | Expandable |
 |---|---|---|---|---|

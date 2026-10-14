@@ -4,20 +4,20 @@
 
 **Focus: keep documentation current and remove stale references.** Item 1 below says how; do it in every pull request.
 
-Eight issues are open (`gh issue list --state open --limit 200`, 2026-10-14). #217 and #221 are merged and wait on Shane in HIL Review. Four stories are built and committed on local branches, one worktree each, nothing pushed; [handover.md](handover.md) "Open Stories" gives each branch, commit and next step. Resume in this order, one pull request at a time, rebasing each branch onto `origin/main` before pushing:
+Eight issues are open (`gh issue list --state open --limit 200`, 2026-10-14). #217, #221 and #222 are merged and wait on Shane in HIL Review. Three stories are built and committed on local branches, one worktree each, nothing pushed, and #223 is in build; [handover.md](handover.md) "Open Stories" gives each branch, commit and next step. Land them one pull request at a time, rebasing each branch onto `origin/main` before pushing:
 
-- #216: the builder is fixing the review's M1, L1, L3 and L4 in `../jira-mgr-216`. Then commit, rebase, open the pull request and merge.
-- #219, #220 and #222: as their reviews land (all under review, 2026-10-14).
-- #224 after #219 merges.
-- #223 after #222 merges.
+- #220: rebased onto main, its builder is opening the pull request (`gh pr list --state open`). Merge it when CI is green and a PASS verdict is posted.
+- #216: the review fixes sit uncommitted in `../jira-mgr-216`, e2e pending. Then commit, rebase (the branch conflicts in `apps/desktop/README.md`), open the pull request and merge.
+- #219: the Medium and three Lows are being fixed in `../jira-mgr-219`, uncommitted. Then commit, rebase, open the pull request and merge.
+- #224 after #219 merges. It is not claimed.
+- #223: claimed, in build in `../jira-mgr-223` (`223-manual-order`, builder `223-manual-order-build`).
+CI runs on 2 workers. The test command is `pnpm test`, plus `pnpm e2e --workers=1` for desktop work. No database exists: Jira is reached live only through `jm` and the app, and tests never write to it. [handover.md](handover.md) holds the state, the decisions and the traps.
 
-Neither #223 nor #224 is claimed. CI runs on 2 workers. The test command is `pnpm test`, plus `pnpm e2e --workers=1` for desktop work. No database exists: Jira is reached live only through `jm` and the app, and tests never write to it. [handover.md](handover.md) holds the state, the decisions and the traps.
-
-1. **Keep the documentation current and remove stale references in every pull request.** Shane asked for this explicitly and restated it on 2026-10-13. Check closed issues named as open and features named as planned or not built in `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`, `AGENTS.md`, `docs/` (except dated discovery records) and each package README; check each file name and script a doc names against `git ls-files` and `package.json`; compare the `e2e/README.md` suite table with `e2e/desktop/` and the `apps/desktop/README.md` file table with `git ls-files apps/desktop/src`; run a link and anchor check over every tracked `.md` file; run `pnpm docs:reference` and confirm no drift. Look for text describing Collapse all or Expand all, session-only collapse, the old #209 filter rule, or `xvfb-run` instructions. Last swept 2026-10-14 at main e26b81f: 91 tracked `.md` files and 408 relative links outside code, none broken; no drift from `pnpm docs:reference` under Node 24; the sweep fixed two design docs' Open Questions (0003, 0004) and the closed #27 references in the L7 runbook. A story that changes behaviour a doc describes updates that doc in its own PR.
-2. **Each story touching UI goes to HIL Review** after merge, per Loop step 9. Name in the comment the orchestrator's decisions Shane has not confirmed: #223's Manual ordering rules, #224's hover-wins rule, and #222's per-order default direction.
+1. **Keep the documentation current and remove stale references in every pull request.** Shane asked for this explicitly and restated it on 2026-10-13. Check closed issues named as open and features named as planned or not built in `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`, `AGENTS.md`, `docs/` (except dated discovery records) and each package README; check each file name and script a doc names against `git ls-files` and `package.json`; compare the `e2e/README.md` suite table with `e2e/desktop/` and the `apps/desktop/README.md` file table with `git ls-files apps/desktop/src`; run a link and anchor check over every tracked `.md` file; run `pnpm docs:reference` and confirm no drift. Look for text describing Collapse all or Expand all, session-only collapse, the old #209 filter rule, `xvfb-run` instructions, or status-first ordering under Key (changed by #222). Last swept 2026-10-14 at main 142e11c: 91 tracked `.md` files and 408 relative links outside code, none broken (a `python3 -I` script over `git ls-files`); no drift from `pnpm docs:reference` under Node 24; every `e2e/desktop/*.test.ts` named in `e2e/README.md`; the sweep added #217, #221 and #222 to the README and the roadmap and fixed an "open first" child order in design 0002. A story that changes behaviour a doc describes updates that doc in its own PR.
+2. **Each story touching UI goes to HIL Review** after merge, per Loop step 9. Name in the comment the orchestrator's decisions Shane has not confirmed: #223's Manual ordering rules and #224's hover-wins rule. (#222's per-order default direction is named on its issue already.)
 3. Do not build gap 13 (undecided) or gap 14 (Later).
 
-Run e2e with `pnpm e2e --workers=1`, serialised across worktrees with `lockf <scratchpad>/e2e.lock pnpm e2e --workers=1` (see Traps in the handover).
+Run e2e with `pnpm e2e --workers=1`, serialised across worktrees with `lockf <lock file> pnpm e2e --workers=1`. The lock file is the one the running agents already use, `/private/tmp/claude-501/-Users-shanedolley-Development-personal-jira-mgr/3039b12d-bdd4-4103-be3c-d6d2847ec132/scratchpad/e2e.lock`. A session's own scratchpad gives a different path, and two lock files let two runs overlap (see Traps in the handover).
 
 ## Reading Order
 
