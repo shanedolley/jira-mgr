@@ -2,7 +2,10 @@ import type { Issue } from '@jira-mgr/core'
 
 type Category = Issue['status']['category']
 
-/** The glyph drawn for a status. Each differs by shape, so colour is never the only cue, except Hold. */
+/**
+ * The glyph drawn for a status. Each differs by shape, so colour is never the only cue, except
+ * Hold.
+ */
 export type StatusShape = 'ring' | 'half' | 'check' | 'hold'
 
 /** Hold sits in the To Do category, so the name alone tells it from To Do. */
