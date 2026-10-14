@@ -1,5 +1,6 @@
 import {
   ISSUE_ORDERS,
+  ORDER_DEFAULT_DIRECTION,
   ORDER_DIRECTIONS,
   ROW_PROPERTIES,
   type IssueOrder,
@@ -497,7 +498,8 @@ export function TreeToolbar({
                     type="button"
                     aria-pressed={display.order === order}
                     onClick={() => {
-                      onDisplay({ ...display, order })
+                      if (order !== display.order)
+                        onDisplay({ ...display, order, direction: ORDER_DEFAULT_DIRECTION[order] })
                     }}
                     className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
                   >

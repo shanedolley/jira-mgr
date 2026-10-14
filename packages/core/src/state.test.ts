@@ -506,7 +506,7 @@ describe('display', () => {
     expect((await readSettings()).display).toEqual({
       properties: ['labels', 'updated'],
       order: 'due',
-      direction: 'desc',
+      direction: 'asc',
     })
   })
 
@@ -520,36 +520,42 @@ describe('display', () => {
     })
   })
 
-  it('reads a display saved before directions existed as descending', async () => {
-    const raw = { display: { properties: ['labels'], order: 'due' } }
-    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
-    expect((await readSettings()).display).toEqual({
-      properties: ['labels'],
-      order: 'due',
-      direction: 'desc',
+  it("reads a display with no direction as its order's default direction", async () => {
+    const read = async (order: string) => {
+      await writeFile(join(dir, 'settings.json'), JSON.stringify({ display: { order } }))
+      return (await readSettings()).display.direction
+    }
+    expect(await read('key')).toBe('desc')
+    expect(await read('priority')).toBe('desc')
+    expect(await read('updated')).toBe('desc')
+    expect(await read('due')).toBe('asc')
+    expect(await read('status')).toBe('asc')
+  })
+
+  it("keeps a chosen direction, and reads an unknown one as the order's default", async () => {
+    const raw = (order: string, direction: string) => ({
+      display: { properties: [], order, direction },
     })
-  })
-
-  it('keeps ascending and reads an unknown direction as descending', async () => {
-    const raw = (direction: string) => ({ display: { properties: [], order: 'key', direction } })
-    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw('asc')))
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw('key', 'asc')))
     expect((await readSettings()).display.direction).toBe('asc')
-    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw('up')))
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw('due', 'desc')))
     expect((await readSettings()).display.direction).toBe('desc')
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw('due', 'up')))
+    expect((await readSettings()).display.direction).toBe('asc')
   })
 
-  it('reads a view display saved before directions existed as descending, and keeps asc', async () => {
+  it("reads a view display with no direction as its order's default, and keeps a chosen one", async () => {
     const view = (display: unknown) => ({ id: 'v', name: 'V', filters: {}, toggles, display })
     await writeFile(
       join(dir, 'views.json'),
       JSON.stringify([
-        view({ properties: ['due'], order: 'priority' }),
-        { ...view({ properties: [], order: 'status', direction: 'asc' }), id: 'w', name: 'W' },
+        view({ properties: ['due'], order: 'due' }),
+        { ...view({ properties: [], order: 'status', direction: 'desc' }), id: 'w', name: 'W' },
       ]),
     )
-    const [old, asc] = await readViews()
-    expect(old?.display).toEqual({ properties: ['due'], order: 'priority', direction: 'desc' })
-    expect(asc?.display).toEqual({ properties: [], order: 'status', direction: 'asc' })
+    const [old, chosen] = await readViews()
+    expect(old?.display).toEqual({ properties: ['due'], order: 'due', direction: 'asc' })
+    expect(chosen?.display).toEqual({ properties: [], order: 'status', direction: 'desc' })
   })
 
   it.each([

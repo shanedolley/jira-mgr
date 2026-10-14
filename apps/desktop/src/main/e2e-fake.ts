@@ -417,6 +417,7 @@ const SEEDS: Seed[] = [
     parent: 20,
     customer: 'beta',
     assignee: 'u1',
+    due: '2998-06-01',
   },
   {
     n: 22,

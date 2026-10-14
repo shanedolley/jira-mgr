@@ -185,7 +185,7 @@ test('orders by due date within an Epic, keeping the Customer groups and No Epic
   expect(keys.indexOf('PSAPAC-40')).toBeGreaterThan(keys.indexOf('PSAPAC-32'))
   await expect
     .poll(savedDisplay)
-    .toEqual({ properties: ['updated'], order: 'due', direction: 'desc' })
+    .toEqual({ properties: ['updated'], order: 'due', direction: 'asc' })
 
   await inDisplayMenu(async () => {
     await choice('Ordering', 'Key').click()
@@ -250,23 +250,36 @@ test('flips the direction of every level, saves it with the order, and keeps Key
     direction: 'asc',
   })
 
-  // The direction survives a restart and applies to the next order, and undated issues stay last.
+  // The direction survives a restart. Picking another order puts that order's own direction back.
   await app.close()
   ;({ app, window } = await launch(stateDir))
   await open()
   await expect.poll(siblingSteps).toEqual([1])
+  const pressed = (name: string, on: boolean) =>
+    expect(choice('Direction', name)).toHaveAttribute('aria-pressed', String(on))
   await inDisplayMenu(async () => {
-    await expect(choice('Direction', 'Ascending')).toHaveAttribute('aria-pressed', 'true')
+    await pressed('Ascending', true)
+    await choice('Ordering', 'Priority').click()
+    await pressed('Descending', true)
     await choice('Ordering', 'Due date').click()
+    await pressed('Ascending', true)
   })
-  for (const name of ['Ascending', 'Descending']) {
-    await inDisplayMenu(async () => {
-      await choice('Direction', name).click()
-    })
-    await expect
-      .poll(async () => (await issueKeys()).filter((k) => ['PSAPAC-31', 'PSAPAC-32'].includes(k)))
-      .toEqual(['PSAPAC-31', 'PSAPAC-32'])
-  }
+  // PSAPAC-40 fell due in 2020 and PSAPAC-21 falls due in 2998, both in Beta's No Epic. PSAPAC-31
+  // is dated and PSAPAC-32 is not, so Due date keeps 32 last either way.
+  const dueOrder = async () =>
+    (await issueKeys()).filter((k) =>
+      ['PSAPAC-21', 'PSAPAC-31', 'PSAPAC-32', 'PSAPAC-40'].includes(k),
+    )
+  await expect.poll(dueOrder).toEqual(['PSAPAC-31', 'PSAPAC-32', 'PSAPAC-40', 'PSAPAC-21'])
+  await inDisplayMenu(async () => {
+    await choice('Direction', 'Descending').click()
+  })
+  await expect.poll(dueOrder).toEqual(['PSAPAC-31', 'PSAPAC-32', 'PSAPAC-21', 'PSAPAC-40'])
+  await expect.poll(savedDisplay).toEqual({
+    properties: ['updated'],
+    order: 'due',
+    direction: 'desc',
+  })
 })
 
 test('orders by priority and by updated within an Epic', async () => {
@@ -356,7 +369,7 @@ test('a saved view carries its display, which applying copies and Update view sa
   await expect(view('Triage')).toHaveAttribute('aria-current', 'true')
   await expect
     .poll(async () => (await savedViews()).find((v) => v.name === 'Triage')?.display)
-    .toEqual({ properties: ['labels', 'updated'], order: 'due', direction: 'desc' })
+    .toEqual({ properties: ['labels', 'updated'], order: 'due', direction: 'asc' })
 
   // Display is not part of the match: toggling a property keeps the view lit, and Update view wakes.
   await expect(update('Triage')).toBeDisabled()
@@ -379,7 +392,7 @@ test('a saved view carries its display, which applying copies and Update view sa
   await expect(prop(row, 'sprint')).toHaveCount(0)
   await expect
     .poll(savedDisplay)
-    .toEqual({ properties: ['labels', 'updated'], order: 'due', direction: 'desc' })
+    .toEqual({ properties: ['labels', 'updated'], order: 'due', direction: 'asc' })
   await inDisplayMenu(async () => {
     await expect(choice('Ordering', 'Due date')).toHaveAttribute('aria-pressed', 'true')
     await expect(choice('Display properties', 'Sprint')).toHaveAttribute('aria-pressed', 'false')

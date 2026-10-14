@@ -10,7 +10,7 @@ import {
   type HierarchyNode,
   type HierarchyOptions,
 } from './hierarchy.js'
-import { ISSUE_ORDERS } from './display.js'
+import { ISSUE_ORDERS, ORDER_DEFAULT_DIRECTION } from './display.js'
 import { issueSchema, type Issue } from './issue.js'
 
 const ACME = { id: '1', value: 'Acme' }
@@ -613,7 +613,8 @@ describe('order', () => {
 
   it('sorts by due date, soonest first and undated last', () => {
     const g = group('due')
-    expect(keys(g?.epics ?? [])).toEqual(['P-3', 'P-1', 'P-4', 'P-2'])
+    // The undated P-2 and P-4 tie, and Due date runs ascending, so the lower key comes first.
+    expect(keys(g?.epics ?? [])).toEqual(['P-3', 'P-1', 'P-2', 'P-4'])
     expect(keys(g?.epics[1]?.children ?? [])).toEqual(['P-13', 'P-11', 'P-10', 'P-12'])
     expect(keys(g?.noEpic ?? [])).toEqual(['P-22', 'P-20', 'P-21'])
   })
@@ -703,8 +704,16 @@ describe('direction', () => {
     noEpic: keys(g?.noEpic ?? []),
   })
 
-  it('defaults to descending', () => {
-    expect(levels(group('key'))).toEqual(levels(group('key', 'desc')))
+  it('runs each order in its own default direction when none is given', () => {
+    for (const order of ISSUE_ORDERS)
+      expect(levels(group(order))).toEqual(levels(group(order, ORDER_DEFAULT_DIRECTION[order])))
+    expect(ORDER_DEFAULT_DIRECTION).toEqual({
+      key: 'desc',
+      priority: 'desc',
+      updated: 'desc',
+      due: 'asc',
+      status: 'asc',
+    })
   })
 
   it.each([
@@ -730,22 +739,22 @@ describe('direction', () => {
     ],
     [
       'status',
-      'desc',
+      'asc',
       {
-        epics: ['P-4', 'P-3', 'P-2', 'P-5', 'P-1'],
-        stories: ['P-13', 'P-12', 'P-11', 'P-10'],
+        epics: ['P-3', 'P-4', 'P-2', 'P-5', 'P-1'],
+        stories: ['P-13', 'P-11', 'P-12', 'P-10'],
         subtasks: ['P-15', 'P-14'],
-        noEpic: ['P-22', 'P-21', 'P-20'],
+        noEpic: ['P-21', 'P-22', 'P-20'],
       },
     ],
     [
       'status',
-      'asc',
+      'desc',
       {
-        epics: ['P-1', 'P-5', 'P-2', 'P-3', 'P-4'],
-        stories: ['P-10', 'P-11', 'P-12', 'P-13'],
+        epics: ['P-1', 'P-5', 'P-2', 'P-4', 'P-3'],
+        stories: ['P-10', 'P-12', 'P-11', 'P-13'],
         subtasks: ['P-14', 'P-15'],
-        noEpic: ['P-20', 'P-21', 'P-22'],
+        noEpic: ['P-20', 'P-22', 'P-21'],
       },
     ],
     [
@@ -790,21 +799,21 @@ describe('direction', () => {
     ],
     [
       'due',
-      'desc',
+      'asc',
       {
-        epics: ['P-3', 'P-5', 'P-1', 'P-4', 'P-2'],
-        stories: ['P-11', 'P-10', 'P-13', 'P-12'],
-        subtasks: ['P-15', 'P-14'],
+        epics: ['P-3', 'P-1', 'P-5', 'P-2', 'P-4'],
+        stories: ['P-11', 'P-10', 'P-12', 'P-13'],
+        subtasks: ['P-14', 'P-15'],
         noEpic: ['P-22', 'P-20', 'P-21'],
       },
     ],
     [
       'due',
-      'asc',
+      'desc',
       {
-        epics: ['P-1', 'P-5', 'P-3', 'P-2', 'P-4'],
-        stories: ['P-10', 'P-11', 'P-12', 'P-13'],
-        subtasks: ['P-14', 'P-15'],
+        epics: ['P-5', 'P-1', 'P-3', 'P-4', 'P-2'],
+        stories: ['P-10', 'P-11', 'P-13', 'P-12'],
+        subtasks: ['P-15', 'P-14'],
         noEpic: ['P-20', 'P-22', 'P-21'],
       },
     ],
@@ -819,7 +828,10 @@ describe('direction', () => {
     expect(g('asc')).toEqual(['P-10', 'P-11', 'P-12', 'P-13'])
   })
 
-  it('puts unknown statuses after Done under Status descending', () => {
+  it.each([
+    ['asc', ['P-6', 'P-5', 'P-7', 'P-4', 'P-3', 'P-2']],
+    ['desc', ['P-3', 'P-4', 'P-7', 'P-5', 'P-6', 'P-2']],
+  ] as const)('puts an unlisted status last under Status %s', (direction, expected) => {
     const tree = build(
       [
         issue('P-1', { type: 'Epic', customer: ACME }),
@@ -830,16 +842,9 @@ describe('direction', () => {
         issue('P-6', { parent: 'P-1', status: 'Opportunity' }),
         issue('P-7', { parent: 'P-1', status: 'To Do' }),
       ],
-      { order: 'status' },
+      { order: 'status', direction },
     )
-    expect(keys(tree[0]?.epics[0]?.children ?? [])).toEqual([
-      'P-6',
-      'P-7',
-      'P-5',
-      'P-4',
-      'P-3',
-      'P-2',
-    ])
+    expect(keys(tree[0]?.epics[0]?.children ?? [])).toEqual(expected)
   })
 
   it('keeps undated issues last under Due date in both directions', () => {

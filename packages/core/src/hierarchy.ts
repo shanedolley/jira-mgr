@@ -1,6 +1,6 @@
 import {
-  DEFAULT_DIRECTION,
   DEFAULT_ORDER,
+  ORDER_DEFAULT_DIRECTION,
   priorityLevel,
   type IssueOrder,
   type OrderDirection,
@@ -29,7 +29,7 @@ export interface HierarchyOptions {
    * their order.
    */
   order?: IssueOrder | undefined
-  /** Which end of `order` comes first; `desc` by default. Key ties break the same way. */
+  /** Which way `order` runs; the order's own default (`ORDER_DEFAULT_DIRECTION`) when absent. Key ties break the same way. */
   direction?: OrderDirection | undefined
 }
 
@@ -78,28 +78,33 @@ const priorityOf = (i: Issue) => priorityLevel(i.priority?.name ?? '')
 
 type Compare = (a: Issue, b: Issue) => number
 
-/** Each order's `desc` comparison: highest priority, newest update, soonest due date, first status. */
+/** Each order's `asc` comparison: lowest priority, oldest update, soonest due date, first status. */
 const FIELD_ORDERS: Record<Exclude<IssueOrder, 'key'>, Compare> = {
   status: (a, b) => statusRank(a) - statusRank(b),
-  priority: (a, b) => priorityOf(b) - priorityOf(a),
-  updated: (a, b) => Date.parse(b.updated) - Date.parse(a.updated),
-  // `undated` settles a missing date first, so both sides are dated here.
+  priority: (a, b) => priorityOf(a) - priorityOf(b),
+  updated: (a, b) => Date.parse(a.updated) - Date.parse(b.updated),
   due: (a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''),
 }
 
-const undated = (a: Issue, b: Issue) => Number(a.dueDate === null) - Number(b.dueDate === null)
+/** Issues an order cannot place sort last in either direction: undated under `due`, an unlisted status. */
+const LAST: Partial<Record<IssueOrder, (i: Issue) => boolean>> = {
+  due: (i) => i.dueDate === null,
+  status: (i) => !STATUS_ORDER.includes(i.status.name),
+}
 
 /**
- * One comparator for every list. `asc` reverses the order's `desc` comparison, but undated issues
- * stay last under `due`. Ties break by key number in the same direction, and `key` is that
- * tie-break alone.
+ * One comparator for every list. `asc` is the order's own comparison and `desc` reverses it, but
+ * issues the order cannot place stay last. Ties break by key number in the same direction, and
+ * `key` is that tie-break alone.
  */
 function comparator(order: IssueOrder, direction: OrderDirection): Compare {
-  const sign = direction === 'asc' ? -1 : 1
-  const byKey: Compare = (a, b) => sign * (keyNumber(b) - keyNumber(a))
+  const sign = direction === 'asc' ? 1 : -1
+  const byKey: Compare = (a, b) => sign * (keyNumber(a) - keyNumber(b))
   if (order === 'key') return byKey
   const field = FIELD_ORDERS[order]
-  return (a, b) => (order === 'due' ? undated(a, b) : 0) || sign * field(a, b) || byKey(a, b)
+  const unplaced = LAST[order]
+  return (a, b) =>
+    (unplaced ? Number(unplaced(a)) - Number(unplaced(b)) : 0) || sign * field(a, b) || byKey(a, b)
 }
 
 /** Ordinary Customers first, then No Customer, then the internal ones. */
@@ -123,7 +128,8 @@ function byCustomer(
  * changes.
  */
 export function buildHierarchy(issues: Issue[], options: HierarchyOptions): CustomerGroup[] {
-  const sort = comparator(options.order ?? DEFAULT_ORDER, options.direction ?? DEFAULT_DIRECTION)
+  const order = options.order ?? DEFAULT_ORDER
+  const sort = comparator(order, options.direction ?? ORDER_DEFAULT_DIRECTION[order])
   const everyKey = new Map(issues.map((i) => [i.key, i]))
   // "Hide done" builds from the open issues alone, so no Done issue is a row, context or chip.
   const loaded = options.hideDone ? issues.filter((i) => !isDone(i)) : issues

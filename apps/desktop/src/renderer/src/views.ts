@@ -1,4 +1,4 @@
-import { DEFAULT_DIRECTION, DEFAULT_ORDER, DEFAULT_PROPERTIES } from '@jira-mgr/core/display'
+import { DEFAULT_ORDER, DEFAULT_PROPERTIES, ORDER_DEFAULT_DIRECTION } from '@jira-mgr/core/display'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
 import type { Display, SavedView, Toggles } from '../../shared/ipc'
@@ -35,7 +35,7 @@ export function viewDisplayMatches(view: SavedView, display: Display): boolean {
   const saved = view.display ?? {
     properties: [...DEFAULT_PROPERTIES],
     order: DEFAULT_ORDER,
-    direction: DEFAULT_DIRECTION,
+    direction: ORDER_DEFAULT_DIRECTION[DEFAULT_ORDER],
   }
   return (
     saved.order === display.order &&
