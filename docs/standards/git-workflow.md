@@ -38,7 +38,7 @@ Work is tracked in GitHub issues on [shanedolley/jira-mgr](https://github.com/sh
 
 Squash-merge every pull request. The pull request title becomes the commit on `main`, so it follows the commit format above, and the description carries the `Refs` line. `main` keeps a linear history of one commit per pull request.
 
-Merge only when every CI check passes and a reviewer other than the builder has approved. Find the run for the head you pushed with `gh run list --commit <sha> --json databaseId,status` (it can lag the push), then wait for it with `gh run watch <id> --exit-status`. Delete the branch after the merge.
+Merge only when every CI check passes and a reviewer other than the builder has approved. Find the run for the head you pushed with `gh run list --commit <full sha> --json databaseId,status` (a short SHA returns nothing, and the run can lag the push), then wait for it with `gh run watch <id> --exit-status`. Delete the branch after the merge.
 
 ## Versioning
 
