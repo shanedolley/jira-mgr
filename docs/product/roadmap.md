@@ -57,7 +57,7 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 
 ## Review Follow-ups
 
-Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202, #209 and #212 are Shane's later requests. Each is one issue; the tracker holds the status. All are built.
+Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202, #209, #212, #217, #221 and #222 are Shane's later requests. Each is one issue; the tracker holds the status. All are built.
 
 | Issue | Item |
 |---|---|
@@ -69,6 +69,7 @@ Stories #126 to #151 came from the [UX review and Linear gap analysis](../discov
 | #143 | Select and edit several issues at once. Core batch module and the desktop selection, bulk bar and batch undo built |
 | #199 to #202 | Hide done hides every Done issue; sub-issue progress on Story, Task and Bug rows, not Epics; a double-click opens the first-clicked issue; estimate, time logged and a worklog chart on the Peek and the issue page |
 | #209, #212 | The Tree opens at a level that persists across launches; an app icon of its own |
+| #217, #221, #222 | The Hold status drawn as the To Do ring at half opacity; a Parent picker wide enough to read a summary; ascending or descending order per view, with Key ordering by key alone and a Status order |
 
 ## Working Rules
 
