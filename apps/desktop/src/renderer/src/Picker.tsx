@@ -70,6 +70,8 @@ export interface PickerProps {
   /** Extra controls under the list, such as "Show all sprints". */
   footer?: ReactNode
   disabled?: boolean
+  /** Opens a 26rem popover in place of the 13rem one, for options whose labels are long, such as a parent's summary. */
+  wide?: boolean
   /** Lets the caller focus the button, such as after a dialog the choice opened has closed. */
   triggerRef?: RefObject<HTMLButtonElement | null>
 }
@@ -142,6 +144,7 @@ export function Picker({
   note,
   footer,
   disabled = false,
+  wide = false,
   triggerRef: givenTriggerRef,
 }: PickerProps) {
   const uid = useId()
@@ -312,7 +315,7 @@ export function Picker({
           positionAnchor: anchorOf(uid),
           positionTryFallbacks: 'flip-block, flip-inline',
         }}
-        className="menu w-52"
+        className={`menu ${wide ? 'w-104' : 'w-52'}`}
       >
         {searchable && (
           <input

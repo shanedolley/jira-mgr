@@ -1082,3 +1082,53 @@ test('wraps a long unbroken summary inside the page instead of overflowing it', 
   }))
   expect(overflow).toEqual({ button: 0, article: 0 })
 })
+
+const LONG_SUMMARY =
+  'Customer onboarding for the Petronas regional rollout and the ABN AMRO pilot programme'
+
+const FONTS = [
+  ['the default font', undefined],
+  ['a wide font', '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }'],
+] as const
+
+for (const [name, css] of FONTS) {
+  test(`the Parent picker opens 26rem wide inside the window, and truncates a long summary, in ${name}`, async () => {
+    await openPage(/PSAPAC-10,/, 'Customer onboarding')
+    await summary('Customer onboarding').click()
+    await issuePage().getByLabel('Summary').fill(LONG_SUMMARY)
+    await window.keyboard.press('Enter')
+    await expect(heading(LONG_SUMMARY)).toBeVisible()
+    await settle(1)
+    await window.keyboard.press('Escape')
+    await item(/PSAPAC-4,/).click()
+    await window.keyboard.press('Enter')
+    await expect(heading('Migrate the dashboards')).toBeVisible()
+    if (css !== undefined) await window.addStyleTag({ content: css })
+
+    await picker('Parent', /^Parent: PSAPAC-10/).click()
+    const listbox = window.getByRole('listbox', { name: 'Parent' })
+    const box = await listbox.locator('xpath=..').boundingBox()
+    const view = await window.evaluate(() => ({ w: innerWidth, h: innerHeight }))
+    expect(box?.width).toBe(416)
+    expect(box?.x).toBeGreaterThanOrEqual(0)
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(view.w)
+    expect(box?.y).toBeGreaterThanOrEqual(0)
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(view.h)
+
+    // The summary is too long for the row: it ends in an ellipsis, and the accessible name keeps all of it.
+    const long = option(new RegExp(LONG_SUMMARY))
+    await expect(long).toBeVisible()
+    const label = long.locator('span.truncate')
+    expect(await label.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
+    expect(await label.evaluate((el) => getComputedStyle(el).textOverflow)).toBe('ellipsis')
+    await window.keyboard.press('Escape')
+
+    // Other pickers keep their width.
+    await picker('Priority', 'Medium').click()
+    const other = await window
+      .getByRole('listbox', { name: 'Priority' })
+      .locator('xpath=..')
+      .boundingBox()
+    expect(other?.width).toBe(208)
+  })
+}

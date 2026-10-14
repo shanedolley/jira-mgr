@@ -574,6 +574,7 @@ export function CreateIssueDialog({
                 {rules.parent && (
                   <Picker
                     label="Parent"
+                    wide
                     variant={draft.type === 'Subtask' ? 'filled' : 'chip'}
                     leading={<ChipName>Parent</ChipName>}
                     triggerRef={parentTrigger}

@@ -1389,3 +1389,35 @@ test('Create more never inserts a lost-upload node while it clears a pasted imag
     [],
   )
 })
+
+for (const [name, css] of [
+  ['the default font', undefined],
+  ['a wide font', '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }'],
+] as const) {
+  test(`the Parent picker in the create dialog opens 26rem wide inside the window, in ${name}`, async () => {
+    await open()
+    await openCreate(/PSAPAC-2,/)
+    if (css !== undefined) await window.addStyleTag({ content: css })
+
+    await field('Parent', /^Parent:/).click()
+    const box = await window
+      .getByRole('listbox', { name: 'Parent' })
+      .locator('xpath=..')
+      .boundingBox()
+    const view = await window.evaluate(() => ({ w: innerWidth, h: innerHeight }))
+    expect(box?.width).toBe(416)
+    expect(box?.x).toBeGreaterThanOrEqual(0)
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(view.w)
+    expect(box?.y).toBeGreaterThanOrEqual(0)
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(view.h)
+    await window.keyboard.press('Escape')
+
+    // Another chip's picker keeps its width.
+    await field('Priority', /^Priority:/).click()
+    const other = await window
+      .getByRole('listbox', { name: 'Priority' })
+      .locator('xpath=..')
+      .boundingBox()
+    expect(other?.width).toBe(208)
+  })
+}
