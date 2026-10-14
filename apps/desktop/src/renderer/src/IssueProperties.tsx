@@ -535,7 +535,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
               >
                 <TextField
                   clock
-                  label="Time remaining"
+                  label="Time left"
                   value={timeRemaining}
                   valid={(draft) => hoursFromText(draft) !== undefined}
                   hint="Use a duration such as 2h 30m."
@@ -543,7 +543,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
                     const hours = hoursFromText(draft)
                     if (hours === undefined || hours === issue.timeRemainingHours) return
                     change(
-                      'Time remaining',
+                      'Time left',
                       { timeRemainingHours: hours },
                       {
                         timeRemainingHours: hours,

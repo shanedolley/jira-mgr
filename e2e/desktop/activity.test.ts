@@ -486,7 +486,7 @@ test.describe('comments', () => {
 })
 
 test.describe('worklogs', () => {
-  const estimate = () => props().getByLabel('Time remaining')
+  const estimate = () => props().getByLabel('Time left')
   const form = (name: string) => section('Worklogs').getByRole('form', { name })
 
   async function logWork(time: string, note: string) {
