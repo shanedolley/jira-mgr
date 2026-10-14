@@ -416,7 +416,9 @@ No decision here meets all three ADR tests: each is reversible within the app, a
 
 ## Open Questions
 
-1. **Packages (Ask First: a runtime dependency).** Shane approved them on 2026-10-09 (#31). Four direct packages in `apps/desktop`, declared as the app declares React, all at 3.31.4 (published 2026-09-30, past the seven-day `minimumReleaseAge`):
+None remain open. Shane answered both on 2026-10-09 (#31), and the design above carries the answers:
+
+- **Packages (Ask First: a runtime dependency).** Shane approved them. Four direct packages in `apps/desktop`, declared as the app declares React, all at 3.31.4 (published 2026-09-30, past the seven-day `minimumReleaseAge`):
 
    | Package | Why | Unpacked |
    |---|---|---|
@@ -427,4 +429,4 @@ No decision here meets all three ADR tests: each is reversible within the app, a
 
    With transitive packages that is 46 packages and about 9.5 MB unpacked, every one MIT, none with an install script (checked on the registry, 2026-10-09). The renderer bundle grows by an estimated 100 to 150 KB gzipped; the builder reports the measured figure. Core gains nothing. They are the packages ADR-0005 named, maintained and typed, and the node views would take more code in plain DOM than `@tiptap/react` costs.
 
-2. **One live write check before merge.** No test may write to Jira, and only a write proves that Jira renders a `mediaSingle` the app wrote for an attachment it uploaded. It passed on 2026-10-09 (#31): with Shane present, in the app built from `d4-editor`, a dropped image saved, showed in the app and inline in Jira's web view, and the throwaway issue was deleted.
+- **One live write check before merge.** No test may write to Jira, and only a write proves that Jira renders a `mediaSingle` the app wrote for an attachment it uploaded. It passed: with Shane present, in the app built from `d4-editor`, a dropped image saved, showed in the app and inline in Jira's web view, and the throwaway issue was deleted.
