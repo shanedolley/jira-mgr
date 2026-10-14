@@ -1,5 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
-import { parentCandidates } from '@jira-mgr/core/issue'
+import { formatEstimate, parentCandidates, parseEstimate } from '@jira-mgr/core/issue'
 
 import type { FieldChoice, SprintOption, StatusOption, UserOption } from '../../shared/ipc'
 import type { Notice } from './create'
@@ -13,6 +13,20 @@ import type { Notice } from './create'
 /** Case-insensitive substring match; an empty query matches everything. */
 export const matches = (text: string, query: string) =>
   text.toLowerCase().includes(query.trim().toLowerCase())
+
+/**
+ * Time remaining is stored as a number of hours and shown as an estimate is, such as `1h 30m`.
+ * `null` and an empty text are an empty field; `hoursFromText` answers `undefined` for a text
+ * that is not a duration.
+ */
+export const hoursText = (hours: number | null): string =>
+  hours === null ? '' : formatEstimate(Math.round(hours * 3600))
+
+export function hoursFromText(text: string): number | null | undefined {
+  if (text.trim() === '') return null
+  const seconds = parseEstimate(text)
+  return seconds === null ? undefined : seconds / 3600
+}
 
 interface Option {
   id: string

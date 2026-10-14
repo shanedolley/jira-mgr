@@ -6,7 +6,7 @@ import type { QueryClient } from '@tanstack/react-query'
 
 import type { BatchChange, IssueChanges } from '../../shared/ipc'
 import type { BatchDone, BatchRequestItem } from './optimistic'
-import { currentSprint } from './properties'
+import { currentSprint, hoursText } from './properties'
 
 /**
  * The model behind Cmd+Z (Q38): what each field edit leaves on the undo stack, how to write the
@@ -76,7 +76,7 @@ const NAMES: Partial<Record<keyof IssueDetail, string>> = {
   startDate: 'start date',
   dueDate: 'due date',
   originalEstimateSeconds: 'original estimate',
-  timeRemainingHours: 'time remaining',
+  timeRemainingHours: 'time left',
 }
 
 const fieldsOf = (fields: Fields) => Object.keys(fields) as (keyof IssueDetail)[]
@@ -118,7 +118,7 @@ function show(field: keyof IssueDetail, issue: Fields): string {
         ? 'none'
         : formatEstimate(issue.originalEstimateSeconds)
     case 'timeRemainingHours':
-      return issue.timeRemainingHours == null ? 'none' : `${String(issue.timeRemainingHours)}h`
+      return issue.timeRemainingHours == null ? 'none' : hoursText(issue.timeRemainingHours)
     case 'summary':
       return `"${issue.summary ?? ''}"`
     default:

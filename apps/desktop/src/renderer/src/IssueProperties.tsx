@@ -27,6 +27,8 @@ import {
   currentSprint,
   customerPatch,
   engagementPatch,
+  hoursFromText,
+  hoursText,
   parentChoices,
   parentMatch,
   shownSprints,
@@ -77,7 +79,7 @@ interface TextFieldProps {
   label: string
   /** What the field holds now. A change from outside replaces the draft. */
   value: string
-  type?: 'text' | 'date' | 'number'
+  type?: 'text' | 'date'
   /** Shown while the field is empty. A date field draws it itself, since the browser's is a format. */
   placeholder?: string
   /** A clock before the text, for durations. */
@@ -113,7 +115,7 @@ function TextField({
   const sent = useRef<string | null>(null)
 
   function commit(input: HTMLInputElement) {
-    // A date or number field the user has half edited reports "" as its value, which is also what
+    // A date field the user has half edited reports "" as its value, which is also what
     // an emptied field reports. Only an emptied one clears the property, so a half edit reverts.
     if (input.validity.badInput) {
       setDraft(value)
@@ -156,7 +158,6 @@ function TextField({
             commit(event.currentTarget)
           }}
           onKeyDown={onKeyDown}
-          {...(type === 'number' ? { min: 0, step: 0.25 } : {})}
           className={`${FIELD} aria-invalid:border-danger ${clock ? 'pl-7' : ''} ${emptyDate ? 'date-empty' : ''}`}
         />
         {emptyDate && placeholder !== undefined && (
@@ -306,7 +307,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
   // Dates and estimates
   const originalEstimate =
     issue.originalEstimateSeconds === null ? '' : formatEstimate(issue.originalEstimateSeconds)
-  const timeRemaining = issue.timeRemainingHours === null ? '' : String(issue.timeRemainingHours)
+  const timeRemaining = hoursText(issue.timeRemainingHours)
   // Time left means nothing before an estimate, so it waits for one. A value Jira holds still shows.
   const hasEstimate = issue.originalEstimateSeconds !== null || issue.timeRemainingHours !== null
 
@@ -528,21 +529,21 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
             </Row>
             {hasEstimate && (
               <Row
-                name="Time left (h)"
+                name="Time left"
                 field="timeRemainingHours"
                 pending={pending.has('timeRemainingHours')}
               >
                 <TextField
                   clock
-                  label="Time remaining (h)"
-                  type="number"
+                  label="Time left"
                   value={timeRemaining}
-                  valid={(draft) => draft === '' || Number(draft) >= 0}
-                  hint="Use a number of hours, 0 or more."
+                  valid={(draft) => hoursFromText(draft) !== undefined}
+                  hint="Use a duration such as 2h 30m."
                   onCommit={(draft) => {
-                    const hours = draft === '' ? null : Number(draft)
+                    const hours = hoursFromText(draft)
+                    if (hours === undefined || hours === issue.timeRemainingHours) return
                     change(
-                      'Time remaining',
+                      'Time left',
                       { timeRemainingHours: hours },
                       {
                         timeRemainingHours: hours,
