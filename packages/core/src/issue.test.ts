@@ -149,6 +149,11 @@ describe('parseDuration', () => {
     '1h; drop',
     '1,5h',
     '1e3h',
+    '1h and',
+    'and 1h',
+    '1h,,15m',
+    '1h andand 15m',
+    '1h | 15m',
   ])('refuses %j', (text) => {
     expect(parseDuration(text)).toBeNull()
   })

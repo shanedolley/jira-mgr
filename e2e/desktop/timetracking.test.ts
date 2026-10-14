@@ -231,6 +231,25 @@ test('logs work from the Peek, and Logged and the chart follow with no refresh',
   expect(await totalHours(peek())).toBe(1.3)
 })
 
+test('starts a worklog on the date chosen, not today', async () => {
+  await openPeek(/PSAPAC-4,/)
+  const past = await window.evaluate(() =>
+    new Date(Date.now() - 3 * 86_400_000).toLocaleDateString('en-CA'),
+  )
+  await logButton(peek()).click()
+  await logForm(peek()).getByLabel('Started').fill(past)
+  await logForm(peek()).getByLabel('Time spent').fill('45m')
+  await logForm(peek()).getByRole('button', { name: 'Log work' }).click()
+  await expect.poll(edits).toBe(1)
+  const sent = (await lastBody()) as { started: string; timeSpent: string }
+  expect(sent.timeSpent).toBe('45m')
+  expect(
+    await window.evaluate((iso) => new Date(iso).toLocaleDateString('en-CA'), sent.started),
+  ).toBe(past)
+  await releaseEdit(app)
+  await expect(logForm(peek())).toHaveCount(0)
+})
+
 test('logs work from the issue page, and the Worklogs list shows it', async () => {
   await openPeek(/PSAPAC-4,/)
   await window.keyboard.press('Enter')

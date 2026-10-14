@@ -137,9 +137,7 @@ interface TimeTrackingProps {
  */
 export function TimeTracking({ issue, where, load = true }: TimeTrackingProps) {
   const settings = useTimeTracking().data
-  // Held by key, so a Peek that moves to another row does not carry an open form to it.
-  const [loggingFor, setLoggingFor] = useState<string | null>(null)
-  const logging = loggingFor === issue.key
+  const [logging, setLogging] = useState(false)
   const add = useAddWorklog(issue.key)
   const addButton = useRef<HTMLButtonElement>(null)
   if (!propertyRules(issue.issueType).estimates || settings == null) return null
@@ -147,7 +145,7 @@ export function TimeTracking({ issue, where, load = true }: TimeTrackingProps) {
   const logged = issue.timeSpentSeconds ?? 0
   const percent = percentUsed(logged, issue.originalEstimateSeconds)
   function close() {
-    setLoggingFor(null)
+    setLogging(false)
     addButton.current?.focus()
   }
   const action = (
@@ -155,7 +153,7 @@ export function TimeTracking({ issue, where, load = true }: TimeTrackingProps) {
       ref={addButton}
       label="Log work"
       onClick={() => {
-        setLoggingFor(issue.key)
+        setLogging(true)
       }}
     />
   )

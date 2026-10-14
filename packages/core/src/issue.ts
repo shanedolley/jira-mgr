@@ -253,9 +253,14 @@ const DURATION_TERM =
 // ponytail: a fraction of a day or week assumes 8-hour days and 5-day weeks, as `parseEstimate` does.
 export function parseDuration(text: string): string | null {
   const terms = [...text.matchAll(DURATION_TERM)]
-  if (terms.length === 0 || text.replace(DURATION_TERM, '').replace(/[\s,]|and/gi, '') !== '') {
-    return null
-  }
+  // What sits between terms is space, or one comma or "and"; nothing may sit before or after.
+  const gaps = [0, ...terms.map(({ index, 0: term }) => index + term.length)].map((from, i) =>
+    text.slice(from, terms[i]?.index ?? text.length),
+  )
+  const spaced = gaps.every((gap, i) =>
+    i === 0 || i === gaps.length - 1 ? /^\s*$/.test(gap) : /^\s*(?:,?\s*\band\b|,)?\s*$/i.test(gap),
+  )
+  if (terms.length === 0 || !spaced) return null
   const parts = { w: 0, d: 0, h: 0, m: 0 }
   for (const [, amount = '', word = ''] of terms) {
     const unit = word.charAt(0).toLowerCase() as keyof typeof parts
