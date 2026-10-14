@@ -119,8 +119,21 @@ describe('links', () => {
 describe('worklog form', () => {
   const now = new Date(2026, 9, 10, 14, 30)
 
-  it('starts at the local time given, with nothing logged', () => {
-    expect(blankWorklog(now)).toEqual({ timeSpent: '', started: '2026-10-10T14:30', comment: '' })
+  it('starts on the local date given, with nothing logged', () => {
+    expect(blankWorklog(now)).toEqual({ timeSpent: '', started: '2026-10-10', comment: '' })
+  })
+
+  it('starts a worklog dated for a day at the time of day it is logged', () => {
+    const request = readWorklogForm(
+      { timeSpent: '1.25 hours', started: '2026-10-08', comment: '' },
+      false,
+      now,
+    )
+    expect(request).toMatchObject({
+      ok: true,
+      timeSpent: '1h 15m',
+      started: new Date(2026, 9, 8, 14, 30).toISOString(),
+    })
   })
 
   it('reads a Jira duration, a start as an instant, and an empty comment as none', () => {
@@ -147,11 +160,16 @@ describe('worklog form', () => {
   })
 
   it.each([
-    ['a time that is not a duration', { timeSpent: 'an hour', started: '2026-10-10T14:30' }],
-    ['no time', { timeSpent: '', started: '2026-10-10T14:30' }],
-    ['no start', { timeSpent: '1h', started: '' }],
-  ])('refuses %s', (_name, form) => {
-    expect(readWorklogForm({ comment: '', ...form })).toMatchObject({ ok: false })
+    [
+      'a time that is not a duration',
+      { timeSpent: 'an hour', started: '2026-10-10T14:30' },
+      'timeSpent',
+    ],
+    ['no time', { timeSpent: '', started: '2026-10-10T14:30' }, 'timeSpent'],
+    ['a zero time', { timeSpent: '0h', started: '2026-10-10' }, 'timeSpent'],
+    ['no start', { timeSpent: '1h', started: '' }, 'started'],
+  ])('refuses %s', (_name, form, field) => {
+    expect(readWorklogForm({ comment: '', ...form })).toMatchObject({ ok: false, field })
   })
 
   it('refuses to empty a comment the worklog had, since an edit cannot clear one', () => {

@@ -1,5 +1,5 @@
 import { formatEstimate } from '@jira-mgr/core/issue'
-import { useState, type SyntheticEvent, type KeyboardEvent } from 'react'
+import { useId, useState, type SyntheticEvent, type KeyboardEvent } from 'react'
 
 import type { CurrentUser, WorklogItem } from '../../shared/ipc'
 import {
@@ -41,8 +41,12 @@ interface WorklogFormRowProps {
   onCancel: () => void
 }
 
-/** The form that logs work or changes a worklog. It stays open and keeps its text when Jira refuses. */
-function WorklogFormRow({
+/**
+ * The form that logs work or changes a worklog. A new worklog takes a date and starts at the time
+ * of day when it is logged; an edit keeps the full start. The form stays open and keeps its text
+ * when the input is refused or Jira refuses.
+ */
+export function WorklogFormRow({
   name,
   submitLabel,
   initial,
@@ -52,13 +56,17 @@ function WorklogFormRow({
 }: WorklogFormRowProps) {
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
-  const request = readWorklogForm(form, hadComment)
+  const [problem, setProblem] = useState<{ message: string; field?: keyof WorklogForm } | null>(
+    null,
+  )
+  const problemId = useId()
+  const dateOnly = !initial.started.includes('T')
 
   async function submit(event: SyntheticEvent) {
     event.preventDefault()
+    const request = readWorklogForm(form, hadComment)
     if (!request.ok) {
-      setProblem(request.message)
+      setProblem({ message: request.message, field: request.field })
       return
     }
     setSaving(true)
@@ -70,7 +78,9 @@ function WorklogFormRow({
         comment: request.comment,
       })
     } catch (error) {
-      setProblem(`Could not save the worklog. ${error instanceof Error ? error.message : ''}`)
+      setProblem({
+        message: `Could not save the worklog. ${error instanceof Error ? error.message : ''}`,
+      })
       setSaving(false)
     }
   }
@@ -84,7 +94,10 @@ function WorklogFormRow({
 
   const field = (key: keyof WorklogForm) => (value: string) => {
     setForm((held) => ({ ...held, [key]: value }))
+    setProblem((held) => (held?.field === key ? null : held))
   }
+  const invalid = (key: keyof WorklogForm) => (problem?.field === key ? true : undefined)
+  const described = (key: keyof WorklogForm) => (problem?.field === key ? problemId : undefined)
 
   return (
     <form
@@ -101,22 +114,26 @@ function WorklogFormRow({
             value={form.timeSpent}
             placeholder="1h 30m"
             disabled={saving}
+            aria-invalid={invalid('timeSpent')}
+            aria-describedby={described('timeSpent')}
             onChange={(event) => {
               field('timeSpent')(event.target.value)
             }}
-            className={`${FIELD} w-28`}
+            className={`${FIELD} w-28 aria-invalid:border-danger`}
           />
         </label>
         <label className="space-y-0.5">
           <span className="block text-xs text-muted">Started</span>
           <input
-            type="datetime-local"
+            type={dateOnly ? 'date' : 'datetime-local'}
             value={form.started}
             disabled={saving}
+            aria-invalid={invalid('started')}
+            aria-describedby={described('started')}
             onChange={(event) => {
               field('started')(event.target.value)
             }}
-            className={FIELD}
+            className={`${FIELD} aria-invalid:border-danger`}
           />
         </label>
         <label className="min-w-40 flex-1 space-y-0.5">
@@ -124,21 +141,23 @@ function WorklogFormRow({
           <input
             value={form.comment}
             disabled={saving}
+            aria-invalid={invalid('comment')}
+            aria-describedby={described('comment')}
             onChange={(event) => {
               field('comment')(event.target.value)
             }}
-            className={`${FIELD} w-full`}
+            className={`${FIELD} w-full aria-invalid:border-danger`}
           />
         </label>
       </div>
       <p className="text-xs text-muted">Reduces Time remaining by the time logged.</p>
       {problem !== null && (
-        <p role="alert" className="text-danger">
-          {problem}
+        <p role="alert" id={problemId} className="text-danger">
+          {problem.message}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <button type="submit" disabled={!request.ok || saving} className="btn btn-primary">
+        <button type="submit" disabled={saving} className="btn btn-primary">
           {saving ? 'Saving' : submitLabel}
         </button>
         <button type="button" onClick={onCancel} disabled={saving} className="btn">

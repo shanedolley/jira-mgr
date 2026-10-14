@@ -522,7 +522,12 @@ test.describe('worklogs', () => {
     await openEstimated()
     await section('Worklogs').getByRole('button', { name: 'Add worklog' }).click()
     await form('Add worklog').getByLabel('Time spent').fill('an hour')
-    await expect(form('Add worklog').getByRole('button', { name: 'Log work' })).toBeDisabled()
+    await form('Add worklog').getByRole('button', { name: 'Log work' }).click()
+    await expect(form('Add worklog').getByRole('alert')).toContainText('Time spent must be')
+    await expect(form('Add worklog').getByLabel('Time spent')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
     await window.keyboard.press('Escape')
     await expect(form('Add worklog')).toHaveCount(0)
     expect(await writes()).toBe(0)

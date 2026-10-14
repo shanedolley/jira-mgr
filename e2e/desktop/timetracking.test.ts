@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { launch, logIn, logWork, setEstimate } from './harness.js'
+import { counts, launch, logIn, logWork, releaseEdit, setEstimate } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -190,4 +190,131 @@ test('the chart leaves the document unscrolled in a narrow, short window', async
   await resize(720, 700)
   await expect(bars(page())).toHaveCount(14)
   expect(await documentScroll()).toBe(0)
+})
+
+const logButton = (scope: Locator) => block(scope).getByRole('button', { name: 'Log work' }).first()
+const logForm = (scope: Locator) => block(scope).getByRole('form', { name: 'Log work' })
+const edits = async () => (await counts(app)).edits
+const lastBody = async () => (await counts(app)).editBodies.at(-1)
+
+/** The date the app's own clock shows, as a date input holds it. */
+const today = () => window.evaluate(() => new Date().toLocaleDateString('en-CA'))
+
+/** Opens the form, fills it and submits, then lets the fake Jira answer once it has the write. */
+async function logFrom(scope: Locator, time: string, comment: string, writesBefore: number) {
+  await logButton(scope).click()
+  await expect(logForm(scope).getByLabel('Time spent')).toBeFocused()
+  await expect(logForm(scope).getByLabel('Started')).toHaveValue(await today())
+  await logForm(scope).getByLabel('Time spent').fill(time)
+  await logForm(scope).getByLabel('Comment').fill(comment)
+  await logForm(scope).getByRole('button', { name: 'Log work' }).click()
+  await expect.poll(edits).toBe(writesBefore + 1)
+  await releaseEdit(app)
+}
+
+test('logs work from the Peek, and Logged and the chart follow with no refresh', async () => {
+  await openPeek(/PSAPAC-4,/)
+  await expect(figure(peek(), 'Logged')).toHaveText('0 minutes')
+
+  await logFrom(peek(), '1.25 hours', 'Pairing', 0)
+  expect(await lastBody()).toMatchObject({
+    worklog: 'add',
+    key: 'PSAPAC-4',
+    adjustEstimate: 'auto',
+    timeSpent: '1h 15m',
+  })
+
+  await expect(logForm(peek())).toHaveCount(0)
+  await expect(logButton(peek())).toBeFocused()
+  await expect(figure(peek(), 'Logged')).toHaveText('1.3 hours')
+  await expect(bars(peek())).toHaveCount(14)
+  expect(await totalHours(peek())).toBe(1.3)
+})
+
+test('starts a worklog on the date chosen, not today', async () => {
+  await openPeek(/PSAPAC-4,/)
+  const past = await window.evaluate(() =>
+    new Date(Date.now() - 3 * 86_400_000).toLocaleDateString('en-CA'),
+  )
+  await logButton(peek()).click()
+  await logForm(peek()).getByLabel('Started').fill(past)
+  await logForm(peek()).getByLabel('Time spent').fill('45m')
+  await logForm(peek()).getByRole('button', { name: 'Log work' }).click()
+  await expect.poll(edits).toBe(1)
+  const sent = (await lastBody()) as { started: string; timeSpent: string }
+  expect(sent.timeSpent).toBe('45m')
+  expect(
+    await window.evaluate((iso) => new Date(iso).toLocaleDateString('en-CA'), sent.started),
+  ).toBe(past)
+  await releaseEdit(app)
+  await expect(logForm(peek())).toHaveCount(0)
+})
+
+test('logs work from the issue page, and the Worklogs list shows it', async () => {
+  await openPeek(/PSAPAC-4,/)
+  await window.keyboard.press('Enter')
+  await expect(page().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
+
+  await logFrom(page(), '90m', '', 0)
+  expect(await lastBody()).toMatchObject({ worklog: 'add', key: 'PSAPAC-4', timeSpent: '1h 30m' })
+
+  await expect(logForm(page())).toHaveCount(0)
+  await expect(logButton(page())).toBeFocused()
+  await expect(figure(page(), 'Logged')).toHaveText('1.5 hours')
+  expect(await totalHours(page())).toBe(1.5)
+  await expect(page().getByRole('region', { name: 'Worklogs' })).toContainText('Logged 1h 30m')
+})
+
+for (const where of ['peek', 'page'] as const) {
+  test(`refuses a time it cannot read on the ${where}, sends nothing, and Esc returns focus to the +`, async () => {
+    await openPeek(/PSAPAC-4,/)
+    if (where === 'page') await window.keyboard.press('Enter')
+    const scope = where === 'peek' ? peek() : page()
+    await logButton(scope).click()
+    const time = logForm(scope).getByLabel('Time spent')
+    await time.fill('an hour')
+    await logForm(scope).getByRole('button', { name: 'Log work' }).click()
+
+    await expect(logForm(scope).getByRole('alert')).toContainText('Time spent must be a duration')
+    await expect(time).toHaveAttribute('aria-invalid', 'true')
+    expect(await edits()).toBe(0)
+
+    await time.fill('1h')
+    await expect(time).not.toHaveAttribute('aria-invalid', 'true')
+    await time.press('Escape')
+    await expect(logForm(scope)).toHaveCount(0)
+    await expect(logButton(scope)).toBeFocused()
+    expect(await edits()).toBe(0)
+  })
+}
+
+// Linux CI has a wider font and 15px scrollbars, so the form is checked with both.
+test('keeps the form inside a narrow Peek and a narrow page with no sideways scroll', async () => {
+  await openPeek(/PSAPAC-4,/)
+  await window.addStyleTag({
+    content:
+      '* { font-family: Verdana, "DejaVu Sans", sans-serif !important } *::-webkit-scrollbar { width: 15px }',
+  })
+  await resize(959, 700)
+  await logButton(peek()).click()
+  const form = logForm(peek())
+  await expect(form).toBeVisible()
+  const inPeek = await peek().boundingBox()
+  const inForm = await form.boundingBox()
+  expect(inForm?.x).toBeGreaterThanOrEqual(inPeek?.x ?? 0)
+  expect((inForm?.x ?? 0) + (inForm?.width ?? 0)).toBeLessThanOrEqual(
+    (inPeek?.x ?? 0) + (inPeek?.width ?? 0),
+  )
+  expect(
+    await window.evaluate(() => document.documentElement.scrollWidth - globalThis.innerWidth),
+  ).toBeLessThanOrEqual(0)
+
+  await window.keyboard.press('Escape')
+  await peek().getByRole('button', { name: 'Open', exact: true }).click()
+  await resize(720, 700)
+  await logButton(page()).click()
+  await expect(logForm(page())).toBeVisible()
+  expect(
+    await window.evaluate(() => document.documentElement.scrollWidth - globalThis.innerWidth),
+  ).toBeLessThanOrEqual(0)
 })
