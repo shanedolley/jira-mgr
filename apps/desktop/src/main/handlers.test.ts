@@ -367,7 +367,10 @@ describe('issues:create', () => {
     ['a parent that is not an issue key', { ...NEW_ISSUE, parentKey: 'parent' }],
     ['a label with a space', { ...NEW_ISSUE, labels: ['two words'] }],
     ['a fractional sprint', { ...NEW_ISSUE, sprintId: 1.5 }],
-    ['a field it does not take', { ...NEW_ISSUE, dueDate: '2026-10-09' }],
+    ['a field it does not take', { ...NEW_ISSUE, reporter: 'u1' }],
+    ['a start date that is not YYYY-MM-DD', { ...NEW_ISSUE, startDate: '1 May' }],
+    ['a due date that is not YYYY-MM-DD', { ...NEW_ISSUE, dueDate: '2026-10-9' }],
+    ['a null due date', { ...NEW_ISSUE, dueDate: null }],
     ['a description that is not ADF', { ...NEW_ISSUE, description: 'plain text' }],
     ['a null description', { ...NEW_ISSUE, description: null }],
     ['no argument', undefined],
@@ -405,6 +408,8 @@ describe('issues:create', () => {
       priorityId: '3',
       labels: ['docs'],
       originalEstimate: '2h',
+      startDate: '2026-10-01',
+      dueDate: '2026-10-14',
       sprintId: 5,
     }
     const result = await createHandlers(backend)['issues:create'](full, noProgress)

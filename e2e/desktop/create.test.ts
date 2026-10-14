@@ -243,6 +243,53 @@ test('sends every field of the form to Jira in one create request, then the spri
   expect((await counts(app)).editBodies).toEqual([BODY_OF_EVERY_FIELD, { issues: ['PSAPAC-2000'] }])
 })
 
+test('creates an issue with a Start date and a Due date, and its page shows both', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Summary').fill('Plan the dates')
+  await dialog().getByLabel('Start date').fill('2026-10-01')
+  await dialog().getByLabel('Due date').fill('2026-10-14')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+
+  await settle(1)
+  expect(await lastBody()).toMatchObject({
+    fields: { customfield_4: '2026-10-01', duedate: '2026-10-14' },
+  })
+  await expect(dialog()).toHaveCount(0)
+  await expect(toast()).toContainText('Created PSAPAC-2000: Plan the dates')
+  await expect(toast()).not.toContainText('date is')
+
+  await window.keyboard.press('Enter')
+  const props = issuePage().getByRole('complementary', { name: 'Properties' })
+  await expect(props.getByLabel('Start date')).toHaveValue('2026-10-01')
+  await expect(props.getByLabel('Due date')).toHaveValue('2026-10-14')
+})
+
+test('creates an issue with neither date and sends no date field', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await expect(dialog().getByLabel('Start date')).toHaveValue('')
+  await expect(dialog().getByLabel('Due date')).toHaveValue('')
+  await dialog().getByLabel('Summary').fill('Plan without dates')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+
+  await settle(1)
+  const fields = (await lastBody()).fields as Record<string, unknown>
+  expect(fields).not.toHaveProperty('customfield_4')
+  expect(fields).not.toHaveProperty('duedate')
+  await expect(toast()).toContainText('Created PSAPAC-2000: Plan without dates')
+})
+
+test('a Due date before the Start date shows no warning, as on the issue page', async () => {
+  await open()
+  await openCreate(/PSAPAC-2,/)
+  await dialog().getByLabel('Start date').fill('2026-10-14')
+  await dialog().getByLabel('Due date').fill('2026-10-01')
+
+  await expect(dialog().getByLabel('Due date')).not.toHaveAttribute('aria-invalid')
+  await expect(dialog().getByRole('alert')).toHaveCount(0)
+})
+
 test('Type is an icon beside the summary until it opens, then lists every type', async () => {
   await open()
   await openCreate(/PSAPAC-2,/)
@@ -269,28 +316,50 @@ async function chipRows(font?: string) {
     await window.addStyleTag({ content: `* { font-family: ${font} !important }` })
   }
   const chips = dialog().locator(
-    'button[aria-haspopup=listbox]:not([aria-label^="Type:"]), button:has-text("+me"), label:has(input[aria-label="Original estimate"])',
+    'button[aria-haspopup=listbox]:not([aria-label^="Type:"]), button:has-text("+me"), label:has(input[aria-label="Original estimate"]), label:has(input[type=date])',
   )
-  await expect(chips).toHaveCount(9)
+  await expect(chips).toHaveCount(11)
   const tops = await chips.evaluateAll((all) =>
     all.map((chip) => Math.round(chip.getBoundingClientRect().top)),
   )
   return new Set(tops).size
 }
 
-test('the other fields are chips on two lines', async () => {
+test('the other fields are chips on three lines at most', async () => {
   await open()
   await openCreate(/PSAPAC-2,/)
 
-  expect(await chipRows()).toBeLessThanOrEqual(2)
+  expect(await chipRows()).toBeLessThanOrEqual(3)
 })
 
 // Linux CI sets the system font in a face wider than macOS's, and wrapped to three rows (PR #163).
-test('the chips stay on two lines in a wide font', async () => {
+test('the chips stay on three lines in a wide font', async () => {
   await open()
   await openCreate(/PSAPAC-2,/)
 
-  expect(await chipRows('Verdana, "DejaVu Sans", sans-serif')).toBeLessThanOrEqual(2)
+  expect(await chipRows('Verdana, "DejaVu Sans", sans-serif')).toBeLessThanOrEqual(3)
+})
+
+test('the date chips stay inside the dialog at the narrowest window, in a wide font', async () => {
+  await open()
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setSize(900, 800)
+  })
+  await openCreate(/PSAPAC-2,/)
+  await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  await dialog().getByLabel('Start date').fill('2026-10-01')
+  await dialog().getByLabel('Due date').fill('2026-10-14')
+
+  const box = await dialog().evaluate((el) => {
+    const right = el.getBoundingClientRect().right
+    const outside = [
+      ...el.querySelectorAll('label:has(input[type=date]), label:has(input[type=date]) *'),
+    ].filter((child) => child.getBoundingClientRect().right > right + 1)
+    return { overflow: el.scrollWidth - el.clientWidth, outside: outside.length }
+  })
+  expect(box).toEqual({ overflow: 0, outside: 0 })
 })
 
 test('typing an issue key in the Parent field finds that issue', async () => {
@@ -927,7 +996,7 @@ test('the description and long file names fit the dialog in a wide font', async 
     return { overflow: el.scrollWidth - el.clientWidth, outside: outside.length }
   })
   expect(box).toEqual({ overflow: 0, outside: 0 })
-  expect(await chipRows()).toBeLessThanOrEqual(2)
+  expect(await chipRows()).toBeLessThanOrEqual(3)
 })
 
 /** A 1x1 PNG, which passes the app's magic-number check for an embedded image. */

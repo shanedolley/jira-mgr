@@ -649,6 +649,23 @@ export function CreateIssueDialog({
                     />
                   </label>
                 )}
+                {(['startDate', 'dueDate'] as const).map((field) => (
+                  <label
+                    key={field}
+                    className="flex h-7 items-center gap-1.5 rounded-md border border-field-border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent"
+                  >
+                    <ChipName>{field === 'startDate' ? 'Start' : 'Due'}</ChipName>
+                    <input
+                      type="date"
+                      aria-label={field === 'startDate' ? 'Start date' : 'Due date'}
+                      value={draft[field]}
+                      onChange={(event) => {
+                        edit({ [field]: event.target.value })
+                      }}
+                      className="bg-transparent focus-visible:outline-none"
+                    />
+                  </label>
+                ))}
                 <Picker
                   label="Assignee"
                   variant="chip"

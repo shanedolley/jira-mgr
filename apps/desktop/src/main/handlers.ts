@@ -279,6 +279,8 @@ const createIssueArgs: z.ZodType<CreateIssueArgs> = z.strictObject({
   priorityId: text(64).optional(),
   labels: labelList.optional(),
   originalEstimate: text(64).optional(),
+  startDate: date.optional(),
+  dueDate: date.optional(),
   sprintId: z.number().int().positive().optional(),
 })
 
