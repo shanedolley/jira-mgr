@@ -2,7 +2,7 @@
 
 ## Where Work Stands
 
-Checked 2026-10-14. Head `fbe6531` (`git log --oneline -1 origin/main`, PR [#218](https://github.com/shanedolley/jira-mgr/pull/218), #217's first build, the Hold glyph as a red dotted ring). CI passed on that head: run 38488814160 (`gh run list --branch main --limit 4`), whose e2e job ran 552 tests on 2 workers, 548 passed and 4 skipped (`gh run view 38488814160 --log`). A local `pnpm test` at that head passed: core 1396 and 5 skipped, desktop 1172, CLI 603 (2026-10-14). Eight issues are open: #216, #217 and #219 to #224. Every other issue from #9 to #215 is closed (`gh issue list --state all --limit 300`: 8 open, 78 closed). No pull request is open (`gh pr list --state open`).
+Checked 2026-10-14. Head `fbe6531` (`git log --oneline -1 origin/main`, PR [#218](https://github.com/shanedolley/jira-mgr/pull/218), #217's first build, the Hold glyph as a red dotted ring). CI passed on that head: run 38488814160 (`gh run list --branch main --limit 4`), whose e2e job ran 552 tests on 2 workers, 548 passed and 4 skipped (`gh run view 38488814160 --log`). A local `pnpm test` at that head passed: core 1396 and 5 skipped, desktop 1172, CLI 603 (2026-10-14). Eight issues are open: #216, #217 and #219 to #224. Every other issue from #9 to #215 is closed (`gh issue list --state all --limit 300`: 8 open, 78 closed). One pull request is open, [#225](https://github.com/shanedolley/jira-mgr/pull/225), which carries this handover (`gh pr list --state open`, 2026-10-14).
 
 Shane approved and closed #209 and #212 on 2026-10-14 at 01:32 UTC (`gh issue view 209 --json state,closedAt`). #209 stays as built, filter rule included. On 2026-10-14 Shane asked for #216 (a + on the Time tracking header to log work after the fact) and, after seeing the merged Hold ring, for #217 to change to the To Do ring at 50% opacity.
 
@@ -12,7 +12,7 @@ The GitHub billing block of 2026-10-13 is resolved: CI runs again (runs 38482752
 
 ## Open Stories
 
-Eight (`gh issue list --state open --limit 200`, 2026-10-14). Every branch below is local only and nothing is pushed (`git ls-remote --heads origin` lists `main` alone). Each worktree keeps its own `node_modules` and Electron dist. On 2026-10-14 all six worktrees were clean and at the commits below (`git -C ../jira-mgr-<n> status --short` and `git log --oneline origin/main..HEAD`). Gate counts in the rows are the builders' reports, not rerun in this review.
+Eight (`gh issue list --state open --limit 200`, 2026-10-14). Every story branch below is local only (`git ls-remote --heads origin` lists `main` and #225's `docs-handover-2026-10-14b`, 2026-10-14). Each worktree keeps its own `node_modules` and Electron dist. On 2026-10-14 all six worktrees were clean and at the commits below (`git -C ../jira-mgr-<n> status --short` and `git log --oneline origin/main..HEAD`). Gate counts in the rows are the builders' reports, not rerun in this review.
 
 | Issue | Story | State at the pause |
 |---|---|---|
@@ -96,10 +96,10 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 | In progress | #216, #217, #219, #220, #221, #222 | `--label status:in-progress` | 2026-10-14 |
 | In HIL Review | none | `--label status:hil-review --state open` | 2026-10-14 |
 | With `question` | none | `--label question --state open` | 2026-10-14 |
-| Open pull requests | none; 138 in all states | `gh pr list --state open`, `--state all --limit 200` | 2026-10-14 |
+| Open pull requests | #225 (this handover); 139 in all states | `gh pr list --state open`, `--state all --limit 200` | 2026-10-14 |
 | Milestones | Core 0 open and 13 closed, CLI 0 and 10, Desktop 0 and 50, so #216 to #224 carry none | `gh api repos/shanedolley/jira-mgr/milestones` | 2026-10-14 |
 
-`git worktree list` shows the main tree plus `../jira-mgr-216`, `-217`, `-219`, `-220`, `-221` and `-222`, one per story branch (2026-10-14). Origin holds `main` only (`git ls-remote --heads origin`); the local tracking ref `origin/pr210-tmp` is stale and `git remote prune origin` would drop it. Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
+`git worktree list` shows the main tree plus `../jira-mgr-216`, `-217`, `-219`, `-220`, `-221` and `-222`, one per story branch (2026-10-14). Origin holds `main` and `docs-handover-2026-10-14b` (`git ls-remote --heads origin`, 2026-10-14). Use `gh pr list --state all --limit 200` for history; 50 is the default cap.
 
 ## What Runs
 
