@@ -386,7 +386,7 @@ export const COMMANDS = [
     path: ['issue', 'tree'],
     summary: 'Show issues grouped by Customer and Epic',
     description:
-      'Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. With `--show-done` or a view that shows Done, Done children collapse into a `+N done` chip; otherwise no Done issue shows.',
+      'Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. Children sort by key number alone, newest first. With `--show-done` or a view that shows Done, Done children collapse into a `+N done` chip; otherwise no Done issue shows.',
     options: [
       ...FILTER_OPTIONS,
       {
@@ -1146,7 +1146,7 @@ export const COMMANDS = [
     examples: [{ command: 'jm view list', description: 'List the saved views and their ids.' }],
     output: {
       summary:
-        'An array of saved views. A view the app saved with a display also holds `display`, its row properties and issue order: `{ "properties": ["updated"], "order": "key" }`. The key is absent from a view with none.',
+        'An array of saved views. A view the app saved with a display also holds `display`, its row properties, issue order and direction: `{ "properties": ["updated"], "order": "key", "direction": "desc" }`. `direction` is the default for the order when the file holds none. The key is absent from a view with none.',
       example: [
         {
           id: 'my-issues',

@@ -307,7 +307,7 @@ Calls:
 jm issue tree [--view <id-or-name>] [--search <text>] [--assignee <assignee>] [--status <name-or-id>] [--label <text>] [--type <name-or-id>] [--sprint <sprint>] [--mine] [--show-done] [--show-empty-customers]
 ```
 
-Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. With `--show-done` or a view that shows Done, Done children collapse into a `+N done` chip; otherwise no Done issue shows.
+Groups the same issues as `issue list` by Customer, then Epic, with Subtasks under their parents. Children sort by key number alone, newest first. With `--show-done` or a view that shows Done, Done children collapse into a `+N done` chip; otherwise no Done issue shows.
 
 #### Options
 
@@ -2041,7 +2041,7 @@ jm view list
 
 #### Output
 
-An array of saved views. A view the app saved with a display also holds `display`, its row properties and issue order: `{ "properties": ["updated"], "order": "key" }`. The key is absent from a view with none.
+An array of saved views. A view the app saved with a display also holds `display`, its row properties, issue order and direction: `{ "properties": ["updated"], "order": "key", "direction": "desc" }`. `direction` is the default for the order when the file holds none. The key is absent from a view with none.
 
 ```json
 {

@@ -611,8 +611,16 @@ describe('toggles', () => {
   it('getDisplay reads the defaults, and setDisplay and setToggles keep each other', async () => {
     await logIn()
     const backend = createBackend()
-    expect(await backend.getDisplay()).toEqual({ properties: ['updated'], order: 'key' })
-    const display = { properties: ['labels' as const, 'due' as const], order: 'priority' as const }
+    expect(await backend.getDisplay()).toEqual({
+      properties: ['updated'],
+      order: 'key',
+      direction: 'desc',
+    })
+    const display = {
+      properties: ['labels' as const, 'due' as const],
+      order: 'priority' as const,
+      direction: 'asc' as const,
+    }
     const toggles = { hideDone: false, assigneeMe: true, hideEmptyCustomers: false }
     // Both change one file, so a second write that read before the first landed would undo it.
     await Promise.all([backend.setDisplay(display), backend.setToggles(toggles)])
@@ -676,14 +684,18 @@ describe('views shared with the CLI', () => {
 
   it('a view keeps its display through create, update, duplicate and rename', async () => {
     const backend = createBackend()
-    const display = { properties: ['sprint' as const], order: 'due' as const }
+    const display = {
+      properties: ['sprint' as const],
+      order: 'due' as const,
+      direction: 'asc' as const,
+    }
     const created = await backend.createView({ name: 'Triage', ...BUGS, display })
     expect(created.display).toEqual(display)
     expect((await backend.renameView({ id: created.id, name: 'Triage 2' })).display).toEqual(
       display,
     )
     expect((await backend.duplicateView({ id: created.id })).display).toEqual(display)
-    const next = { properties: [], order: 'priority' as const }
+    const next = { properties: [], order: 'priority' as const, direction: 'desc' as const }
     const updated = await backend.updateView({ id: created.id, ...BUGS, display: next })
     expect(updated.display).toEqual(next)
     expect((await state.findView(created.id)).display).toEqual(next)

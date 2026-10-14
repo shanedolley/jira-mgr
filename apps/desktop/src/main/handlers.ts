@@ -1,6 +1,6 @@
 import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
 import { adfDocSchema, type AdfDoc } from '@jira-mgr/core/adf'
-import { ISSUE_ORDERS, ROW_PROPERTIES, TREE_LEVELS } from '@jira-mgr/core/display'
+import { ISSUE_ORDERS, ORDER_DIRECTIONS, ROW_PROPERTIES, TREE_LEVELS } from '@jira-mgr/core/display'
 import { DURATION_PATTERN, SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { TEXT_QUERY_MAX } from '@jira-mgr/core/search'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from '@jira-mgr/core/view-filter'
@@ -336,6 +336,7 @@ const togglesArgs: z.ZodType<Toggles> = z.strictObject({
 const displayArgs: z.ZodType<Display> = z.strictObject({
   properties: z.array(z.enum(ROW_PROPERTIES)).max(ROW_PROPERTIES.length),
   order: z.enum(ISSUE_ORDERS),
+  direction: z.enum(ORDER_DIRECTIONS),
 })
 
 const filterValues = z.array(z.string().max(MAX_FILTER_VALUE)).max(MAX_FILTER_VALUES).optional()

@@ -4,9 +4,23 @@ export const ROW_PROPERTIES = ['labels', 'sprint', 'due', 'created', 'updated'] 
 export type RowProperty = (typeof ROW_PROPERTIES)[number]
 
 /** How issues sort within an Epic, among its children and in No Epic. */
-export const ISSUE_ORDERS = ['key', 'priority', 'updated', 'due'] as const
+export const ISSUE_ORDERS = ['key', 'priority', 'updated', 'due', 'status'] as const
 
 export type IssueOrder = (typeof ISSUE_ORDERS)[number]
+
+/** Which way an order runs: lowest, oldest, soonest or first-listed first (`asc`), or the reverse (`desc`). */
+export const ORDER_DIRECTIONS = ['asc', 'desc'] as const
+
+export type OrderDirection = (typeof ORDER_DIRECTIONS)[number]
+
+/** The direction each order runs while none is chosen: the look the Tree had before directions existed. */
+export const ORDER_DEFAULT_DIRECTION: Record<IssueOrder, OrderDirection> = {
+  key: 'desc',
+  priority: 'desc',
+  updated: 'desc',
+  due: 'asc',
+  status: 'asc',
+}
 
 /** How far the Tree opens: Customers only, down to Epics, down to Stories, or every level. */
 export const TREE_LEVELS = ['customers', 'epics', 'stories', 'all'] as const

@@ -73,6 +73,8 @@ function issue(key: string, spec: Spec = {}): Issue {
 }
 
 const OPTIONS: HierarchyOptions = {
+  // These tests walk rows with the To Do Story ahead of the In Progress one, as Status orders them, equal statuses by lowest key first.
+  order: 'status',
   hideDone: false,
   assigneeMe: false,
   hideEmptyCustomers: true,
@@ -417,7 +419,7 @@ describe('levelCollapsed', () => {
       { assigneeMe: true },
     )
     expect([...levelCollapsed(assigneeMe, 'stories')]).toEqual(['i:P-2'])
-    expect(rows(assigneeMe, 'stories', false)).toEqual(['c:1', 'i:P-1', 'i:P-4', 'i:P-5', 'i:P-2'])
+    expect(rows(assigneeMe, 'stories', false)).toEqual(['c:1', 'i:P-1', 'i:P-2', 'i:P-4', 'i:P-5'])
     // The Epic is context too, but only Story depth and below stay open: at Epics it closes,
     // which hides my Stories as well, so Epics no longer equals Stories.
     expect([...levelCollapsed(assigneeMe, 'epics')].sort()).toEqual(['i:P-1', 'i:P-2'])
@@ -425,10 +427,10 @@ describe('levelCollapsed', () => {
     expect(rows(assigneeMe, 'epics', true)).toEqual([
       'c:1',
       'i:P-1',
-      'i:P-4',
-      'i:P-5',
       'i:P-2',
       'i:P-3',
+      'i:P-4',
+      'i:P-5',
     ])
 
     // P-3 matches under the context rows P-1 and P-2, at the Stories level with or without the flag.

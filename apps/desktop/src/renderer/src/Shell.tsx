@@ -364,6 +364,7 @@ export function Shell({ session }: { session: Session }) {
   const choices = useMemo(() => filterChoices(issues, customerNames), [issues, customerNames])
 
   const order = display?.order
+  const direction = display?.direction
   // Overdue and the date windows read `today`, so the matcher rebuilds at local midnight.
   const match = useMemo(
     () =>
@@ -387,6 +388,7 @@ export function Shell({ session }: { session: Session }) {
       accountId: accountId ?? '',
       customers: showEmptyCustomers ? customersQuery.data : undefined,
       order,
+      direction,
       ...(match === undefined ? {} : { match }),
     })
   }, [
@@ -394,6 +396,7 @@ export function Shell({ session }: { session: Session }) {
     issues,
     toggles,
     order,
+    direction,
     match,
     accountId,
     customersFailed,

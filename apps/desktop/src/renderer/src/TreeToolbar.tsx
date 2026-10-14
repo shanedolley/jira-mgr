@@ -1,7 +1,10 @@
 import {
   ISSUE_ORDERS,
+  ORDER_DEFAULT_DIRECTION,
+  ORDER_DIRECTIONS,
   ROW_PROPERTIES,
   type IssueOrder,
+  type OrderDirection,
   type RowProperty,
   type TreeLevel,
 } from '@jira-mgr/core/display'
@@ -51,6 +54,12 @@ const ORDER_LABELS: Record<IssueOrder, string> = {
   priority: 'Priority',
   updated: 'Updated',
   due: 'Due date',
+  status: 'Status',
+}
+
+const DIRECTION_LABELS: Record<OrderDirection, string> = {
+  asc: 'Ascending',
+  desc: 'Descending',
 }
 
 const PROPERTY_LABELS: Record<RowProperty, string> = {
@@ -489,11 +498,27 @@ export function TreeToolbar({
                     type="button"
                     aria-pressed={display.order === order}
                     onClick={() => {
-                      onDisplay({ ...display, order })
+                      if (order !== display.order)
+                        onDisplay({ ...display, order, direction: ORDER_DEFAULT_DIRECTION[order] })
                     }}
                     className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
                   >
                     {ORDER_LABELS[order]}
+                  </button>
+                ))}
+              </div>
+              <div role="group" aria-label="Direction" className="mt-1 flex flex-wrap gap-1">
+                {ORDER_DIRECTIONS.map((direction) => (
+                  <button
+                    key={direction}
+                    type="button"
+                    aria-pressed={display.direction === direction}
+                    onClick={() => {
+                      onDisplay({ ...display, direction })
+                    }}
+                    className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
+                  >
+                    {DIRECTION_LABELS[direction]}
                   </button>
                 ))}
               </div>

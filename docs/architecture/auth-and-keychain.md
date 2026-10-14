@@ -49,7 +49,7 @@ The state folder is `~/Library/Application Support/jira-mgr/`, or the folder `JM
 
 | File | Holds | Written by |
 |---|---|---|
-| `settings.json` | `siteUrl`, `projectKey`, `email`, `fieldOverrides`, `timer` (`rounding`, `reminderThresholdHours`, `reminderIntervalMinutes`) and `toggles` (`hideDone`, `assigneeMe`, `hideEmptyCustomers`) and `display` (`properties`, `order`) and `treeLevel` | Login, logout and the app's toggles, display and Tree level |
+| `settings.json` | `siteUrl`, `projectKey`, `email`, `fieldOverrides`, `timer` (`rounding`, `reminderThresholdHours`, `reminderIntervalMinutes`) and `toggles` (`hideDone`, `assigneeMe`, `hideEmptyCustomers`) and `display` (`properties`, `order`, `direction`) and `treeLevel` | Login, logout and the app's toggles, display and Tree level |
 | `fields.json` | The site, project, `resolvedAt` and the five resolved ids | Login |
 | `views.json` | The saved views | The app (`jm` only reads it) |
 | `timer.json` | The running timer | `jm timer` and the app, through core |

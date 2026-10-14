@@ -10,6 +10,8 @@ import {
   DEFAULT_PROPERTIES,
   DEFAULT_TREE_LEVEL,
   ISSUE_ORDERS,
+  ORDER_DEFAULT_DIRECTION,
+  ORDER_DIRECTIONS,
   TREE_LEVELS,
   keepKnownProperties,
 } from './display.js'
@@ -50,17 +52,21 @@ const toggles = z
 
 /**
  * Row properties and issue order. Every Jira request reads `settings.json`, so a value this build
- * does not know must never fail the file: unknown properties drop, an unknown order reads as `key`
- * and a `display` that is not an object reads as the defaults.
+ * does not know must never fail the file: unknown properties drop, an unknown order reads as `key`,
+ * a missing or unknown direction as the order's default, and a `display` that is not an object
+ * reads as the defaults.
  */
-const displayFields = z.object({
-  properties: z
-    .array(z.string())
-    .catch([...DEFAULT_PROPERTIES])
-    .transform(keepKnownProperties)
-    .default([...DEFAULT_PROPERTIES]),
-  order: z.enum(ISSUE_ORDERS).default(DEFAULT_ORDER).catch(DEFAULT_ORDER),
-})
+const displayFields = z
+  .object({
+    properties: z
+      .array(z.string())
+      .catch([...DEFAULT_PROPERTIES])
+      .transform(keepKnownProperties)
+      .default([...DEFAULT_PROPERTIES]),
+    order: z.enum(ISSUE_ORDERS).default(DEFAULT_ORDER).catch(DEFAULT_ORDER),
+    direction: z.enum(ORDER_DIRECTIONS).optional().catch(undefined),
+  })
+  .transform((d) => ({ ...d, direction: d.direction ?? ORDER_DEFAULT_DIRECTION[d.order] }))
 
 const settingsDisplay = displayFields.prefault({}).catch(() => displayFields.parse({}))
 

@@ -146,7 +146,9 @@ test('keeps an open Story under No Epic while its Epic is Done and Hide done is 
   await expect(item(/PSAPAC-20,.*context/)).toHaveCount(0)
   const labels = await rowNames()
   const epic = labels.findIndex((l) => l.startsWith('PSAPAC-20,'))
-  expect(labels[epic + 1]).toMatch(/^PSAPAC-21,/)
+  // Its children run by key, so the Done Story PSAPAC-22 comes before the open PSAPAC-21.
+  expect(labels[epic + 1]).toMatch(/^PSAPAC-22,/)
+  expect(labels[epic + 2]).toMatch(/^PSAPAC-21,/)
 })
 
 test("reveals a parent's Done children from its chip", async () => {
@@ -416,9 +418,9 @@ test('moves with J and K and peeks with the space bar', async () => {
   await active('tree-row-c:1')
   await window.keyboard.press('j')
   await active('tree-row-i:PSAPAC-10')
-  // Children run by status, then key descending: To Do first, so PSAPAC-11 leads.
+  // Children run by key descending, so PSAPAC-13 leads.
   await window.keyboard.press('J')
-  await active('tree-row-i:PSAPAC-11')
+  await active('tree-row-i:PSAPAC-13')
   await window.keyboard.press('k')
   await active('tree-row-i:PSAPAC-10')
 
@@ -428,9 +430,9 @@ test('moves with J and K and peeks with the space bar', async () => {
   await expect(peek().getByRole('heading', { name: 'Customer onboarding' })).toBeVisible()
   // The Peek follows the active row, and focus stays on the Tree.
   await window.keyboard.press('j')
-  await expect(peek().getByRole('heading', { name: 'Draft the runbook' })).toBeVisible()
+  await expect(peek().getByRole('heading', { name: 'Book the kickoff' })).toBeVisible()
   await expect(tree()).toBeFocused()
-  await expect(item(/PSAPAC-11,/)).toHaveAttribute('aria-selected', 'true')
+  await expect(item(/PSAPAC-13,/)).toHaveAttribute('aria-selected', 'true')
 
   await window.keyboard.press(' ')
   await expect(peek()).toHaveCount(0)
@@ -673,7 +675,7 @@ test('filters by status and by text, keeping ancestors as context', async () => 
   await open()
 
   await window.getByRole('button', { name: 'Filter', exact: true }).click()
-  await window.getByText('Status', { exact: true }).click()
+  await window.getByRole('group', { name: 'Filter' }).getByText('Status', { exact: true }).click()
   await window.getByRole('checkbox', { name: 'In Progress' }).check()
   await window.keyboard.press('Escape')
 
@@ -714,7 +716,7 @@ test('shows No issues match with Clear filters when nothing matches', async () =
 test('names the text and the chips that match nothing', async () => {
   await open()
   await window.getByRole('button', { name: 'Filter', exact: true }).click()
-  await window.getByText('Status', { exact: true }).click()
+  await window.getByRole('group', { name: 'Filter' }).getByText('Status', { exact: true }).click()
   await window.getByRole('checkbox', { name: 'In Progress' }).check()
   await window.keyboard.press('Escape')
   await window.getByLabel('Filter by key or summary').fill('zzzzqq')
