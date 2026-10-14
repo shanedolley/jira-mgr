@@ -83,7 +83,7 @@ const FIELD_ORDERS: Record<Exclude<IssueOrder, 'key'>, Compare> = {
   status: (a, b) => statusRank(a) - statusRank(b),
   priority: (a, b) => priorityOf(a) - priorityOf(b),
   updated: (a, b) => Date.parse(a.updated) - Date.parse(b.updated),
-  due: (a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''),
+  due: (a, b) => (a.dueDate === b.dueDate ? 0 : (a.dueDate ?? '') < (b.dueDate ?? '') ? -1 : 1),
 }
 
 /** Issues an order cannot place sort last in either direction: undated under `due`, an unlisted status. */

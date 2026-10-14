@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SavedView, Toggles } from '../../shared/ipc'
-import { activeView, movedView, viewMatches } from './views'
+import { activeView, movedView, viewDisplayMatches, viewMatches } from './views'
 
 const TOGGLES: Toggles = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
 const view = (id: string, filters: SavedView['filters'], toggles = TOGGLES): SavedView => ({
@@ -91,6 +91,25 @@ describe('viewMatches', () => {
       viewMatches(view('twin', { sprint: ['current'] }), { sprint: ['current'] }, TOGGLES),
     ).toBe(true)
     expect(viewMatches(mine, { sprint: ['current'] }, TOGGLES)).toBe(false)
+  })
+})
+
+describe('viewDisplayMatches', () => {
+  const display = {
+    properties: ['updated' as const],
+    order: 'key' as const,
+    direction: 'desc' as const,
+  }
+  const saved = { ...sprint, display }
+
+  it('matches the display the view holds, and the defaults for a view with none', () => {
+    expect(viewDisplayMatches(saved, display)).toBe(true)
+    expect(viewDisplayMatches(sprint, display)).toBe(true)
+  })
+
+  it('stops matching when only the direction changes', () => {
+    expect(viewDisplayMatches(saved, { ...display, direction: 'asc' })).toBe(false)
+    expect(viewDisplayMatches(sprint, { ...display, direction: 'asc' })).toBe(false)
   })
 })
 
