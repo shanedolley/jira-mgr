@@ -486,7 +486,7 @@ test.describe('comments', () => {
 })
 
 test.describe('worklogs', () => {
-  const estimate = () => props().getByLabel('Time remaining (h)')
+  const estimate = () => props().getByLabel('Time remaining')
   const form = (name: string) => section('Worklogs').getByRole('form', { name })
 
   async function logWork(time: string, note: string) {
@@ -498,7 +498,7 @@ test.describe('worklogs', () => {
 
   test('logs work with adjustEstimate=auto, and Time remaining falls once Jira answers', async () => {
     await openEstimated()
-    await expect(estimate()).toHaveValue('2')
+    await expect(estimate()).toHaveValue('2h')
     await logWork('30m', 'Wired it up')
 
     await expect.poll(writes).toBe(1)
@@ -515,7 +515,7 @@ test.describe('worklogs', () => {
     await expect(section('Worklogs').getByText('Wired it up')).toBeVisible()
     await expect(section('Worklogs')).toContainText('Logged 30m')
     await expect(props()).toContainText('Remaining estimate, read-only: 1h 30m')
-    await expect(estimate()).toHaveValue('1.5')
+    await expect(estimate()).toHaveValue('1h 30m')
   })
 
   test('refuses a time that is not a Jira duration before anything is sent', async () => {
@@ -537,14 +537,14 @@ test.describe('worklogs', () => {
       'Could not save the worklog.',
     )
     await expect(form('Add worklog').getByLabel('Time spent')).toHaveValue('1h')
-    await expect(estimate()).toHaveValue('2')
+    await expect(estimate()).toHaveValue('2h')
   })
 
   test('edits a worklog, and Time remaining moves by the difference', async () => {
     await openEstimated()
     await logWork('30m', 'First')
     await settle(1)
-    await expect(estimate()).toHaveValue('1.5')
+    await expect(estimate()).toHaveValue('1h 30m')
 
     await section('Worklogs').getByRole('button', { name: 'Edit worklog' }).click()
     await form('Edit worklog').getByLabel('Time spent').fill('1h')
@@ -559,7 +559,7 @@ test.describe('worklogs', () => {
 
     await expect(form('Edit worklog')).toHaveCount(0)
     await expect(props()).toContainText('Remaining estimate, read-only: 1h')
-    await expect(estimate()).toHaveValue('1')
+    await expect(estimate()).toHaveValue('1h')
   })
 
   test("offers Edit and Delete on the signed-in user's own worklog only", async () => {
@@ -572,7 +572,7 @@ test.describe('worklogs', () => {
     await openEstimated()
     await logWork('30m', 'Gone soon')
     await settle(1)
-    await expect(estimate()).toHaveValue('1.5')
+    await expect(estimate()).toHaveValue('1h 30m')
 
     await section('Worklogs').getByRole('button', { name: 'Delete worklog' }).click()
     await expect(section('Worklogs').getByText('Delete this worklog?')).toBeVisible()
@@ -581,7 +581,7 @@ test.describe('worklogs', () => {
     await expect(section('Worklogs').getByText('Gone soon')).toHaveCount(0)
     await settle(2)
     expect(await lastBody()).toMatchObject({ worklog: 'delete', adjustEstimate: 'auto' })
-    await expect(estimate()).toHaveValue('2')
+    await expect(estimate()).toHaveValue('2h')
   })
 })
 

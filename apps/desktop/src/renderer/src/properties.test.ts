@@ -7,6 +7,8 @@ import {
   assigneeChoices,
   assigneePatch,
   currentSprint,
+  hoursFromText,
+  hoursText,
   isLabel,
   labelsPatch,
   matchWords,
@@ -305,5 +307,38 @@ describe('refusedNotice', () => {
       'Sprint not changed. Could not reach Jira.',
     )
     expect(refusedNotice('Sprint', 'odd').title).toBe('Sprint not changed. odd.')
+  })
+})
+
+describe('Time remaining as a duration', () => {
+  it.each([
+    [null, ''],
+    [0, '0m'],
+    [0.25, '15m'],
+    [1.5, '1h 30m'],
+    [2, '2h'],
+    [1 / 3, '20m'],
+  ])('shows %j hours as %j', (hours, text) => {
+    expect(hoursText(hours)).toBe(text)
+  })
+
+  it.each([
+    ['', null],
+    ['  ', null],
+    ['0m', 0],
+    ['15m', 0.25],
+    ['1h 30m', 1.5],
+    ['2h', 2],
+    ['1d', 8],
+  ])('reads %j as %j hours', (text, hours) => {
+    expect(hoursFromText(text)).toBe(hours)
+  })
+
+  it.each(['soon', '1.5', '2', '-1h'])('refuses %j', (text) => {
+    expect(hoursFromText(text)).toBeUndefined()
+  })
+
+  it('reads back what it shows', () => {
+    for (const hours of [0.25, 1.5, 7.75]) expect(hoursFromText(hoursText(hours))).toBe(hours)
   })
 })

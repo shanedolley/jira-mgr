@@ -27,6 +27,8 @@ import {
   currentSprint,
   customerPatch,
   engagementPatch,
+  hoursFromText,
+  hoursText,
   parentChoices,
   parentMatch,
   shownSprints,
@@ -306,7 +308,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
   // Dates and estimates
   const originalEstimate =
     issue.originalEstimateSeconds === null ? '' : formatEstimate(issue.originalEstimateSeconds)
-  const timeRemaining = issue.timeRemainingHours === null ? '' : String(issue.timeRemainingHours)
+  const timeRemaining = hoursText(issue.timeRemainingHours)
   // Time left means nothing before an estimate, so it waits for one. A value Jira holds still shows.
   const hasEstimate = issue.originalEstimateSeconds !== null || issue.timeRemainingHours !== null
 
@@ -528,19 +530,19 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
             </Row>
             {hasEstimate && (
               <Row
-                name="Time left (h)"
+                name="Time left"
                 field="timeRemainingHours"
                 pending={pending.has('timeRemainingHours')}
               >
                 <TextField
                   clock
-                  label="Time remaining (h)"
-                  type="number"
+                  label="Time remaining"
                   value={timeRemaining}
-                  valid={(draft) => draft === '' || Number(draft) >= 0}
-                  hint="Use a number of hours, 0 or more."
+                  valid={(draft) => hoursFromText(draft) !== undefined}
+                  hint="Use a duration such as 2h 30m."
                   onCommit={(draft) => {
-                    const hours = draft === '' ? null : Number(draft)
+                    const hours = hoursFromText(draft)
+                    if (hours === undefined) return
                     change(
                       'Time remaining',
                       { timeRemainingHours: hours },

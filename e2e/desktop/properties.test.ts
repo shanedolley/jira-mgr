@@ -120,13 +120,13 @@ test('the page asks to set an estimate, and shows Time left only once there is o
 
   const estimate = props().getByLabel('Original estimate')
   await expect(estimate).toHaveAttribute('placeholder', 'Set estimate')
-  await expect(props().getByLabel('Time remaining (h)')).toHaveCount(0)
+  await expect(props().getByLabel('Time remaining')).toHaveCount(0)
   await expect(props().getByText('Set start date')).toBeVisible()
   await expect(props().getByText('Set due date')).toBeVisible()
 
   await estimate.fill('4h')
   await window.keyboard.press('Enter')
-  await expect(props().getByLabel('Time remaining (h)')).toBeVisible()
+  await expect(props().getByLabel('Time remaining')).toBeVisible()
 })
 
 test('the page rows sit 32px apart, and read-only rows have no chevron', async () => {

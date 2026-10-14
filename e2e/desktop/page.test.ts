@@ -251,7 +251,7 @@ test('shows the properties of an issue, and its description, subtasks and parent
   await expect(props().getByLabel('Due date')).toHaveValue('')
   await expect(props().getByLabel('Original estimate')).toHaveValue('2h')
   await expect(props()).toContainText('Remaining estimate, read-only: 2h')
-  await expect(props().getByLabel('Time remaining (h)')).toHaveValue('2')
+  await expect(props().getByLabel('Time remaining')).toHaveValue('2h')
   await expect(issuePage().getByText('No description')).toBeVisible()
 })
 
@@ -644,7 +644,7 @@ test('edits the estimate, shows the remaining estimate Jira cascades, and refuse
 
   await releaseEdit(app)
   await expect(props()).toContainText('Remaining estimate, read-only: 4h')
-  await expect(props().getByLabel('Time remaining (h)')).toHaveValue('4')
+  await expect(props().getByLabel('Time remaining')).toHaveValue('4h')
 
   await estimate.fill('soon')
   await window.keyboard.press('Tab')
@@ -652,20 +652,26 @@ test('edits the estimate, shows the remaining estimate Jira cascades, and refuse
   await expect(estimate).toHaveAttribute('aria-invalid', 'true')
   expect(await writes()).toBe(1)
 
-  const remaining = props().getByLabel('Time remaining (h)')
-  await remaining.fill('3')
+  await estimate.press('Escape')
+  const remaining = props().getByLabel('Time remaining')
+  await remaining.fill('1h 30m')
   await window.keyboard.press('Enter')
   await settle(2)
-  expect(await lastBody()).toEqual({ fields: { customfield_5: 3 } })
+  expect(await lastBody()).toEqual({ fields: { customfield_5: 1.5 } })
   await expect.poll(async () => (await counts(app)).issueReads.length).toBe(4)
+  await expect(remaining).toHaveValue('1h 30m')
 
-  // "3e" is half a number: the field reports "" but is not emptied, so nothing is cleared.
-  await remaining.focus()
-  await window.keyboard.press('End')
-  await window.keyboard.type('e')
-  await remaining.blur()
-  await expect(remaining).toHaveValue('3')
-  expect(await writes()).toBe(2)
+  await remaining.fill('15m')
+  await window.keyboard.press('Enter')
+  await settle(3)
+  expect(await lastBody()).toEqual({ fields: { customfield_5: 0.25 } })
+  await expect(remaining).toHaveValue('15m')
+
+  await remaining.fill('1.5')
+  await window.keyboard.press('Tab')
+  await expect(props().getByText('Use a duration such as 2h 30m.')).toBeVisible()
+  await expect(remaining).toHaveAttribute('aria-invalid', 'true')
+  expect(await writes()).toBe(3)
 })
 
 test('asks about the Customer and Engagement when a new parent differs, and moves with them', async () => {
