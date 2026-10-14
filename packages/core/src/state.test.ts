@@ -68,7 +68,7 @@ describe('absent files', () => {
       fieldOverrides: {},
       timer: { rounding: '5m', reminderThresholdHours: 8, reminderIntervalMinutes: 60 },
       toggles: { hideDone: true, assigneeMe: false, hideEmptyCustomers: true },
-      display: { properties: ['updated'], order: 'key' },
+      display: { properties: ['updated'], order: 'key', direction: 'desc' },
       treeLevel: 'stories',
     })
   })
@@ -485,11 +485,19 @@ describe('treeLevel', () => {
 
 describe('display', () => {
   const toggles = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
-  const display = { properties: ['labels' as const, 'due' as const], order: 'priority' as const }
+  const display = {
+    properties: ['labels' as const, 'due' as const],
+    order: 'priority' as const,
+    direction: 'asc' as const,
+  }
 
   it('reads a settings file with no display as the defaults', async () => {
     await writeFile(join(dir, 'settings.json'), JSON.stringify({ toggles }))
-    expect((await readSettings()).display).toEqual({ properties: ['updated'], order: 'key' })
+    expect((await readSettings()).display).toEqual({
+      properties: ['updated'],
+      order: 'key',
+      direction: 'desc',
+    })
   })
 
   it('keeps the properties it knows, in row order, and drops the rest', async () => {
@@ -498,13 +506,50 @@ describe('display', () => {
     expect((await readSettings()).display).toEqual({
       properties: ['labels', 'updated'],
       order: 'due',
+      direction: 'desc',
     })
   })
 
   it('reads an unknown order as key and never fails the file', async () => {
     const raw = { display: { properties: ['due'], order: 'rank' } }
     await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
-    expect((await readSettings()).display).toEqual({ properties: ['due'], order: 'key' })
+    expect((await readSettings()).display).toEqual({
+      properties: ['due'],
+      order: 'key',
+      direction: 'desc',
+    })
+  })
+
+  it('reads a display saved before directions existed as descending', async () => {
+    const raw = { display: { properties: ['labels'], order: 'due' } }
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
+    expect((await readSettings()).display).toEqual({
+      properties: ['labels'],
+      order: 'due',
+      direction: 'desc',
+    })
+  })
+
+  it('keeps ascending and reads an unknown direction as descending', async () => {
+    const raw = (direction: string) => ({ display: { properties: [], order: 'key', direction } })
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw('asc')))
+    expect((await readSettings()).display.direction).toBe('asc')
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw('up')))
+    expect((await readSettings()).display.direction).toBe('desc')
+  })
+
+  it('reads a view display saved before directions existed as descending, and keeps asc', async () => {
+    const view = (display: unknown) => ({ id: 'v', name: 'V', filters: {}, toggles, display })
+    await writeFile(
+      join(dir, 'views.json'),
+      JSON.stringify([
+        view({ properties: ['due'], order: 'priority' }),
+        { ...view({ properties: [], order: 'status', direction: 'asc' }), id: 'w', name: 'W' },
+      ]),
+    )
+    const [old, asc] = await readViews()
+    expect(old?.display).toEqual({ properties: ['due'], order: 'priority', direction: 'desc' })
+    expect(asc?.display).toEqual({ properties: [], order: 'status', direction: 'asc' })
   })
 
   it.each([
@@ -513,7 +558,11 @@ describe('display', () => {
     ['properties as a number', { properties: 3 }],
   ])('reads display as %s as the defaults for what it cannot read', async (_name, value) => {
     await writeFile(join(dir, 'settings.json'), JSON.stringify({ display: value }))
-    expect((await readSettings()).display).toEqual({ properties: ['updated'], order: 'key' })
+    expect((await readSettings()).display).toEqual({
+      properties: ['updated'],
+      order: 'key',
+      direction: 'desc',
+    })
   })
 
   it('keeps display through a write and through a toggles write', async () => {
@@ -539,7 +588,11 @@ describe('display', () => {
       join(dir, 'views.json'),
       JSON.stringify([view({ properties: ['due', 'x'], order: 'rank' })]),
     )
-    expect((await readViews())[0]?.display).toEqual({ properties: ['due'], order: 'key' })
+    expect((await readViews())[0]?.display).toEqual({
+      properties: ['due'],
+      order: 'key',
+      direction: 'desc',
+    })
     await writeFile(join(dir, 'views.json'), JSON.stringify([view('wide')]))
     expect((await readViews())[0]?.display).toBeUndefined()
   })
@@ -555,7 +608,11 @@ describe('display', () => {
     const copy = await duplicateView('triage')
     expect(copy.display).toEqual(display)
 
-    const next = { properties: ['sprint' as const], order: 'updated' as const }
+    const next = {
+      properties: ['sprint' as const],
+      order: 'updated' as const,
+      direction: 'desc' as const,
+    }
     await updateView('triage', { filters: {}, toggles, display: next })
     expect((await findView('triage')).display).toEqual(next)
     expect((await findView('triage-2-copy')).display).toEqual(display)

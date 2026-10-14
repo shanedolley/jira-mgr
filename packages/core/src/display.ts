@@ -4,9 +4,14 @@ export const ROW_PROPERTIES = ['labels', 'sprint', 'due', 'created', 'updated'] 
 export type RowProperty = (typeof ROW_PROPERTIES)[number]
 
 /** How issues sort within an Epic, among its children and in No Epic. */
-export const ISSUE_ORDERS = ['key', 'priority', 'updated', 'due'] as const
+export const ISSUE_ORDERS = ['key', 'priority', 'updated', 'due', 'status'] as const
 
 export type IssueOrder = (typeof ISSUE_ORDERS)[number]
+
+/** Which end of an order comes first. `desc` is each order's usual look: newest, highest, soonest. */
+export const ORDER_DIRECTIONS = ['asc', 'desc'] as const
+
+export type OrderDirection = (typeof ORDER_DIRECTIONS)[number]
 
 /** How far the Tree opens: Customers only, down to Epics, down to Stories, or every level. */
 export const TREE_LEVELS = ['customers', 'epics', 'stories', 'all'] as const
@@ -16,6 +21,7 @@ export type TreeLevel = (typeof TREE_LEVELS)[number]
 /** What the Tree shows while `settings.json` and the applied view say nothing. */
 export const DEFAULT_PROPERTIES: readonly RowProperty[] = ['updated']
 export const DEFAULT_ORDER: IssueOrder = 'key'
+export const DEFAULT_DIRECTION: OrderDirection = 'desc'
 export const DEFAULT_TREE_LEVEL: TreeLevel = 'stories'
 
 /** The names in `ROW_PROPERTIES` out of a list, each once, in row order. Unknown names drop. */

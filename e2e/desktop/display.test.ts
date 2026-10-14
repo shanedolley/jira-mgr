@@ -23,6 +23,7 @@ test.afterEach(async () => {
 interface Display {
   properties: string[]
   order: string
+  direction: string
 }
 
 const tree = () => window.getByRole('tree', { name: 'Issues' })
@@ -98,7 +99,7 @@ test('shows Updated by default, and each property appears on the rows and surviv
   await expect(prop(row, 'updated')).toHaveText(SHORT_DATE)
   for (const name of ['labels', 'sprint', 'due', 'created'])
     await expect(prop(row, name)).toHaveCount(0)
-  expect(await savedDisplay()).toEqual({ properties: ['updated'], order: 'key' })
+  expect(await savedDisplay()).toEqual({ properties: ['updated'], order: 'key', direction: 'desc' })
 
   await inDisplayMenu(async () => {
     await expect(choice('Display properties', 'Updated')).toHaveAttribute('aria-pressed', 'true')
@@ -124,6 +125,7 @@ test('shows Updated by default, and each property appears on the rows and surviv
   await expect.poll(savedDisplay).toEqual({
     properties: ['labels', 'sprint', 'due', 'created'],
     order: 'key',
+    direction: 'desc',
   })
 
   // The fake Keychain lives in the process, so the relaunch logs in again.
@@ -181,7 +183,9 @@ test('orders by due date within an Epic, keeping the Customer groups and No Epic
   const keys = await issueKeys()
   expect(keys.indexOf('PSAPAC-30')).toBeLessThan(keys.indexOf('PSAPAC-31'))
   expect(keys.indexOf('PSAPAC-40')).toBeGreaterThan(keys.indexOf('PSAPAC-32'))
-  await expect.poll(savedDisplay).toEqual({ properties: ['updated'], order: 'due' })
+  await expect
+    .poll(savedDisplay)
+    .toEqual({ properties: ['updated'], order: 'due', direction: 'desc' })
 
   await inDisplayMenu(async () => {
     await choice('Ordering', 'Key').click()
@@ -191,16 +195,90 @@ test('orders by due date within an Epic, keeping the Customer groups and No Epic
     .toEqual(['PSAPAC-32', 'PSAPAC-31'])
 })
 
+/** Every Tree row's level and issue key (`undefined` for a Customer header, No Epic or a Done chip), top to bottom. */
+const levelsAndKeys = async () =>
+  Promise.all(
+    (await tree().getByRole('treeitem').all()).map(async (row) => ({
+      level: Number(await row.getAttribute('aria-level')),
+      key: Number(/PSAPAC-(\d+)/.exec((await row.getAttribute('aria-label')) ?? '')?.[1]),
+    })),
+  )
+
+/** Each issue row's key against the previous row beside it at the same level, as `1` (up) or `-1`. */
+async function siblingSteps() {
+  const last = new Map<number, number>()
+  const steps = new Set<number>()
+  for (const { level, key } of await levelsAndKeys()) {
+    for (const deeper of [...last.keys()].filter((l) => l > level)) last.delete(deeper)
+    if (Number.isNaN(key)) continue
+    const before = last.get(level)
+    if (before !== undefined) steps.add(Math.sign(key - before))
+    last.set(level, key)
+  }
+  return [...steps]
+}
+
+test('flips the direction of every level, saves it with the order, and keeps Key to the key alone', async () => {
+  await open()
+  await inDisplayMenu(async () => {
+    await expect(choice('Direction', 'Descending')).toHaveAttribute('aria-pressed', 'true')
+    await expect(choice('Direction', 'Ascending')).toHaveAttribute('aria-pressed', 'false')
+  })
+  // Key runs newest first at every level, whatever the status of the issues beside it.
+  expect(await siblingSteps()).toEqual([-1])
+  expect((await issueKeys()).filter((k) => ['PSAPAC-31', 'PSAPAC-32'].includes(k))).toEqual([
+    'PSAPAC-32',
+    'PSAPAC-31',
+  ])
+
+  await inDisplayMenu(async () => {
+    await choice('Direction', 'Ascending').click()
+  })
+  await expect.poll(siblingSteps).toEqual([1])
+  expect((await issueKeys()).filter((k) => ['PSAPAC-31', 'PSAPAC-32'].includes(k))).toEqual([
+    'PSAPAC-31',
+    'PSAPAC-32',
+  ])
+  expect(await headers()).toEqual([
+    'Acme, 8 issues',
+    'Beta Ltd, 5 issues',
+    'Collibra (Internal team), 2 issues',
+  ])
+  await expect.poll(savedDisplay).toEqual({
+    properties: ['updated'],
+    order: 'key',
+    direction: 'asc',
+  })
+
+  // The direction survives a restart and applies to the next order, and undated issues stay last.
+  await app.close()
+  ;({ app, window } = await launch(stateDir))
+  await open()
+  await expect.poll(siblingSteps).toEqual([1])
+  await inDisplayMenu(async () => {
+    await expect(choice('Direction', 'Ascending')).toHaveAttribute('aria-pressed', 'true')
+    await choice('Ordering', 'Due date').click()
+  })
+  for (const name of ['Ascending', 'Descending']) {
+    await inDisplayMenu(async () => {
+      await choice('Direction', name).click()
+    })
+    await expect
+      .poll(async () => (await issueKeys()).filter((k) => ['PSAPAC-31', 'PSAPAC-32'].includes(k)))
+      .toEqual(['PSAPAC-31', 'PSAPAC-32'])
+  }
+})
+
 test('orders by priority and by updated within an Epic', async () => {
   await open()
   const acme = [
     'PSAPAC-10',
+    'PSAPAC-13',
     'PSAPAC-11',
     'PSAPAC-12',
+    'PSAPAC-4',
     'PSAPAC-3',
     'PSAPAC-2',
-    'PSAPAC-13',
-    'PSAPAC-4',
     'PSAPAC-1',
   ]
   const inAcme = async () => (await issueKeys()).slice(0, acme.length)
@@ -222,15 +300,15 @@ test('orders by priority and by updated within an Epic', async () => {
   await inDisplayMenu(async () => {
     await choice('Ordering', 'Priority').click()
   })
-  // High first, then Medium by status and key, then Low. PSAPAC-12 stays under PSAPAC-11.
+  // High first, then the unrated by key, then Low. PSAPAC-12 stays under PSAPAC-11.
   await expect
     .poll(inAcme)
     .toEqual([
       'PSAPAC-10',
       'PSAPAC-3',
+      'PSAPAC-13',
       'PSAPAC-11',
       'PSAPAC-12',
-      'PSAPAC-13',
       'PSAPAC-4',
       'PSAPAC-1',
       'PSAPAC-2',
@@ -239,16 +317,16 @@ test('orders by priority and by updated within an Epic', async () => {
   await inDisplayMenu(async () => {
     await choice('Ordering', 'Updated').click()
   })
-  // Newest edit first, then the untouched ones by status and key.
+  // Newest edit first, then the untouched ones by key.
   await expect
     .poll(inAcme)
     .toEqual([
       'PSAPAC-10',
       'PSAPAC-2',
       'PSAPAC-3',
+      'PSAPAC-13',
       'PSAPAC-11',
       'PSAPAC-12',
-      'PSAPAC-13',
       'PSAPAC-4',
       'PSAPAC-1',
     ])
@@ -278,7 +356,7 @@ test('a saved view carries its display, which applying copies and Update view sa
   await expect(view('Triage')).toHaveAttribute('aria-current', 'true')
   await expect
     .poll(async () => (await savedViews()).find((v) => v.name === 'Triage')?.display)
-    .toEqual({ properties: ['labels', 'updated'], order: 'due' })
+    .toEqual({ properties: ['labels', 'updated'], order: 'due', direction: 'desc' })
 
   // Display is not part of the match: toggling a property keeps the view lit, and Update view wakes.
   await expect(update('Triage')).toBeDisabled()
@@ -299,7 +377,9 @@ test('a saved view carries its display, which applying copies and Update view sa
   await view('Triage').click()
   await expect(prop(row, 'labels')).toHaveText('docs')
   await expect(prop(row, 'sprint')).toHaveCount(0)
-  await expect.poll(savedDisplay).toEqual({ properties: ['labels', 'updated'], order: 'due' })
+  await expect
+    .poll(savedDisplay)
+    .toEqual({ properties: ['labels', 'updated'], order: 'due', direction: 'desc' })
   await inDisplayMenu(async () => {
     await expect(choice('Ordering', 'Due date')).toHaveAttribute('aria-pressed', 'true')
     await expect(choice('Display properties', 'Sprint')).toHaveAttribute('aria-pressed', 'false')
@@ -316,7 +396,7 @@ test('a saved view carries its display, which applying copies and Update view sa
   await expect(update('Triage')).toBeDisabled()
   await expect
     .poll(async () => (await savedViews()).find((v) => v.name === 'Triage')?.display)
-    .toEqual({ properties: ['created', 'updated'], order: 'priority' })
+    .toEqual({ properties: ['created', 'updated'], order: 'priority', direction: 'desc' })
   // The other views were not touched.
   expect((await savedViews()).find((v) => v.id === 'my-issues')?.display).toBeUndefined()
 })

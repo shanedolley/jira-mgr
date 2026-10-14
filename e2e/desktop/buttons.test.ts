@@ -535,7 +535,7 @@ test.describe('delete controls', () => {
 
     // A filter chip keeps its cross.
     await window.getByRole('button', { name: 'Filter', exact: true }).click()
-    await window.getByText('Status', { exact: true }).click()
+    await window.getByRole('group', { name: 'Filter' }).getByText('Status', { exact: true }).click()
     await window.getByRole('checkbox', { name: 'In Progress' }).check()
     await window.keyboard.press('Escape')
     const chip = window.getByRole('button', { name: 'Remove Status filter' })

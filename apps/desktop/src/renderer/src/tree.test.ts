@@ -73,6 +73,8 @@ function issue(key: string, spec: Spec = {}): Issue {
 }
 
 const OPTIONS: HierarchyOptions = {
+  // These tests walk rows with the To Do Story ahead of the In Progress one, as Status orders them.
+  order: 'status',
   hideDone: false,
   assigneeMe: false,
   hideEmptyCustomers: true,

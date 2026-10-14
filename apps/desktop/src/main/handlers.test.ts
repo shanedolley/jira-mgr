@@ -8,7 +8,7 @@ import { createHandlers, stackFrames } from './handlers'
 const TOKEN = 'ATATT3xFfGF0-secret_token=ABC123'
 const LIST = { phase: 'unresolved', loadId: 1 } as const
 const TOGGLES = { hideDone: true, assigneeMe: false, hideEmptyCustomers: true }
-const DISPLAY: Display = { properties: ['labels', 'due'], order: 'priority' }
+const DISPLAY: Display = { properties: ['labels', 'due'], order: 'priority', direction: 'asc' }
 const VIEW = { id: 'bugs', name: 'Bugs', filters: { type: ['Bug'] }, toggles: TOGGLES }
 const NEW_VIEW = { name: 'Bugs', filters: { type: ['Bug'], text: 'etl' }, toggles: TOGGLES }
 

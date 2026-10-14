@@ -202,6 +202,8 @@ The filter can only match loaded issues, so choices other than statuses come fro
 
 **Feedback.** After a toggle or filter change settles for 500 milliseconds, a `role="status"` region announces "N issues shown". When nothing matches, the Tree area reads "No issues match", names the toggles that are on ("Hide done and Assignee: me are on"), and offers Clear filters when a filter is active.
 
+*Amended 2026-10-14, build of #222, by Shane:* the Display menu's Ordering gains Status and a Direction (Ascending, Descending, saved with the order in `display.direction`, default `desc`). Key now orders by key number alone at every level; before, Stories, Tasks, Bugs and Subtasks sorted by status first. Status is its own order: `STATUS_ORDER`, then key. Each order's `desc` is the look it already had (newest key, highest priority, newest update, soonest due date, first status) and `asc` reverses it, with undated issues last under Due date either way. Ties break by key in the chosen direction. `buildHierarchy` takes `direction`; Customer groups keep their order.
+
 *Amended 2026-10-11, build of #139:* the Filter menu lists 15 fields, not five: Creator, Status type, Priority, Customer, Engagement, Epic, Relations, Due date, Created and Updated join the five above. Every field but the dates has an "is" and "is not" switch, a field can hold both, and each field and operator draws its own chip. The new values are stored as `ViewFilters` keys beside the old ones, `not` holds the excluded values, and `dates` holds one window per date. [config.md](../reference/config.md#viewsjson) lists them.
 
 Filters reset on restart. Q28 asks only the toggles to persist, and saving filters is what saved views are for.

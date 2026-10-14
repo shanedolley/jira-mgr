@@ -44,8 +44,8 @@ describe('jm view list', () => {
     expect(JSON.parse(f.stdout)).toEqual({ data: [BUGS] })
   })
 
-  it('carries a view display in the json, with the properties it knows and the order', async () => {
-    const display = { properties: ['labels', 'due'], order: 'priority' }
+  it('carries a view display in the json, with the properties it knows, the order and the direction', async () => {
+    const display = { properties: ['labels', 'due'], order: 'priority', direction: 'asc' }
     await writeViews([{ ...BUGS, display } as never, { ...BUGS, id: 'plain', name: 'Plain' }])
     const f = fakeIo()
     expect(await run(['view', 'list'], f.io)).toBe(0)
@@ -55,13 +55,13 @@ describe('jm view list', () => {
     expect(data[1]).not.toHaveProperty('display')
   })
 
-  it('reads a view display from a newer build without failing, and drops what it does not know', async () => {
+  it('reads a view display from a newer build without failing, and drops what it does not know, reading a missing direction as desc', async () => {
     const raw = { ...BUGS, display: { properties: ['due', 'assignee'], order: 'rank' } }
     await writeFile(`${process.env.JM_STATE_DIR ?? ''}/views.json`, JSON.stringify([raw]))
     const f = fakeIo()
     expect(await run(['view', 'list'], f.io)).toBe(0)
     const { data } = JSON.parse(f.stdout) as { data: { display: unknown }[] }
-    expect(data[0]?.display).toEqual({ properties: ['due'], order: 'key' })
+    expect(data[0]?.display).toEqual({ properties: ['due'], order: 'key', direction: 'desc' })
   })
 
   it('lists the views in the order the app saved them', async () => {

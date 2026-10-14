@@ -2041,7 +2041,7 @@ jm view list
 
 #### Output
 
-An array of saved views. A view the app saved with a display also holds `display`, its row properties and issue order: `{ "properties": ["updated"], "order": "key" }`. The key is absent from a view with none.
+An array of saved views. A view the app saved with a display also holds `display`, its row properties, issue order and direction: `{ "properties": ["updated"], "order": "key", "direction": "desc" }`. The key is absent from a view with none.
 
 ```json
 {

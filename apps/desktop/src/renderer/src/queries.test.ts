@@ -205,8 +205,8 @@ describe('togglesMutation', () => {
 })
 
 describe('displayMutation', () => {
-  const stored: Display = { properties: ['updated'], order: 'key' }
-  const chosen: Display = { properties: ['due'], order: 'priority' }
+  const stored: Display = { properties: ['updated'], order: 'key', direction: 'desc' }
+  const chosen: Display = { properties: ['due'], order: 'priority', direction: 'asc' }
 
   it('shows the choice at once, before the write answers', async () => {
     const client = new QueryClient()

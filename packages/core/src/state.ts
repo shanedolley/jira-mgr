@@ -6,10 +6,12 @@ import { join } from 'node:path'
 import { z } from 'zod'
 
 import {
+  DEFAULT_DIRECTION,
   DEFAULT_ORDER,
   DEFAULT_PROPERTIES,
   DEFAULT_TREE_LEVEL,
   ISSUE_ORDERS,
+  ORDER_DIRECTIONS,
   TREE_LEVELS,
   keepKnownProperties,
 } from './display.js'
@@ -60,6 +62,7 @@ const displayFields = z.object({
     .transform(keepKnownProperties)
     .default([...DEFAULT_PROPERTIES]),
   order: z.enum(ISSUE_ORDERS).default(DEFAULT_ORDER).catch(DEFAULT_ORDER),
+  direction: z.enum(ORDER_DIRECTIONS).default(DEFAULT_DIRECTION).catch(DEFAULT_DIRECTION),
 })
 
 const settingsDisplay = displayFields.prefault({}).catch(() => displayFields.parse({}))
