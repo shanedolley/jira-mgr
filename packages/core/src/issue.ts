@@ -258,7 +258,7 @@ export function parseDuration(text: string): string | null {
     text.slice(from, terms[i]?.index ?? text.length),
   )
   const spaced = gaps.every((gap, i) =>
-    i === 0 || i === gaps.length - 1 ? /^\s*$/.test(gap) : /^\s*(?:,?\s*\band\b|,)?\s*$/i.test(gap),
+    i === 0 || i === gaps.length - 1 ? /^\s*$/.test(gap) : /^\s*(?:,\s*)?(?:and\s*)?$/i.test(gap),
   )
   if (terms.length === 0 || !spaced) return null
   const parts = { w: 0, d: 0, h: 0, m: 0 }

@@ -158,6 +158,13 @@ describe('parseDuration', () => {
     expect(parseDuration(text)).toBeNull()
   })
 
+  it('refuses a long run of spaces before a stray character in linear time', () => {
+    const start = performance.now()
+    expect(parseDuration(`1h${' '.repeat(100_000)}!1m`)).toBeNull()
+    // Linear takes a few milliseconds; a backtracking pattern takes tens of seconds.
+    expect(performance.now() - start).toBeLessThan(1000)
+  })
+
   it('always writes a string Jira accepts', () => {
     for (const text of ['1.25h', '90m', '2d', '1w 3.5d', '0.999h']) {
       expect(parseDuration(text)).toMatch(DURATION_PATTERN)
