@@ -351,6 +351,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
           <Row name="Parent" field="parentKey" pending={pending.has('parentKey')}>
             <Picker
               label="Parent"
+              wide
               triggerRef={parentTrigger}
               valueText={
                 issue.parentKey === null
