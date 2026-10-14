@@ -254,6 +254,6 @@ One pull request (#104), in commits after this doc: the main-process channels, t
 
 ## Open Questions
 
-- **Image in a comment.** The media node embeds in a description (live-checked for D4 on 2026-10-09). A comment's body should render it the same way, but no live write has shown it. Shane to decide on one live check, as for D4, before the story closes. Until then the e2e proves only the ADF sent.
+- **Image in a comment.** The media node embeds in a description (live-checked for D4 on 2026-10-09). Shane ran the same check for a comment on 2026-10-10 (#32): the image rendered in live Jira.
 - **Others' comments and worklogs.** Edit and Delete show for the signed-in user's own only. Say so if admin edits of others are wanted.
 - **Attachment removal.** Not built (Attachments, Not built).

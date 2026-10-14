@@ -1,6 +1,6 @@
 # L7 Smoke Check
 
-**Use when:** after a change to `@jira-mgr/core` or the CLI, to confirm every `jm` command works against live PSAPAC. Issue [#27](https://github.com/shanedolley/jira-mgr/issues/27) holds the open questions this check answers.
+**Use when:** after a change to `@jira-mgr/core` or the CLI, to confirm every `jm` command works against live PSAPAC. Issue [#27](https://github.com/shanedolley/jira-mgr/issues/27) holds the questions this check answers.
 
 **Severity:** the read-only and local sections change nothing in Jira. The live-write section creates, edits and deletes three throwaway issues in PSAPAC and logs time on them. Run it only with Shane present.
 
