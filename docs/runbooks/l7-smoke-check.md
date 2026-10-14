@@ -1,6 +1,6 @@
 # L7 Smoke Check
 
-**Use when:** after a change to `@jira-mgr/core` or the CLI, to confirm every `jm` command works against live PSAPAC. Issue [#27](https://github.com/shanedolley/jira-mgr/issues/27) holds the questions this check answers.
+**Use when:** after a change to `@jira-mgr/core` or the CLI, to confirm every `jm` command works against live PSAPAC. Issue [#27](https://github.com/shanedolley/jira-mgr/issues/27), closed, asked the questions this check answered; Findings records the answers.
 
 **Severity:** the read-only and local sections change nothing in Jira. The live-write section creates, edits and deletes three throwaway issues in PSAPAC and logs time on them. Run it only with Shane present.
 
@@ -163,7 +163,7 @@ Needs `jm timer status` to answer `null`. `--expect` makes the start refuse when
 1. `jm issue get $T1`, `jm issue get $T2` and `jm issue get $T3` each exit 3.
 2. `jm issue list --search "jm L7 smoke" --show-done` returns no issue.
 3. `jm timer status` answers `null`. `views.json` and `timer.json` match the copies from Before You Start, except for a timer the check logged and cleared.
-4. Compare the Result column with the questions in #27, and comment the answers there.
+4. Compare each Result with its Expected column, and record the answers under Findings.
 
 ## Findings
 
@@ -207,5 +207,5 @@ Engagement did not change.
 
 ## Follow Up
 
-- Open a bug for each Result that differs from Expected, and `Refs #27` in the fix.
+- Open a bug for each Result that differs from Expected, and `Refs #<bug>` in the fix.
 - Open issues for Findings 2 to 5, and tell Shane about Finding 1.

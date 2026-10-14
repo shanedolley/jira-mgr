@@ -254,6 +254,8 @@ One pull request (#104), in commits after this doc: the main-process channels, t
 
 ## Open Questions
 
+None remain open. The design above carries the answers:
+
 - **Image in a comment.** The media node embeds in a description (live-checked for D4 on 2026-10-09). Shane ran the same check for a comment on 2026-10-10 (#32): the image rendered in live Jira.
-- **Others' comments and worklogs.** Edit and Delete show for the signed-in user's own only. Say so if admin edits of others are wanted.
+- **Others' comments and worklogs.** Edit and Delete show for the signed-in user's own only. Admin edits of others are not built.
 - **Attachment removal.** Not built (Attachments, Not built).
