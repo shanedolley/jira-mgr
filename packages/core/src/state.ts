@@ -10,6 +10,7 @@ import {
   DEFAULT_PROPERTIES,
   DEFAULT_TREE_LEVEL,
   ISSUE_ORDERS,
+  MANUAL_ORDER_LIMIT,
   ORDER_DEFAULT_DIRECTION,
   ORDER_DIRECTIONS,
   TREE_LEVELS,
@@ -53,8 +54,9 @@ const toggles = z
 /**
  * Row properties and issue order. Every Jira request reads `settings.json`, so a value this build
  * does not know must never fail the file: unknown properties drop, an unknown order reads as `key`,
- * a missing or unknown direction as the order's default, and a `display` that is not an object
- * reads as the defaults.
+ * a missing or unknown direction as the order's default, a `manual` list that is not a list of at
+ * most `MANUAL_ORDER_LIMIT` strings as none, and a `display` that is not an object reads as the
+ * defaults.
  */
 const displayFields = z
   .object({
@@ -65,8 +67,14 @@ const displayFields = z
       .default([...DEFAULT_PROPERTIES]),
     order: z.enum(ISSUE_ORDERS).default(DEFAULT_ORDER).catch(DEFAULT_ORDER),
     direction: z.enum(ORDER_DIRECTIONS).optional().catch(undefined),
+    /** The issue keys the Manual order follows. Absent until the user drags a row. */
+    manual: z.array(z.string()).max(MANUAL_ORDER_LIMIT).optional().catch(undefined),
   })
-  .transform((d) => ({ ...d, direction: d.direction ?? ORDER_DEFAULT_DIRECTION[d.order] }))
+  .transform(({ manual, ...d }) => ({
+    ...d,
+    direction: d.direction ?? ORDER_DEFAULT_DIRECTION[d.order],
+    ...(manual === undefined ? {} : { manual }),
+  }))
 
 const settingsDisplay = displayFields.prefault({}).catch(() => displayFields.parse({}))
 

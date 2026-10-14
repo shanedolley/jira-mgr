@@ -630,6 +630,21 @@ describe('toggles', () => {
     expect(await backend.getDisplay()).toEqual(display)
   })
 
+  it('setDisplay keeps a manual order through the file and a toggles write', async () => {
+    await logIn()
+    const backend = createBackend()
+    const display = {
+      properties: ['updated' as const],
+      order: 'manual' as const,
+      direction: 'asc' as const,
+      manual: ['PSAPAC-3', 'PSAPAC-1'],
+    }
+    await backend.setDisplay(display)
+    await backend.setToggles({ hideDone: false, assigneeMe: true, hideEmptyCustomers: false })
+    expect(await backend.getDisplay()).toEqual(display)
+    expect((await readSettings()).display.manual).toEqual(['PSAPAC-3', 'PSAPAC-1'])
+  })
+
   it('getTreeLevel reads stories, and setTreeLevel and setToggles keep each other', async () => {
     await logIn()
     const backend = createBackend()
@@ -695,6 +710,15 @@ describe('views shared with the CLI', () => {
       display,
     )
     expect((await backend.duplicateView({ id: created.id })).display).toEqual(display)
+    const manual = {
+      properties: [],
+      order: 'manual' as const,
+      direction: 'asc' as const,
+      manual: ['PSAPAC-2', 'PSAPAC-1'],
+    }
+    const held = await backend.createView({ name: 'Ranked', ...BUGS, display: manual })
+    expect((await state.findView(held.id)).display).toEqual(manual)
+    expect((await backend.duplicateView({ id: held.id })).display).toEqual(manual)
     const next = { properties: [], order: 'priority' as const, direction: 'desc' as const }
     const updated = await backend.updateView({ id: created.id, ...BUGS, display: next })
     expect(updated.display).toEqual(next)

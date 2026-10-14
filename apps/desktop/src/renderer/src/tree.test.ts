@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ancestorIds,
+  canDropOn,
   changeOverrides,
   clickRow,
+  dropIndicator,
   fallbackRow,
   flattenTree,
   indexNodes,
@@ -15,6 +17,7 @@ import {
   levelCollapsed,
   mergeIssues,
   moveActive,
+  orderStep,
   pruneChecked,
   rowAtOffset,
   windowRange,
@@ -972,5 +975,79 @@ describe('fallbackRow', () => {
   it('starts at the first row when nothing was active, and at none when nothing remains', () => {
     expect(fallbackRow(previous, previous, null)).toBe('c:1')
     expect(fallbackRow(previous, [], 'i:P-2')).toBeNull()
+  })
+})
+
+describe('manual order', () => {
+  const key = (name: string, altKey = true, shiftKey = true): KeyInput => ({
+    key: name,
+    altKey,
+    shiftKey,
+    metaKey: false,
+    ctrlKey: false,
+  })
+
+  it('reads Alt+Shift with Up or Down as a step, and nothing else', () => {
+    expect(orderStep(key('ArrowUp'))).toBe(-1)
+    expect(orderStep(key('ArrowDown'))).toBe(1)
+    expect(orderStep(key('ArrowLeft'))).toBeNull()
+    expect(orderStep(key('ArrowUp', true, false))).toBeNull()
+    expect(orderStep(key('ArrowUp', false, true))).toBeNull()
+    expect(orderStep({ ...key('ArrowUp'), metaKey: true })).toBeNull()
+    expect(orderStep({ ...key('ArrowUp'), ctrlKey: true })).toBeNull()
+  })
+
+  it('leaves Alt+Shift with an arrow to the order, not to the Tree movement', () => {
+    const rows = flattenTree(groupsOf(SAMPLE), NONE)
+    const state: TreeState = {
+      activeId: 'i:P-2',
+      collapsed: new Set(),
+      revealed: new Set(),
+      peekOpen: false,
+      checked: new Set(),
+      anchor: null,
+    }
+    expect(moveActive(rows, state, key('ArrowDown'), { pageSize: 10 })).toBeNull()
+  })
+
+  // Rows: Acme, P-1, P-2, P-3 (under P-2), P-4, chip d:P-1, No Epic, P-6.
+  const rows = flattenTree(groupsOf(SAMPLE), NONE)
+
+  it('allows a drop only on another issue row with the same parent', () => {
+    expect(canDropOn(rows, 'i:P-2', 'i:P-4')).toBe(true)
+    expect(canDropOn(rows, 'i:P-4', 'i:P-2')).toBe(true)
+    expect(canDropOn(rows, 'i:P-2', 'i:P-2')).toBe(false)
+    // Another parent, a child of a sibling, a header, a chip and an unknown row.
+    expect(canDropOn(rows, 'i:P-2', 'i:P-6')).toBe(false)
+    expect(canDropOn(rows, 'i:P-3', 'i:P-4')).toBe(false)
+    expect(canDropOn(rows, 'i:P-2', 'c:1')).toBe(false)
+    expect(canDropOn(rows, 'i:P-2', 'd:P-1')).toBe(false)
+    expect(canDropOn(rows, 'i:P-2', 'i:P-404')).toBe(false)
+    expect(canDropOn(rows, 'c:1', 'i:P-1')).toBe(false)
+  })
+
+  it('draws the line above a row the drag moves up past', () => {
+    expect(dropIndicator(rows, 'i:P-4', 'i:P-2')).toEqual({ id: 'i:P-2', edge: 'above' })
+  })
+
+  it('draws the line below the last row of the subtree the drag moves down past', () => {
+    // P-2 holds P-3, so a drop on P-2 lands after P-3.
+    expect(dropIndicator(rows, 'i:P-2', 'i:P-4')).toEqual({ id: 'i:P-4', edge: 'below' })
+    const reversed = flattenTree(groupsOf(SAMPLE, { order: 'key', direction: 'asc' }), NONE)
+    // Key ascending lists P-2 (with P-3) then P-4: moving P-4 up is above P-2, moving P-2 down is below P-4.
+    expect(dropIndicator(reversed, 'i:P-4', 'i:P-2')).toEqual({ id: 'i:P-2', edge: 'above' })
+    expect(dropIndicator(reversed, 'i:P-2', 'i:P-4')).toEqual({ id: 'i:P-4', edge: 'below' })
+  })
+
+  it('carries the line to the end of an expanded target', () => {
+    // Key descending lists P-4, then P-2 with its child P-3: P-4 dragged onto P-2 lands after P-3.
+    const listed = flattenTree(groupsOf(SAMPLE, { order: 'key', direction: 'desc' }), NONE)
+    expect(ids(listed).slice(2, 5)).toEqual(['i:P-4', 'i:P-2', 'i:P-3'])
+    expect(dropIndicator(listed, 'i:P-4', 'i:P-2')).toEqual({ id: 'i:P-3', edge: 'below' })
+  })
+
+  it('shows no line for a drop that is not allowed', () => {
+    expect(dropIndicator(rows, 'i:P-2', 'i:P-6')).toBeNull()
+    expect(dropIndicator(rows, 'i:P-2', 'i:P-2')).toBeNull()
   })
 })

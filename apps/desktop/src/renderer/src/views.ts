@@ -7,6 +7,9 @@ import { FILTER_FIELDS, OPERATORS, valuesOf } from './filters'
 const sameSet = (a: readonly string[] = [], b: readonly string[] = []) =>
   a.length === b.length && a.every((value) => b.includes(value))
 
+const sameList = (a: readonly string[] = [], b: readonly string[] = []) =>
+  a.length === b.length && a.every((value, index) => value === b[index])
+
 /** True when the filters select the same issues in the same way, ignoring the order of values. */
 function sameFilters(a: ViewFilters, b: ViewFilters): boolean {
   return (
@@ -40,7 +43,8 @@ export function viewDisplayMatches(view: SavedView, display: Display): boolean {
   return (
     saved.order === display.order &&
     saved.direction === display.direction &&
-    sameSet(saved.properties, display.properties)
+    sameSet(saved.properties, display.properties) &&
+    (saved.order !== 'manual' || sameList(saved.manual, display.manual))
   )
 }
 

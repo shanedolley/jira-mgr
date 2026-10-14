@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent,
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
@@ -16,9 +17,12 @@ import {
 import { TreeRow, rowDomId, rowProgress } from './TreeRow'
 import {
   ROW_HEIGHT,
+  canDropOn,
   clickRow,
+  dropIndicator,
   layoutRows,
   moveActive,
+  orderStep,
   rowAtOffset,
   windowRange,
   type MoveResult,
@@ -35,6 +39,12 @@ const RING =
 
 /** Room under the last row while the bulk bar floats over the foot of the Tree. */
 const BAR_CLEARANCE = 64
+
+/** The drag payload's type, so a drop on a text field inserts nothing and a file or text from outside is never taken for a row. */
+const ISSUE_DRAG = 'application/x-jm-issue'
+
+/** Where a moved issue goes among its siblings: to the place of another, or one step up or down. */
+export type MoveTarget = { over: string } | { step: -1 | 1 }
 
 interface IssueTreeProps {
   rows: readonly Row[]
@@ -56,6 +66,8 @@ interface IssueTreeProps {
   onPick: (key: string, property: 'status' | 'assignee') => void
   /** A click on a group header's "+". */
   onAdd: (row: Row) => void
+  /** A drag dropped an issue on a sibling, or Alt+Shift with Up or Down moved the active one. */
+  onMove: (key: string, to: MoveTarget) => void
   /** Done over total of each parent's children, of which a Story, Task or Bug row shows its own. */
   progress: ReadonlyMap<string, Progress>
   treeRef: RefObject<HTMLDivElement | null>
@@ -86,6 +98,7 @@ export function IssueTree({
   onChange,
   onPick,
   onAdd,
+  onMove,
   progress,
   treeRef,
   empty,
@@ -94,6 +107,8 @@ export function IssueTree({
   const [height, setHeight] = useState(0)
   const anchor = useRef<Anchor | null>(null)
   const ensured = useRef<string | null>(null)
+  /** The issue row being dragged, and the sibling it hovers. */
+  const [drag, setDrag] = useState<{ id: string; over: string | null } | null>(null)
 
   const layout = useMemo(() => layoutRows(rows), [rows])
   const indexById = useMemo(() => new Map(rows.map((r, i) => [r.id, i])), [rows])
@@ -165,23 +180,80 @@ export function IssueTree({
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const next = moveActive(
-      rows,
-      state,
-      {
-        key: event.key,
-        shiftKey: event.shiftKey,
-        metaKey: event.metaKey,
-        ctrlKey: event.ctrlKey,
-        altKey: event.altKey,
-      },
-      { pageSize },
-    )
+    const input = {
+      key: event.key,
+      shiftKey: event.shiftKey,
+      metaKey: event.metaKey,
+      ctrlKey: event.ctrlKey,
+      altKey: event.altKey,
+    }
+    const step = orderStep(input)
+    if (step !== null) {
+      event.preventDefault()
+      const row = rows[activeIndex]
+      if (row?.kind === 'issue') {
+        // The move can carry the row far from where it was, so the view follows it.
+        ensured.current = null
+        onMove(row.node.issue.key, { step })
+      }
+      return
+    }
+    const next = moveActive(rows, state, input, { pageSize })
     if (next === null) return
     // Space and the page keys would otherwise scroll the container by themselves.
     event.preventDefault()
     onChange(next)
   }
+
+  /** The id of the row an event happened in. */
+  const rowIdOf = (event: DragEvent<HTMLDivElement>) =>
+    (event.target as Element).closest<HTMLElement>('[data-row-id]')?.dataset.rowId ?? null
+
+  function onDragStart(event: DragEvent<HTMLDivElement>) {
+    const id = rowIdOf(event)
+    const row = rows.find((r) => r.id === id)
+    if (id === null || row?.kind !== 'issue') return
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData(ISSUE_DRAG, row.node.issue.key)
+    setDrag({ id, over: null })
+    // The dragged row stays active, which keeps it mounted if the drag scrolls it out of the window.
+    onChange({ ...state, activeId: id, openPage: false })
+  }
+
+  /**
+   * Follows the pointer over the rows. A row that refuses the drag still has to accept its
+   * `dragenter`, or the browser sends the following `dragover`s to the body and the line would
+   * stay on the last row that accepted it. Only a `dragover` on a sibling accepts the drop.
+   */
+  function onDragOver(event: DragEvent<HTMLDivElement>) {
+    if (drag === null) return
+    const id = rowIdOf(event)
+    const allowed = id !== null && canDropOn(rows, drag.id, id)
+    if (event.type === 'dragenter' || allowed) event.preventDefault()
+    if (allowed) event.dataTransfer.dropEffect = 'move'
+    // Dragover is a continuous event, so the state it reads may be a render behind: set it from the latest.
+    const over = allowed ? id : null
+    setDrag((held) => (held === null || held.over === over ? held : { ...held, over }))
+  }
+
+  /** The pointer left the Tree: no drop would land, so no line shows. */
+  function onDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+    setDrag((held) => (held?.over == null ? held : { ...held, over: null }))
+  }
+
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    if (drag === null) return
+    const id = rowIdOf(event)
+    const row = rows.find((r) => r.id === id)
+    setDrag(null)
+    if (id === null || row?.kind !== 'issue' || !canDropOn(rows, drag.id, id)) return
+    event.preventDefault()
+    const from = rows.find((r) => r.id === drag.id)
+    if (from?.kind === 'issue') onMove(from.node.issue.key, { over: row.node.issue.key })
+  }
+
+  const indicator = drag?.over == null ? null : dropIndicator(rows, drag.id, drag.over)
 
   const armed = useRef<string | null>(null)
   const onRowClick = useCallback(
@@ -223,6 +295,14 @@ export function IssueTree({
         aria-activedescendant={activeRow === undefined ? undefined : rowDomId(activeRow.id)}
         onKeyDown={onKeyDown}
         onScroll={onScroll}
+        onDragStart={onDragStart}
+        onDragEnter={onDragOver}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        onDragEnd={() => {
+          setDrag(null)
+        }}
         className="group absolute inset-0 overflow-y-auto overflow-x-hidden focus-visible:outline-none"
       >
         <div
@@ -244,6 +324,8 @@ export function IssueTree({
                 checked={row.kind === 'issue' && state.checked.has(row.node.issue.key)}
                 selecting={selecting}
                 timing={row.kind === 'issue' && row.node.issue.key === timerKey}
+                dragging={drag?.id === row.id}
+                dropEdge={indicator?.id === row.id ? indicator.edge : undefined}
                 properties={properties}
                 today={today}
                 blockedBy={held?.blockedBy.length ?? 0}

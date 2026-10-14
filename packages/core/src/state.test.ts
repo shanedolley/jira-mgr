@@ -581,6 +581,48 @@ describe('display', () => {
     expect((await readSettings()).display).toEqual(display)
   })
 
+  it('keeps a manual order through a write, and reads a file with none unchanged', async () => {
+    const manual = { ...display, order: 'manual' as const, direction: 'asc' as const }
+    expect((await readSettings()).display).not.toHaveProperty('manual')
+    await writeSettings({
+      ...(await readSettings()),
+      display: { ...manual, manual: ['P-2', 'P-1'] },
+    })
+    expect((await readSettings()).display.manual).toEqual(['P-2', 'P-1'])
+  })
+
+  it('reads a manual order it cannot read as none, and keeps the rest of the display', async () => {
+    for (const bad of ['P-1', [1, 2], { a: 1 }, Array.from({ length: 20001 }, () => 'P-1')]) {
+      await writeFile(
+        join(dir, 'settings.json'),
+        JSON.stringify({ display: { properties: ['due'], order: 'manual', manual: bad } }),
+      )
+      expect((await readSettings()).display).toEqual({
+        properties: ['due'],
+        order: 'manual',
+        direction: 'asc',
+      })
+    }
+  })
+
+  it('stores a manual order per view, apart from the settings', async () => {
+    const one = {
+      properties: [],
+      order: 'manual' as const,
+      direction: 'asc' as const,
+      manual: ['P-2', 'P-1'],
+    }
+    const two = { ...one, manual: ['P-1', 'P-2'] }
+    await createView('One', { filters: {}, toggles, display: one })
+    await createView('Two', { filters: {}, toggles, display: two })
+    expect((await findView('one')).display?.manual).toEqual(['P-2', 'P-1'])
+    expect((await findView('two')).display?.manual).toEqual(['P-1', 'P-2'])
+    expect((await readSettings()).display).not.toHaveProperty('manual')
+    await updateView('one', { filters: {}, toggles, display: { ...one, manual: ['P-3'] } })
+    expect((await findView('one')).display?.manual).toEqual(['P-3'])
+    expect((await findView('two')).display?.manual).toEqual(['P-1', 'P-2'])
+  })
+
   it('reads a views file with no display unchanged, and gives a view none', async () => {
     const old = [{ id: 'bugs', name: 'Bugs', filters: { type: ['Bug'] }, toggles }]
     await writeFile(join(dir, 'views.json'), JSON.stringify(old))

@@ -55,6 +55,7 @@ const ORDER_LABELS: Record<IssueOrder, string> = {
   updated: 'Updated',
   due: 'Due date',
   status: 'Status',
+  manual: 'Manual',
 }
 
 const DIRECTION_LABELS: Record<OrderDirection, string> = {
@@ -512,7 +513,8 @@ export function TreeToolbar({
                   <button
                     key={direction}
                     type="button"
-                    aria-pressed={display.direction === direction}
+                    aria-pressed={display.order !== 'manual' && display.direction === direction}
+                    disabled={display.order === 'manual'}
                     onClick={() => {
                       onDisplay({ ...display, direction })
                     }}
@@ -522,6 +524,11 @@ export function TreeToolbar({
                   </button>
                 ))}
               </div>
+              {display.order === 'manual' && (
+                <p className="mt-1 text-xs text-muted">
+                  Drag a row, or press Alt+Shift+Up or Down, to move it among its siblings.
+                </p>
+              )}
             </div>
             <div role="group" aria-label="Display properties" className="px-2 pb-2 pt-3">
               <p className="mb-1 text-xs text-muted">Display properties</p>

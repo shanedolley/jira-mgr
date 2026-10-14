@@ -111,6 +111,16 @@ describe('viewDisplayMatches', () => {
     expect(viewDisplayMatches(saved, { ...display, direction: 'asc' })).toBe(false)
     expect(viewDisplayMatches(sprint, { ...display, direction: 'asc' })).toBe(false)
   })
+
+  it('stops matching when the manual order differs, and only under Manual', () => {
+    const manual = { ...display, order: 'manual' as const, direction: 'asc' as const }
+    const held = { ...sprint, display: { ...manual, manual: ['P-2', 'P-1'] } }
+    expect(viewDisplayMatches(held, { ...manual, manual: ['P-2', 'P-1'] })).toBe(true)
+    expect(viewDisplayMatches(held, { ...manual, manual: ['P-1', 'P-2'] })).toBe(false)
+    expect(viewDisplayMatches(held, manual)).toBe(false)
+    // Under another order the list is not read, so a leftover one changes nothing.
+    expect(viewDisplayMatches(saved, { ...display, manual: ['P-1'] })).toBe(true)
+  })
 })
 
 describe('movedView', () => {

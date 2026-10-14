@@ -1,8 +1,12 @@
 import type { Issue } from '@jira-mgr/core'
-import { DEFAULT_TREE_LEVEL } from '@jira-mgr/core/display'
+import { DEFAULT_TREE_LEVEL, ORDER_DEFAULT_DIRECTION } from '@jira-mgr/core/display'
 import {
   buildHierarchy,
   childProgress,
+  moveInManualOrder,
+  siblingKeys,
+  sortedByManual,
+  treeOrder,
   type CustomerOption,
   type Progress,
 } from '@jira-mgr/core/hierarchy'
@@ -29,6 +33,7 @@ import { flushSync } from 'react-dom'
 
 import type {
   DeleteIssueArgs,
+  Display,
   SavedView,
   Session,
   TimerSnapshot,
@@ -48,7 +53,7 @@ import { InboxPage } from './InboxPage'
 import { IssueDetail } from './IssueDetail'
 import { IssueMenu } from './IssueMenu'
 import { IssuePage } from './IssuePage'
-import { IssueTree } from './IssueTree'
+import { IssueTree, type MoveTarget } from './IssueTree'
 import { Kbd } from './Kbd'
 import { useTreeTop } from './narrow'
 import { type OverviewLoad } from './OverviewFrame'
@@ -100,6 +105,7 @@ import {
   useDoneIssues,
   useLoadedCount,
   useMe,
+  displayKey,
   useDisplay,
   useSetDisplay,
   useSetTreeLevel,
@@ -111,7 +117,7 @@ import {
 } from './queries'
 import { NotifyContext, type Notify } from './notify'
 import { applyUnaskedRead } from './optimistic'
-import { describeEdit, isBatch, reversible, undoStack, type StackEntry } from './undo'
+import { describeEdit, isBatch, isOrder, reversible, undoStack, type StackEntry } from './undo'
 import { useUndo } from './useUndo'
 import {
   ancestorIds,
@@ -423,6 +429,7 @@ export function Shell({ session }: { session: Session }) {
 
   const order = display?.order
   const direction = display?.direction
+  const manual = display?.manual
   // Overdue and the date windows read `today`, so the matcher rebuilds at local midnight.
   const match = useMemo(
     () =>
@@ -447,6 +454,7 @@ export function Shell({ session }: { session: Session }) {
       customers: showEmptyCustomers ? customersQuery.data : undefined,
       order,
       direction,
+      manual,
       ...(match === undefined ? {} : { match }),
     })
   }, [
@@ -455,6 +463,7 @@ export function Shell({ session }: { session: Session }) {
     toggles,
     order,
     direction,
+    manual,
     match,
     accountId,
     customersFailed,
@@ -566,6 +575,49 @@ export function Shell({ session }: { session: Session }) {
 
   function focusTree() {
     treeRef.current?.focus()
+  }
+
+  /**
+   * Moves an issue among its siblings, by a drop on one of them or a step of Alt+Shift with Up or
+   * Down, and makes the display Manual with the new order. Under another order the list starts from
+   * the order on screen. A move changes only the local display, never Jira, and goes on the undo
+   * stack. It reads the display from the cache and sorts the siblings by its list, since a quick
+   * second key can arrive before the render of the first.
+   */
+  function moveIssue(key: string, to: MoveTarget) {
+    const live = client.getQueryData<Display>(displayKey) ?? display
+    const shown = siblingKeys(groups, key)
+    if (live === undefined || shown === undefined) return
+    const manualNow = live.order === 'manual'
+    const siblings = manualNow ? sortedByManual(shown, live.manual ?? []) : shown
+    const from = siblings.indexOf(key)
+    if (from < 0) return
+    const target = 'over' in to ? siblings.indexOf(to.over) : from + to.step
+    if ('step' in to && (target < 0 || target >= siblings.length)) {
+      const end = target < 0 ? 'first' : 'last'
+      notify({ title: `${key} is already ${end} among its siblings`, notes: [], warned: false })
+      return
+    }
+    if (target < 0 || target === from) return
+    const next: Display = {
+      ...live,
+      order: 'manual',
+      direction: ORDER_DEFAULT_DIRECTION.manual,
+      manual: moveInManualOrder(
+        manualNow ? (live.manual ?? []) : treeOrder(groups),
+        siblings,
+        key,
+        target,
+      ),
+    }
+    // At once, so the next key press reads this order and the rows follow the announcement.
+    client.setQueryData<Display>(displayKey, next)
+    setDisplay.mutate(next)
+    undoStack(client).push({
+      key,
+      title: `Moved ${key} to position ${String(target + 1)} of ${String(siblings.length)}`,
+      display: { before: live, after: next },
+    })
   }
 
   /**
@@ -1196,7 +1248,7 @@ export function Shell({ session }: { session: Session }) {
       undoStack(client).onPush((entry) => {
         notify(
           {
-            title: isBatch(entry) ? entry.title : describeEdit(entry),
+            title: isOrder(entry) || isBatch(entry) ? entry.title : describeEdit(entry),
             notes: reversible(entry) ? [] : ['This change cannot be undone here.'],
             warned: false,
           },
@@ -1328,6 +1380,7 @@ export function Shell({ session }: { session: Session }) {
         onAdd={(row) => {
           if (canCreate) setCreating(createContext(row, issues))
         }}
+        onMove={moveIssue}
         progress={progress}
         treeRef={treeRef}
         empty={
@@ -1475,7 +1528,12 @@ export function Shell({ session }: { session: Session }) {
             }}
             display={display}
             onDisplay={(next) => {
-              setDisplay.mutate(next)
+              // Manual starts from the order on screen, unless the display already holds a list.
+              const seeded =
+                next.order === 'manual' &&
+                display.order !== 'manual' &&
+                (next.manual ?? []).length === 0
+              setDisplay.mutate(seeded ? { ...next, manual: treeOrder(groups) } : next)
             }}
             filters={filters}
             choices={choices}

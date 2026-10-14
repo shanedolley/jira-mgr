@@ -50,6 +50,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Shift+Down`, `Shift+Up` | Move to the next or previous row and check the issue rows it crosses |
 | `Shift+click` | Check every issue row from the anchor (the issue last checked or unchecked) to the one clicked |
 | `Cmd+A` | Check every issue row shown, skipping headers, chips and dimmed context |
+| `Alt+Shift+Up`, `Alt+Shift+Down` | Move the active issue up or down one place among its siblings, which makes the order Manual; a screen reader hears the new position, and `Cmd+Z` puts the move back |
 | `Esc` | Clear the checked issues; with none checked, close the Peek |
 
 ## Fields and Dialogs
