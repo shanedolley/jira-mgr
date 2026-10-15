@@ -28,7 +28,6 @@ import {
 import { flushSync } from 'react-dom'
 
 import type {
-  CreateType,
   DeleteIssueArgs,
   SavedView,
   Session,
@@ -222,6 +221,20 @@ function flashRows(key: string, fields: readonly string[]) {
   }
 }
 
+/** The Tree's moving keys, which end a hover's claim on `C` until the pointer moves again. */
+const NAVIGATION_KEYS = new Set([
+  'j',
+  'k',
+  'arrowup',
+  'arrowdown',
+  'arrowleft',
+  'arrowright',
+  'pageup',
+  'pagedown',
+  'home',
+  'end',
+])
+
 /**
  * Sidebar, Tree and, while it is open, the Peek. The Shell owns the tree state: the filters, the
  * collapsed and revealed sets, the active row and the Peek. The rows derive from the query caches
@@ -279,9 +292,7 @@ export function Shell({ session }: { session: Session }) {
   const [sprintId, setSprintId] = useState<number | null>(null)
   // The create modal, opened by `C` or the New issue button, with the selection it started from
   // and, from the palette's Create sub-issue, the type it starts as.
-  const [creating, setCreating] = useState<
-    (ReturnType<typeof createContext> & { type?: CreateType }) | null
-  >(null)
+  const [creating, setCreating] = useState<ReturnType<typeof createContext> | null>(null)
   // The issue whose delete modal is open, held whole: the lists may not hold it (a Done parent
   // opened from a page before Done loads) or may drop it while the modal is open.
   const [deleting, setDeleting] = useState<Issue | null>(null)
@@ -314,6 +325,8 @@ export function Shell({ session }: { session: Session }) {
   const deleteIssue = useDeleteIssue()
   const editIssue = useEditIssue()
   const treeRef = useRef<HTMLDivElement>(null)
+  // Where the pointer last was, and whether it moved since the last Tree navigation key.
+  const pointer = useRef({ x: -1, y: -1, moved: false })
   const peekRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
@@ -625,14 +638,27 @@ export function Shell({ session }: { session: Session }) {
 
   const canCreate = treeReady && creating === null && deleting === null && timing === null
 
-  function openCreate() {
+  /**
+   * The issue row under the pointer, read from CSS `:hover` when asked, so hovering stores nothing
+   * and moves neither the selection nor the Peek. A header or chip under the pointer is not one,
+   * and neither is any row once a Tree navigation key has moved the active row past a resting pointer.
+   */
+  function hoveredIssueRow() {
+    if (!pointer.current.moved) return undefined
+    const id = document.querySelector('[role="tree"] [role="treeitem"]:hover')?.id
+    return rows.find((r) => r.kind === 'issue' && rowDomId(r.id) === id)
+  }
+
+  /** Opens the create modal. `C` passes `under`, which starts the new issue under the hovered or active issue. */
+  function openCreate(under = false) {
     if (!canCreate) return
     setCreating(
       pageKey === null
         ? createContext(
-            // The Tree is out of sight under the Inbox or a Sprint page, so its active row says nothing of the user's intent.
-            covered ? undefined : rows.find((r) => r.id === activeId),
+            // The Tree is out of sight under the Inbox or a Sprint page, so its rows say nothing of the user's intent.
+            covered ? undefined : (hoveredIssueRow() ?? rows.find((r) => r.id === activeId)),
             issues,
+            under,
           )
         : { selected: issues.find((i) => i.key === pageKey) ?? null, group: null },
     )
@@ -869,7 +895,7 @@ export function Shell({ session }: { session: Session }) {
       case 'create':
         if (!canCreate) return
         event.preventDefault()
-        openCreate()
+        openCreate(true)
         return
       case 'filter': {
         // The list is inert under an open page, so the field cannot take focus there.
@@ -933,9 +959,34 @@ export function Shell({ session }: { session: Session }) {
     const listen = (event: KeyboardEvent) => {
       onKey(event)
     }
+    // A hover counts for `C` only once the pointer moves or the wheel turns after the last Tree
+    // navigation key, as in Linear. A row moved or scrolled by a key under a resting pointer fires
+    // neither, so a hover that navigation walked away from is not read.
+    const track = (event: PointerEvent) => {
+      if (event.clientX === pointer.current.x && event.clientY === pointer.current.y) return
+      pointer.current = { x: event.clientX, y: event.clientY, moved: true }
+    }
+    const wheeled = () => {
+      pointer.current.moved = true
+    }
+    // Only an unmodified navigation key pressed in the Tree: Cmd+K, a field's typing and a
+    // picker's arrows leave the hover alone.
+    const navigated = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      if (!(event.target instanceof Element) || event.target.closest('[role="tree"]') === null) {
+        return
+      }
+      if (NAVIGATION_KEYS.has(event.key.toLowerCase())) pointer.current.moved = false
+    }
     document.addEventListener('keydown', listen)
+    document.addEventListener('keydown', navigated, true)
+    document.addEventListener('pointermove', track)
+    document.addEventListener('wheel', wheeled, { passive: true })
     return () => {
       document.removeEventListener('keydown', listen)
+      document.removeEventListener('keydown', navigated, true)
+      document.removeEventListener('pointermove', track)
+      document.removeEventListener('wheel', wheeled)
     }
   }, [])
 
@@ -1199,7 +1250,9 @@ export function Shell({ session }: { session: Session }) {
               type="button"
               disabled={!canCreate}
               aria-keyshortcuts="C"
-              onClick={openCreate}
+              onClick={() => {
+                openCreate()
+              }}
               className="btn btn-sm gap-2"
             >
               New issue

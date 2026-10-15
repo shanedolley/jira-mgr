@@ -129,16 +129,28 @@ export function initialDraft(
 }
 
 /**
- * What `C` was pressed on: the active issue, a chip's open parent, or a Customer header, whose
- * Customer the form takes when no issue is selected. Nothing for a blank Tree.
+ * The type a create starts as from `issue`: a Story under an Epic, else a Subtask (under a Story,
+ * Task or Bug, or beside a Subtask under the same parent, which `defaultParent` finds).
+ */
+const typeUnder = (issue: Issue): CreateType =>
+  issue.issueType.hierarchyLevel >= 1 ? 'Story' : 'Subtask'
+
+/**
+ * What `C` was pressed on: the hovered or active issue, a chip's open parent, or a Customer
+ * header, whose Customer the form takes when no issue is selected. Nothing for a blank Tree. With
+ * `under`, an issue row also carries the type its form starts as (`typeUnder`), so the new issue
+ * goes under that issue; the New issue button leaves it off and keeps a Story under the Epic.
  */
 export function createContext(
   row: TreeRow | undefined,
   issues: readonly Issue[],
-): { selected: Issue | null; group: CustomerOption | null } {
+  under = false,
+): { selected: Issue | null; group: CustomerOption | null; type?: CreateType } {
   switch (row?.kind) {
     case 'issue':
-      return { selected: row.node.issue, group: null }
+      return under
+        ? { selected: row.node.issue, group: null, type: typeUnder(row.node.issue) }
+        : { selected: row.node.issue, group: null }
     case 'chip':
       return { selected: issues.find((i) => i.key === row.parentKey) ?? null, group: null }
     case 'customer':
