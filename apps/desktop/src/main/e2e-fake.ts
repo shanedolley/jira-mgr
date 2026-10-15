@@ -638,6 +638,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failDone: () => void
   /** Makes the next open-issues search page answer 500. */
   failUnresolved: () => void
+  /** Holds the app's read of the current user until `releaseMe`. The login's own read passes. */
+  holdMe: () => void
+  releaseMe: () => void
   /** Holds every open-issues search page until `releaseUnresolved`, so no open issue loads. */
   holdUnresolved: () => void
   releaseUnresolved: () => void
@@ -838,6 +841,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   let doneHeld = false
   let failNextDone = false
   let failNextUnresolved = false
+  let meGate: Promise<void> | null = null
+  let releaseMeGate: () => void = () => undefined
+  let meReads = 0
   let unresolvedGate: Promise<void> | null = null
   let releaseUnresolvedGate: () => void = () => undefined
   let failNextRead = false
@@ -1033,6 +1039,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       })
     }
     if (method === 'GET' && path === '/rest/api/3/myself') {
+      // The first read is the login's; `holdMe` holds the ones after it.
+      if (meReads++ > 0 && meGate !== null) await meGate
       return json(USERS.u1)
     }
     if (method === 'GET' && path === '/rest/api/3/issue/createmeta/PSAPAC/issuetypes') {
@@ -1761,6 +1769,15 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     },
     failUnresolved: () => {
       failNextUnresolved = true
+    },
+    holdMe: () => {
+      meGate = new Promise<void>((resolve) => {
+        releaseMeGate = resolve
+      })
+    },
+    releaseMe: () => {
+      releaseMeGate()
+      meGate = null
     },
     holdUnresolved: () => {
       unresolvedGate = new Promise<void>((resolve) => {

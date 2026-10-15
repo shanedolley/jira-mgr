@@ -130,6 +130,14 @@ describe('initialDraft', () => {
     expect(draft.engagement).toBeNull()
   })
 
+  it('starts assigned to the current user, from any selection or type', () => {
+    const me = { accountId: 'u1', displayName: 'Me', avatarUrl: null }
+
+    expect(initialDraft(null, ISSUES, null, 'Story', me).assignee).toBe(me)
+    expect(initialDraft(byKey('P-2'), ISSUES, null, 'Subtask', me).assignee).toBe(me)
+    expect(initialDraft(byKey('P-2'), ISSUES).assignee).toBeNull()
+  })
+
   it('starts empty with nothing selected', () => {
     expect(initialDraft(null, ISSUES)).toMatchObject({
       type: 'Story',

@@ -57,6 +57,8 @@ interface FakeJira {
   releaseDone: () => void
   failDone: () => void
   failUnresolved: () => void
+  holdMe: () => void
+  releaseMe: () => void
   holdUnresolved: () => void
   releaseUnresolved: () => void
   failRead: () => void
@@ -187,6 +189,17 @@ export const failDone = (app: ElectronApplication) =>
 export const failUnresolved = (app: ElectronApplication) =>
   app.evaluate(() => {
     ;(globalThis as unknown as WithFake).__fakeJira.failUnresolved()
+  })
+
+/** Holds the app's read of the current user until `releaseMe`; the login's own read passes. Call it before logging in. */
+export const holdMe = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.holdMe()
+  })
+
+export const releaseMe = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.releaseMe()
   })
 
 /** Holds the open-issues search until `releaseUnresolved`. Call it before logging in. */
