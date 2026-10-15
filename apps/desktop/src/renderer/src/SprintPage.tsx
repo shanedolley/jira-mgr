@@ -214,6 +214,7 @@ function Issues({ report, onOpen }: { report: SprintReport; onOpen: (key: string
                   <button
                     type="button"
                     data-row
+                    data-issue-key={issue.key}
                     onClick={() => {
                       onOpen(issue.key)
                     }}

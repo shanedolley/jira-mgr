@@ -42,7 +42,7 @@ describe('matchingActions', () => {
       status: 'S',
       priority: 'P',
       labels: 'L',
-      sprint: undefined,
+      sprint: 'Shift+C',
       subIssue: undefined,
       copyKey: 'Y',
       copyLink: 'U',

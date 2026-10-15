@@ -15,13 +15,14 @@ import {
   type PropertyRules,
 } from '@jira-mgr/core/issue'
 
-import type {
-  CreateIssueArgs,
-  CreatedIssue,
-  CreateType,
-  FieldChoice,
-  LateRead,
-  SprintOption,
+import {
+  CREATE_TYPES,
+  type CreateIssueArgs,
+  type CreatedIssue,
+  type CreateType,
+  type FieldChoice,
+  type LateRead,
+  type SprintOption,
 } from '../../shared/ipc'
 import { currentSprint, type Person } from './properties'
 import type { TreeRow } from './tree'
@@ -326,6 +327,66 @@ export function pastedImages(doc: EditorDoc): string[] {
   }
   doc.content.forEach(visit)
   return [...ids]
+}
+
+/** The issue Copy starts from, and its description, which the list read leaves out. */
+export interface CreateCopy {
+  source: Issue
+  description: AdfDoc | null
+}
+
+/** The nodes that show an attachment of the issue they sit in. */
+const MEDIA = new Set(['mediaSingle', 'mediaGroup', 'media', 'mediaInline'])
+
+function withoutMedia(node: AdfNode): AdfNode[] {
+  if (MEDIA.has(node.type)) return []
+  if (node.content === undefined) return [node]
+  const content = node.content.flatMap(withoutMedia)
+  if (content.length === 0 && NEEDS_CONTENT.has(node.type)) return []
+  return [{ ...node, content }]
+}
+
+/**
+ * A description for a copy: the source's blocks without its images, which are attachments of the
+ * source issue and would not resolve on the new one. `null` when nothing visible is left.
+ */
+export function copiedDescription(description: AdfDoc | null): AdfDoc | null {
+  if (description === null) return null
+  const copy = { ...description, content: description.content.flatMap(withoutMedia) }
+  return hasContent(copy) ? copy : null
+}
+
+/**
+ * The form for Copy on `copy.source`: the same type, "Copy of" and its summary, the parent,
+ * Customer, Engagement, labels, priority, original estimate and description. The sprint, the dates
+ * and the people start as a new issue's do, so the assignee is `me`, as in `initialDraft`.
+ */
+export function copyDraft(
+  source: Issue,
+  description: AdfDoc | null,
+  issues: readonly Issue[],
+  me: Person | null = null,
+): CreateDraft {
+  const type = (CREATE_TYPES as readonly string[]).includes(source.issueType.name)
+    ? (source.issueType.name as CreateType)
+    : 'Story'
+  const rules = typeRules(type)
+  return {
+    ...initialDraft(null, issues, null, type, me),
+    // Jira's summary limit, which the form's own field also holds.
+    summary: `Copy of ${source.summary}`.slice(0, 255),
+    parent: rules.parent ? (issues.find((i) => i.key === source.parentKey) ?? null) : null,
+    customer: choice(source.customer),
+    engagement: choice(source.engagement),
+    labels: [...source.labels],
+    priority:
+      source.priority === null ? null : { id: source.priority.id, name: source.priority.name },
+    estimate:
+      rules.estimates && source.originalEstimateSeconds !== null
+        ? formatEstimate(source.originalEstimateSeconds)
+        : '',
+    description,
+  }
 }
 
 /** After "Create more": the same form with no summary or description for the next issue. */

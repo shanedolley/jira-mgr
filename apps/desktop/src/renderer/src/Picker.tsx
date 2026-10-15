@@ -9,7 +9,7 @@ import {
   type ToggleEvent,
 } from 'react'
 
-import { Kbd } from './Kbd'
+import { Kbd, keycap } from './Kbd'
 import { matches } from './properties'
 
 export interface PickerOption {
@@ -28,15 +28,17 @@ export interface PickerOption {
 /**
  * How the trigger looks. `row` fills its line, with a chevron. `chip` is a small bordered button. `filled` is a chip
  * tinted with the accent for a required value, and reads in `--danger` while nothing is chosen.
- * `icon` shows only `leading` and a chevron; the name and value stay in the accessible name.
+ * `icon` shows only `leading` and a chevron; the name and value stay in the accessible name. `menu` is an item of the
+ * context menu: the name, its key and an arrow, with the list opening beside it.
  */
-export type PickerVariant = 'row' | 'chip' | 'filled' | 'icon'
+export type PickerVariant = 'row' | 'chip' | 'filled' | 'icon' | 'menu'
 
 const TRIGGER: Record<PickerVariant, string> = {
   row: 'h-8 w-full min-w-0 gap-2 rounded-md px-2 hover:bg-hover',
   chip: 'h-7 max-w-48 min-w-0 gap-1.5 rounded-md border border-field-border px-2.5 text-xs hover:bg-hover',
   filled: 'h-7 max-w-48 min-w-0 gap-1.5 rounded-md border border-accent bg-selected px-2.5 text-xs',
   icon: 'h-10 w-12 justify-center gap-1 rounded-md border border-field-border hover:bg-hover',
+  menu: 'menu-item',
 }
 
 export interface PickerProps {
@@ -74,12 +76,24 @@ export interface PickerProps {
   wide?: boolean
   /** Lets the caller focus the button, such as after a dialog the choice opened has closed. */
   triggerRef?: RefObject<HTMLButtonElement | null>
+  /** Called once a choice has closed the list, which a context menu takes as the action being done. */
+  onPicked?: () => void
 }
+
+/** What the context menu passes a picker to make it one of its items. */
+export interface MenuMode {
+  /** Called once a choice has closed the list: the action is done and the menu can close. */
+  onPicked: () => void
+}
+
+/** The props that turn a picker into a menu item, or none outside a menu. */
+export const menuProps = (menu: MenuMode | undefined): Pick<PickerProps, 'variant' | 'onPicked'> =>
+  menu === undefined ? {} : { variant: 'menu', onPicked: menu.onPicked }
 
 const CREATE_ID = '__create__'
 
 /** Names a CSS anchor from a React id, whose colons a `dashed-ident` cannot hold. */
-const anchorOf = (id: string) => `--picker-${id.replaceAll(/[^a-zA-Z0-9]/g, '')}`
+export const anchorOf = (id: string) => `--picker-${id.replaceAll(/[^a-zA-Z0-9]/g, '')}`
 
 function Check() {
   return (
@@ -117,6 +131,31 @@ function Chevron() {
   )
 }
 
+/** Where a submenu opens: beside its item, starting level with it. */
+export const SUBMENU = {
+  positionArea: 'inline-end span-block-end',
+  margin: '-5px 0 0 4px',
+} as const
+
+/** Marks a menu item as opening a submenu. */
+export function Arrow() {
+  return (
+    <svg
+      aria-hidden
+      data-arrow
+      viewBox="0 0 16 16"
+      className="size-3.5 shrink-0 text-muted"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m6 4 4 4-4 4" />
+    </svg>
+  )
+}
+
 /**
  * A button that opens a native popover holding a listbox, the one picker every property uses.
  * With a search field the field is a combobox that points at the active option with
@@ -146,7 +185,9 @@ export function Picker({
   disabled = false,
   wide = false,
   triggerRef: givenTriggerRef,
+  onPicked,
 }: PickerProps) {
+  const inMenu = variant === 'menu'
   const uid = useId()
   const popoverId = `${uid}-popover`
   const listId = `${uid}-list`
@@ -224,7 +265,10 @@ export function Picker({
     } else {
       onSelect(id)
     }
-    if (!multiple) popoverRef.current?.hidePopover()
+    if (!multiple) {
+      popoverRef.current?.hidePopover()
+      onPicked?.()
+    }
   }
 
   function move(step: number) {
@@ -234,6 +278,12 @@ export function Picker({
   }
 
   function onKeyDown(event: KeyboardEvent) {
+    // In a context menu Left goes back to the item, as in any submenu; in a search field it moves the caret until the field is empty.
+    if (inMenu && event.key === 'ArrowLeft' && (!searchable || query === '')) {
+      event.preventDefault()
+      popoverRef.current?.hidePopover()
+      return
+    }
     if (
       numbered &&
       /^[1-9]$/.test(event.key) &&
@@ -274,35 +324,48 @@ export function Picker({
       <button
         ref={triggerRef}
         type="button"
+        role={inMenu ? 'menuitem' : undefined}
+        tabIndex={inMenu ? -1 : undefined}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={popoverId}
-        aria-label={triggerLabel ?? `${label}: ${valueText}`}
+        aria-label={inMenu ? label : (triggerLabel ?? `${label}: ${valueText}`)}
         aria-keyshortcuts={shortcut}
         disabled={disabled}
         popoverTarget={popoverId}
         onKeyDown={(event) => {
-          if (event.key !== 'ArrowDown') return
+          // A menu opens its submenus with Right, and keeps Down for moving between its items.
+          if (event.key !== (inMenu ? 'ArrowRight' : 'ArrowDown')) return
           event.preventDefault()
           popoverRef.current?.showPopover()
         }}
         style={{ anchorName: anchorOf(uid) }}
         className={`group flex items-center text-left disabled:opacity-60 aria-expanded:bg-hover ${TRIGGER[variant]}`}
       >
-        {leading}
-        {variant !== 'icon' && (
-          <span
-            className={`min-w-0 truncate ${variant === 'row' ? 'flex-1' : ''} ${variant === 'filled' && selected.length === 0 ? 'text-danger' : ''}`}
-          >
-            {valueText}
-          </span>
+        {inMenu ? (
+          <>
+            <span className="min-w-0 flex-1 truncate">{label}</span>
+            {shortcut !== undefined && <Kbd aria-hidden>{keycap(shortcut)}</Kbd>}
+            <Arrow />
+          </>
+        ) : (
+          <>
+            {leading}
+            {variant !== 'icon' && (
+              <span
+                className={`min-w-0 truncate ${variant === 'row' ? 'flex-1' : ''} ${variant === 'filled' && selected.length === 0 ? 'text-danger' : ''}`}
+              >
+                {valueText}
+              </span>
+            )}
+            {variant !== 'icon' && shortcut !== undefined && !disabled && (
+              <span className="hidden group-hover:contents group-focus-visible:contents">
+                <Kbd aria-hidden>{keycap(shortcut)}</Kbd>
+              </span>
+            )}
+            {(variant === 'row' || variant === 'icon') && <Chevron />}
+          </>
         )}
-        {variant !== 'icon' && shortcut !== undefined && !disabled && (
-          <span className="hidden group-hover:contents group-focus-visible:contents">
-            <Kbd aria-hidden>{shortcut}</Kbd>
-          </span>
-        )}
-        {(variant === 'row' || variant === 'icon') && <Chevron />}
       </button>
       <div
         ref={popoverRef}
@@ -314,6 +377,8 @@ export function Picker({
         style={{
           positionAnchor: anchorOf(uid),
           positionTryFallbacks: 'flip-block, flip-inline',
+          // A submenu opens beside its item and starts level with it.
+          ...(inMenu && SUBMENU),
         }}
         className={`menu ${wide ? 'w-104' : 'w-52'}`}
       >

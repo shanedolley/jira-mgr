@@ -2,7 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 import { useDeferredValue, useEffect, useId, useState, type KeyboardEvent } from 'react'
 
 import type { SavedView } from '../../shared/ipc'
-import { Kbd } from './Kbd'
+import { Kbd, keycap } from './Kbd'
 import { Modal } from './Modal'
 import {
   defaultRow,
@@ -262,7 +262,7 @@ export function CommandPalette({
             {actionRows.map((row) => (
               <div key={row.rid} {...rowProps(row)} aria-keyshortcuts={row.action.key}>
                 <span className="min-w-0 flex-1 truncate">{row.action.label}</span>
-                {row.action.key !== undefined && <Kbd aria-hidden>{row.action.key}</Kbd>}
+                {row.action.key !== undefined && <Kbd aria-hidden>{keycap(row.action.key)}</Kbd>}
               </div>
             ))}
           </div>

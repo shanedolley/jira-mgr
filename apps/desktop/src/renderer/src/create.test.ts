@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 
 import type { CreatedIssue } from '../../shared/ipc'
 import {
+  copiedDescription,
+  copyDraft,
   createContext,
   defaultParent,
   deleteFailureNotes,
@@ -411,6 +413,117 @@ describe('images pasted into the description', () => {
       paragraph('Text'),
     )
     expect(fillImages(typed, new Map()).content).toEqual([held(single), paragraph('Text')])
+  })
+})
+
+describe('copyDraft', () => {
+  const ME = { accountId: 'u1', displayName: 'Me', avatarUrl: null }
+  const source: Issue = {
+    ...issue('P-2', { parent: 'P-1', customer: ACME, engagement: NORTH }),
+    labels: ['docs', 'ops'],
+    priority: { id: '2', name: 'High' },
+    assignee: { accountId: 'u9', displayName: 'Other', avatarUrl: null },
+    sprints: [{ id: 5, name: 'Sprint 5', state: 'active' }],
+    startDate: '2026-10-01',
+    dueDate: '2026-10-14',
+    originalEstimateSeconds: 9000,
+  }
+  const text: AdfNode = { type: 'paragraph', content: [{ type: 'text', text: 'Why' }] }
+  const known = (key: string): Issue => {
+    const found = byKey(key)
+    if (found === null) throw new Error(`No ${key} in the fixtures`)
+    return found
+  }
+
+  it('starts as the same type under the same parent, with its Customer, Engagement, labels, priority and estimate', () => {
+    const draft = copyDraft(source, null, ISSUES, ME)
+
+    expect(draft).toMatchObject({
+      type: 'Story',
+      summary: 'Copy of Summary of P-2',
+      customer: { id: '1', name: 'Acme' },
+      engagement: { id: '7', name: 'North' },
+      labels: ['docs', 'ops'],
+      priority: { id: '2', name: 'High' },
+      estimate: '2h 30m',
+    })
+    expect(draft.parent?.key).toBe('P-1')
+  })
+
+  it('leaves the sprint and the dates empty, and assigns the current user as a new issue does', () => {
+    const draft = copyDraft(source, null, ISSUES, ME)
+
+    expect(draft.sprint).toBeNull()
+    expect(draft.startDate).toBe('')
+    expect(draft.dueDate).toBe('')
+    expect(draft.assignee).toEqual(ME)
+    expect(copyDraft(source, null, ISSUES).assignee).toBeNull()
+  })
+
+  it('keeps "Copy of" and a long summary within the 255 characters Jira takes', () => {
+    const long = { ...source, summary: 'x'.repeat(255) }
+
+    expect(copyDraft(long, null, ISSUES).summary).toBe(`Copy of ${'x'.repeat(247)}`)
+  })
+
+  it('copies the labels, so the copy does not share the source array', () => {
+    const draft = copyDraft(source, null, ISSUES, ME)
+    draft.labels.push('more')
+
+    expect(source.labels).toEqual(['docs', 'ops'])
+  })
+
+  it('keeps a Subtask under its parent and drops the parent and estimate an Epic cannot have', () => {
+    const subtask = copyDraft(known('P-3'), null, ISSUES)
+    expect(subtask.type).toBe('Subtask')
+    expect(subtask.parent?.key).toBe('P-2')
+
+    const epic = copyDraft(
+      { ...known('P-1'), originalEstimateSeconds: 3600, parentKey: 'P-4' },
+      null,
+      ISSUES,
+    )
+    expect(epic.type).toBe('Epic')
+    expect(epic.parent).toBeNull()
+    expect(epic.estimate).toBe('')
+  })
+
+  it('carries the description it is given', () => {
+    const doc = { version: 1 as const, type: 'doc' as const, content: [text] }
+
+    expect(copyDraft(source, doc, ISSUES).description).toBe(doc)
+  })
+})
+
+describe('copiedDescription', () => {
+  const text: AdfNode = { type: 'paragraph', content: [{ type: 'text', text: 'Why' }] }
+  const image: AdfNode = {
+    type: 'mediaSingle',
+    content: [{ type: 'media', attrs: { id: 'f1', type: 'file', collection: '' } }],
+  }
+  const doc = (...content: AdfNode[]) => ({ version: 1 as const, type: 'doc' as const, content })
+
+  it('keeps the text and drops the images, which belong to the source issue', () => {
+    expect(copiedDescription(doc(text, image, text))).toEqual(doc(text, text))
+  })
+
+  it('is empty when the images were all there was', () => {
+    expect(copiedDescription(doc(image))).toBeNull()
+    expect(copiedDescription(null)).toBeNull()
+  })
+
+  it('drops a list item an image emptied', () => {
+    const list: AdfNode = {
+      type: 'bulletList',
+      content: [
+        { type: 'listItem', content: [image] },
+        { type: 'listItem', content: [text] },
+      ],
+    }
+
+    expect(copiedDescription(doc(list))).toEqual(
+      doc({ type: 'bulletList', content: [{ type: 'listItem', content: [text] }] }),
+    )
   })
 })
 

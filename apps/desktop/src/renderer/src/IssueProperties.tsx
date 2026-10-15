@@ -1,43 +1,29 @@
 import type { Issue } from '@jira-mgr/core'
-import {
-  SWAPPABLE_TYPES,
-  formatEstimate,
-  parseEstimate,
-  propertyRules,
-  type SwappableType,
-} from '@jira-mgr/core/issue'
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { formatEstimate, parseEstimate, propertyRules } from '@jira-mgr/core/issue'
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 
 import type { CurrentUser, FieldChoice } from '../../shared/ipc'
 import { Reason } from './Failure'
-import { ParentPrompt } from './ParentPrompt'
 import { Picker, type PickerOption } from './Picker'
 import {
   AssigneePicker,
   LabelsPicker,
+  ParentPicker,
   PriorityPicker,
+  SprintPicker,
   StatusPicker,
-  useAttempt,
+  TypePicker,
   useIssueChange,
 } from './PropertyPickers'
 import { Row } from './PropertyRow'
 import {
-  NONE,
-  STATE_LABELS,
   currentSprint,
   customerPatch,
   engagementPatch,
   hoursFromText,
   hoursText,
-  parentChoices,
-  parentMatch,
-  shownSprints,
-  sprintPatch,
-  typePatch,
-  type ParentMatch,
 } from './properties'
-import { useFieldOptions, usePendingFields, useSetSprint, useSprints } from './queries'
-import { TypeIcon } from './TypeIcon'
+import { useFieldOptions, usePendingFields } from './queries'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -77,6 +63,8 @@ function ClockIcon() {
 
 interface TextFieldProps {
   label: string
+  /** The key that focuses the field from the page, such as `Shift+D`. */
+  shortcut?: string
   /** What the field holds now. A change from outside replaces the draft. */
   value: string
   type?: 'text' | 'date'
@@ -89,11 +77,14 @@ interface TextFieldProps {
   /** Whether a draft can be sent. A draft that cannot is shown as an error and not sent. */
   valid?: (draft: string) => boolean
   hint?: string
+  /** The longest text the field takes. */
+  maxLength?: number
 }
 
 /** A field that edits locally and saves on Enter or when focus leaves, and reverts on Esc. */
-function TextField({
+export function TextField({
   label,
+  shortcut,
   value,
   type = 'text',
   placeholder,
@@ -101,6 +92,7 @@ function TextField({
   onCommit,
   valid = () => true,
   hint,
+  maxLength,
 }: TextFieldProps) {
   const [draft, setDraft] = useState(value)
   // Jira's answer replaces what was typed, adjusting state during render as React advises.
@@ -147,6 +139,8 @@ function TextField({
         <input
           type={type}
           aria-label={label}
+          aria-keyshortcuts={shortcut}
+          maxLength={maxLength}
           aria-invalid={invalid || undefined}
           placeholder={type === 'date' ? undefined : placeholder}
           value={draft}
@@ -191,30 +185,11 @@ interface IssuePropertiesProps {
  */
 export function IssueProperties({ issue, issues, me, onOpenSprint }: IssuePropertiesProps) {
   const rules = propertyRules(issue.issueType)
-  const setSprint = useSetSprint()
   const pending = usePendingFields(issue.key)
-  const attempt = useAttempt(issue.key)
-  const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)
-  const parentTrigger = useRef<HTMLButtonElement>(null)
-  // The dialog unmounts with its answer, so focus goes back to the button that asked.
-  const wasPrompting = useRef(false)
-  useEffect(() => {
-    if (prompt === null && wasPrompting.current) parentTrigger.current?.focus()
-    wasPrompting.current = prompt !== null
-  }, [prompt])
-
-  const [typeOpen, setTypeOpen] = useState(false)
-  const types = useFieldOptions('issueType', typeOpen)
   const [customerOpen, setCustomerOpen] = useState(false)
   const customers = useFieldOptions('customer', customerOpen)
   const [engagementOpen, setEngagementOpen] = useState(false)
   const engagements = useFieldOptions('engagement', engagementOpen)
-
-  const [sprintOpen, setSprintOpen] = useState(false)
-  const [allSprints, setAllSprints] = useState(false)
-  const sprints = useSprints(allSprints, sprintOpen)
-
-  const [parentQuery, setParentQuery] = useState('')
 
   const change = useIssueChange(issue)
 
@@ -234,75 +209,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
     change('Engagement', { engagementId: id }, engagementPatch(choice))
   }
 
-  function chooseType(id: string) {
-    const choice = types.data?.find((c) => c.id === id)
-    if (choice === undefined || issue.issueType.id === id) return
-    change('Type', { type: choice.name as SwappableType }, typePatch(issue, choice))
-  }
-
-  // Sprint
   const sprint = currentSprint(issue)
-  const sprintList = shownSprints(sprints.data ?? [], allSprints)
-  const sprintOptions: PickerOption[] = [
-    { id: NONE, label: 'Backlog' },
-    ...sprintList.map((s) => ({
-      id: String(s.id),
-      label: s.name,
-      detail: STATE_LABELS[s.state],
-      // Jira refuses a move into a closed sprint.
-      disabled: s.state === 'closed',
-    })),
-  ]
-
-  function chooseSprint(id: string) {
-    const target = id === NONE ? null : sprintList.find((s) => String(s.id) === id)
-    if (target === undefined) return
-    if ((sprint === null ? NONE : String(sprint.id)) === id) return
-    const patch = sprintPatch(issue, target)
-    attempt('Sprint', patch, () =>
-      setSprint.mutateAsync({ key: issue.key, sprintId: target?.id ?? null, patch }),
-    )
-  }
-
-  // Parent
-  const parent = issues.find((i) => i.key === issue.parentKey)
-  const parentList = parentChoices(issue, issues, parentQuery)
-  const parentOptions: PickerOption[] = parentList.shown.map((p) => ({
-    id: p.key,
-    label: p.summary,
-    leading: <span className="shrink-0 font-mono text-xs text-muted">{p.key}</span>,
-  }))
-
-  function chooseParent(key: string) {
-    const target = issues.find((i) => i.key === key)
-    if (target === undefined || key === issue.parentKey) return
-    const match = parentMatch(issue, target)
-    if (match.customer === null && match.engagement === null) {
-      change('Parent', { parentKey: key }, { parentKey: key })
-      return
-    }
-    setPrompt({ parent: target, match })
-  }
-
-  function moveUnder(withMatch: boolean) {
-    if (prompt === null) return
-    const { parent: target, match } = prompt
-    setPrompt(null)
-    const copy = withMatch ? match : { customer: null, engagement: null }
-    change(
-      'Parent',
-      {
-        parentKey: target.key,
-        ...(copy.customer && { customerId: copy.customer.id }),
-        ...(copy.engagement && { engagementId: copy.engagement.id }),
-      },
-      {
-        parentKey: target.key,
-        ...(copy.customer && { customer: copy.customer }),
-        ...(copy.engagement && { engagement: copy.engagement }),
-      },
-    )
-  }
 
   // Dates and estimates
   const originalEstimate =
@@ -335,41 +242,12 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
       <Group title="Details">
         {rules.typeChange && (
           <Row name="Type" field="issueType" pending={pending.has('issueType')}>
-            <Picker
-              label="Type"
-              valueText={issue.issueType.name}
-              options={fromChoices(
-                types.data?.filter((t) => (SWAPPABLE_TYPES as readonly string[]).includes(t.name)),
-              ).map((o) => ({ ...o, leading: <TypeIcon type={{ name: o.label }} decorative /> }))}
-              selected={[issue.issueType.id]}
-              onSelect={chooseType}
-              onOpenChange={setTypeOpen}
-              note={types.isPending ? 'Loading types' : undefined}
-            />
+            <TypePicker issue={issue} />
           </Row>
         )}
         {rules.parent && (
           <Row name="Parent" field="parentKey" pending={pending.has('parentKey')}>
-            <Picker
-              label="Parent"
-              wide
-              triggerRef={parentTrigger}
-              valueText={
-                issue.parentKey === null
-                  ? 'None'
-                  : `${issue.parentKey}${parent === undefined ? '' : ` ${parent.summary}`}`
-              }
-              options={parentOptions}
-              selected={issue.parentKey === null ? [] : [issue.parentKey]}
-              searchable
-              onQuery={setParentQuery}
-              onSelect={chooseParent}
-              note={
-                parentList.total > parentList.shown.length
-                  ? `Showing ${String(parentList.shown.length)} of ${String(parentList.total)}. Keep typing to narrow.`
-                  : undefined
-              }
-            />
+            <ParentPicker issue={issue} issues={issues} />
           </Row>
         )}
         <Row name="Customer" field="customer" pending={pending.has('customer')}>
@@ -412,34 +290,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
           <Row name="Sprint" field="sprints" pending={pending.has('sprints')}>
             <div className="flex items-center gap-1">
               <div className="min-w-0 flex-1">
-                <Picker
-                  label="Sprint"
-                  valueText={sprint?.name ?? 'Backlog'}
-                  options={sprintOptions}
-                  selected={[sprint === null ? NONE : String(sprint.id)]}
-                  onSelect={chooseSprint}
-                  onOpenChange={setSprintOpen}
-                  note={
-                    sprints.isPending ? (
-                      'Loading sprints'
-                    ) : sprints.isError ? (
-                      <Reason lead="Could not load the sprints." error={sprints.error} />
-                    ) : undefined
-                  }
-                  footer={
-                    <button
-                      type="button"
-                      data-row
-                      aria-pressed={allSprints}
-                      onClick={() => {
-                        setAllSprints(!allSprints)
-                      }}
-                      className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-xs hover:bg-hover"
-                    >
-                      {allSprints ? 'Show fewer sprints' : 'Show all sprints'}
-                    </button>
-                  }
-                />
+                <SprintPicker issue={issue} />
               </div>
               {sprint !== null && onOpenSprint !== undefined && (
                 <button
@@ -488,6 +339,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
           <TextField
             key={issue.dueDate ?? ''}
             label="Due date"
+            shortcut="Shift+D"
             type="date"
             placeholder="Set due date"
             value={issue.dueDate ?? ''}
@@ -511,6 +363,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
             >
               <TextField
                 label="Original estimate"
+                shortcut="Shift+E"
                 value={originalEstimate}
                 placeholder="Set estimate"
                 clock
@@ -566,18 +419,6 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
           </>
         )}
       </Group>
-
-      {prompt !== null && (
-        <ParentPrompt
-          subject={issue.key}
-          parent={prompt.parent}
-          match={prompt.match}
-          onChoose={moveUnder}
-          onCancel={() => {
-            setPrompt(null)
-          }}
-        />
-      )}
     </aside>
   )
 }

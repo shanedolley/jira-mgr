@@ -113,7 +113,7 @@ test('Cmd+K names the issue in context as a chip and lists its actions with thei
     ['Change status', 'S'],
     ['Change priority', 'P'],
     ['Add labels', 'L'],
-    ['Set sprint', null],
+    ['Set sprint', '⇧C'],
     ['Create sub-issue', null],
     ['Copy key', 'Y'],
     ['Copy link', 'U'],

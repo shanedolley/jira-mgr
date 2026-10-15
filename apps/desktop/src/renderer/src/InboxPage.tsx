@@ -39,6 +39,7 @@ function Row({
         data-row
         data-inbox-row
         data-inbox-key={issue.key}
+        data-issue-key={issue.key}
         data-unread={unread ? '' : undefined}
         onClick={() => {
           onOpen(entry)

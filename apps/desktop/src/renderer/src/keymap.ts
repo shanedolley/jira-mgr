@@ -12,6 +12,10 @@ export const PROPERTY_KEYS = {
   labels: 'L',
   priority: 'P',
   edit: 'E',
+  dueDate: 'Shift+D',
+  parent: 'Shift+P',
+  estimate: 'Shift+E',
+  sprint: 'Shift+C',
 } as const
 
 export type PropertyCommand = keyof typeof PROPERTY_KEYS
@@ -25,6 +29,7 @@ export type Command =
   | 'timer'
   | 'filter'
   | 'filterMenu'
+  | 'menu'
   | 'help'
   | 'palette'
   | 'undo'
@@ -70,6 +75,17 @@ export function keepsLetters(target: KeyTarget | null): boolean {
   return inside(target, OWN_KEYS)
 }
 
+/**
+ * The letters that mean something else with Shift: due date, parent, original estimate and
+ * sprint, as in Linear's menu. With Shift these four never fall through to `C`, `P` and `E`.
+ */
+const SHIFT_LETTERS = new Map<string, Command>([
+  ['d', 'dueDate'],
+  ['p', 'parent'],
+  ['e', 'estimate'],
+  ['c', 'sprint'],
+])
+
 const LETTERS = new Map<string, Command>([
   ['c', 'create'],
   ['t', 'timer'],
@@ -84,10 +100,19 @@ const LETTERS = new Map<string, Command>([
   ['f', 'filterMenu'],
 ])
 
-/** The key a command answers to as a keycap, such as `S`, or `undefined` for a command without one. */
+/** The key a command answers to, such as `S` or `Shift+D`, or `undefined` for a command without one. */
 export function keyOf(command: string): string | undefined {
   for (const [letter, name] of LETTERS) if (name === command) return letter.toUpperCase()
+  for (const [letter, name] of SHIFT_LETTERS) {
+    if (name === command) return `Shift+${letter.toUpperCase()}`
+  }
   return undefined
+}
+
+/** The command a letter names, with or without Shift. The context menu reads its own typed keys through it. */
+export function letterCommand(key: string, shiftKey: boolean): Command | null {
+  const letter = key.toLowerCase()
+  return (shiftKey ? SHIFT_LETTERS.get(letter) : undefined) ?? LETTERS.get(letter) ?? null
 }
 
 /**
@@ -113,6 +138,7 @@ export function resolveKey(event: KeyEvent, target: KeyTarget | null): Command |
   if (key === 'escape') return 'escape'
   if (key === '/') return 'filter'
   if (key === '?') return 'help'
+  if (key === 'f10' && event.shiftKey) return 'menu'
   if (!inside(target, LETTER_SCOPES)) return null
-  return LETTERS.get(key) ?? null
+  return letterCommand(key, event.shiftKey)
 }
