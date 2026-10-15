@@ -205,10 +205,26 @@ export function start(backend: Backend, options: StartOptions = {}): void {
     })
   })
 
-  // A pending second read of a created issue dies with the app.
-  app.on('before-quit', () => {
+  // A pending second read of a created issue dies with the app. A queued settings or views write
+  // does not: quitting waits for it, then quits again.
+  let flushed = false
+  let flushing = false
+  app.on('before-quit', (event) => {
     stopReminders?.()
     backend.dispose()
+    if (flushed) {
+      flushed = false
+      return
+    }
+    event.preventDefault()
+    // A second quit while the flush runs adds none, or its `then` would leave `flushed` set.
+    if (flushing) return
+    flushing = true
+    void backend.flush().then(() => {
+      flushing = false
+      flushed = true
+      app.quit()
+    })
   })
 
   app.on('window-all-closed', () => {

@@ -110,6 +110,7 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     stopTimer: record('stopTimer', OUTCOME),
     switchTimer: record('switchTimer', OUTCOME),
     dispose: () => undefined,
+    flush: () => Promise.resolve(),
     ...overrides,
   }
   return { backend, calls }
