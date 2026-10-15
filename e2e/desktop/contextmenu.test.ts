@@ -4,7 +4,17 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { SITE, counts, inboxChange, joinSprint, launch, logIn, releaseEdit } from './harness.js'
+import {
+  SITE,
+  counts,
+  inboxChange,
+  joinSprint,
+  launch,
+  logIn,
+  notices,
+  refuseNextEdit,
+  releaseEdit,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -498,4 +508,79 @@ test('Shift+F10 on a focused Sprint page row opens its menu', async () => {
   await window.keyboard.press('Escape')
   await expect(menu()).toHaveCount(0)
   await expect(row).toBeFocused()
+})
+
+test('letters typed in the Parent question reach the question, not the menu behind it', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+  await entry('Parent').click()
+  await window.getByRole('combobox', { name: 'Search Parent' }).fill('PSAPAC-30')
+  await option(/PSAPAC-30/).click()
+  const question = dialog('Move PSAPAC-4 under PSAPAC-30?')
+  await expect(question).toBeVisible()
+
+  // L is the Labels key in the menu; here it is only a key in a dialog.
+  await window.keyboard.press('l')
+  await window.waitForTimeout(150)
+  await expect(window.getByRole('combobox', { name: 'Search Labels' })).toHaveCount(0)
+  await expect(question).toBeVisible()
+
+  await question.getByRole('button', { name: 'Cancel' }).click()
+  await expect(question).toHaveCount(0)
+  await expect(menu()).toHaveCount(0)
+  expect(await writes()).toBe(0)
+})
+
+test('Tab leaves the menu and closes it', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+  await window.keyboard.press('ArrowDown')
+  await expect(entry('View full screen')).toBeFocused()
+
+  await window.keyboard.press('Tab')
+  await expect(menu()).toHaveCount(0)
+})
+
+test('a held letter runs its item once, not on every repeat', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+  await entry('Priority').focus()
+  await window.keyboard.down('s')
+  await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
+  await window.keyboard.press('Escape')
+  await expect(entry('Status')).toBeFocused()
+  // A repeat of the held key arrives with the same keydown flag the browser sets for it.
+  await window.evaluate(() => {
+    entryFocus().dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', repeat: true, bubbles: true }),
+    )
+    function entryFocus() {
+      return document.activeElement as HTMLElement
+    }
+  })
+  await window.waitForTimeout(150)
+  await expect(window.getByRole('listbox', { name: 'Status' })).toHaveCount(0)
+  await window.keyboard.up('s')
+})
+
+test('a refused rename puts the summary back and says so in a toast', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+  await entry('Rename').click()
+  await menu().getByRole('textbox', { name: 'Summary' }).fill('Migrate every dashboard')
+  await refuseNextEdit(app)
+  await window.keyboard.press('Enter')
+
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/Migrate every dashboard/)
+  await expect.poll(writes).toBe(1)
+  await releaseEdit(app)
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/Migrate the dashboards/)
+  await expect(notices(window).getByRole('alert')).toContainText('Summary not changed')
+})
+
+test('the Rename field takes at most 255 characters', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+  await entry('Rename').click()
+  await expect(menu().getByRole('textbox', { name: 'Summary' })).toHaveAttribute('maxlength', '255')
 })

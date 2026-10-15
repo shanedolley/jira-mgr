@@ -905,7 +905,10 @@ export function Shell({ session }: { session: Session }) {
     flushSync(() => {
       openFromPalette(key)
     })
-    whenFound(pageRef.current, selector, then)
+    // The user may open another issue's page while a slow control loads, so act only on this one's.
+    whenFound(pageRef.current, selector, (found) => {
+      if (pageRef.current?.querySelector(`[data-issue="${key}"]`) !== null) then(found)
+    })
   }
 
   /** Copy: the create dialog seeded from `source`, once its description is read, which the list leaves out. */
@@ -1253,7 +1256,9 @@ export function Shell({ session }: { session: Session }) {
 
   // An issue the menu acts on may leave the lists (a delete, a refresh), which ends the menu.
   const menuIssue = menu === null ? undefined : issues.find((i) => i.key === menu.key)
-  if (menu !== null && menuIssue === undefined) setMenu(null)
+  useEffect(() => {
+    if (menu !== null && menuIssue === undefined) closeMenu()
+  })
 
   const unresolvedCount = useLoadedCount('unresolved')
   const doneCount = useLoadedCount('done')

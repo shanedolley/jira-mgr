@@ -192,6 +192,7 @@ function RenameItem({
         value={issue.summary}
         valid={(draft) => draft.trim() !== ''}
         hint="A summary cannot be empty."
+        maxLength={255}
         onCommit={(draft) => {
           const summary = draft.trim()
           attempt('Summary', { summary }, () => save.mutateAsync({ key: issue.key, summary }))
@@ -269,10 +270,22 @@ export function IssueMenu({ issue, issues, me, x, y, open, onRun, onClose }: Iss
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    // A picker's list or a submenu's field keeps its own keys.
+    // Tab leaves the menu, so it ends it: focus would go to the page behind with Esc dead. A date or
+    // text field in a submenu keeps its Tab (the date's segments), and a dialog keeps its own.
+    if (
+      event.key === 'Tab' &&
+      event.target instanceof HTMLElement &&
+      (event.target === element.current ||
+        event.target.closest('[role="menuitem"], [role="listbox"], [role="combobox"]') !== null)
+    ) {
+      event.preventDefault()
+      onClose()
+      return
+    }
+    // A picker's list, a submenu's field and a dialog a submenu raised (the Parent question) keep their own keys.
     if (
       !(event.target instanceof HTMLElement) ||
-      event.target.closest('[popover]') !== element.current
+      event.target.closest('[popover], dialog') !== element.current
     ) {
       return
     }
@@ -293,6 +306,7 @@ export function IssueMenu({ issue, issues, me, x, y, open, onRun, onClose }: Iss
       event.preventDefault()
       ;(event.key === 'Home' ? all[0] : all.at(-1))?.focus()
     } else {
+      if (event.repeat) return
       const command = letterCommand(event.key, event.shiftKey)
       const index = items.findIndex((item) => item.id === command)
       if (index < 0) return
@@ -379,6 +393,12 @@ export function IssueMenu({ issue, issues, me, x, y, open, onRun, onClose }: Iss
       popover="manual"
       tabIndex={-1}
       onKeyDown={onKeyDown}
+      onBlur={(event) => {
+        // Focus moving to another element outside the menu ends it, such as Tab out of a field.
+        // A move between its own parts, or to nowhere while a list closes, does not.
+        const to = event.relatedTarget
+        if (to instanceof Node && element.current?.contains(to) === false) onClose()
+      }}
       className="context-menu"
     >
       {items.map((item, at) => (

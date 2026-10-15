@@ -77,6 +77,8 @@ interface TextFieldProps {
   /** Whether a draft can be sent. A draft that cannot is shown as an error and not sent. */
   valid?: (draft: string) => boolean
   hint?: string
+  /** The longest text the field takes. */
+  maxLength?: number
 }
 
 /** A field that edits locally and saves on Enter or when focus leaves, and reverts on Esc. */
@@ -90,6 +92,7 @@ export function TextField({
   onCommit,
   valid = () => true,
   hint,
+  maxLength,
 }: TextFieldProps) {
   const [draft, setDraft] = useState(value)
   // Jira's answer replaces what was typed, adjusting state during render as React advises.
@@ -137,6 +140,7 @@ export function TextField({
           type={type}
           aria-label={label}
           aria-keyshortcuts={shortcut}
+          maxLength={maxLength}
           aria-invalid={invalid || undefined}
           placeholder={type === 'date' ? undefined : placeholder}
           value={draft}

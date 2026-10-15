@@ -373,7 +373,8 @@ export function copyDraft(
   const rules = typeRules(type)
   return {
     ...initialDraft(null, issues, null, type, me),
-    summary: `Copy of ${source.summary}`,
+    // Jira's summary limit, which the form's own field also holds.
+    summary: `Copy of ${source.summary}`.slice(0, 255),
     parent: rules.parent ? (issues.find((i) => i.key === source.parentKey) ?? null) : null,
     customer: choice(source.customer),
     engagement: choice(source.engagement),

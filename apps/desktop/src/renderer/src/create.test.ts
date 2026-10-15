@@ -460,6 +460,12 @@ describe('copyDraft', () => {
     expect(copyDraft(source, null, ISSUES).assignee).toBeNull()
   })
 
+  it('keeps "Copy of" and a long summary within the 255 characters Jira takes', () => {
+    const long = { ...source, summary: 'x'.repeat(255) }
+
+    expect(copyDraft(long, null, ISSUES).summary).toBe(`Copy of ${'x'.repeat(247)}`)
+  })
+
   it('copies the labels, so the copy does not share the source array', () => {
     const draft = copyDraft(source, null, ISSUES, ME)
     draft.labels.push('more')
