@@ -8,9 +8,12 @@ type Category = Issue['status']['category']
  */
 export type StatusShape = 'ring' | 'half' | 'check' | 'hold'
 
-/** Hold sits in the To Do category, so the name alone tells it from To Do. */
-export const isHold = (status: { name: string }): boolean =>
-  status.name.trim().toLowerCase() === 'hold'
+/**
+ * Hold sits in the To Do category, so the name alone tells it from To Do. "Hold" and "On Hold" both
+ * match, ignoring case, outer space and the width of the space between the words (#217).
+ */
+const HOLD_NAME = /^(on\s+)?hold$/i
+export const isHold = (status: { name: string }): boolean => HOLD_NAME.test(status.name.trim())
 
 export const statusShape = (status: { name: string; category: Category }): StatusShape =>
   isHold(status)
