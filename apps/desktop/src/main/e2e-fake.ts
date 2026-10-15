@@ -159,6 +159,9 @@ const STATUSES = {
   done: { id: '3', name: 'Done', statusCategory: { key: 'done' } },
 } as const
 
+/** Not in `STATUSES`, so no picker or transition list offers it; only `moveIssue` puts an issue here. */
+const HOLD = { id: '4', name: 'Hold', statusCategory: { key: 'new' } } as const
+
 const TYPES = {
   epic: { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 },
   story: { id: '10', name: 'Story', subtask: false, hierarchyLevel: 0 },
@@ -478,7 +481,7 @@ const SEEDS: Seed[] = [
 interface RawFields {
   summary: string
   issuetype: (typeof TYPES)[keyof typeof TYPES]
-  status: (typeof STATUSES)[keyof typeof STATUSES]
+  status: (typeof STATUSES)[keyof typeof STATUSES] | typeof HOLD
   labels: string[]
   updated: string
   assignee: (typeof USERS)[keyof typeof USERS] | null
@@ -657,7 +660,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   /** Removes an issue as if someone else deleted it: no hold and no count, so the next refetch loses it. */
   dropIssue: (key: string) => void
   /** Moves an issue to another status as if someone else did: no hold and no count, so the next refetch sees it. */
-  moveIssue: (key: string, status: keyof typeof STATUSES) => void
+  moveIssue: (key: string, status: keyof typeof STATUSES | 'hold') => void
   /** Lets the oldest held attachment upload proceed. The test waits for `counts.uploads` first. */
   releaseUpload: () => void
   /** Makes the next attachment upload answer 500 at once, without holding it. */
@@ -1798,7 +1801,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     moveIssue: (key, status) => {
       const target = find(key)
       if (target === undefined) return
-      target.fields.status = STATUSES[status]
+      target.fields.status = status === 'hold' ? HOLD : STATUSES[status]
       touch(target)
     },
     releaseUpload: () => {

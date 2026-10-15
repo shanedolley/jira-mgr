@@ -129,16 +129,17 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
     }
   })
 
-  // Exempt from the 3:1 rule by Shane's decision of 2026-10-14 (#217): Hold is the To Do ring at
-  // 50% opacity, and the faded ring measures 1.66 to 2.19 against the row surfaces. With the shape
-  // equal to To Do, opacity is the only cue. The floor catches a token change that erases it.
-  it('keeps the faded Hold ring (50% opacity, an exemption from 3:1) visible on every row', () => {
-    expect(HOLD_OPACITY).toBe(0.5)
+  // Exempt from the 3:1 rule by Shane's decisions of 2026-10-14 and 2026-10-15 (#217): Hold is the
+  // To Do ring, dashed, at 30% opacity, and the faded ring measures 1.34 to 1.54 against the row
+  // surfaces. The dash and the opacity are the only cues. The floor catches a token change that
+  // erases the ring.
+  it('keeps the faded Hold ring (30% opacity, an exemption from 3:1) visible on every row', () => {
+    expect(HOLD_OPACITY).toBe(0.3)
     for (const surface of ROW_SURFACES) {
       const ring = token('status-new', theme)
       const bg = token(surface, theme)
       const faded = ring.map((c, i) => HOLD_OPACITY * c + (1 - HOLD_OPACITY) * (bg[i] ?? 0)) as Rgb
-      expect(contrast(faded, bg), `faded status-new on ${surface}`).toBeGreaterThanOrEqual(1.5)
+      expect(contrast(faded, bg), `faded status-new on ${surface}`).toBeGreaterThanOrEqual(1.3)
     }
   })
 

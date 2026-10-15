@@ -9,6 +9,7 @@ import {
   failDone,
   launch,
   logIn,
+  moveIssue,
   readState,
   releaseDone,
   showEverything,
@@ -1024,4 +1025,28 @@ test('prevents the default of the keys it handles and of no other', async () => 
     ['q', false],
     ['k', true],
   ])
+})
+
+test('draws a Hold issue with a dashed ring and a summary at 30% opacity, and no other row', async () => {
+  await open()
+  await moveIssue(app, 'PSAPAC-10', 'hold')
+  await app.evaluate(({ BrowserWindow }) => {
+    const [first] = BrowserWindow.getAllWindows()
+    first?.emit('blur')
+    first?.emit('focus')
+  })
+  const row = item(/PSAPAC-10,/)
+  const dot = row.locator('svg[data-glyph="status"]')
+  await expect(dot).toHaveAttribute('data-shape', 'hold')
+  await expect(dot).toHaveAttribute('aria-label', 'Hold')
+  await expect(dot.locator('circle')).toHaveAttribute('stroke-dasharray', /\d/)
+  await expect(dot).toHaveCSS('opacity', '0.3')
+  const summary = row.locator('span.truncate.font-medium')
+  await expect(summary).toHaveCSS('opacity', '0.3')
+  await expect(row.locator('.tree-key')).toHaveCSS('opacity', '1')
+  await expect(row).toHaveAttribute('aria-label', /Hold/)
+
+  const other = item(/PSAPAC-13,/)
+  await expect(other.locator('span.truncate.font-medium')).toHaveCSS('opacity', '1')
+  await expect(other.locator('svg[data-glyph="status"]')).not.toHaveAttribute('data-shape', 'hold')
 })

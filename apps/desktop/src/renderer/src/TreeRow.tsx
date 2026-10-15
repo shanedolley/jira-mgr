@@ -7,7 +7,7 @@ import { Avatar } from './Avatar'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate } from './rowProps'
-import { StatusDot } from './StatusDot'
+import { StatusDot, summaryFade } from './StatusDot'
 import { TimerClock } from './TimerClock'
 import { HEADER_GAP, HEADER_HEIGHT, ROW_HEIGHT, type TreeRow as Row } from './tree'
 import { TypeIcon } from './TypeIcon'
@@ -438,7 +438,12 @@ function Content({
           <span className="tree-key w-[5.5rem] min-w-fit shrink-0 text-xs font-[450] tabular-nums text-muted">
             {issue.key}
           </span>
-          <span className={`min-w-0 flex-1 truncate font-medium ${tone}`}>{issue.summary}</span>
+          <span
+            className={`min-w-0 flex-1 truncate font-medium ${tone}`}
+            style={summaryFade(issue.status)}
+          >
+            {issue.summary}
+          </span>
           <BlockPills {...blocks} />
           {customerMismatch !== null && (
             <span

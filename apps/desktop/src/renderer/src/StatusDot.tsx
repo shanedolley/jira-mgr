@@ -9,8 +9,11 @@ type Category = Issue['status']['category']
 export type StatusShape = 'ring' | 'half' | 'check' | 'hold'
 
 /** Hold sits in the To Do category, so the name alone tells it from To Do. */
-export const statusShape = (status: { name: string; category: Category }): StatusShape =>
+export const isHold = (status: { name: string }): boolean =>
   status.name.trim().toLowerCase() === 'hold'
+
+export const statusShape = (status: { name: string; category: Category }): StatusShape =>
+  isHold(status)
     ? 'hold'
     : status.category === 'indeterminate'
       ? 'half'
@@ -25,12 +28,19 @@ const COLOURS: Record<StatusShape, string> = {
   hold: 'var(--status-new)',
 }
 
-/** Shane's call of 2026-10-14 (#217): Hold is the To Do ring at half opacity. */
-export const HOLD_OPACITY = 0.5
+/** Shane's calls of 2026-10-14 and 2026-10-15 (#217): Hold is a dashed To Do ring at 30% opacity. */
+export const HOLD_OPACITY = 0.3
+
+/** Eight dashes round the r=5.5 ring: the 34.56 circumference is 8 periods of 4.32. */
+const HOLD_DASH = '2.6 1.72'
+
+/** The style that fades the summary of a Hold issue to the ring's opacity; none for other statuses. */
+export const summaryFade = (status: { name: string }): { opacity: number } | undefined =>
+  isHold(status) ? { opacity: HOLD_OPACITY } : undefined
 
 /**
  * The status category: To Do an empty ring, In Progress a ring with its right half filled, Done a
- * solid circle with a check cut out in the canvas colour, Hold the To Do ring at half opacity. The
+ * solid circle with a check cut out in the canvas colour, Hold the To Do ring dashed at 30% opacity. The
  * name is the accessible label.
  */
 export function StatusDot({ status }: { status: Issue['status'] }) {
@@ -60,7 +70,7 @@ export function StatusDot({ status }: { status: Issue['status'] }) {
           />
         </>
       ) : (
-        <circle cx="7" cy="7" r="5.5" />
+        <circle cx="7" cy="7" r="5.5" strokeDasharray={shape === 'hold' ? HOLD_DASH : undefined} />
       )}
       {shape === 'half' && <path d="M7 1.5a5.5 5.5 0 0 1 0 11z" fill={colour} stroke="none" />}
     </svg>
