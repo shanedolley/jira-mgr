@@ -135,6 +135,30 @@ test('C over a hovered Epic starts a Story under it, ahead of the selected row, 
   await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
 })
 
+test('a hover ends when J or K moves the active row past a resting pointer, and counts again once the pointer moves', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  const epic = item(/PSAPAC-30,/)
+  await epic.hover()
+  await window.keyboard.press('k')
+  await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'false')
+
+  // The pointer still rests on the Epic, but the active row moved, so C starts from the active row.
+  await window.keyboard.press('c')
+  await expect(dialog()).toBeVisible()
+  await expect(field('Type', 'Subtask')).toBeVisible()
+  await expect(field('Parent', 'PSAPAC-10 Customer onboarding')).toHaveCount(0)
+  await expect(dialog().getByRole('button', { name: /^Parent: PSAPAC-30/ })).toHaveCount(0)
+  await dialog().getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog()).toHaveCount(0)
+
+  // Moving the pointer again makes the hover count.
+  await epic.hover({ position: { x: 40, y: 8 } })
+  await window.keyboard.press('c')
+  await expect(field('Type', 'Story')).toBeVisible()
+  await expect(field('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
+})
+
 test('C over a selected Story starts a Subtask under it, with its Customer and Engagement', async () => {
   await open()
   await select(/PSAPAC-2,/)

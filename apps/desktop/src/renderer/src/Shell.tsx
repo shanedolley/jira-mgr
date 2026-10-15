@@ -222,6 +222,20 @@ function flashRows(key: string, fields: readonly string[]) {
   }
 }
 
+/** The Tree's moving keys, which end a hover's claim on `C` until the pointer moves again. */
+const NAVIGATION_KEYS = new Set([
+  'j',
+  'k',
+  'arrowup',
+  'arrowdown',
+  'arrowleft',
+  'arrowright',
+  'pageup',
+  'pagedown',
+  'home',
+  'end',
+])
+
 /**
  * Sidebar, Tree and, while it is open, the Peek. The Shell owns the tree state: the filters, the
  * collapsed and revealed sets, the active row and the Peek. The rows derive from the query caches
@@ -314,6 +328,8 @@ export function Shell({ session }: { session: Session }) {
   const deleteIssue = useDeleteIssue()
   const editIssue = useEditIssue()
   const treeRef = useRef<HTMLDivElement>(null)
+  // Where the pointer last was, and whether it moved since the last Tree navigation key.
+  const pointer = useRef({ x: -1, y: -1, moved: false })
   const peekRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
@@ -627,9 +643,11 @@ export function Shell({ session }: { session: Session }) {
 
   /**
    * The issue row under the pointer, read from CSS `:hover` when asked, so hovering stores nothing
-   * and moves neither the selection nor the Peek. A header or chip under the pointer is not one.
+   * and moves neither the selection nor the Peek. A header or chip under the pointer is not one,
+   * and neither is any row once a Tree navigation key has moved the active row past a resting pointer.
    */
   function hoveredIssueRow() {
+    if (!pointer.current.moved) return undefined
     const id = document.querySelector('[role="tree"] [role="treeitem"]:hover')?.id
     return rows.find((r) => r.kind === 'issue' && rowDomId(r.id) === id)
   }
@@ -944,9 +962,23 @@ export function Shell({ session }: { session: Session }) {
     const listen = (event: KeyboardEvent) => {
       onKey(event)
     }
+    // A hover counts for `C` only once the pointer moves after the last Tree navigation, as in
+    // Linear. A moved row or a scroll under a resting pointer fires no `pointermove` at a new
+    // position, so a hover that navigation walked away from is not read.
+    const track = (event: PointerEvent) => {
+      if (event.clientX === pointer.current.x && event.clientY === pointer.current.y) return
+      pointer.current = { x: event.clientX, y: event.clientY, moved: true }
+    }
+    const navigated = (event: KeyboardEvent) => {
+      if (NAVIGATION_KEYS.has(event.key.toLowerCase())) pointer.current.moved = false
+    }
     document.addEventListener('keydown', listen)
+    document.addEventListener('keydown', navigated, true)
+    document.addEventListener('pointermove', track)
     return () => {
       document.removeEventListener('keydown', listen)
+      document.removeEventListener('keydown', navigated, true)
+      document.removeEventListener('pointermove', track)
     }
   }, [])
 
