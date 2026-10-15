@@ -15,12 +15,17 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `L` | Open Labels |
 | `P` | Open Priority |
 | `E` | Edit the summary |
+| `Shift+D` | Open Due date. On the issue page it focuses the page's Due date field; from the Tree it opens the issue menu with the Due date field focused |
+| `Shift+P` | Open Parent, the same way |
+| `Shift+E` | Open Original estimate, the same way |
+| `Shift+C` | Open Sprint, the same way. These four never fall through to `C`, `P` or `E`, and do nothing where the issue's type has no such field (an Epic has no sprint, parent or estimate) |
 | `I` | Assign the issue to me |
 | `Y` | Copy the issue key |
 | `U` | Copy the link to the issue on the Jira site |
 | `F` | Open the Filter menu, with focus on its first field; `Esc` closes it and returns to the Tree |
 | `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open issue, Inbox, Sprint, Epics or Customers page |
 | `?` | List every shortcut on this page; works from a sidebar or toolbar button too, not in a field or over a dialog |
+| `Shift+F10` | Open the issue menu of the active Tree row, or of the focused row on the Inbox, Sprint and Epics pages. The context-menu key and a right-click on a row do the same |
 | `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo. A batch from the bulk bar goes back as one, skipping issues that changed since |
 | `Esc` | Close the issue page, then the Sprint page or the Epics or Customers page, then clear the checked issues, then close the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
@@ -66,6 +71,11 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | View name field | `Enter`, `Esc` | Save or cancel the rename |
 | Inbox list | `Up`, `Down` | Move between entries |
 | Inbox list | `Enter` | Open the entry's page and mark it read; `Esc` on the page returns to the list |
+| Issue menu | `Up`, `Down`, `Home`, `End` | Move between items; `Up` from the first item goes to the last |
+| Issue menu | `Right`, `Enter` | Open the item's submenu, or run an item that has none |
+| Issue menu | `Left` | Close the open submenu and return to its item; in a search field only while it is empty |
+| Issue menu | `S`, `A`, `L`, `P`, `E`, `Shift+D`, `Shift+P`, `Shift+E`, `Shift+C` | Run the item that shows the key |
+| Issue menu | `Esc` | Close the open submenu, then the menu, and return focus to the row |
 | Pickers | `Up`, `Down` | Move the highlight |
 | Pickers without a search field | `Home`, `End` | First or last option; in a searchable picker they move the caret |
 | Pickers | `Enter` | Choose the highlighted option |
