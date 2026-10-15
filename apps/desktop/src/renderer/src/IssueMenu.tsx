@@ -254,6 +254,21 @@ export function IssueMenu({ issue, issues, me, x, y, open, onRun, onClose }: Iss
     }
   }, [onClose])
 
+  // Focus arriving on an element outside the menu ends it, such as Tab out of a field in a
+  // submenu, where `relatedTarget` of a blur is null for a top-layer popover. Focus moving between
+  // the menu's own parts, or to nowhere while a list closes, does not.
+  useEffect(() => {
+    const entered = (event: FocusEvent) => {
+      if (event.target instanceof Node && element.current?.contains(event.target) === false) {
+        onClose()
+      }
+    }
+    document.addEventListener('focusin', entered)
+    return () => {
+      document.removeEventListener('focusin', entered)
+    }
+  }, [onClose])
+
   // A key that names a submenu opens it at once.
   useEffect(() => {
     if (open === undefined) return
@@ -393,12 +408,6 @@ export function IssueMenu({ issue, issues, me, x, y, open, onRun, onClose }: Iss
       popover="manual"
       tabIndex={-1}
       onKeyDown={onKeyDown}
-      onBlur={(event) => {
-        // Focus moving to another element outside the menu ends it, such as Tab out of a field.
-        // A move between its own parts, or to nowhere while a list closes, does not.
-        const to = event.relatedTarget
-        if (to instanceof Node && element.current?.contains(to) === false) onClose()
-      }}
       className="context-menu"
     >
       {items.map((item, at) => (

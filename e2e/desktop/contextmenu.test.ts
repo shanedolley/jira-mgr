@@ -584,3 +584,25 @@ test('the Rename field takes at most 255 characters', async () => {
   await entry('Rename').click()
   await expect(menu().getByRole('textbox', { name: 'Summary' })).toHaveAttribute('maxlength', '255')
 })
+
+for (const [name, field] of [
+  ['Rename', 'Summary'],
+  ['Original estimate', 'Original estimate'],
+  ['Start date', 'Start date'],
+  ['Due date', 'Due date'],
+] as const) {
+  test(`Tab out of the ${name} field closes the menu`, async () => {
+    await open()
+    await item(/PSAPAC-4,/).click({ button: 'right' })
+    await entry(name).click()
+    const input = menu().getByRole('textbox', { name: field })
+    await expect(input).toBeFocused()
+
+    // A date field steps through its day, month and year first, so tab until focus has left it.
+    for (let step = 0; step < 4 && (await menu().count()) > 0; step++) {
+      await window.keyboard.press('Tab')
+    }
+    await expect(menu()).toHaveCount(0)
+    expect(await writes()).toBe(0)
+  })
+}
