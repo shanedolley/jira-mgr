@@ -57,7 +57,7 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 
 ## Review Follow-ups
 
-Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202, #209, #212, #217 and #220 to #222 are Shane's later requests. Each is one issue; the tracker holds the status. All are built.
+Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202, #209, #212, #216, #217, #219 and #220 to #224, #237 and #238 are Shane's later requests. Each is one issue; the tracker holds the status. All are built.
 
 | Issue | Item |
 |---|---|
@@ -69,7 +69,9 @@ Stories #126 to #151 came from the [UX review and Linear gap analysis](../discov
 | #143 | Select and edit several issues at once. Core batch module and the desktop selection, bulk bar and batch undo built |
 | #199 to #202 | Hide done hides every Done issue; sub-issue progress on Story, Task and Bug rows, not Epics; a double-click opens the first-clicked issue; estimate, time logged and a worklog chart on the Peek and the issue page |
 | #209, #212 | The Tree opens at a level that persists across launches; an app icon of its own |
-| #217, #220, #221, #222 | The Hold status drawn as the To Do ring at half opacity; Time left shown as a duration; a Parent picker wide enough to read a summary; ascending or descending order per view, with Key ordering by key alone and a Status order |
+| #216, #217, #220, #221, #222 | Logging work from the Time tracking header; the Hold and On Hold status drawn as a dashed To Do ring at 30% opacity, with the summary faded to match; Time left shown as a duration; a Parent picker wide enough to read a summary; ascending or descending order per view, with Key ordering by key alone and a Status order |
+| #219, #224, #237 | The create dialog sets Start date and Due date, `C` creates under the hovered or selected issue, and a new issue is assigned to the current user by default |
+| #223, #238 | A Manual order set by dragging rows, saved per view; a right-click menu of 18 issue actions with Shift+D, Shift+P, Shift+E and Shift+C |
 
 ## Working Rules
 
