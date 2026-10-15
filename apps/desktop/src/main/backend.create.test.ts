@@ -126,6 +126,28 @@ describe('createIssue', () => {
     expect(requests[0]?.body).toMatchObject({ fields: { description } })
   })
 
+  it('sends both dates in the create request, the Start date under its resolved field', async () => {
+    const { http, requests } = routedHttp(accepts)
+    await createBackend({ http }).createIssue({
+      ...NEW,
+      startDate: '2026-10-01',
+      dueDate: '2026-10-14',
+    })
+
+    expect(requests[0]?.body).toMatchObject({
+      fields: { customfield_4: '2026-10-01', duedate: '2026-10-14' },
+    })
+  })
+
+  it('sends no date field when neither date is chosen', async () => {
+    const { http, requests } = routedHttp(accepts)
+    await createBackend({ http }).createIssue(NEW)
+
+    const fields = (requests[0]?.body as { fields: object }).fields
+    expect(fields).not.toHaveProperty('customfield_4')
+    expect(fields).not.toHaveProperty('duedate')
+  })
+
   it('moves the new issue into the chosen sprint, then reads it again', async () => {
     const { http, requests } = routedHttp(accepts)
     const created = await createBackend({ http }).createIssue({ ...NEW, sprintId: 5 })

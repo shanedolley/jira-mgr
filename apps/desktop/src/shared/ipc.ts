@@ -362,6 +362,9 @@ export interface CreateIssueArgs {
   labels?: string[]
   /** A Jira duration such as `2h 30m`. */
   originalEstimate?: string
+  /** `YYYY-MM-DD`. Core resolves the Start date field by name. */
+  startDate?: string
+  dueDate?: string
   /** Core's create takes no sprint, so main moves the new issue into it after the create. */
   sprintId?: number
 }

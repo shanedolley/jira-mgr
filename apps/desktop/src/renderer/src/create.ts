@@ -45,6 +45,9 @@ export interface CreateDraft {
   priority: FieldChoice | null
   /** A Jira duration such as `2h 30m`, or empty. */
   estimate: string
+  /** A `YYYY-MM-DD` date, or empty. */
+  startDate: string
+  dueDate: string
   /** What the description editor holds, or `null` while it holds no text. */
   description: AdfDoc | null
 }
@@ -119,6 +122,8 @@ export function initialDraft(
     labels: [],
     priority: null,
     estimate: '',
+    startDate: '',
+    dueDate: '',
     description: null,
   }
 }
@@ -226,6 +231,8 @@ export function toCreateArgs(draft: CreateDraft): CreateIssueArgs | null {
     ...(draft.priority !== null && { priorityId: draft.priority.id }),
     ...(draft.labels.length > 0 && { labels: draft.labels }),
     ...(rules.estimates && estimate !== '' && { originalEstimate: estimate }),
+    ...(draft.startDate !== '' && { startDate: draft.startDate }),
+    ...(draft.dueDate !== '' && { dueDate: draft.dueDate }),
     ...(rules.sprint && draft.sprint !== null && { sprintId: draft.sprint.id }),
   }
 }
@@ -369,6 +376,12 @@ export function describeCreated(draft: CreateDraft, result: CreatedIssue): Notic
         : formatEstimate(issue.originalEstimateSeconds),
       chosenSeconds === null ? 'none' : draft.estimate.trim(),
     )
+  }
+  if (issue.startDate !== (draft.startDate || null)) {
+    differs('Start date', issue.startDate ?? 'none', draft.startDate || 'none')
+  }
+  if (issue.dueDate !== (draft.dueDate || null)) {
+    differs('Due date', issue.dueDate ?? 'none', draft.dueDate || 'none')
   }
   if (warning !== null) notes.push(warning)
   return { title: `Created ${key}: ${issue.summary}`, notes, warned }

@@ -111,6 +111,10 @@ const INPUT =
 /** What a required chip reads while nothing is chosen. */
 const REQUIRED = 'Required'
 
+type DateField = 'startDate' | 'dueDate'
+const DATE_FIELDS: readonly DateField[] = ['startDate', 'dueDate']
+const DATE_NAMES: Record<DateField, string> = { startDate: 'Start date', dueDate: 'Due date' }
+
 /** A chip's property name, muted before its value. */
 const ChipName = ({ children }: { children: string }) => (
   <span className="shrink-0 text-muted">{children}</span>
@@ -164,6 +168,9 @@ export function CreateIssueDialog({
   const customerTrigger = useRef<HTMLButtonElement>(null)
   const engagementTrigger = useRef<HTMLButtonElement>(null)
   const estimateRef = useRef<HTMLInputElement>(null)
+  const dateRefs = useRef<Partial<Record<DateField, HTMLInputElement | null>>>({})
+  // A date input half typed ("10/yyyy") reports "" like an empty one, so the draft cannot tell them apart.
+  const [halfDates, setHalfDates] = useState<ReadonlySet<DateField>>(new Set())
   const rules = typeRules(draft.type)
 
   const [parentQuery, setParentQuery] = useState('')
@@ -193,7 +200,11 @@ export function CreateIssueDialog({
     setDraft((d) => ({ ...d, ...changes }))
   }
 
-  const missing = missingFields(draft)
+  const halfTyped = DATE_FIELDS.filter((field) => halfDates.has(field))
+  const missing = [
+    ...missingFields(draft),
+    ...halfTyped.map((field) => `a complete ${DATE_NAMES[field]}`),
+  ]
   const estimateBad = missingKeys(draft).includes('estimate')
   const pending = create.isPending || attaching
   // Not `autoFocus`: the modal opens after its content mounts, and opening takes focus to the first control.
@@ -211,9 +222,26 @@ export function CreateIssueDialog({
     wasPrompting.current = prompt !== null
   }, [prompt])
 
+  function setDateHalf(field: DateField, half: boolean) {
+    setHalfDates((held) => {
+      if (held.has(field) === half) return held
+      const next = new Set(held)
+      if (half) next.add(field)
+      else next.delete(field)
+      return next
+    })
+  }
+
   function submit(event?: SyntheticEvent) {
     event?.preventDefault()
     if (pending) return
+    // The browser fires no input event while a date is typed in part, so ask the input itself.
+    const half = DATE_FIELDS.find((field) => dateRefs.current[field]?.validity.badInput)
+    if (half !== undefined) {
+      setDateHalf(half, true)
+      dateRefs.current[half]?.focus()
+      return
+    }
     const args = toCreateArgs(draft)
     if (args === null) {
       // Cmd+Enter on an unready form: the Create button is disabled, so the key says where to go.
@@ -649,6 +677,48 @@ export function CreateIssueDialog({
                     />
                   </label>
                 )}
+                {DATE_FIELDS.map((field) => {
+                  const half = halfDates.has(field)
+                  const empty = draft[field] === '' && !half
+                  return (
+                    <label
+                      key={field}
+                      className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${half ? 'border-danger' : 'border-field-border'}`}
+                    >
+                      <ChipName>{field === 'startDate' ? 'Start' : 'Due'}</ChipName>
+                      <span className="relative">
+                        <input
+                          ref={(el) => {
+                            dateRefs.current[field] = el
+                          }}
+                          type="date"
+                          max="9999-12-31"
+                          aria-label={DATE_NAMES[field]}
+                          aria-invalid={half || undefined}
+                          value={draft[field]}
+                          onChange={(event) => {
+                            edit({ [field]: event.target.value })
+                          }}
+                          onInput={(event) => {
+                            setDateHalf(field, event.currentTarget.validity.badInput)
+                          }}
+                          onBlur={(event) => {
+                            setDateHalf(field, event.currentTarget.validity.badInput)
+                          }}
+                          className={`peer bg-transparent focus-visible:outline-none ${empty ? 'date-empty' : ''}`}
+                        />
+                        {empty && (
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-muted peer-focus:hidden"
+                          >
+                            None
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  )
+                })}
                 <Picker
                   label="Assignee"
                   variant="chip"

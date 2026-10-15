@@ -275,6 +275,16 @@ describe('missingFields and toCreateArgs', () => {
     expect(toCreateArgs(ready)).not.toHaveProperty('description')
   })
 
+  it('sends both dates when set, and neither when empty', () => {
+    expect(
+      toCreateArgs({ ...ready, startDate: '2026-10-01', dueDate: '2026-10-14' }),
+    ).toMatchObject({ startDate: '2026-10-01', dueDate: '2026-10-14' })
+    expect(toCreateArgs({ ...ready, dueDate: '2026-10-14' })).not.toHaveProperty('startDate')
+    const none = toCreateArgs(ready)
+    expect(none).not.toHaveProperty('startDate')
+    expect(none).not.toHaveProperty('dueDate')
+  })
+
   it('leaves out the parent, sprint and estimate an Epic does not have', () => {
     const args = toCreateArgs({
       ...ready,
@@ -487,6 +497,18 @@ describe('describeCreated', () => {
       'Original estimate is 4h (you chose 2h).',
     ])
     expect(notice.warned).toBe(false)
+  })
+
+  it('names a date Jira did not keep', () => {
+    const dated = { ...draft, startDate: '2026-10-01', dueDate: '2026-10-14' }
+
+    expect(
+      describeCreated(dated, held({ startDate: '2026-10-01', dueDate: '2026-10-14' })).notes,
+    ).toEqual([])
+    expect(describeCreated(dated, held({ dueDate: '2026-10-15' })).notes).toEqual([
+      'Start date is none (you chose 2026-10-01).',
+      'Due date is 2026-10-15 (you chose 2026-10-14).',
+    ])
   })
 
   it('says so when Jira put the issue in a sprint nobody chose', () => {

@@ -1352,6 +1352,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         assignee: assignee ?? null,
         priority: priority ?? MEDIUM,
         labels: [...((fields.labels as string[] | undefined) ?? [])],
+        duedate: (fields.duedate as string | undefined) ?? null,
+        [FIELDS.startDate]: (fields[FIELDS.startDate] as string | undefined) ?? null,
         ...(fields.description === undefined ? {} : { description: fields.description }),
         ...(estimate === undefined
           ? {}
