@@ -1,8 +1,9 @@
 import type { Issue } from '@jira-mgr/core'
 import { STATUS_ORDER } from '@jira-mgr/core/hierarchy'
+import { SWAPPABLE_TYPES, type SwappableType } from '@jira-mgr/core/issue'
 import type { QueryClient } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { CurrentUser, FieldChoice, IssueChanges, StatusOption } from '../../shared/ipc'
 import { Avatar, withAvatars } from './Avatar'
@@ -10,24 +11,42 @@ import { Reason } from './Failure'
 import { LabelDot, PriorityBars } from './Glyphs'
 import { useNotify, type Notify } from './notify'
 import { current } from './optimistic'
-import { Picker, type PickerOption } from './Picker'
+import { ParentPrompt } from './ParentPrompt'
+import { Picker, menuProps, type MenuMode, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
 import {
   NONE,
+  STATE_LABELS,
   assigneeChoices,
   assigneeOptions,
   assigneePatch,
+  currentSprint,
   isLabel,
   labelsPatch,
+  parentChoices,
+  parentMatch,
   priorityPatch,
   projectLabels,
   recentAssignees,
   refusedNotice,
+  shownSprints,
+  sprintPatch,
   statusPatch,
+  typePatch,
+  type ParentMatch,
   type Person,
 } from './properties'
 import { changedFields } from './undo'
-import { useEditIssue, useFieldOptions, useSetStatus, useTransitions, useUsers } from './queries'
+import {
+  useEditIssue,
+  useFieldOptions,
+  useSetSprint,
+  useSetStatus,
+  useSprints,
+  useTransitions,
+  useUsers,
+} from './queries'
+import { TypeIcon } from './TypeIcon'
 import { useDebounced } from './useDebounced'
 
 /**
@@ -97,6 +116,8 @@ export function useIssueChange(issue: Issue) {
 
 interface PickerProps {
   issue: Issue
+  /** Set by the context menu, which shows the picker as one of its items. */
+  menu?: MenuMode
 }
 
 const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
@@ -126,7 +147,7 @@ export const statusOptions = (choices: readonly StatusOption[]): PickerOption[] 
   }))
 
 /** The statuses the issue can reach now, in Q21 order. Opened by `S`. */
-export function StatusPicker({ issue }: PickerProps) {
+export function StatusPicker({ issue, menu }: PickerProps) {
   const setStatus = useSetStatus()
   const attempt = useAttempt(issue.key)
   const [open, setOpen] = useState(false)
@@ -143,6 +164,7 @@ export function StatusPicker({ issue }: PickerProps) {
 
   return (
     <Picker
+      {...menuProps(menu)}
       label="Status"
       shortcut="S"
       valueText={issue.status.name}
@@ -170,7 +192,7 @@ interface AssigneeProps extends PickerProps {
 }
 
 /** Unassigned, Me, recent assignees, then a search of assignable users. Opened by `A`. */
-export function AssigneePicker({ issue, issues, me }: AssigneeProps) {
+export function AssigneePicker({ issue, issues, me, menu }: AssigneeProps) {
   const change = useIssueChange(issue)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -199,6 +221,7 @@ export function AssigneePicker({ issue, issues, me }: AssigneeProps) {
 
   return (
     <Picker
+      {...menuProps(menu)}
       label="Assignee"
       shortcut="A"
       valueText={issue.assignee?.displayName ?? 'Unassigned'}
@@ -221,7 +244,7 @@ export function AssigneePicker({ issue, issues, me }: AssigneeProps) {
 }
 
 /** The project's priorities from the create metadata. Opened by `P`. */
-export function PriorityPicker({ issue }: PickerProps) {
+export function PriorityPicker({ issue, menu }: PickerProps) {
   const change = useIssueChange(issue)
   const [open, setOpen] = useState(false)
   const priorities = useFieldOptions('priority', open)
@@ -234,6 +257,7 @@ export function PriorityPicker({ issue }: PickerProps) {
 
   return (
     <Picker
+      {...menuProps(menu)}
       label="Priority"
       shortcut="P"
       valueText={issue.priority?.name ?? 'None'}
@@ -257,7 +281,7 @@ export function PriorityPicker({ issue }: PickerProps) {
 }
 
 /** The labels on the loaded issues, which are the project's own (Q35); a new one can be typed. Opened by `L`. */
-export function LabelsPicker({ issue, issues }: PickerProps & { issues: readonly Issue[] }) {
+export function LabelsPicker({ issue, issues, menu }: PickerProps & { issues: readonly Issue[] }) {
   const change = useIssueChange(issue)
   const options: PickerOption[] = [...new Set([...issue.labels, ...projectLabels(issues)])].map(
     (label) => ({ id: label, label, leading: <LabelDot /> }),
@@ -274,6 +298,7 @@ export function LabelsPicker({ issue, issues }: PickerProps & { issues: readonly
 
   return (
     <Picker
+      {...menuProps(menu)}
       label="Labels"
       shortcut="L"
       valueText={issue.labels.length === 0 ? 'None' : issue.labels.join(', ')}
@@ -287,5 +312,203 @@ export function LabelsPicker({ issue, issues }: PickerProps & { issues: readonly
         if (!issue.labels.includes(text)) toggle(text)
       }}
     />
+  )
+}
+
+/** The issue types a Story, Task or Bug can become (Q23). */
+export function TypePicker({ issue, menu }: PickerProps) {
+  const change = useIssueChange(issue)
+  const [open, setOpen] = useState(false)
+  const types = useFieldOptions('issueType', open)
+
+  function choose(id: string) {
+    const choice = types.data?.find((c) => c.id === id)
+    if (choice === undefined || issue.issueType.id === id) return
+    change('Type', { type: choice.name as SwappableType }, typePatch(issue, choice))
+  }
+
+  return (
+    <Picker
+      {...menuProps(menu)}
+      label="Type"
+      valueText={issue.issueType.name}
+      options={fromChoices(
+        types.data?.filter((t) => (SWAPPABLE_TYPES as readonly string[]).includes(t.name)),
+      ).map((o) => ({ ...o, leading: <TypeIcon type={{ name: o.label }} decorative /> }))}
+      selected={[issue.issueType.id]}
+      onSelect={choose}
+      onOpenChange={setOpen}
+      note={types.isPending ? 'Loading types' : undefined}
+    />
+  )
+}
+
+/** Backlog and the project's sprints, closed ones listed but not chosen. Opened by `Shift+C`. */
+export function SprintPicker({ issue, menu }: PickerProps) {
+  const setSprint = useSetSprint()
+  const attempt = useAttempt(issue.key)
+  const [open, setOpen] = useState(false)
+  const [allSprints, setAllSprints] = useState(false)
+  const sprints = useSprints(allSprints, open)
+  const sprint = currentSprint(issue)
+  const sprintList = shownSprints(sprints.data ?? [], allSprints)
+  const options: PickerOption[] = [
+    { id: NONE, label: 'Backlog' },
+    ...sprintList.map((s) => ({
+      id: String(s.id),
+      label: s.name,
+      detail: STATE_LABELS[s.state],
+      // Jira refuses a move into a closed sprint.
+      disabled: s.state === 'closed',
+    })),
+  ]
+
+  function choose(id: string) {
+    const target = id === NONE ? null : sprintList.find((s) => String(s.id) === id)
+    if (target === undefined) return
+    if ((sprint === null ? NONE : String(sprint.id)) === id) return
+    const patch = sprintPatch(issue, target)
+    attempt('Sprint', patch, () =>
+      setSprint.mutateAsync({ key: issue.key, sprintId: target?.id ?? null, patch }),
+    )
+  }
+
+  return (
+    <Picker
+      {...menuProps(menu)}
+      label="Sprint"
+      shortcut="Shift+C"
+      valueText={sprint?.name ?? 'Backlog'}
+      options={options}
+      selected={[sprint === null ? NONE : String(sprint.id)]}
+      onSelect={choose}
+      onOpenChange={setOpen}
+      note={
+        sprints.isPending ? (
+          'Loading sprints'
+        ) : sprints.isError ? (
+          <Reason lead="Could not load the sprints." error={sprints.error} />
+        ) : undefined
+      }
+      footer={
+        <button
+          type="button"
+          data-row
+          aria-pressed={allSprints}
+          onClick={() => {
+            setAllSprints(!allSprints)
+          }}
+          className="mt-1 flex h-8 w-full items-center rounded px-2 text-left text-xs hover:bg-hover"
+        >
+          {allSprints ? 'Show fewer sprints' : 'Show all sprints'}
+        </button>
+      }
+    />
+  )
+}
+
+/**
+ * The issues that can hold this one, searched by key and summary. A parent whose Customer or
+ * Engagement differs asks first (Q16). Opened by `Shift+P`.
+ */
+export function ParentPicker({ issue, issues, menu }: PickerProps & { issues: readonly Issue[] }) {
+  const change = useIssueChange(issue)
+  const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)
+  const [query, setQuery] = useState('')
+  const trigger = useRef<HTMLButtonElement>(null)
+  // The question outlives the list, so a menu waits for its answer before it closes.
+  const asking = useRef(false)
+  // The dialog unmounts with its answer, so focus goes back to the button that asked.
+  const wasPrompting = useRef(false)
+  useEffect(() => {
+    if (prompt === null && wasPrompting.current) trigger.current?.focus()
+    wasPrompting.current = prompt !== null
+  }, [prompt])
+  const parent = issues.find((i) => i.key === issue.parentKey)
+  const list = parentChoices(issue, issues, query)
+  const options: PickerOption[] = list.shown.map((p) => ({
+    id: p.key,
+    label: p.summary,
+    leading: <span className="shrink-0 font-mono text-xs text-muted">{p.key}</span>,
+  }))
+
+  function choose(key: string) {
+    const target = issues.find((i) => i.key === key)
+    if (target === undefined || key === issue.parentKey) return
+    const match = parentMatch(issue, target)
+    if (match.customer === null && match.engagement === null) {
+      change('Parent', { parentKey: key }, { parentKey: key })
+      return
+    }
+    asking.current = true
+    setPrompt({ parent: target, match })
+  }
+
+  function answer(withMatch: boolean | null) {
+    const asked = prompt
+    asking.current = false
+    setPrompt(null)
+    if (asked !== null && withMatch !== null) {
+      const copy = withMatch ? asked.match : { customer: null, engagement: null }
+      change(
+        'Parent',
+        {
+          parentKey: asked.parent.key,
+          ...(copy.customer && { customerId: copy.customer.id }),
+          ...(copy.engagement && { engagementId: copy.engagement.id }),
+        },
+        {
+          parentKey: asked.parent.key,
+          ...(copy.customer && { customer: copy.customer }),
+          ...(copy.engagement && { engagement: copy.engagement }),
+        },
+      )
+    }
+    menu?.onPicked()
+  }
+
+  return (
+    <>
+      <Picker
+        {...menuProps(menu)}
+        label="Parent"
+        shortcut="Shift+P"
+        wide
+        triggerRef={trigger}
+        valueText={
+          issue.parentKey === null
+            ? 'None'
+            : `${issue.parentKey}${parent === undefined ? '' : ` ${parent.summary}`}`
+        }
+        options={options}
+        selected={issue.parentKey === null ? [] : [issue.parentKey]}
+        searchable
+        onQuery={setQuery}
+        onSelect={choose}
+        onPicked={
+          menu === undefined
+            ? undefined
+            : () => {
+                if (!asking.current) menu.onPicked()
+              }
+        }
+        note={
+          list.total > list.shown.length
+            ? `Showing ${String(list.shown.length)} of ${String(list.total)}. Keep typing to narrow.`
+            : undefined
+        }
+      />
+      {prompt !== null && (
+        <ParentPrompt
+          subject={issue.key}
+          parent={prompt.parent}
+          match={prompt.match}
+          onChoose={answer}
+          onCancel={() => {
+            answer(null)
+          }}
+        />
+      )}
+    </>
   )
 }

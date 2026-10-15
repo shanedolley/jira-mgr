@@ -24,7 +24,7 @@ const SCOPE = '[data-key-scope]'
 const scoped = inside(SCOPE)
 
 describe('the letter shortcuts', () => {
-  it('map C, T, S, A, L, P, E, I, Y, U and F, in either case', () => {
+  it('map C, T, S, A, L, P, E, I, Y, U and F, and with Shift S, T, A, L, I, Y, U and F alike', () => {
     const expected = {
       c: 'create',
       t: 'timer',
@@ -40,7 +40,32 @@ describe('the letter shortcuts', () => {
     }
     for (const [letter, command] of Object.entries(expected)) {
       expect(resolveKey(key(letter), scoped)).toBe(command)
+      // A Caps Lock letter arrives uppercase with no Shift.
+      expect(resolveKey(key(letter.toUpperCase()), scoped)).toBe(command)
+      if ('cpe'.includes(letter)) continue
       expect(resolveKey(key(letter.toUpperCase(), { shiftKey: true }), scoped)).toBe(command)
+    }
+  })
+
+  it('map Shift+D, Shift+P, Shift+E and Shift+C to due date, parent, estimate and sprint, never to D, P, E or C', () => {
+    const expected = { d: 'dueDate', p: 'parent', e: 'estimate', c: 'sprint' }
+    for (const [letter, command] of Object.entries(expected)) {
+      expect(resolveKey(key(letter.toUpperCase(), { shiftKey: true }), scoped)).toBe(command)
+      expect(resolveKey(key(letter.toLowerCase(), { shiftKey: true }), scoped)).toBe(command)
+    }
+    // D alone is not a shortcut.
+    expect(resolveKey(key('d'), scoped)).toBeNull()
+  })
+
+  it('give Shift+D, Shift+P, Shift+E and Shift+C the same guards as the letters', () => {
+    for (const letter of ['D', 'P', 'E', 'C']) {
+      const shifted = (extra: Partial<KeyEvent> = {}) => key(letter, { shiftKey: true, ...extra })
+      expect(resolveKey(shifted(), nowhere)).toBeNull()
+      expect(resolveKey(shifted(), inside(SCOPE, 'input'))).toBeNull()
+      expect(resolveKey(shifted(), inside(SCOPE, '[role="menu"]'))).toBeNull()
+      expect(resolveKey(shifted({ metaKey: true }), scoped)).toBeNull()
+      expect(resolveKey(shifted({ altKey: true }), scoped)).toBeNull()
+      expect(resolveKey(shifted({ repeat: true }), scoped)).toBeNull()
     }
   })
 
@@ -127,6 +152,29 @@ describe('the filter key', () => {
       { defaultPrevented: true },
     ]) {
       expect(resolveKey(key('/', extra), scoped)).toBeNull()
+    }
+  })
+})
+
+describe('the menu key', () => {
+  it('answers to Shift+F10 from anywhere that is not a field, picker or dialog', () => {
+    for (const target of [scoped, nowhere, null]) {
+      expect(resolveKey(key('F10', { shiftKey: true }), target)).toBe('menu')
+    }
+    expect(resolveKey(key('F10'), scoped)).toBeNull()
+  })
+
+  it('stays out of text fields, pickers and menus, and out of Cmd, Ctrl and Alt', () => {
+    for (const own of ['input', 'textarea', 'dialog', '[popover]', '[role="menu"]']) {
+      expect(resolveKey(key('F10', { shiftKey: true }), inside(own))).toBeNull()
+    }
+    for (const extra of [
+      { metaKey: true },
+      { ctrlKey: true },
+      { altKey: true },
+      { repeat: true },
+    ]) {
+      expect(resolveKey(key('F10', { shiftKey: true, ...extra }), scoped)).toBeNull()
     }
   })
 })
@@ -252,7 +300,10 @@ describe('keyOf', () => {
     expect(keyOf('copyKey')).toBe('Y')
     expect(keyOf('copyLink')).toBe('U')
     expect(keyOf('filterMenu')).toBe('F')
-    expect(keyOf('sprint')).toBeUndefined()
+    expect(keyOf('dueDate')).toBe('Shift+D')
+    expect(keyOf('parent')).toBe('Shift+P')
+    expect(keyOf('estimate')).toBe('Shift+E')
+    expect(keyOf('sprint')).toBe('Shift+C')
     expect(keyOf('openInJira')).toBeUndefined()
   })
 })

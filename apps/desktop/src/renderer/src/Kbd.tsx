@@ -16,3 +16,7 @@ export function Keys({ text }: { text: string }) {
     .split('`')
     .map((part, at) => (at % 2 === 1 ? <Kbd key={at}>{part.replace(/^Cmd\+?/, '⌘')}</Kbd> : part))
 }
+
+/** A keycap's text: Shift and Enter are drawn as their glyphs, as Linear's menu does. */
+export const keycap = (shortcut: string) =>
+  shortcut === 'Enter' ? '↵' : shortcut.replace(/^Shift\+/, '⇧')

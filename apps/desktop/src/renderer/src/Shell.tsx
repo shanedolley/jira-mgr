@@ -46,6 +46,7 @@ import { DeleteIssueDialog } from './DeleteIssueDialog'
 import { EpicsPage } from './EpicsPage'
 import { InboxPage } from './InboxPage'
 import { IssueDetail } from './IssueDetail'
+import { IssueMenu } from './IssueMenu'
 import { IssuePage } from './IssuePage'
 import { IssueTree } from './IssueTree'
 import { Kbd } from './Kbd'
@@ -73,6 +74,7 @@ import {
   createContext,
   deleteFailureNotes,
   describeLate,
+  type CreateCopy,
   type CreateDraft,
   type Notice,
 } from './create'
@@ -85,9 +87,11 @@ import {
   type FilterField,
 } from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
+import { allows, type MenuAction, type MenuItemId } from './menuItems'
 import type { ActionId } from './paletteActions'
 import { assignMeOutcome, assigneePatch } from './properties'
 import { attemptWith } from './PropertyPickers'
+import { call } from './ipc'
 import {
   useBatch,
   useCustomers,
@@ -129,6 +133,41 @@ import {
 
 /** The pages that list Epics or Customers rather than issues. */
 type Overview = 'epics' | 'customers'
+
+/** The right-click menu: where it opened and the row to return focus to. */
+interface MenuState {
+  key: string
+  x: number
+  y: number
+  /** A submenu to open at once, for `Shift+D` and its kin. */
+  open?: MenuItemId
+  /** The row that asked: the click's, or the Tree's active row for a key. Focus returns to it. */
+  row: Element
+}
+
+/** How long a control that loads after its page opens is waited for. */
+const CONTROL_WAIT_MS = 5000
+
+/** Runs `then` on the first `selector` match under `root`, now or once the page adds it. */
+function whenFound(root: Element | null, selector: string, then: (found: HTMLElement) => void) {
+  if (root === null) return
+  const now = root.querySelector<HTMLElement>(selector)
+  if (now !== null) {
+    then(now)
+    return
+  }
+  const watch = new MutationObserver(() => {
+    const found = root.querySelector<HTMLElement>(selector)
+    if (found === null) return
+    watch.disconnect()
+    clearTimeout(giveUp)
+    then(found)
+  })
+  const giveUp = setTimeout(() => {
+    watch.disconnect()
+  }, CONTROL_WAIT_MS)
+  watch.observe(root, { childList: true, subtree: true })
+}
 
 /** The "N issues shown" announcement waits this long after a toggle or filter settles. */
 const ANNOUNCE_MS = 500
@@ -292,10 +331,16 @@ export function Shell({ session }: { session: Session }) {
   const [sprintId, setSprintId] = useState<number | null>(null)
   // The create modal, opened by `C` or the New issue button, with the selection it started from
   // and, from the palette's Create sub-issue, the type it starts as.
-  const [creating, setCreating] = useState<ReturnType<typeof createContext> | null>(null)
+  const [creating, setCreating] = useState<
+    (ReturnType<typeof createContext> & { copy?: CreateCopy }) | null
+  >(null)
   // The issue whose delete modal is open, held whole: the lists may not hold it (a Done parent
   // opened from a page before Done loads) or may drop it while the modal is open.
   const [deleting, setDeleting] = useState<Issue | null>(null)
+  // The right-click menu: the issue it acts on, where it opened, an item to open at once, and the
+  // row that gets focus back. The ref lets a close that arrives twice act once.
+  const [menu, setMenu] = useState<MenuState | null>(null)
+  const menuRef = useRef<MenuState | null>(null)
   // The Cmd+K palette (D7).
   const [searching, setSearching] = useState(false)
   // The `?` shortcut list.
@@ -701,7 +746,10 @@ export function Shell({ session }: { session: Session }) {
       })
     }
     const surface = pageKey === null ? peekRef.current : pageRef.current
-    surface?.querySelector<HTMLElement>(selector)?.click()
+    const control = surface?.querySelector<HTMLElement>(selector)
+    // A field takes focus, where a picker's button is pressed.
+    if (control instanceof HTMLInputElement) control.focus()
+    else control?.click()
   }
 
   /**
@@ -800,6 +848,116 @@ export function Shell({ session }: { session: Session }) {
         ? { title: `Copied ${noun} of ${key}`, notes: [], warned: false }
         : { title: `Could not copy ${noun} of ${key}`, notes: [], warned: true },
     )
+  }
+
+  /** Opens the right-click menu of `key`; the next close gives focus back to `row`, else to the Tree. */
+  function openMenu(next: MenuState) {
+    menuRef.current = next
+    setMenu(next)
+  }
+
+  /**
+   * The issue row `target` is in, as its key and element, for a right-click or a menu key. A row
+   * of a page carries its key and a row of the Tree is found by its id. The Tree itself stands for
+   * its active row. Text fields, dialogs and the like keep their own context.
+   */
+  function rowOf(target: Element): { key: string; row: Element } | null {
+    if (!treeReady) return null
+    if (target.closest('input, textarea, dialog, [popover], [contenteditable]') !== null)
+      return null
+    const listed = target.closest('[data-issue-key]')
+    const treeitem = target.closest('[role="treeitem"]')
+    const hit = rows.find((r) => r.kind === 'issue' && rowDomId(r.id) === treeitem?.id)
+    const onTree = target.closest('[role="tree"]') !== null
+    const row =
+      listed ?? treeitem ?? (onTree ? document.getElementById(rowDomId(activeRow?.id ?? '')) : null)
+    const key =
+      listed?.getAttribute('data-issue-key') ??
+      (hit?.kind === 'issue' ? hit.node.issue.key : treeitem === null && onTree ? activeKey : null)
+    return key === null || row === null || !issues.some((i) => i.key === key) ? null : { key, row }
+  }
+
+  /** Opens the menu of `key` at `point`, or when the keyboard asked, below `row`; `open` names a submenu to open at once. */
+  function openMenuFor(
+    key: string,
+    row: Element,
+    point: { x: number; y: number } | null,
+    open?: MenuItemId,
+  ) {
+    const rect = row.getBoundingClientRect()
+    openMenu({ key, x: point?.x ?? rect.left + 48, y: point?.y ?? rect.bottom, open, row })
+  }
+
+  /** Closes the menu and puts focus back on the row it came from. */
+  function closeMenu() {
+    const closing = menuRef.current
+    if (closing === null) return
+    menuRef.current = null
+    setMenu(null)
+    const { row } = closing
+    const button = row.matches('button') ? row : row.querySelector('button')
+    if (button instanceof HTMLElement && button.isConnected) button.focus()
+    else restoreFocus()
+  }
+
+  /** Opens the page of `key`, then runs `then` on the control it finds there, which may load a moment later. */
+  function onPage(key: string, selector: string, then: (found: HTMLElement) => void) {
+    flushSync(() => {
+      openFromPalette(key)
+    })
+    whenFound(pageRef.current, selector, then)
+  }
+
+  /** Copy: the create dialog seeded from `source`, once its description is read, which the list leaves out. */
+  async function startCopy(source: Issue) {
+    if (!canCreate) return
+    let description = null
+    try {
+      description = (await call('issues:get', { key: source.key })).description
+    } catch {
+      notify({
+        title: `Could not read ${source.key}`,
+        notes: ['The copy starts without its description.'],
+        warned: true,
+      })
+    }
+    setCreating({ selected: null, group: null, copy: { source, description } })
+  }
+
+  /** An item of the right-click menu that is not a submenu. The menu closes first, so a dialog finds the Tree's focus to return to. */
+  function runMenuAction(action: MenuAction, issue: Issue) {
+    closeMenu()
+    const { key } = issue
+    switch (action) {
+      case 'open':
+        openFromPalette(key)
+        break
+      case 'logWork':
+        onPage(key, '[aria-label="Add worklog"]', (button) => {
+          button.click()
+        })
+        break
+      case 'related':
+        onPage(key, '[aria-label="Add link"]', (button) => {
+          button.click()
+        })
+        break
+      case 'comment':
+        onPage(key, '[role="textbox"][aria-label="New comment"]', (box) => {
+          box.focus()
+          box.scrollIntoView({ block: 'nearest' })
+        })
+        break
+      case 'copy':
+        void startCopy(issue)
+        break
+      case 'openInJira':
+        window.open(issueUrl(session.siteUrl, key), '_blank', 'noopener,noreferrer')
+        break
+      case 'delete':
+        setDeleting(issue)
+        break
+    }
   }
 
   /**
@@ -915,6 +1073,14 @@ export function Shell({ session }: { session: Session }) {
         menu.querySelector('summary')?.focus()
         return
       }
+      case 'menu': {
+        // Shift+F10, which Chromium turns into a context-menu event on Windows and Linux only.
+        const found = target === null ? null : rowOf(target)
+        if (found === null) return
+        event.preventDefault()
+        openMenuFor(found.key, found.row, null)
+        return
+      }
       case 'timer': {
         const key = targetKey
         if (key === null || !treeReady) return
@@ -947,6 +1113,24 @@ export function Shell({ session }: { session: Session }) {
         const key = targetKey
         if (key === null || !treeReady || creating !== null || deleting !== null || timing !== null)
           return
+        if (
+          command === 'dueDate' ||
+          command === 'parent' ||
+          command === 'estimate' ||
+          command === 'sprint'
+        ) {
+          // Only the issue page has these fields. From the Tree the key opens the menu on that submenu.
+          const issue = issues.find((i) => i.key === key)
+          if (issue === undefined || !allows(issue, command)) return
+          event.preventDefault()
+          if (pageKey !== null) {
+            openProperty(command, key)
+            return
+          }
+          const row = document.getElementById(rowDomId(activeRow?.id ?? ''))
+          if (row !== null) openMenuFor(key, row, null, command)
+          return
+        }
         event.preventDefault()
         if (command === 'assignMe') assignToMe(key)
         else if (command === 'copyKey') copyIssue(key, 'key')
@@ -955,9 +1139,20 @@ export function Shell({ session }: { session: Session }) {
       }
     }
   })
+  // A right-click, or the context-menu key, on an issue row opens its menu, at the pointer.
+  const onContext = useEffectEvent((event: MouseEvent) => {
+    if (!(event.target instanceof Element)) return
+    const found = rowOf(event.target)
+    if (found === null) return
+    event.preventDefault()
+    openMenuFor(found.key, found.row, { x: event.clientX, y: event.clientY })
+  })
   useEffect(() => {
     const listen = (event: KeyboardEvent) => {
       onKey(event)
+    }
+    const context = (event: MouseEvent) => {
+      onContext(event)
     }
     // A hover counts for `C` only once the pointer moves or the wheel turns after the last Tree
     // navigation key, as in Linear. A row moved or scrolled by a key under a resting pointer fires
@@ -979,11 +1174,13 @@ export function Shell({ session }: { session: Session }) {
       if (NAVIGATION_KEYS.has(event.key.toLowerCase())) pointer.current.moved = false
     }
     document.addEventListener('keydown', listen)
+    document.addEventListener('contextmenu', context)
     document.addEventListener('keydown', navigated, true)
     document.addEventListener('pointermove', track)
     document.addEventListener('wheel', wheeled, { passive: true })
     return () => {
       document.removeEventListener('keydown', listen)
+      document.removeEventListener('contextmenu', context)
       document.removeEventListener('keydown', navigated, true)
       document.removeEventListener('pointermove', track)
       document.removeEventListener('wheel', wheeled)
@@ -1053,6 +1250,10 @@ export function Shell({ session }: { session: Session }) {
       },
     })
   }
+
+  // An issue the menu acts on may leave the lists (a delete, a refresh), which ends the menu.
+  const menuIssue = menu === null ? undefined : issues.find((i) => i.key === menu.key)
+  if (menu !== null && menuIssue === undefined) setMenu(null)
 
   const unresolvedCount = useLoadedCount('unresolved')
   const doneCount = useLoadedCount('done')
@@ -1424,6 +1625,7 @@ export function Shell({ session }: { session: Session }) {
           selected={creating.selected}
           group={creating.group}
           type={creating.type}
+          copy={creating.copy}
           issues={issues}
           me={meQuery.data}
           onClose={() => {
@@ -1442,6 +1644,22 @@ export function Shell({ session }: { session: Session }) {
             }
           }}
           returnFocus={restoreFocus}
+        />
+      )}
+      {menu !== null && menuIssue !== undefined && (
+        <IssueMenu
+          // Opened again elsewhere, it is a new menu, not the old one moved.
+          key={`${menu.key}:${String(menu.x)}:${String(menu.y)}`}
+          issue={menuIssue}
+          issues={issues}
+          me={meQuery.data}
+          x={menu.x}
+          y={menu.y}
+          open={menu.open}
+          onRun={(action) => {
+            runMenuAction(action, menuIssue)
+          }}
+          onClose={closeMenu}
         />
       )}
       {deleting !== null && (

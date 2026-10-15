@@ -37,6 +37,8 @@ import {
   descriptionOf,
   fillImages,
   pastedImages,
+  copiedDescription,
+  copyDraft,
   initialDraft,
   listWords,
   firstMissing,
@@ -47,6 +49,7 @@ import {
   typeRules,
   withType,
   withUploadFailures,
+  type CreateCopy,
   type CreateDraft,
   type FailedFile,
   type Notice,
@@ -86,6 +89,8 @@ interface CreateIssueDialogProps {
   group: CustomerOption | null
   /** The type the form starts as. A Story when absent. */
   type?: CreateType
+  /** Starts the form as a copy of this issue, which `selected`, `group` and `type` then leave alone. */
+  copy?: CreateCopy
   issues: readonly Issue[]
   me: CurrentUser | undefined
   onClose: () => void
@@ -142,6 +147,7 @@ export function CreateIssueDialog({
   selected,
   group,
   type,
+  copy,
   issues,
   me,
   onClose,
@@ -156,8 +162,12 @@ export function CreateIssueDialog({
         : { accountId: me.accountId, displayName: me.displayName, avatarUrl: me.avatarUrl },
     [me],
   )
+  // A copy's description, which the editor starts with and the draft holds until the user edits it.
+  const [copied] = useState(() => (copy === undefined ? null : copiedDescription(copy.description)))
   const [draft, setDraft] = useState<CreateDraft>(() =>
-    initialDraft(selected, issues, group, type, meUser ?? null),
+    copy === undefined
+      ? initialDraft(selected, issues, group, type, meUser ?? null)
+      : copyDraft(copy.source, copied, issues, meUser ?? null),
   )
   /** The user picked an assignee, so a current user that loads later must not replace it. */
   const assigneeChosen = useRef(false)
@@ -167,7 +177,7 @@ export function CreateIssueDialog({
   const [files, setFiles] = useState<File[]>([])
   const [attaching, setAttaching] = useState(false)
   /** The description editor holds more than its one empty paragraph. */
-  const [touched, setTouched] = useState(false)
+  const [touched, setTouched] = useState(copied !== null)
   const create = useCreateIssue()
   const attach = useAttachFile()
   const client = useQueryClient()
@@ -578,7 +588,7 @@ export function CreateIssueDialog({
                   <AdfEditor
                     ref={descriptionRef}
                     embedded
-                    value={null}
+                    value={copied}
                     issueKey=""
                     label="Description"
                     autoFocus={false}

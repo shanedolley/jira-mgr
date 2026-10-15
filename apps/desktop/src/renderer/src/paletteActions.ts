@@ -6,7 +6,7 @@ import { fitsParent } from './create'
 import { keyOf } from './keymap'
 
 /**
- * What the palette can do to the issue in context. Every id but `sprint`, `subIssue` and
+ * What the palette can do to the issue in context. Every id but `subIssue` and
  * `openInJira` is also the name of a command in `keymap.ts`, which is how its key shows.
  */
 export type ActionId =

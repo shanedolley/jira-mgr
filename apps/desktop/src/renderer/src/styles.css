@@ -309,6 +309,48 @@ input {
   box-shadow: 0 8px 24px oklch(0 0 0 / 0.18);
 }
 
+/*
+ * The right-click menu: a native popover that sits at the pointer, its left and top set by
+ * `IssueMenu`. Its items are 32px rows like the pickers' options; a submenu opens beside its row.
+ */
+.context-menu {
+  inset: auto;
+  width: 14rem;
+  /* The 18 items can be taller than a small window, so the menu scrolls inside it. */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.18);
+  outline: none;
+}
+
+.menu-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding-inline: 8px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.menu-item:hover {
+  background: var(--hover);
+}
+
+.menu-item:focus-visible,
+.menu-item[aria-expanded='true'] {
+  background: var(--selected);
+  outline: none;
+}
+
 /* A type icon rests in --rest and shows its type colour, --kind, under the pointer or its parent's. */
 .type-icon {
   color: var(--rest);

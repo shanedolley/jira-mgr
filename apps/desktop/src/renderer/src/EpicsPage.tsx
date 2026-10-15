@@ -81,6 +81,7 @@ function Row({
     due !== null && dueTone(due, today, issue.status.category === 'done') === 'overdue'
   return (
     <tr
+      data-issue-key={issue.key}
       onClick={() => {
         onOpen(issue.key)
       }}
