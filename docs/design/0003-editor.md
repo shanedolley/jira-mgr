@@ -190,6 +190,8 @@ While uploading, the view shows the local preview dimmed with "Uploading shot.pn
 
 **Dates in the create dialog.** The dialog's chip strip carries a Start date and a Due date, each a native date input and optional. `toCreateArgs` sends a date only when it is set, `issues:create` takes `startDate` and `dueDate` as `YYYY-MM-DD`, and core's `createIssue` resolves the Start date field by name. The dialog checks nothing between the two dates, so a Due date before the Start date shows no warning, as on the issue page. The notice after a create names a date Jira did not keep, as it does for the estimate.
 
+**Assignee in the create dialog (#237).** The dialog opens assigned to the current user (`me`, the account the app already holds), whatever opened it: `C`, the palette or Create sub-issue. Create more keeps the assignee of the previous create (`nextDraft`). `initialDraft` takes `me` and starts the draft with it. When `me` loads after the dialog opens, the dialog fills the draft once, unless the user has already picked an assignee (a ref set by the picker and `+me`; an empty assignee does not count, since the user may have chosen Unassigned). Unassigned and other people stay choosable, and `+me` hides while the assignee is the current user. `jm issue create` is unchanged and still creates unassigned without `--assignee`.
+
 The upload happens on drop, not on Save, as in Jira's editor. Cancelling the edit leaves the attachment on the issue; deleting it would be a destructive write the user did not ask for, and D5's attachment list shows it.
 
 ### Save

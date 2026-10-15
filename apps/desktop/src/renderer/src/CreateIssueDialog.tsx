@@ -4,6 +4,7 @@ import type { EditorDoc } from '@jira-mgr/core/adf'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -148,7 +149,18 @@ export function CreateIssueDialog({
   onCreated,
   returnFocus,
 }: CreateIssueDialogProps) {
-  const [draft, setDraft] = useState<CreateDraft>(() => initialDraft(selected, issues, group, type))
+  const meUser = useMemo<Person | undefined>(
+    () =>
+      me === undefined
+        ? undefined
+        : { accountId: me.accountId, displayName: me.displayName, avatarUrl: me.avatarUrl },
+    [me],
+  )
+  const [draft, setDraft] = useState<CreateDraft>(() =>
+    initialDraft(selected, issues, group, type, meUser ?? null),
+  )
+  /** The user picked an assignee, so a current user that loads later must not replace it. */
+  const assigneeChosen = useRef(false)
   const [more, setMore] = useState(false)
   const [last, setLast] = useState<Notice | null>(null)
   const [prompt, setPrompt] = useState<{ parent: Issue; match: ParentMatch } | null>(null)
@@ -199,6 +211,12 @@ export function CreateIssueDialog({
     create.reset()
     setDraft((d) => ({ ...d, ...changes }))
   }
+
+  // The current user may load after the dialog opens; the draft takes it unless the user chose.
+  useEffect(() => {
+    if (meUser === undefined || assigneeChosen.current) return
+    setDraft((d) => (d.assignee?.accountId === meUser.accountId ? d : { ...d, assignee: meUser }))
+  }, [meUser])
 
   const halfTyped = DATE_FIELDS.filter((field) => halfDates.has(field))
   const missing = [
@@ -441,10 +459,6 @@ export function CreateIssueDialog({
   }
 
   // Assignee
-  const meUser: Person | undefined =
-    me === undefined
-      ? undefined
-      : { accountId: me.accountId, displayName: me.displayName, avatarUrl: me.avatarUrl }
   const choices = assigneeChoices(
     meUser,
     recentAssignees(issues, me?.accountId ?? ''),
@@ -456,6 +470,7 @@ export function CreateIssueDialog({
   )
 
   function chooseAssignee(id: string) {
+    assigneeChosen.current = true
     if (id === NONE) edit({ assignee: null })
     else {
       const person = people.get(id)
@@ -752,6 +767,7 @@ export function CreateIssueDialog({
                     type="button"
                     aria-label="Assign to me"
                     onClick={() => {
+                      assigneeChosen.current = true
                       edit({ assignee: meUser })
                       // This button leaves the page once the assignee is me, so focus moves first.
                       assigneeTrigger.current?.focus()

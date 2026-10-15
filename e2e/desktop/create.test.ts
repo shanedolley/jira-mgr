@@ -8,11 +8,13 @@ import {
   counts,
   failRead,
   failUpload,
+  holdMe,
   launch,
   logIn,
   notices,
   refuseNextEdit,
   releaseEdit,
+  releaseMe,
   releaseUpload,
   setDescription,
   showEverything,
@@ -121,7 +123,7 @@ test('C opens the create modal for a Story under the selected Epic, with its Cus
   await expect(dialog().getByLabel('Create more')).not.toBeChecked()
   // Nothing about the selection leaks into a field the user has to choose.
   await expect(field('Sprint', 'Backlog')).toBeVisible()
-  await expect(field('Assignee', 'Unassigned')).toBeVisible()
+  await expect(field('Assignee', 'Test User')).toBeVisible()
 })
 
 test('C over a hovered Epic starts a Story under it, ahead of the selected row, and moves nothing', async () => {
@@ -359,8 +361,6 @@ test('sends every field of the form to Jira in one create request, then the spri
   await open()
   await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Cover every field')
-  await field('Assignee', 'Unassigned').click()
-  await option(/^Me/).click()
   await field('Priority', 'None').click()
   await option('High').click()
   await field('Labels', 'None').click()
@@ -443,8 +443,14 @@ test('Type is an icon beside the summary until it opens, then lists every type',
   await expect(field('Type', 'Bug')).toHaveText('')
 })
 
-/** The distinct rows the chips sit on, with the page set in `font` when one is given. */
+/**
+ * The distinct rows the chips sit on, with the page set in `font` when one is given. The dialog
+ * opens assigned to the current user, which hides +me, so this picks Unassigned to bring +me back:
+ * the strip's widest case.
+ */
 async function chipRows(font?: string) {
+  await field('Assignee', 'Test User').click()
+  await option('Unassigned').click()
   if (font !== undefined) {
     await window.addStyleTag({ content: `* { font-family: ${font} !important }` })
   }
@@ -548,21 +554,63 @@ test('typing an issue key in the Parent field finds that issue', async () => {
 test('+me assigns the current user and shows the name in the Assignee chip', async () => {
   await open()
   await openCreate(/PSAPAC-10,/)
+  await expect(dialog().getByRole('button', { name: 'Assign to me' })).toHaveCount(0)
+  await field('Assignee', 'Test User').click()
+  await option('Unassigned').click()
   await expect(field('Assignee', 'Unassigned')).toBeVisible()
 
   await dialog().getByRole('button', { name: 'Assign to me' }).click()
-  await expect(field('Assignee', /^Assignee: \S/)).not.toHaveAttribute(
-    'aria-label',
-    'Assignee: Unassigned',
-  )
+  await expect(field('Assignee', 'Test User')).toBeVisible()
   await expect(dialog().getByRole('button', { name: 'Assign to me' })).toHaveCount(0)
   // The +me button is gone, so focus moves to the chip it filled instead of falling to the page.
-  await expect(field('Assignee', /^Assignee: \S/)).toBeFocused()
+  await expect(field('Assignee', 'Test User')).toBeFocused()
 
   await dialog().getByLabel('Summary').fill('Mine')
   await dialog().getByRole('button', { name: 'Create issue' }).click()
   await settle(1)
   expect(await lastBody()).toMatchObject({ fields: { assignee: { accountId: 'u1' } } })
+})
+
+test('a created issue is assigned to the current user unless the assignee is changed', async () => {
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Summary').fill('Mine by default')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { assignee: { accountId: 'u1' } } })
+
+  await window.keyboard.press('Escape')
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Summary').fill('Nobody')
+  await field('Assignee', 'Test User').click()
+  await option('Unassigned').click()
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(2)
+  expect((await lastBody()).fields).not.toHaveProperty('assignee')
+})
+
+test('the current user loading after the dialog opens fills an untouched assignee', async () => {
+  await holdMe(app)
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await expect(field('Assignee', 'Unassigned')).toBeVisible()
+
+  await releaseMe(app)
+  await expect(field('Assignee', 'Test User')).toBeVisible()
+  await expect(dialog().getByRole('button', { name: 'Assign to me' })).toHaveCount(0)
+})
+
+test('the current user loading after the dialog opens leaves a chosen Unassigned alone', async () => {
+  await holdMe(app)
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await field('Assignee', 'Unassigned').click()
+  await option('Unassigned').click()
+
+  await releaseMe(app)
+  // The +me button appears once me loads, so the load has landed when it shows.
+  await expect(dialog().getByRole('button', { name: 'Assign to me' })).toBeVisible()
+  await expect(field('Assignee', 'Unassigned')).toBeVisible()
 })
 
 test('Cmd+Enter on an unready form focuses the first missing field and sends nothing', async () => {

@@ -102,13 +102,15 @@ export function defaultParent(
  * selection, with the Customer and Engagement of that Epic, else of the selection itself (the
  * Epic wins so a new Story does not start as a Customer mismatch, Q15). With no selected issue,
  * `group` (a Customer header the user stood on) supplies the Customer. `type` starts it as another
- * type: the palette's Create sub-issue starts a Subtask under the selection.
+ * type: the palette's Create sub-issue starts a Subtask under the selection. The assignee starts as
+ * `me`, the current user, or Unassigned while that has not loaded.
  */
 export function initialDraft(
   selected: Issue | null,
   issues: readonly Issue[],
   group: CustomerOption | null = null,
   type: CreateType = 'Story',
+  me: Person | null = null,
 ): CreateDraft {
   const parent = defaultParent(type, selected, issues)
   return {
@@ -118,7 +120,7 @@ export function initialDraft(
     customer: choice(parent?.customer ?? selected?.customer ?? group),
     engagement: choice(parent?.engagement ?? selected?.engagement),
     sprint: null,
-    assignee: null,
+    assignee: me,
     labels: [],
     priority: null,
     estimate: '',
