@@ -194,13 +194,14 @@ test('a wheel turn brings the hover back after J, and C starts from the row it p
   })
   await item(/PSAPAC-30,/).hover()
   await window.keyboard.press('j')
-  // The pointer still rests on the Epic, then the wheel puts the Story above it under the pointer.
-  await window.mouse.wheel(0, -40)
-  await expect.poll(hoveredLabel).toMatch(/^PSAPAC-1, Story/)
+  // The pointer still rests on the Epic. The wheel puts a Story further down under it, and J left
+  // the active row somewhere else.
+  await window.mouse.wheel(0, 80)
+  await expect.poll(hoveredLabel).toMatch(/^PSAPAC-31, Story/)
   await window.keyboard.press('c')
   await expect(dialog()).toBeVisible()
   await expect(field('Type', 'Subtask')).toBeVisible()
-  await expect(field('Parent', 'PSAPAC-1 Kick off the engagement')).toBeVisible()
+  await expect(field('Parent', 'PSAPAC-31 Build the monthly report')).toBeVisible()
 })
 
 test('C over a selected Story starts a Subtask under it, with its Customer and Engagement', async () => {
