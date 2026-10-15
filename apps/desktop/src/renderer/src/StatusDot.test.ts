@@ -23,8 +23,17 @@ describe('statusShape', () => {
     expect(statusShape({ name: ' hold ', category: 'new' })).toBe('hold')
   })
 
+  it('draws On Hold as Hold, whatever the case or the space', () => {
+    expect(statusShape({ name: 'On Hold', category: 'new' })).toBe('hold')
+    expect(statusShape({ name: ' on hold ', category: 'new' })).toBe('hold')
+    expect(statusShape({ name: 'ON  HOLD', category: 'new' })).toBe('hold')
+  })
+
   it('leaves a name that only contains Hold alone', () => {
     expect(statusShape({ name: 'Holding', category: 'new' })).toBe('ring')
+    expect(statusShape({ name: 'Hold on', category: 'new' })).toBe('ring')
+    expect(statusShape({ name: 'Onhold', category: 'new' })).toBe('ring')
+    expect(statusShape({ name: 'On Hold Review', category: 'new' })).toBe('ring')
   })
 })
 
@@ -50,10 +59,12 @@ describe('summaryFade', () => {
   it('fades the summary of a Hold issue to the ring opacity, whatever the case', () => {
     expect(summaryFade({ name: 'Hold' })).toEqual({ opacity: HOLD_OPACITY })
     expect(summaryFade({ name: ' HOLD ' })).toEqual({ opacity: 0.3 })
+    expect(summaryFade({ name: 'On Hold' })).toEqual({ opacity: 0.3 })
   })
 
   it('leaves every other status at full opacity', () => {
     expect(summaryFade({ name: 'To Do' })).toBeUndefined()
     expect(summaryFade({ name: 'Holding' })).toBeUndefined()
+    expect(summaryFade({ name: 'Hold on' })).toBeUndefined()
   })
 })
