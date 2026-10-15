@@ -255,6 +255,22 @@ test('Undo puts the previous order back, one move at a time', async () => {
   await expect(notices(window)).toContainText('Nothing to undo')
 })
 
+test('Undo puts the order back and keeps a property shown since the move', async () => {
+  await open()
+  await row(4).click()
+  await window.keyboard.press('Alt+Shift+ArrowUp')
+  await expect.poll(async () => (await savedDisplay())?.order).toBe('manual')
+  await inDisplayMenu(async () => {
+    await choice('Display properties', 'Labels').click()
+  })
+  await expect.poll(async () => (await savedDisplay())?.properties).toContain('labels')
+
+  await row(4).focus()
+  await window.keyboard.press('Meta+z')
+  await expect.poll(async () => (await savedDisplay())?.order).toBe('key')
+  expect((await savedDisplay())?.properties).toContain('labels')
+})
+
 test('each saved view keeps its own manual order, and the file gains one optional field', async () => {
   const createView = async (name: string) => {
     await window.getByRole('button', { name: 'New view' }).click()
