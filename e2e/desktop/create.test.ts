@@ -380,6 +380,15 @@ test('a date typed only in part blocks the create and says which, until it is fi
   await expect(start).toBeFocused()
   expect((await counts(app)).edits).toBe(0)
 
+  // Typed in part with the cursor still in the field: no input or blur event has told the form.
+  await start.fill('')
+  await start.focus()
+  await window.keyboard.type('10')
+  await window.keyboard.press('Meta+Enter')
+  await expect(start).toHaveAttribute('aria-invalid', 'true')
+  await expect(start).toBeFocused()
+  expect((await counts(app)).edits).toBe(0)
+
   await start.fill('2026-10-01')
   await expect(start).not.toHaveAttribute('aria-invalid')
   await expect(create).toBeEnabled()

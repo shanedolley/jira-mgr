@@ -235,8 +235,10 @@ export function CreateIssueDialog({
   function submit(event?: SyntheticEvent) {
     event?.preventDefault()
     if (pending) return
-    const half = halfTyped[0]
+    // The browser fires no input event while a date is typed in part, so ask the input itself.
+    const half = DATE_FIELDS.find((field) => dateRefs.current[field]?.validity.badInput)
     if (half !== undefined) {
+      setDateHalf(half, true)
       dateRefs.current[half]?.focus()
       return
     }
