@@ -35,13 +35,13 @@
   },
   "devDependencies": {
     "@jira-mgr/config-ts": "workspace:*",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "msw": "^2.15.0",
     "typescript": "~7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.3"
   },
   "dependencies": {
-    "marked": "^18.0.14",
+    "marked": "^18.1.0",
     "zod": "^4.6.5"
   }
 }
