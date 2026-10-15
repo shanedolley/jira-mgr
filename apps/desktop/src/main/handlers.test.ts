@@ -549,6 +549,31 @@ describe('display', () => {
     expect(calls).toEqual([])
   })
 
+  it('settings:setDisplay passes a manual order on, and refuses one it cannot hold', async () => {
+    const manual = {
+      properties: [],
+      order: 'manual',
+      direction: 'asc',
+      manual: ['PSAPAC-2', 'PSAPAC-1'],
+    }
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    expect(await handlers['settings:setDisplay'](manual, noProgress)).toMatchObject({ ok: true })
+    expect(calls).toEqual([{ method: 'setDisplay', args: [manual] }])
+    for (const bad of [
+      [1],
+      'PSAPAC-1',
+      [''],
+      ['x'.repeat(65)],
+      Array.from({ length: 20001 }, () => 'P-1'),
+    ]) {
+      expect(
+        await handlers['settings:setDisplay']({ ...manual, manual: bad }, noProgress),
+      ).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    }
+    expect(calls).toHaveLength(1)
+  })
+
   it('settings:setDisplay passes the properties and order to the backend', async () => {
     const { backend, calls } = fakeBackend()
     const result = await createHandlers(backend)['settings:setDisplay'](DISPLAY, noProgress)

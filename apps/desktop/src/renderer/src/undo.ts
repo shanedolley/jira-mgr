@@ -4,7 +4,7 @@ import type { IssueDetail } from '@jira-mgr/core/issue'
 import { SWAPPABLE_TYPES, formatEstimate, type SwappableType } from '@jira-mgr/core/issue'
 import type { QueryClient } from '@tanstack/react-query'
 
-import type { BatchChange, IssueChanges } from '../../shared/ipc'
+import type { BatchChange, Display, IssueChanges } from '../../shared/ipc'
 import type { BatchDone, BatchRequestItem } from './optimistic'
 import { currentSprint, hoursText } from './properties'
 
@@ -47,14 +47,48 @@ export interface BatchEntry {
   parts: UndoEntry[]
 }
 
-/** What the stack holds: one issue's edit, or a batch of them. */
-export type StackEntry = UndoEntry | BatchEntry
+/**
+ * A row moved among its siblings, which changed the display's order. It never reaches Jira: an
+ * undo writes `before` back to the settings, and only while the display still shows `after`.
+ */
+export interface OrderEntry {
+  /** The issue that moved. */
+  key: string
+  /** What the toast says after the move: "Moved PSAPAC-12 to position 2 of 5". */
+  title: string
+  display: { before: Display; after: Display }
+}
+
+/** What the stack holds: one issue's edit, a batch of them, or a local change of order. */
+export type StackEntry = UndoEntry | BatchEntry | OrderEntry
 
 export const isBatch = (entry: StackEntry): entry is BatchEntry => 'parts' in entry
 
+export const isOrder = (entry: StackEntry): entry is OrderEntry => 'display' in entry
+
 /** True when an undo of the entry can write something back. */
-export const reversible = (entry: StackEntry): boolean =>
-  isBatch(entry) ? entry.parts.some((part) => part.reversal !== null) : entry.reversal !== null
+export const reversible = (entry: StackEntry): boolean => {
+  if (isOrder(entry)) return true
+  return isBatch(entry)
+    ? entry.parts.some((part) => part.reversal !== null)
+    : entry.reversal !== null
+}
+
+/** True when two displays order the Tree alike: the same order and direction and, under Manual, the same list. */
+export const sameOrdering = (a: Display, b: Display): boolean =>
+  a.order === b.order &&
+  a.direction === b.direction &&
+  (a.order !== 'manual' ||
+    ((a.manual ?? []).length === (b.manual ?? []).length &&
+      (a.manual ?? []).every((key, index) => key === b.manual?.[index])))
+
+/** `shown` with the ordering of `before` put back: the order, the direction and the list, and no other setting. */
+export const restoreOrdering = (shown: Display, before: Display): Display => {
+  const next: Display = { ...shown, order: before.order, direction: before.direction }
+  if (before.manual === undefined) delete next.manual
+  else next.manual = before.manual
+  return next
+}
 
 /** How many edits the stack remembers. The oldest falls off the bottom. */
 export const UNDO_DEPTH = 50

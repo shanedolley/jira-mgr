@@ -1,5 +1,6 @@
 import {
   DEFAULT_ORDER,
+  MANUAL_ORDER_LIMIT,
   ORDER_DEFAULT_DIRECTION,
   priorityLevel,
   type IssueOrder,
@@ -31,6 +32,12 @@ export interface HierarchyOptions {
   order?: IssueOrder | undefined
   /** Which way `order` runs; the order's own default (`ORDER_DEFAULT_DIRECTION`) when absent. Key ties break the same way. */
   direction?: OrderDirection | undefined
+  /**
+   * The issue keys in the order `manual` follows, siblings in the order they appear. An issue the
+   * list does not name sits after the named ones, by key ascending; a key naming no loaded issue is
+   * ignored. Read only while `order` is `manual`, which ignores `direction`.
+   */
+  manual?: readonly string[] | undefined
 }
 
 export interface HierarchyNode {
@@ -67,7 +74,8 @@ const INTERNAL_CUSTOMERS = ['Collibra (Internal team)', 'Collibra (Internal temp
 
 const isEpic = (i: Issue) => i.issueType.hierarchyLevel >= 1
 const isDone = (i: Issue) => i.status.category === 'done'
-const keyNumber = (i: Issue) => Number(i.key.slice(i.key.lastIndexOf('-') + 1))
+const numberOf = (key: string) => Number(key.slice(key.lastIndexOf('-') + 1))
+const keyNumber = (i: Issue) => numberOf(i.key)
 
 function statusRank(i: Issue): number {
   const rank = STATUS_ORDER.indexOf(i.status.name)
@@ -79,7 +87,7 @@ const priorityOf = (i: Issue) => priorityLevel(i.priority?.name ?? '')
 type Compare = (a: Issue, b: Issue) => number
 
 /** Each order's `asc` comparison: lowest priority, oldest update, soonest due date, first status. */
-const FIELD_ORDERS: Record<Exclude<IssueOrder, 'key'>, Compare> = {
+const FIELD_ORDERS: Record<Exclude<IssueOrder, 'key' | 'manual'>, Compare> = {
   status: (a, b) => statusRank(a) - statusRank(b),
   priority: (a, b) => priorityOf(a) - priorityOf(b),
   updated: (a, b) => Date.parse(a.updated) - Date.parse(b.updated),
@@ -92,15 +100,36 @@ const LAST: Partial<Record<IssueOrder, (i: Issue) => boolean>> = {
   status: (i) => !STATUS_ORDER.includes(i.status.name),
 }
 
+/** Orders keys by their place in `manual`; keys it does not name follow, by key number ascending. */
+function manualCompare(manual: readonly string[]): (a: string, b: string) => number {
+  const rank = new Map<string, number>()
+  manual.forEach((key, index) => rank.has(key) || rank.set(key, index))
+  const unnamed = manual.length
+  return (a, b) => (rank.get(a) ?? unnamed) - (rank.get(b) ?? unnamed) || numberOf(a) - numberOf(b)
+}
+
+/** The keys in the order a Tree under `manual` shows them as siblings. */
+export function sortedByManual(keys: readonly string[], manual: readonly string[]): string[] {
+  return keys.toSorted(manualCompare(manual))
+}
+
 /**
  * One comparator for every list. `asc` is the order's own comparison and `desc` reverses it, but
  * issues the order cannot place stay last. Ties break by key number in the same direction, and
  * `key` is that tie-break alone.
  */
-function comparator(order: IssueOrder, direction: OrderDirection): Compare {
+function comparator(
+  order: IssueOrder,
+  direction: OrderDirection,
+  manual: readonly string[],
+): Compare {
   const sign = direction === 'asc' ? 1 : -1
   const byKey: Compare = (a, b) => sign * (keyNumber(a) - keyNumber(b))
   if (order === 'key') return byKey
+  if (order === 'manual') {
+    const byManual = manualCompare(manual)
+    return (a, b) => byManual(a.key, b.key)
+  }
   const field = FIELD_ORDERS[order]
   const unplaced = LAST[order]
   return (a, b) =>
@@ -129,7 +158,11 @@ function byCustomer(
  */
 export function buildHierarchy(issues: Issue[], options: HierarchyOptions): CustomerGroup[] {
   const order = options.order ?? DEFAULT_ORDER
-  const sort = comparator(order, options.direction ?? ORDER_DEFAULT_DIRECTION[order])
+  const sort = comparator(
+    order,
+    options.direction ?? ORDER_DEFAULT_DIRECTION[order],
+    options.manual ?? [],
+  )
   const everyKey = new Map(issues.map((i) => [i.key, i]))
   // "Hide done" builds from the open issues alone, so no Done issue is a row, context or chip.
   const loaded = options.hideDone ? issues.filter((i) => !isDone(i)) : issues
@@ -235,6 +268,84 @@ export function buildHierarchy(issues: Issue[], options: HierarchyOptions): Cust
       noEpic: g.noEpic.sort((a, b) => sort(a.issue, b.issue)),
     }))
     .sort(byCustomer)
+}
+
+/**
+ * Every issue key the groups show, depth first in display order, Done children behind a chip
+ * included. It seeds a manual order from the order on screen: building again with this list as
+ * `manual` gives the same tree, since each sibling list keeps its relative order.
+ */
+export function treeOrder(groups: readonly CustomerGroup[]): string[] {
+  const keys: string[] = []
+  const walk = (node: HierarchyNode) => {
+    keys.push(node.issue.key)
+    node.children.forEach(walk)
+    node.doneChildren.forEach(walk)
+  }
+  for (const group of groups) {
+    group.epics.forEach(walk)
+    group.noEpic.forEach(walk)
+  }
+  return keys
+}
+
+/**
+ * The keys of the issues that share a parent with `key` (itself included), in display order: the
+ * Epics of its Customer, the issues of its No Epic group, or the children (or Done children) of
+ * its parent. `undefined` when no group shows the issue.
+ */
+export function siblingKeys(groups: readonly CustomerGroup[], key: string): string[] | undefined {
+  const keysOf = (nodes: readonly HierarchyNode[]) => nodes.map((n) => n.issue.key)
+  const find = (nodes: readonly HierarchyNode[]): string[] | undefined => {
+    if (nodes.some((n) => n.issue.key === key)) return keysOf(nodes)
+    for (const node of nodes) {
+      const found = find(node.children) ?? find(node.doneChildren)
+      if (found !== undefined) return found
+    }
+    return undefined
+  }
+  for (const group of groups) {
+    const found = find(group.epics) ?? find(group.noEpic)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
+
+/**
+ * The manual order after `key` moves to `toIndex` among `siblings` (its siblings in display order,
+ * itself included; `toIndex` is clamped). Only the siblings change places: they take the slots the
+ * siblings held in `manual`, so an unseen sibling keeps its place between them, and any sibling the
+ * list did not name yet follows the others. The list is deduplicated. Unchanged when `key` is not
+ * among `siblings`.
+ */
+export function moveInManualOrder(
+  manual: readonly string[],
+  siblings: readonly string[],
+  key: string,
+  toIndex: number,
+): string[] {
+  const from = siblings.indexOf(key)
+  const list = [...new Set(manual)]
+  if (from < 0) return list
+  const to = Math.min(siblings.length - 1, Math.max(0, toIndex))
+  const moved = siblings.toSpliced(from, 1).toSpliced(to, 0, key)
+  const shared = new Set(siblings)
+  let next = 0
+  const placed = list.flatMap((k) => {
+    if (!shared.has(k)) return [k]
+    const replacement = moved[next++]
+    return replacement === undefined ? [] : [replacement]
+  })
+  return [...placed, ...moved.slice(next)]
+}
+
+/**
+ * `manual` as it can be saved: a list within `MANUAL_ORDER_LIMIT` is kept whole. A longer one drops
+ * the keys of issues no longer loaded, since those only pile up, then its tail if it is still long.
+ */
+export function fitManualOrder(manual: readonly string[], loaded: ReadonlySet<string>): string[] {
+  if (manual.length <= MANUAL_ORDER_LIMIT) return [...manual]
+  return manual.filter((key) => loaded.has(key)).slice(0, MANUAL_ORDER_LIMIT)
 }
 
 export interface Progress {

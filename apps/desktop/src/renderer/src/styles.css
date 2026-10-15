@@ -97,6 +97,19 @@
   background: var(--row-focus);
 }
 
+/* A dragged issue dims, and the line marks the edge its drop would land beside. */
+.tree-row[data-dragging='true'] {
+  opacity: 0.5;
+}
+
+.tree-row[data-drop='above'] {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.tree-row[data-drop='below'] {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 /* After the row rules, with the same weight as the active one, so a header keeps its band. */
 .tree-row[data-band] {
   background: var(--band);

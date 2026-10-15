@@ -17,13 +17,16 @@ The state folder is `~/Library/Application Support/jira-mgr/`. `JM_STATE_DIR` re
 | `toggles.assigneeMe` | boolean | `false` |
 | `toggles.hideEmptyCustomers` | boolean | `true` |
 | `display.properties` | array of `labels`, `sprint`, `due`, `created`, `updated` | `["updated"]` |
-| `display.order` | `key`, `priority`, `updated`, `due` or `status` | `key` |
-| `display.direction` | `asc` or `desc` | the order's own: `desc` for `key`, `priority` and `updated`, `asc` for `due` and `status` |
+| `display.order` | `key`, `priority`, `updated`, `due`, `status` or `manual` | `key` |
+| `display.direction` | `asc` or `desc` | the order's own: `desc` for `key`, `priority` and `updated`, `asc` for `due`, `status` and `manual` |
+| `display.manual` | optional array of at most 20000 issue keys | absent |
 | `treeLevel` | `customers`, `epics`, `stories` or `all` | `stories` |
 
 `fieldOverrides` is described under [Settings File](../architecture/auth-and-keychain.md#settings-file).
 
 `display` is what the Tree shows while no saved view is applied: the row properties after the title, and how issues sort within an Epic, among an Epic's children and in No Epic. `jm` ignores it, as it ignores `toggles`. Every Jira request reads this file, so a value the build does not know never fails it: unknown property names drop, an unknown `order` reads as `key`, an unknown or missing `direction` as the order's default, and a `display` that is not an object reads as the defaults. The properties are kept once each, in the order above. `direction` was added with #222 and is additive: a file or view without it reads as its order's default direction, so the primary sort is the one every file had before, and loads unchanged. Ties between equal values now break by key in the chosen direction. `asc` is lowest, oldest, soonest or first-listed first; `desc` reverses it. An older build reads a file with `display` without error but drops the key, and its next write loses it, along with `direction`.
+
+`display.manual` and the `manual` order were added with #223 and are additive. `manual` lists issue keys in the order the user dragged them, and the Tree reads it only while `order` is `manual`: each sibling list (the Epics of a Customer, an Epic's children, No Epic, a Story's Subtasks, the Done children behind a chip) follows the list's order, an issue it does not name sits after the named ones by key number ascending, and a key naming no loaded issue is ignored. `direction` does not apply to `manual`, and a `manual` view carries `asc`. The key is absent until the user first moves a row, so a file without it loads unchanged. A value that is not a list of at most 20000 strings reads as no list, and the rest of the display stays. The list is kept when the order changes to another, so choosing Manual again restores it. It never reaches Jira. An older build reads `order: "manual"` as `key`, ignores `manual`, and its next write of the file loses the list.
 
 `treeLevel` is how far the Tree opens, set from the Groups menu or by `Shift+Left` (`customers`) and `Shift+Right` (`all`). `stories` opens Customers, Epics and No Epic and closes each Story, Task and Bug. `jm` ignores it, and a saved view neither carries it nor changes it. A missing key, or a value the build does not know, reads as `stories` and never fails the file. An older build drops the key, and its next write loses it.
 
@@ -41,7 +44,7 @@ An array of saved views. The app writes it; `jm` only reads it. The array order 
 | `filters.not` | optional object holding any of the array keys above (every one but `text` and `dates`), the values to leave out |
 | `filters.text` | optional string |
 | `toggles` | the same three keys and defaults as `settings.json` |
-| `display` | optional, the same `properties`, `order` and `direction` as `settings.json` and read as leniently. A view without it applies no display |
+| `display` | optional, the same `properties`, `order`, `direction` and `manual` as `settings.json` and read as leniently, so each view keeps its own manual order. A view without it applies no display |
 
 Values within a key are alternatives, and every key that is set must match. The values:
 

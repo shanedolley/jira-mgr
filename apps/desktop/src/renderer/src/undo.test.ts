@@ -23,6 +23,10 @@ import {
   summaryEntry,
   undoStack,
   isBatch,
+  isOrder,
+  restoreOrdering,
+  sameOrdering,
+  type OrderEntry,
   type StackEntry,
   type UndoEntry,
 } from './undo'
@@ -474,5 +478,49 @@ describe('batch entries', () => {
     expect(stack.pop()).toMatchObject({ title: 'Changed 2', what: 'status' })
     batchRecorder(client, () => 'x', true)([done('P-1', { status: TODO })])
     expect(stack.size).toBe(0)
+  })
+})
+
+describe('order entries', () => {
+  const display = { properties: [], order: 'manual' as const, direction: 'asc' as const }
+  const entry: OrderEntry = {
+    key: 'P-1',
+    title: 'Moved P-1 to position 2 of 3',
+    display: {
+      before: { ...display, order: 'key', direction: 'desc' },
+      after: { ...display, manual: ['P-2', 'P-1', 'P-3'] },
+    },
+  }
+
+  it('is told apart from an edit and a batch, and can always be undone', () => {
+    expect(isOrder(entry)).toBe(true)
+    expect(isBatch(entry)).toBe(false)
+    expect(reversible(entry)).toBe(true)
+  })
+
+  it('goes on the stack and comes off it like an edit', () => {
+    const stack = new UndoStack()
+    stack.push(entry)
+    expect(stack.pop()).toBe(entry)
+  })
+
+  it('puts back the ordering alone, keeping the properties shown since', () => {
+    const shown = { ...entry.display.after, properties: ['labels' as const] }
+    const back = restoreOrdering(shown, entry.display.before)
+    expect(back).toEqual({ properties: ['labels'], order: 'key', direction: 'desc' })
+    // Before a first move there was no list, so none comes back; a list that was there does.
+    expect(back).not.toHaveProperty('manual')
+    expect(restoreOrdering(shown, entry.display.after)).toEqual(shown)
+  })
+
+  it('compares the order, the direction and, under Manual, the list', () => {
+    const a = { ...display, manual: ['P-1', 'P-2'] }
+    expect(sameOrdering(a, { ...a, properties: ['due'] })).toBe(true)
+    expect(sameOrdering(a, { ...a, manual: ['P-2', 'P-1'] })).toBe(false)
+    expect(sameOrdering(a, { ...a, manual: ['P-1'] })).toBe(false)
+    expect(sameOrdering(a, { ...a, order: 'key', direction: 'desc' })).toBe(false)
+    // A leftover list under another order changes nothing.
+    const key = { ...display, order: 'key' as const, direction: 'desc' as const }
+    expect(sameOrdering(key, { ...key, manual: ['P-1'] })).toBe(true)
   })
 })

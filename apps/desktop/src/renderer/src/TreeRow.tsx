@@ -480,6 +480,10 @@ interface TreeRowProps {
   selecting: boolean
   /** The shared timer runs on this row's issue. */
   timing: boolean
+  /** The row is being dragged to a new place among its siblings. */
+  dragging: boolean
+  /** The edge a drop would land beside, drawn as a line; `undefined` for every other row. */
+  dropEdge: 'above' | 'below' | undefined
   /** The row properties the Display menu chose, shown on issue rows while the Tree is wide. */
   properties: readonly RowProperty[]
   /** Today's local date, which the due date's colour and the short dates read. */
@@ -520,6 +524,8 @@ export const TreeRow = memo(function TreeRow({
   checked,
   selecting,
   timing,
+  dragging,
+  dropEdge,
   properties,
   today,
   blockedBy,
@@ -548,6 +554,11 @@ export const TreeRow = memo(function TreeRow({
       aria-selected={selected ? true : undefined}
       aria-checked={checkable && selecting ? checked : undefined}
       data-active={active}
+      data-row-id={row.id}
+      // An issue row drags to a new place among its siblings; a header and a chip do not.
+      draggable={row.kind === 'issue'}
+      data-dragging={dragging ? 'true' : undefined}
+      data-drop={dropEdge}
       // A Shift+click checks a range, so it must not also select the text it crosses. Stopping the
       // default also stops the click from focusing the Tree, so the Tree takes focus here.
       onMouseDown={(event) => {

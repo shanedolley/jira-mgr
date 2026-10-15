@@ -5,12 +5,17 @@ import {
   buildHierarchy,
   childProgress,
   customerTotals,
+  fitManualOrder,
+  moveInManualOrder,
+  siblingKeys,
+  sortedByManual,
   STATUS_ORDER,
+  treeOrder,
   type CustomerGroup,
   type HierarchyNode,
   type HierarchyOptions,
 } from './hierarchy.js'
-import { ISSUE_ORDERS, ORDER_DEFAULT_DIRECTION } from './display.js'
+import { ISSUE_ORDERS, MANUAL_ORDER_LIMIT, ORDER_DEFAULT_DIRECTION } from './display.js'
 import { issueSchema, type Issue } from './issue.js'
 
 const ACME = { id: '1', value: 'Acme' }
@@ -713,6 +718,7 @@ describe('direction', () => {
       updated: 'desc',
       due: 'asc',
       status: 'asc',
+      manual: 'asc',
     })
   })
 
@@ -877,6 +883,183 @@ describe('direction', () => {
     for (const direction of ['asc', 'desc'] as const) {
       expect(names(build(grouped, { direction }))).toEqual(['Acme', 'beta', null, TEAM.value])
     }
+  })
+})
+
+describe('manual order', () => {
+  const epics = [
+    issue('P-1', { type: 'Epic', customer: ACME }),
+    issue('P-2', { type: 'Epic', customer: ACME }),
+    issue('P-3', { type: 'Epic', customer: ACME }),
+    issue('P-30', { type: 'Epic', customer: BETA }),
+    issue('P-31', { type: 'Epic', customer: BETA }),
+  ]
+  const stories = [
+    issue('P-10', { parent: 'P-1', customer: ACME }),
+    issue('P-11', { parent: 'P-1', customer: ACME }),
+    issue('P-12', { parent: 'P-1', customer: ACME }),
+    issue('P-13', { type: 'Subtask', parent: 'P-11', customer: ACME }),
+    issue('P-14', { type: 'Subtask', parent: 'P-11', customer: ACME }),
+    issue('P-20', { customer: ACME }),
+    issue('P-21', { customer: ACME }),
+  ]
+  const all = [...epics, ...stories]
+  const manual = (list: string[], extra: Partial<HierarchyOptions> = {}) =>
+    build(all, { order: 'manual', manual: list, ...extra })
+  const acme = (groups: CustomerGroup[]) => groups.find((g) => g.customer?.id === ACME.id)
+  const kids = (groups: CustomerGroup[], key: string) =>
+    keys(acme(groups)?.epics.find((e) => e.issue.key === key)?.children ?? [])
+
+  it('orders every level by the list, siblings only', () => {
+    const tree = manual(['P-21', 'P-3', 'P-12', 'P-14', 'P-1', 'P-13', 'P-10', 'P-2', 'P-20'])
+    expect(keys(acme(tree)?.epics ?? [])).toEqual(['P-3', 'P-1', 'P-2'])
+    expect(kids(tree, 'P-1')).toEqual(['P-12', 'P-10', 'P-11'])
+    expect(
+      keys(
+        acme(tree)
+          ?.epics.find((e) => e.issue.key === 'P-1')
+          ?.children.find((c) => c.issue.key === 'P-11')?.children ?? [],
+      ),
+    ).toEqual(['P-14', 'P-13'])
+    expect(keys(acme(tree)?.noEpic ?? [])).toEqual(['P-21', 'P-20'])
+  })
+
+  it('puts an issue the list does not name after the named ones, by key ascending', () => {
+    const tree = manual(['P-2', 'P-12'])
+    expect(keys(acme(tree)?.epics ?? [])).toEqual(['P-2', 'P-1', 'P-3'])
+    expect(kids(tree, 'P-1')).toEqual(['P-12', 'P-10', 'P-11'])
+    expect(keys(acme(tree)?.noEpic ?? [])).toEqual(['P-20', 'P-21'])
+  })
+
+  it('orders every issue by key ascending when the list is empty or absent', () => {
+    expect(kids(manual([]), 'P-1')).toEqual(['P-10', 'P-11', 'P-12'])
+    expect(kids(build(all, { order: 'manual' }), 'P-1')).toEqual(['P-10', 'P-11', 'P-12'])
+  })
+
+  it('ignores a key naming no loaded issue, and a key listed twice counts at its first place', () => {
+    const tree = manual(['P-99', 'P-12', 'P-5', 'P-10', 'P-12', 'P-11'])
+    expect(kids(tree, 'P-1')).toEqual(['P-12', 'P-10', 'P-11'])
+  })
+
+  it('ignores the direction', () => {
+    const list = ['P-3', 'P-1', 'P-2']
+    expect(manual(list, { direction: 'desc' })).toEqual(manual(list, { direction: 'asc' }))
+  })
+
+  it('keeps the Customer groups in their own order', () => {
+    const tree = manual(['P-31', 'P-30', 'P-3', 'P-2', 'P-1'])
+    expect(names(tree)).toEqual(['Acme', 'beta'])
+    expect(keys(tree[1]?.epics ?? [])).toEqual(['P-31', 'P-30'])
+  })
+
+  it('does not read the list under another order', () => {
+    const tree = build(all, { order: 'key', manual: ['P-3', 'P-2', 'P-1'] })
+    expect(keys(acme(tree)?.epics ?? [])).toEqual(['P-3', 'P-2', 'P-1'])
+    const asc = build(all, { order: 'key', direction: 'asc', manual: ['P-3', 'P-2', 'P-1'] })
+    expect(keys(acme(asc)?.epics ?? [])).toEqual(['P-1', 'P-2', 'P-3'])
+  })
+
+  it('orders the Done children behind a chip by the list too', () => {
+    const withDone = [
+      ...all,
+      issue('P-40', { parent: 'P-1', customer: ACME, status: 'Done' }),
+      issue('P-41', { parent: 'P-1', customer: ACME, status: 'Done' }),
+    ]
+    const epic = build(withDone, { order: 'manual', manual: ['P-41', 'P-40'] })[0]?.epics[0]
+    expect(keys(epic?.doneChildren ?? [])).toEqual(['P-41', 'P-40'])
+  })
+
+  it('treeOrder seeds a list that rebuilds the tree the groups show', () => {
+    const shown = build(all, { order: 'priority', direction: 'asc' })
+    expect(treeOrder(shown)).toHaveLength(all.length)
+    expect(manual(treeOrder(shown))).toEqual(shown)
+  })
+
+  it('siblingKeys names the issues that share a parent, in display order', () => {
+    const tree = manual(['P-12', 'P-11', 'P-10'])
+    expect(siblingKeys(tree, 'P-10')).toEqual(['P-12', 'P-11', 'P-10'])
+    expect(siblingKeys(tree, 'P-14')).toEqual(['P-13', 'P-14'])
+    expect(siblingKeys(tree, 'P-2')).toEqual(['P-1', 'P-2', 'P-3'])
+    expect(siblingKeys(tree, 'P-30')).toEqual(['P-30', 'P-31'])
+    expect(siblingKeys(tree, 'P-21')).toEqual(['P-20', 'P-21'])
+    expect(siblingKeys(tree, 'P-404')).toBeUndefined()
+  })
+
+  it('sortedByManual puts keys in the list order, then the unnamed ones by key number', () => {
+    expect(sortedByManual(['P-10', 'P-9', 'P-2', 'P-1'], ['P-2', 'P-10'])).toEqual([
+      'P-2',
+      'P-10',
+      'P-1',
+      'P-9',
+    ])
+  })
+
+  describe('fitManualOrder', () => {
+    const loaded = new Set(['A', 'B'])
+
+    it('keeps a list within the cap whole, loaded or not', () => {
+      expect(fitManualOrder(['A', 'GONE', 'B'], loaded)).toEqual(['A', 'GONE', 'B'])
+    })
+
+    it('drops the keys of issues no longer loaded once the list passes the cap', () => {
+      const long = [
+        'A',
+        ...Array.from({ length: MANUAL_ORDER_LIMIT }, (_, i) => `GONE-${String(i)}`),
+        'B',
+      ]
+      expect(fitManualOrder(long, loaded)).toEqual(['A', 'B'])
+    })
+
+    it('trims the tail when loaded issues alone pass the cap', () => {
+      const keys = Array.from({ length: MANUAL_ORDER_LIMIT + 5 }, (_, i) => `P-${String(i)}`)
+      const fitted = fitManualOrder(keys, new Set(keys))
+      expect(fitted).toHaveLength(MANUAL_ORDER_LIMIT)
+      expect(fitted[0]).toBe('P-0')
+    })
+  })
+
+  describe('moveInManualOrder', () => {
+    it.each([
+      [['A', 'B', 'C'], 0, 2, ['B', 'C', 'A']],
+      [['A', 'B', 'C'], 2, 0, ['C', 'A', 'B']],
+      [['A', 'B', 'C'], 1, 1, ['A', 'B', 'C']],
+      [['A', 'B', 'C'], 0, 9, ['B', 'C', 'A']],
+      [['A', 'B', 'C'], 2, -3, ['C', 'A', 'B']],
+    ])('moves %j from %i to %i', (siblings, from, to, expected) => {
+      const key = siblings[from] ?? ''
+      expect(moveInManualOrder(siblings, siblings, key, to)).toEqual(expected)
+    })
+
+    it('leaves a sibling the user cannot see where it sat between the others', () => {
+      // H is filtered out of view, so it is not among the siblings on screen.
+      expect(moveInManualOrder(['A', 'H', 'B'], ['A', 'B'], 'B', 0)).toEqual(['B', 'H', 'A'])
+    })
+
+    it('keeps entries of other parents and names the unnamed siblings after the named ones', () => {
+      expect(moveInManualOrder(['X', 'A', 'Y'], ['A', 'U'], 'U', 0)).toEqual(['X', 'U', 'Y', 'A'])
+    })
+
+    it('names the whole list from scratch', () => {
+      expect(moveInManualOrder([], ['A', 'B', 'C'], 'C', 0)).toEqual(['C', 'A', 'B'])
+    })
+
+    it('drops a repeated key and leaves a key outside the siblings alone', () => {
+      expect(moveInManualOrder(['A', 'B', 'A'], ['A', 'B'], 'A', 1)).toEqual(['B', 'A'])
+      expect(moveInManualOrder(['A', 'B'], ['A', 'B'], 'Z', 0)).toEqual(['A', 'B'])
+    })
+
+    it('gives a tree that shows the move and no other sibling list changed', () => {
+      const shown = manual(treeOrder(build(all)))
+      const siblings = siblingKeys(shown, 'P-12') ?? []
+      const next = moveInManualOrder(treeOrder(shown), siblings, 'P-12', 0)
+      const moved = manual(next)
+      expect(kids(moved, 'P-1')).toEqual([
+        'P-12',
+        ...kids(shown, 'P-1').filter((k) => k !== 'P-12'),
+      ])
+      expect(keys(acme(moved)?.epics ?? [])).toEqual(keys(acme(shown)?.epics ?? []))
+      expect(keys(acme(moved)?.noEpic ?? [])).toEqual(keys(acme(shown)?.noEpic ?? []))
+    })
   })
 })
 

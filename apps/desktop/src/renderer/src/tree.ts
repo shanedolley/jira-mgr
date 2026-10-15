@@ -365,6 +365,45 @@ export interface MoveContext {
   pageSize: number
 }
 
+/** Alt+Shift with Up or Down moves the active issue among its siblings: -1 up, 1 down, `null` for any other key. */
+export function orderStep(input: KeyInput): -1 | 1 | null {
+  if (!input.altKey || !input.shiftKey || input.metaKey || input.ctrlKey) return null
+  if (input.key === 'ArrowUp') return -1
+  return input.key === 'ArrowDown' ? 1 : null
+}
+
+/** Whether a row dragged from `from` may drop on `over`: another issue row with the same parent. */
+export function canDropOn(rows: readonly TreeRow[], fromId: string, overId: string): boolean {
+  const from = rows.find((r) => r.id === fromId)
+  const over = rows.find((r) => r.id === overId)
+  return (
+    from?.kind === 'issue' &&
+    over?.kind === 'issue' &&
+    from.id !== over.id &&
+    from.parentId === over.parentId
+  )
+}
+
+/**
+ * The row that carries the drop line while `fromId` hovers `overId`: above the row when the drag
+ * moves up, and below the last row of the row's subtree when it moves down, since that is where the
+ * dragged issue lands. `null` when the drop is not allowed.
+ */
+export function dropIndicator(
+  rows: readonly TreeRow[],
+  fromId: string,
+  overId: string,
+): { id: string; edge: 'above' | 'below' } | null {
+  if (!canDropOn(rows, fromId, overId)) return null
+  const from = rows.findIndex((r) => r.id === fromId)
+  const over = rows.findIndex((r) => r.id === overId)
+  const target = rows[over]
+  if (target === undefined || from > over) return { id: overId, edge: 'above' }
+  let last = over
+  while ((rows[last + 1]?.level ?? 0) > target.level) last++
+  return { id: rows[last]?.id ?? overId, edge: 'below' }
+}
+
 /** An issue row a bulk action can take: not a header, a chip or an ancestor shown only as context. */
 const checkable = (row: TreeRow | undefined): row is IssueRow =>
   row?.kind === 'issue' && !row.node.contextOnly

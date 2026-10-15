@@ -1,6 +1,12 @@
 import { JiraMgrError, type ErrorCode } from '@jira-mgr/core'
 import { adfDocSchema, type AdfDoc } from '@jira-mgr/core/adf'
-import { ISSUE_ORDERS, ORDER_DIRECTIONS, ROW_PROPERTIES, TREE_LEVELS } from '@jira-mgr/core/display'
+import {
+  ISSUE_ORDERS,
+  MANUAL_ORDER_LIMIT,
+  ORDER_DIRECTIONS,
+  ROW_PROPERTIES,
+  TREE_LEVELS,
+} from '@jira-mgr/core/display'
 import { DURATION_PATTERN, SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { TEXT_QUERY_MAX } from '@jira-mgr/core/search'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from '@jira-mgr/core/view-filter'
@@ -71,6 +77,7 @@ const MAX_SUMMARY = 255
 /** The most JSON a description may be. Jira refuses far less than this, so it only bounds the work. */
 const MAX_ADF_BYTES = 1_000_000
 const MAX_VIEW_NAME = 80
+const MAX_ISSUE_KEY = 64
 const MAX_FILTER_VALUES = 200
 const MAX_FILTER_VALUE = 500
 
@@ -339,6 +346,7 @@ const displayArgs: z.ZodType<Display> = z.strictObject({
   properties: z.array(z.enum(ROW_PROPERTIES)).max(ROW_PROPERTIES.length),
   order: z.enum(ISSUE_ORDERS),
   direction: z.enum(ORDER_DIRECTIONS),
+  manual: z.array(z.string().min(1).max(MAX_ISSUE_KEY)).max(MANUAL_ORDER_LIMIT).optional(),
 })
 
 const filterValues = z.array(z.string().max(MAX_FILTER_VALUE)).max(MAX_FILTER_VALUES).optional()

@@ -3,12 +3,16 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { Notice } from './create'
 import type { IssueDetail } from '@jira-mgr/core/issue'
 
+import type { Display } from '../../shared/ipc'
+
 import { issues, namedKeys } from './batch'
 import { current, issueDetailKey } from './optimistic'
 import {
+  displayKey,
   saveDescription,
   useBatch,
   useEditIssue,
+  useSetDisplay,
   useSetSprint,
   useSetStatus,
   useSetSummary,
@@ -17,9 +21,13 @@ import {
   changedSince,
   describeUndo,
   isBatch,
+  isOrder,
+  sameOrdering,
   planBatchUndo,
+  restoreOrdering,
   undoStack,
   type BatchEntry,
+  type OrderEntry,
   type StackEntry,
   type UndoEntry,
 } from './undo'
@@ -48,6 +56,7 @@ export function useUndo(report: (notice: Notice) => void, batch: ReturnType<type
   const status = useSetStatus()
   const sprint = useSetSprint()
   const summary = useSetSummary()
+  const setDisplay = useSetDisplay()
 
   async function send(entry: UndoEntry): Promise<void> {
     const { key, before, reversal } = entry
@@ -106,12 +115,31 @@ export function useUndo(report: (notice: Notice) => void, batch: ReturnType<type
     )
   }
 
+  /** Puts the display's order back, unless the order has changed since the move. */
+  function undoOrder(entry: OrderEntry): void {
+    const shown = client.getQueryData<Display>(displayKey)
+    if (shown === undefined || !sameOrdering(shown, entry.display.after)) {
+      report(
+        warning(`Did not undo the move of ${entry.key}`, [
+          'The order changed since, and the undo would overwrite that.',
+        ]),
+      )
+      return
+    }
+    setDisplay.mutate(restoreOrdering(shown, entry.display.before))
+    report(plain(`Undid the move of ${entry.key}`))
+  }
+
   /** Returns the edit it took off the stack, so the caller can drop the toasts that offered it. */
   return function undo(offered?: StackEntry): StackEntry | undefined {
     const entry = offered === undefined ? undoStack(client).pop() : undoStack(client).take(offered)
     if (entry === undefined) {
       report(plain('Nothing to undo'))
       return undefined
+    }
+    if (isOrder(entry)) {
+      undoOrder(entry)
+      return entry
     }
     if (isBatch(entry)) {
       undoBatch(entry)

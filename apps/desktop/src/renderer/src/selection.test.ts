@@ -108,6 +108,8 @@ describe('no coloured edge marks a row or a sidebar item', () => {
     const rules = [...css.matchAll(/([^{}]*(?:tree-row|is-current)[^{}]*)\{([^}]*)\}/g)]
     expect(rules.length).toBeGreaterThan(0)
     for (const [, selector, body] of rules) {
+      // The line a drag draws where a row would land marks a drop, not a state of the row.
+      if (selector?.includes('data-drop')) continue
       expect(body, selector).not.toMatch(/border|outline|box-shadow|--accent/)
     }
   })
