@@ -16,7 +16,7 @@ import {
 import { OVERVIEW_ROW, OverviewFrame, TH, keepInView, type OverviewLoad } from './OverviewFrame'
 import { NotLoaded, PercentDone, progressText } from './Progress'
 import { dueTone, shortDate } from './rowProps'
-import { StatusDot } from './StatusDot'
+import { StatusDot, summaryFade } from './StatusDot'
 
 const ARROWS = { asc: 'M8 12.5v-9M4.5 7 8 3.5 11.5 7', desc: 'M8 3.5v9M4.5 9 8 12.5 11.5 9' }
 
@@ -94,7 +94,9 @@ function Row({
           className="flex w-full min-w-0 items-center gap-2 text-left"
         >
           <span className="w-[5.5rem] shrink-0 text-xs tabular-nums text-muted">{issue.key}</span>
-          <span className="min-w-0 truncate font-medium">{issue.summary}</span>
+          <span className="min-w-0 truncate font-medium" style={summaryFade(issue.status)}>
+            {issue.summary}
+          </span>
         </button>
       </th>
       <td className="max-w-40 truncate px-3" title={issue.customer?.value}>

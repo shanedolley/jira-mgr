@@ -5,7 +5,7 @@ import { Avatar } from './Avatar'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
 import { SECTION_HEADING } from './Section'
-import { StatusDot } from './StatusDot'
+import { StatusDot, summaryFade } from './StatusDot'
 import {
   BREAKDOWNS,
   formatDay,
@@ -220,7 +220,9 @@ function Issues({ report, onOpen }: { report: SprintReport; onOpen: (key: string
                     className="flex h-8 w-full items-center gap-3 px-3 text-left hover:bg-hover"
                   >
                     <span className="w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
-                    <span className="min-w-0 flex-1 truncate">{issue.summary}</span>
+                    <span className="min-w-0 flex-1 truncate" style={summaryFade(status)}>
+                      {issue.summary}
+                    </span>
                     <Avatar person={issue.assignee} />
                   </button>
                 </li>

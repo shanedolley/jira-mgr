@@ -67,7 +67,7 @@ interface FakeJira {
   refuseNextEdit: () => void
   refuseNextBulk: () => void
   refuseKeys: (keys: string[]) => void
-  moveIssue: (key: string, status: 'todo' | 'doing' | 'done') => void
+  moveIssue: (key: string, status: 'todo' | 'doing' | 'done' | 'hold') => void
   releaseUpload: () => void
   failUpload: () => void
   failComments: (status: 404 | 500) => void
@@ -385,7 +385,7 @@ export async function showEverything(window: Page) {
 export const moveIssue = (
   app: ElectronApplication,
   key: string,
-  status: 'todo' | 'doing' | 'done',
+  status: 'todo' | 'doing' | 'done' | 'hold',
 ) =>
   app.evaluate(
     (_electron, [name, to]) => {
