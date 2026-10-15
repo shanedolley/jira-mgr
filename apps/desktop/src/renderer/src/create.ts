@@ -132,7 +132,7 @@ export function initialDraft(
  * The type a create starts as from `issue`: a Story under an Epic, else a Subtask (under a Story,
  * Task or Bug, or beside a Subtask under the same parent, which `defaultParent` finds).
  */
-export const typeUnder = (issue: Issue): CreateType =>
+const typeUnder = (issue: Issue): CreateType =>
   issue.issueType.hierarchyLevel >= 1 ? 'Story' : 'Subtask'
 
 /**

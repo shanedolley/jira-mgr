@@ -78,6 +78,14 @@ async function select(row: RegExp) {
   await expect(tree()).toBeFocused()
 }
 
+/** The accessible name of the row under the pointer, or null when none is. */
+const hoveredLabel = () =>
+  window.evaluate(
+    () =>
+      document.querySelector('[role="tree"] [role="treeitem"]:hover')?.getAttribute('aria-label') ??
+      null,
+  )
+
 /** Moves the pointer off every row, so only the selection says where `C` starts. */
 const parkPointer = () => window.mouse.move(2, 2)
 
@@ -157,6 +165,42 @@ test('a hover ends when J or K moves the active row past a resting pointer, and 
   await window.keyboard.press('c')
   await expect(field('Type', 'Story')).toBeVisible()
   await expect(field('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
+})
+
+test('arrows outside the Tree leave the hover alone', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  await item(/PSAPAC-30,/).hover()
+  await window.getByRole('button', { name: 'New issue' }).focus()
+  await window.keyboard.press('ArrowDown')
+  await window.keyboard.press('ArrowLeft')
+  // Focus without scrolling, which would slide another row under the pointer.
+  await tree().evaluate((el) => {
+    el.focus({ preventScroll: true })
+  })
+
+  await window.keyboard.press('c')
+  await expect(field('Type', 'Story')).toBeVisible()
+  await expect(field('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
+})
+
+test('a wheel turn brings the hover back after J, and C starts from the row it puts under the pointer', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  // A short Tree scrolls, so the wheel can put another row under the resting pointer.
+  await tree().evaluate((el) => {
+    el.style.height = '120px'
+    el.style.maxHeight = '120px'
+  })
+  await item(/PSAPAC-30,/).hover()
+  await window.keyboard.press('j')
+  // The pointer still rests on the Epic, then the wheel puts the Story above it under the pointer.
+  await window.mouse.wheel(0, -40)
+  await expect.poll(hoveredLabel).toMatch(/^PSAPAC-1, Story/)
+  await window.keyboard.press('c')
+  await expect(dialog()).toBeVisible()
+  await expect(field('Type', 'Subtask')).toBeVisible()
+  await expect(field('Parent', 'PSAPAC-1 Kick off the engagement')).toBeVisible()
 })
 
 test('C over a selected Story starts a Subtask under it, with its Customer and Engagement', async () => {

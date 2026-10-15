@@ -28,7 +28,6 @@ import {
 import { flushSync } from 'react-dom'
 
 import type {
-  CreateType,
   DeleteIssueArgs,
   SavedView,
   Session,
@@ -293,9 +292,7 @@ export function Shell({ session }: { session: Session }) {
   const [sprintId, setSprintId] = useState<number | null>(null)
   // The create modal, opened by `C` or the New issue button, with the selection it started from
   // and, from the palette's Create sub-issue, the type it starts as.
-  const [creating, setCreating] = useState<
-    (ReturnType<typeof createContext> & { type?: CreateType }) | null
-  >(null)
+  const [creating, setCreating] = useState<ReturnType<typeof createContext> | null>(null)
   // The issue whose delete modal is open, held whole: the lists may not hold it (a Done parent
   // opened from a page before Done loads) or may drop it while the modal is open.
   const [deleting, setDeleting] = useState<Issue | null>(null)
@@ -962,23 +959,34 @@ export function Shell({ session }: { session: Session }) {
     const listen = (event: KeyboardEvent) => {
       onKey(event)
     }
-    // A hover counts for `C` only once the pointer moves after the last Tree navigation, as in
-    // Linear. A moved row or a scroll under a resting pointer fires no `pointermove` at a new
-    // position, so a hover that navigation walked away from is not read.
+    // A hover counts for `C` only once the pointer moves or the wheel turns after the last Tree
+    // navigation key, as in Linear. A row moved or scrolled by a key under a resting pointer fires
+    // neither, so a hover that navigation walked away from is not read.
     const track = (event: PointerEvent) => {
       if (event.clientX === pointer.current.x && event.clientY === pointer.current.y) return
       pointer.current = { x: event.clientX, y: event.clientY, moved: true }
     }
+    const wheeled = () => {
+      pointer.current.moved = true
+    }
+    // Only an unmodified navigation key pressed in the Tree: Cmd+K, a field's typing and a
+    // picker's arrows leave the hover alone.
     const navigated = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      if (!(event.target instanceof Element) || event.target.closest('[role="tree"]') === null) {
+        return
+      }
       if (NAVIGATION_KEYS.has(event.key.toLowerCase())) pointer.current.moved = false
     }
     document.addEventListener('keydown', listen)
     document.addEventListener('keydown', navigated, true)
     document.addEventListener('pointermove', track)
+    document.addEventListener('wheel', wheeled, { passive: true })
     return () => {
       document.removeEventListener('keydown', listen)
       document.removeEventListener('keydown', navigated, true)
       document.removeEventListener('pointermove', track)
+      document.removeEventListener('wheel', wheeled)
     }
   }, [])
 
