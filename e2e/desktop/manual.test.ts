@@ -122,12 +122,12 @@ test('Manual starts from the order on screen, and a drag moves a row among its s
   await inDisplayMenu(async () => {
     await expect(choice('Ordering', 'Manual')).toHaveAttribute('aria-pressed', 'true')
   })
-  expect((await savedDisplay())?.order).toBe('manual')
+  await expect.poll(async () => (await savedDisplay())?.order).toBe('manual')
 })
 
 test('dragging a row under another order switches to Manual, starting from the order on screen', async () => {
   await open()
-  expect((await savedDisplay())?.order).toBe('key')
+  await expect.poll(async () => (await savedDisplay())?.order).toBe('key')
   await row(1).dragTo(row(13))
   await expect.poll(epicOrder).toEqual([1, 13, 11, 12, 4, 3, 2])
   await expect.poll(async () => (await savedDisplay())?.order).toBe('manual')
@@ -172,6 +172,10 @@ test('a drop shows a line where the row lands, and a drop outside the siblings d
   await expect.poll(epicOrder).toEqual([4, 11, 12, 13, 3, 2, 1])
 
   // Outside the siblings: another Epic's Story, the Epic's own row, and a Subtask of a sibling.
+  // The last move's write may still be on its way, so wait for it before taking the baseline.
+  await expect
+    .poll(async () => ofEpic((await savedDisplay())?.manual))
+    .toEqual(['PSAPAC-4', 'PSAPAC-11', 'PSAPAC-13', 'PSAPAC-3', 'PSAPAC-2', 'PSAPAC-1'])
   const before = await savedDisplay()
   for (const target of [31, 10, 12]) {
     await dragOver(2, target)
@@ -215,7 +219,7 @@ test('Alt+Shift with Up and Down moves the focused row, announces its position a
   await window.keyboard.press('Alt+Shift+ArrowDown')
   await expect(heard()).toHaveText('PSAPAC-1 is already last among its siblings.')
 
-  expect((await savedDisplay())?.order).toBe('manual')
+  await expect.poll(async () => (await savedDisplay())?.order).toBe('manual')
   await restart()
   expect(await epicOrder()).toEqual([13, 11, 12, 4, 3, 2, 1])
 })

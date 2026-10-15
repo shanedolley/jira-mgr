@@ -274,6 +274,8 @@ export interface Backend {
   switchTimer(args: SwitchTimerArgs): Promise<TimerOutcome>
   /** Cancels the pending second reads. The app calls it on quit. */
   dispose(): void
+  /** Resolves once the settings and views writes queued so far have landed. The app waits on it before it quits. */
+  flush(): Promise<void>
 }
 
 export interface BackendDeps {
@@ -870,5 +872,8 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       }
     },
     dispose: clearLateReads,
+    async flush() {
+      await Promise.all([settingsWrites, viewCalls])
+    },
   }
 }

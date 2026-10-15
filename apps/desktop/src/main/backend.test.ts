@@ -645,6 +645,20 @@ describe('toggles', () => {
     expect((await readSettings()).display.manual).toEqual(['PSAPAC-3', 'PSAPAC-1'])
   })
 
+  it('flush waits for the settings writes queued so far', async () => {
+    await logIn()
+    const backend = createBackend()
+    const display = {
+      properties: ['updated' as const],
+      order: 'manual' as const,
+      direction: 'asc' as const,
+      manual: ['PSAPAC-3', 'PSAPAC-1'],
+    }
+    void backend.setDisplay(display)
+    await backend.flush()
+    expect((await readSettings()).display).toEqual(display)
+  })
+
   it('getTreeLevel reads stories, and setTreeLevel and setToggles keep each other', async () => {
     await logIn()
     const backend = createBackend()
