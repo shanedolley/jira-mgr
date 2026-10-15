@@ -15,6 +15,7 @@ import {
   releaseEdit,
   releaseUpload,
   setDescription,
+  showEverything,
 } from './harness.js'
 
 let app: ElectronApplication
@@ -77,8 +78,13 @@ async function select(row: RegExp) {
   await expect(tree()).toBeFocused()
 }
 
+/** Moves the pointer off every row, so only the selection says where `C` starts. */
+const parkPointer = () => window.mouse.move(2, 2)
+
 async function openCreate(row: RegExp) {
   await select(row)
+  // The click can leave the pointer over a neighbour once the row scrolls, and a hovered row wins.
+  await parkPointer()
   await window.keyboard.press('c')
   await expect(dialog()).toBeVisible()
 }
@@ -93,9 +99,9 @@ async function settle(expected: number) {
   await expect.poll(async () => (await counts(app)).applied).toBe(expected)
 }
 
-test('C opens the create modal for a Story under the selected issue Epic, with its Customer and Engagement', async () => {
+test('C opens the create modal for a Story under the selected Epic, with its Customer and Engagement', async () => {
   await open()
-  await select(/PSAPAC-2,/)
+  await select(/PSAPAC-10,/)
   await window.keyboard.press('c')
 
   await expect(dialog()).toBeVisible()
@@ -108,6 +114,64 @@ test('C opens the create modal for a Story under the selected issue Epic, with i
   // Nothing about the selection leaks into a field the user has to choose.
   await expect(field('Sprint', 'Backlog')).toBeVisible()
   await expect(field('Assignee', 'Unassigned')).toBeVisible()
+})
+
+test('C over a hovered Epic starts a Story under it, ahead of the selected row, and moves nothing', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  await item(/PSAPAC-30,/).hover()
+  await window.keyboard.press('c')
+
+  await expect(dialog()).toBeVisible()
+  await expect(field('Type', 'Story')).toBeVisible()
+  await expect(field('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
+  await expect(field('Customer', 'Beta Ltd')).toBeVisible()
+  await expect(field('Engagement', 'South')).toBeVisible()
+
+  // Hovering selected nothing and opened no Peek.
+  await dialog().getByRole('button', { name: 'Cancel' }).click()
+  await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'true')
+  await expect(item(/PSAPAC-30,/)).toHaveAttribute('data-active', 'false')
+  await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
+})
+
+test('C over a selected Story starts a Subtask under it, with its Customer and Engagement', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  await parkPointer()
+  await window.keyboard.press('c')
+
+  await expect(dialog()).toBeVisible()
+  await expect(field('Type', 'Subtask')).toBeVisible()
+  await expect(field('Parent', 'PSAPAC-2 Review the data model')).toBeVisible()
+  await expect(field('Customer', 'Acme')).toBeVisible()
+  await expect(field('Engagement', 'North')).toBeVisible()
+  await expect(dialog().getByRole('button', { name: /^Sprint:/ })).toHaveCount(0)
+})
+
+test('C over a hovered Subtask starts a sibling Subtask under the same parent', async () => {
+  await open()
+  await showEverything(window)
+  await select(/PSAPAC-2,/)
+  await item(/PSAPAC-12,/).hover()
+  await window.keyboard.press('c')
+
+  await expect(dialog()).toBeVisible()
+  await expect(field('Type', 'Subtask')).toBeVisible()
+  await expect(field('Parent', 'PSAPAC-11 Draft the runbook')).toBeVisible()
+  await expect(field('Customer', 'Acme')).toBeVisible()
+})
+
+test('the type of a Subtask-seeded form can change, and the parent follows what the type allows', async () => {
+  await open()
+  await select(/PSAPAC-2,/)
+  await parkPointer()
+  await window.keyboard.press('c')
+  await expect(field('Parent', 'PSAPAC-2 Review the data model')).toBeVisible()
+
+  await field('Type', 'Subtask').click()
+  await option('Story').click()
+  await expect(field('Parent', 'PSAPAC-10 Customer onboarding')).toBeVisible()
 })
 
 test('prefills from an Epic, taking the Epic itself as the parent', async () => {
@@ -182,7 +246,7 @@ test('the New issue button opens the same modal', async () => {
 
 test('creates the issue, selects its row and names the key, without reloading a list', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   const before = await counts(app)
 
   await dialog().getByLabel('Summary').fill('Write the cutover plan')
@@ -224,7 +288,7 @@ test('creates the issue, selects its row and names the key, without reloading a 
 
 test('sends every field of the form to Jira in one create request, then the sprint move', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Cover every field')
   await field('Assignee', 'Unassigned').click()
   await option(/^Me/).click()
@@ -245,7 +309,7 @@ test('sends every field of the form to Jira in one create request, then the spri
 
 test('creates an issue with a Start date and a Due date, and its page shows both', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Plan the dates')
   await dialog().getByLabel('Start date').fill('2026-10-01')
   await dialog().getByLabel('Due date').fill('2026-10-14')
@@ -267,7 +331,7 @@ test('creates an issue with a Start date and a Due date, and its page shows both
 
 test('creates an issue with neither date and sends no date field', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await expect(dialog().getByLabel('Start date')).toHaveValue('')
   await expect(dialog().getByLabel('Due date')).toHaveValue('')
   await dialog().getByLabel('Summary').fill('Plan without dates')
@@ -282,7 +346,7 @@ test('creates an issue with neither date and sends no date field', async () => {
 
 test('a Due date before the Start date shows no warning, as on the issue page', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Start date').fill('2026-10-14')
   await dialog().getByLabel('Due date').fill('2026-10-01')
 
@@ -292,7 +356,7 @@ test('a Due date before the Start date shows no warning, as on the issue page', 
 
 test('Type is an icon beside the summary until it opens, then lists every type', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   const type = field('Type', 'Story')
   await expect(type).toHaveText('')
@@ -327,7 +391,7 @@ async function chipRows(font?: string) {
 
 test('the other fields are chips on three lines at most', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   expect(await chipRows()).toBeLessThanOrEqual(3)
 })
@@ -335,14 +399,14 @@ test('the other fields are chips on three lines at most', async () => {
 // Linux CI sets the system font in a face wider than macOS's, and wrapped to three rows (PR #163).
 test('the chips stay on three lines in a wide font', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   expect(await chipRows('Verdana, "DejaVu Sans", sans-serif')).toBeLessThanOrEqual(3)
 })
 
 test('the date chips stay inside the dialog in a wide font', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
@@ -361,7 +425,7 @@ test('the date chips stay inside the dialog in a wide font', async () => {
 
 test('a date typed only in part blocks the create and says which, until it is finished or cleared', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Half a date')
   const start = dialog().getByLabel('Start date')
   const create = dialog().getByRole('button', { name: 'Create issue' })
@@ -399,7 +463,7 @@ test('a date typed only in part blocks the create and says which, until it is fi
 
 test('typing an issue key in the Parent field finds that issue', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   await field('Parent', /^Parent:/).click()
   await window.getByRole('combobox', { name: 'Search Parent' }).fill('PSAPAC-30')
@@ -414,7 +478,7 @@ test('typing an issue key in the Parent field finds that issue', async () => {
 
 test('+me assigns the current user and shows the name in the Assignee chip', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await expect(field('Assignee', 'Unassigned')).toBeVisible()
 
   await dialog().getByRole('button', { name: 'Assign to me' }).click()
@@ -477,7 +541,7 @@ test('a Subtask with no parent shows Parent as Required, and Cmd+Enter goes to i
 
 test('a long estimate is not clipped in its chip', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   const estimate = dialog().getByLabel('Original estimate')
   await estimate.fill('1w 2d 3h 30m')
 
@@ -486,7 +550,7 @@ test('a long estimate is not clipped in its chip', async () => {
 
 test('shows what the automation changed when Jira rewrites a new Task', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Book the workshop')
   await field('Type', 'Story').click()
   await option('Task').click()
@@ -507,7 +571,7 @@ test('shows what the automation changed when Jira rewrites a new Task', async ()
 
 test('moves a new issue into the sprint the form chose, after the create', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Prepare the demo')
   await field('Sprint', 'Backlog').click()
   await option(/^Sprint 6/).click()
@@ -559,7 +623,7 @@ test('selects nothing new when a filter hides the issue just created', async () 
 
 test('Create more keeps the modal and the prefill, clears the summary and creates again', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Create more').check()
   await field('Labels', 'None').click()
   await window.getByRole('combobox', { name: 'Search Labels' }).fill('docs')
@@ -594,7 +658,7 @@ test('Create more keeps the modal and the prefill, clears the summary and create
 
 test('a parent whose Customer differs asks before it changes the form', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   await field('Parent', /^Parent:/).click()
   await window.getByRole('combobox', { name: 'Search Parent' }).fill('Reporting')
@@ -614,7 +678,7 @@ test('a parent whose Customer differs asks before it changes the form', async ()
 
 test("the parent picker shows each candidate's type icon", async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   await field('Parent', /^Parent:/).click()
   await window.getByRole('combobox', { name: 'Search Parent' }).fill('Reporting')
@@ -623,7 +687,7 @@ test("the parent picker shows each candidate's type icon", async () => {
 
 test('a parent can be taken without its Customer and Engagement', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   await field('Parent', /^Parent:/).click()
   await option(/Reporting/).click()
@@ -641,9 +705,8 @@ test('the type decides which fields the form has and which parent it starts with
   await open()
   await openCreate(/PSAPAC-2,/)
 
-  await field('Type', 'Story').click()
-  await option('Subtask').click()
-  // A Subtask goes under the selected Story, and has no sprint.
+  // C over a Story starts a Subtask under it, which has no sprint.
+  await expect(field('Type', 'Subtask')).toBeVisible()
   await expect(field('Parent', 'PSAPAC-2 Review the data model')).toBeVisible()
   await expect(dialog().getByRole('button', { name: /^Sprint:/ })).toHaveCount(0)
   await expect(dialog().getByLabel('Original estimate')).toBeVisible()
@@ -663,8 +726,7 @@ test('the type decides which fields the form has and which parent it starts with
 test('a Subtask is created under the selected Story, with the estimate', async () => {
   await open()
   await openCreate(/PSAPAC-2,/)
-  await field('Type', 'Story').click()
-  await option('Subtask').click()
+  await expect(field('Type', 'Subtask')).toBeVisible()
   await dialog().getByLabel('Summary').fill('Sketch the schema')
   await dialog().getByLabel('Original estimate').fill('90m')
   await dialog().getByRole('button', { name: 'Create issue' }).click()
@@ -682,7 +744,7 @@ test('a Subtask is created under the selected Story, with the estimate', async (
 
 test('an estimate Jira cannot read blocks the create and says why', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Tune the query')
   await dialog().getByLabel('Original estimate').fill('soon')
 
@@ -692,7 +754,7 @@ test('an estimate Jira cannot read blocks the create and says why', async () => 
 
 test('a refused create keeps the modal and the summary, and shows why', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   const before = await counts(app)
   await dialog().getByLabel('Summary').fill('reject me')
   await dialog().getByRole('button', { name: 'Create issue' }).click()
@@ -711,7 +773,7 @@ test('a refused create keeps the modal and the summary, and shows why', async ()
 
 test('Esc closes the modal and returns focus to the Tree, and a picker takes its own Esc first', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   await field('Customer', 'Acme').click()
   await expect(window.getByRole('listbox', { name: 'Customer' })).toBeVisible()
@@ -723,13 +785,13 @@ test('Esc closes the modal and returns focus to the Tree, and a picker takes its
   await window.keyboard.press('Escape')
   await expect(dialog()).toHaveCount(0)
   await expect(tree()).toBeFocused()
-  await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'true')
+  await expect(item(/PSAPAC-10,/)).toHaveAttribute('data-active', 'true')
   await expect(toast()).toHaveCount(0)
 })
 
 test('Tab stays inside the modal, and the page behind it cannot be reached', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
 
   for (let step = 0; step < 24; step++) {
     await window.keyboard.press('Tab')
@@ -753,7 +815,7 @@ test('Tab stays inside the modal, and the page behind it cannot be reached', asy
 
 test('Cmd+Enter creates from the summary', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('From the keyboard')
   await window.keyboard.press('Meta+Enter')
 
@@ -813,7 +875,7 @@ async function fillDescribed(summary: string, names: string[] = []) {
 
 test('the created issue carries the typed ADF description, sent in the create request', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await expect(dialog().getByText('Add a description')).toBeVisible()
   await fillDescribed('Describe it')
   await expect(dialog().getByText('Add a description')).toHaveCount(0)
@@ -838,7 +900,7 @@ test('the created issue carries the typed ADF description, sent in the create re
 
 test('an empty description is not sent', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('No detail yet')
   await description().click()
   await window.keyboard.press('Enter')
@@ -850,7 +912,7 @@ test('an empty description is not sent', async () => {
 
 test('Esc in the description closes the dialog', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await description().click()
   await window.keyboard.press('Escape')
   await expect(dialog()).toHaveCount(0)
@@ -858,7 +920,7 @@ test('Esc in the description closes the dialog', async () => {
 
 test('chosen files attach to the new issue after it exists', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('With a file', ['notes.txt'])
   await expect(dialog().getByText('notes.txt', { exact: true })).toBeVisible()
   await dialog().getByRole('button', { name: 'Create issue' }).click()
@@ -888,7 +950,7 @@ test('chosen files attach to the new issue after it exists', async () => {
 
 test('a chosen file can be removed before the create', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await picker().setInputFiles([file('a.txt'), file('b.txt')])
   await dialog().getByRole('button', { name: 'Remove a.txt' }).click()
   await expect(dialog().getByText('a.txt', { exact: true })).toHaveCount(0)
@@ -903,7 +965,7 @@ test('a chosen file can be removed before the create', async () => {
 
 test('a failed upload leaves the issue and the notice names the file and the key', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Half attached', ['broken.txt', 'fine.txt'])
   // The fake fails the next upload, which is broken.txt, and holds fine.txt until released.
   await failUpload(app)
@@ -924,7 +986,7 @@ test('a failed upload leaves the issue and the notice names the file and the key
 
 test('Create more clears the description and the chosen files', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Create more').check()
   await fillDescribed('First of two', ['notes.txt'])
   await dialog().getByRole('button', { name: 'Create issue' }).click()
@@ -947,7 +1009,7 @@ test('Create more clears the description and the chosen files', async () => {
 
 test('a failed upload still reaches a toast when Create more keeps the dialog open', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Create more').check()
   await dialog().getByLabel('Summary').fill('Kept open')
   await picker().setInputFiles([file('broken.txt')])
@@ -964,7 +1026,7 @@ test('a failed upload still reaches a toast when Create more keeps the dialog op
 
 test('a failed upload toast has no Open button when the new issue could not be read back', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Create more').check()
   await dialog().getByLabel('Summary').fill('Not read back')
   await picker().setInputFiles([file('broken.txt')])
@@ -980,7 +1042,7 @@ test('a failed upload toast has no Open button when the new issue could not be r
 
 test('the description is locked while the create is in flight', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Locked while sending')
   await dialog().getByRole('button', { name: 'Create issue' }).click()
   await expect.poll(writes).toBe(1)
@@ -992,7 +1054,7 @@ test('the description is locked while the create is in flight', async () => {
 
 test('a description of blanks is not sent, and the placeholder hides once anything is typed', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Only blanks')
   await description().click()
   await window.keyboard.type('   ')
@@ -1007,7 +1069,7 @@ test('a description of blanks is not sent, and the placeholder hides once anythi
 // Linux CI sets a wider system font (PR #163); the new rows must not push the dialog sideways.
 test('the description and long file names fit the dialog in a wide font', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
@@ -1093,7 +1155,7 @@ async function createNow() {
 
 test('a pasted image stages in the description, uploads after the create and is written into it', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('With a screenshot')
   await pasteImage(description())
   await expect(staged('pasted-1.png')).toBeVisible()
@@ -1161,7 +1223,7 @@ test('a pasted image stages in the description, uploads after the create and is 
 
 test('a pasted image that is removed before the create uploads nothing', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Changed my mind')
   await pasteImage(description())
   await dialog().getByRole('button', { name: 'Remove pasted-1.png' }).click()
@@ -1175,7 +1237,7 @@ test('a pasted image that is removed before the create uploads nothing', async (
 
 test('a failed image upload leaves the issue and its text, and the notice names the image', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Image refused')
   await pasteImage(description())
   await failUpload(app)
@@ -1197,7 +1259,7 @@ test('a failed image upload leaves the issue and its text, and the notice names 
 
 test('one image failing does not stop the next from landing in the description', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Two images')
   await pasteImage(description())
   await pasteImage(description())
@@ -1220,7 +1282,7 @@ test('one image failing does not stop the next from landing in the description',
 
 test('a refused description write leaves the images attached and says so', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Write refused')
   await pasteImage(description())
   await createNow()
@@ -1241,7 +1303,7 @@ test('a refused description write leaves the images attached and says so', async
 
 test('a description that changed in Jira after the create is not overwritten', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Someone else edits')
   await pasteImage(description())
   await createNow()
@@ -1263,7 +1325,7 @@ test('a description that changed in Jira after the create is not overwritten', a
 
 test('files dropped on the dialog stage like the Attach files button, and upload after the create', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Dropped two')
   await dragFiles(title(), 'drop', [text('a.txt'), text('b.txt')])
   await expect(dialog().getByText('a.txt', { exact: true })).toBeVisible()
@@ -1293,7 +1355,7 @@ test('files dropped on the dialog stage like the Attach files button, and upload
 
 test('a dropped file can be removed like a chosen one', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dragFiles(dialog().getByLabel('Summary'), 'drop', [text('a.txt')])
   await dialog().getByRole('button', { name: 'Remove a.txt' }).click()
   await expect(dialog().getByText('a.txt', { exact: true })).toHaveCount(0)
@@ -1301,7 +1363,7 @@ test('a dropped file can be removed like a chosen one', async () => {
 
 test('a file dropped on the chips area stages, and a mixed drop on the description splits', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dragFiles(dialog().getByRole('button', { name: /^Customer/ }), 'drop', [text('chips.txt')])
   await expect(dialog().getByText('chips.txt', { exact: true })).toBeVisible()
 
@@ -1338,7 +1400,7 @@ test('a drop on the dialog does not attach to the issue page behind it', async (
 
 test('a drop while the create is in flight stages nothing', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Busy')
   await dialog().getByRole('button', { name: 'Create issue' }).click()
   await expect.poll(writes).toBe(1)
@@ -1350,7 +1412,7 @@ test('a drop while the create is in flight stages nothing', async () => {
 
 test('both drop zones light up with their own label while a file is dragged over the dialog', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await expect(dialog().getByText('Add images into description')).toHaveCount(0)
   await dragFiles(title(), 'dragenter')
   await expect(dialog().getByText('Add images into description')).toBeVisible()
@@ -1362,7 +1424,7 @@ test('both drop zones light up with their own label while a file is dragged over
 
 test('Create more clears a pasted image, and the dialog stays within its width in a wide font', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
@@ -1406,7 +1468,7 @@ test('Create more clears a pasted image, and the dialog stays within its width i
 
 test('a pasted image shows no error while a chosen file attaches after it', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Image and file', ['notes.txt'])
   await pasteImage(description())
   await createNow()
@@ -1427,7 +1489,7 @@ test('a pasted image shows no error while a chosen file attaches after it', asyn
 
 test('a failed pasted image offers no Retry and is never called lost while a file attaches', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await fillDescribed('Image refused, file sent', ['notes.txt'])
   await pasteImage(description())
   await failUpload(app)
@@ -1444,7 +1506,7 @@ test('a failed pasted image offers no Retry and is never called lost while a fil
 
 test('Create more starts the pasted names again at pasted-1', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Create more').check()
   await fillDescribed('First')
   await pasteImage(description())
@@ -1463,7 +1525,7 @@ test('Create more starts the pasted names again at pasted-1', async () => {
 
 test('Create more never inserts a lost-upload node while it clears a pasted image', async () => {
   await open()
-  await openCreate(/PSAPAC-2,/)
+  await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Create more').check()
   await fillDescribed('Watched', ['notes.txt'])
   await pasteImage(description())
@@ -1500,7 +1562,7 @@ for (const [name, css] of [
 ] as const) {
   test(`the Parent picker in the create dialog opens 26rem wide inside the window, in ${name}`, async () => {
     await open()
-    await openCreate(/PSAPAC-2,/)
+    await openCreate(/PSAPAC-10,/)
     if (css !== undefined) await window.addStyleTag({ content: css })
 
     await field('Parent', /^Parent:/).click()

@@ -625,14 +625,25 @@ export function Shell({ session }: { session: Session }) {
 
   const canCreate = treeReady && creating === null && deleting === null && timing === null
 
-  function openCreate() {
+  /**
+   * The issue row under the pointer, read from CSS `:hover` when asked, so hovering stores nothing
+   * and moves neither the selection nor the Peek. A header or chip under the pointer is not one.
+   */
+  function hoveredIssueRow() {
+    const id = document.querySelector('[role="tree"] [role="treeitem"]:hover')?.id
+    return rows.find((r) => r.kind === 'issue' && rowDomId(r.id) === id)
+  }
+
+  /** Opens the create modal. `C` passes `under`, which starts the new issue under the hovered or active issue. */
+  function openCreate(under = false) {
     if (!canCreate) return
     setCreating(
       pageKey === null
         ? createContext(
-            // The Tree is out of sight under the Inbox or a Sprint page, so its active row says nothing of the user's intent.
-            covered ? undefined : rows.find((r) => r.id === activeId),
+            // The Tree is out of sight under the Inbox or a Sprint page, so its rows say nothing of the user's intent.
+            covered ? undefined : (hoveredIssueRow() ?? rows.find((r) => r.id === activeId)),
             issues,
+            under,
           )
         : { selected: issues.find((i) => i.key === pageKey) ?? null, group: null },
     )
@@ -869,7 +880,7 @@ export function Shell({ session }: { session: Session }) {
       case 'create':
         if (!canCreate) return
         event.preventDefault()
-        openCreate()
+        openCreate(true)
         return
       case 'filter': {
         // The list is inert under an open page, so the field cannot take focus there.
@@ -1199,7 +1210,9 @@ export function Shell({ session }: { session: Session }) {
               type="button"
               disabled={!canCreate}
               aria-keyshortcuts="C"
-              onClick={openCreate}
+              onClick={() => {
+                openCreate()
+              }}
               className="btn btn-sm gap-2"
             >
               New issue

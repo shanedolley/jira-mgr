@@ -8,7 +8,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 
 | Key | Action |
 |---|---|
-| `C` | Create an issue |
+| `C` | Create an issue under the issue the pointer rests on, else the active one: a Story under an Epic, a Subtask under a Story, Task or Bug or beside a Subtask |
 | `T` | Start or stop the timer on the active issue |
 | `S` | Open Status |
 | `A` | Open Assignee |

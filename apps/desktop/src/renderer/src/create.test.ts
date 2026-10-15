@@ -33,6 +33,7 @@ const SOUTH = { id: '8', value: 'South' }
 const TYPES = {
   Epic: { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 },
   Story: { id: '10', name: 'Story', subtask: false, hierarchyLevel: 0 },
+  Task: { id: '11', name: 'Task', subtask: false, hierarchyLevel: 0 },
   Subtask: { id: '13', name: 'Subtask', subtask: true, hierarchyLevel: -1 },
 }
 
@@ -595,6 +596,57 @@ describe('createContext', () => {
     const header = { kind: 'customer', customer: BETA } as TreeRow
     expect(createContext(header, ISSUES)).toEqual({ selected: null, group: BETA })
     expect(createContext(undefined, ISSUES)).toEqual({ selected: null, group: null })
+  })
+
+  describe('under', () => {
+    /** The draft `C` starts over `row`, as the Shell builds it. */
+    const draftOver = (row: TreeRow | undefined) => {
+      const { selected, group, type } = createContext(row, ISSUES, true)
+      return initialDraft(selected, ISSUES, group, type)
+    }
+
+    it('starts a Story under a hovered or selected Epic, with its Customer and Engagement', () => {
+      expect(draftOver(issueRow('P-1'))).toMatchObject({
+        type: 'Story',
+        parent: { key: 'P-1' },
+        customer: { name: 'Acme' },
+        engagement: { name: 'North' },
+      })
+    })
+
+    it('starts a Subtask under a Story, Task or Bug, with its Customer and Engagement', () => {
+      expect(draftOver(issueRow('P-2'))).toMatchObject({
+        type: 'Subtask',
+        parent: { key: 'P-2' },
+        customer: { name: 'Acme' },
+        engagement: { name: 'North' },
+      })
+      const task = issue('P-9', { type: 'Task', customer: BETA, engagement: SOUTH })
+      const row = { kind: 'issue', node: { issue: task } } as TreeRow
+      expect(createContext(row, [task], true).type).toBe('Subtask')
+    })
+
+    it('starts a sibling Subtask under the parent of a Subtask', () => {
+      expect(draftOver(issueRow('P-3'))).toMatchObject({ type: 'Subtask', parent: { key: 'P-2' } })
+    })
+
+    it('leaves the type off without under, and for a header, a chip or no row', () => {
+      expect(createContext(issueRow('P-2'), ISSUES)).toEqual({
+        selected: byKey('P-2'),
+        group: null,
+      })
+      const header = { kind: 'customer', customer: BETA } as TreeRow
+      expect(createContext(header, ISSUES, true)).toEqual({ selected: null, group: BETA })
+      expect(createContext(undefined, ISSUES, true)).toEqual({ selected: null, group: null })
+    })
+
+    it('lets the type change away from Subtask to one the parent allows', () => {
+      const { selected, group, type } = createContext(issueRow('P-2'), ISSUES, true)
+      const story = withType(initialDraft(selected, ISSUES, group, type), 'Story', selected, ISSUES)
+      expect(story).toMatchObject({ type: 'Story', parent: { key: 'P-1' } })
+      const epic = withType(story, 'Epic', selected, ISSUES)
+      expect(epic).toMatchObject({ type: 'Epic', parent: null })
+    })
   })
 })
 
