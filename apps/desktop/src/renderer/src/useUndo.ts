@@ -24,6 +24,7 @@ import {
   isOrder,
   sameOrdering,
   planBatchUndo,
+  restoreOrdering,
   undoStack,
   type BatchEntry,
   type OrderEntry,
@@ -125,7 +126,7 @@ export function useUndo(report: (notice: Notice) => void, batch: ReturnType<type
       )
       return
     }
-    setDisplay.mutate(entry.display.before)
+    setDisplay.mutate(restoreOrdering(shown, entry.display.before))
     report(plain(`Undid the move of ${entry.key}`))
   }
 

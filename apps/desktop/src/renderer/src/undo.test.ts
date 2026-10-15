@@ -24,6 +24,7 @@ import {
   undoStack,
   isBatch,
   isOrder,
+  restoreOrdering,
   sameOrdering,
   type OrderEntry,
   type StackEntry,
@@ -501,6 +502,15 @@ describe('order entries', () => {
     const stack = new UndoStack()
     stack.push(entry)
     expect(stack.pop()).toBe(entry)
+  })
+
+  it('puts back the ordering alone, keeping the properties shown since', () => {
+    const shown = { ...entry.display.after, properties: ['labels' as const] }
+    const back = restoreOrdering(shown, entry.display.before)
+    expect(back).toEqual({ properties: ['labels'], order: 'key', direction: 'desc' })
+    // Before a first move there was no list, so none comes back; a list that was there does.
+    expect(back).not.toHaveProperty('manual')
+    expect(restoreOrdering(shown, entry.display.after)).toEqual(shown)
   })
 
   it('compares the order, the direction and, under Manual, the list', () => {

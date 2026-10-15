@@ -3,6 +3,7 @@ import { DEFAULT_TREE_LEVEL, ORDER_DEFAULT_DIRECTION } from '@jira-mgr/core/disp
 import {
   buildHierarchy,
   childProgress,
+  fitManualOrder,
   moveInManualOrder,
   siblingKeys,
   sortedByManual,
@@ -603,11 +604,15 @@ export function Shell({ session }: { session: Session }) {
       ...live,
       order: 'manual',
       direction: ORDER_DEFAULT_DIRECTION.manual,
-      manual: moveInManualOrder(
-        manualNow ? (live.manual ?? []) : treeOrder(groups),
-        siblings,
-        key,
-        target,
+      // A list past the saved cap is refused, so keys of issues no longer loaded go first.
+      manual: fitManualOrder(
+        moveInManualOrder(
+          manualNow ? (live.manual ?? []) : treeOrder(groups),
+          siblings,
+          key,
+          target,
+        ),
+        new Set(issues.map((i) => i.key)),
       ),
     }
     // At once, so the next key press reads this order and the rows follow the announcement.

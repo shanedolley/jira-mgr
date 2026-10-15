@@ -1,5 +1,6 @@
 import {
   DEFAULT_ORDER,
+  MANUAL_ORDER_LIMIT,
   ORDER_DEFAULT_DIRECTION,
   priorityLevel,
   type IssueOrder,
@@ -336,6 +337,15 @@ export function moveInManualOrder(
     return replacement === undefined ? [] : [replacement]
   })
   return [...placed, ...moved.slice(next)]
+}
+
+/**
+ * `manual` as it can be saved: a list within `MANUAL_ORDER_LIMIT` is kept whole. A longer one drops
+ * the keys of issues no longer loaded, since those only pile up, then its tail if it is still long.
+ */
+export function fitManualOrder(manual: readonly string[], loaded: ReadonlySet<string>): string[] {
+  if (manual.length <= MANUAL_ORDER_LIMIT) return [...manual]
+  return manual.filter((key) => loaded.has(key)).slice(0, MANUAL_ORDER_LIMIT)
 }
 
 export interface Progress {

@@ -5,6 +5,7 @@ import {
   buildHierarchy,
   childProgress,
   customerTotals,
+  fitManualOrder,
   moveInManualOrder,
   siblingKeys,
   sortedByManual,
@@ -14,7 +15,7 @@ import {
   type HierarchyNode,
   type HierarchyOptions,
 } from './hierarchy.js'
-import { ISSUE_ORDERS, ORDER_DEFAULT_DIRECTION } from './display.js'
+import { ISSUE_ORDERS, MANUAL_ORDER_LIMIT, ORDER_DEFAULT_DIRECTION } from './display.js'
 import { issueSchema, type Issue } from './issue.js'
 
 const ACME = { id: '1', value: 'Acme' }
@@ -991,6 +992,30 @@ describe('manual order', () => {
       'P-1',
       'P-9',
     ])
+  })
+
+  describe('fitManualOrder', () => {
+    const loaded = new Set(['A', 'B'])
+
+    it('keeps a list within the cap whole, loaded or not', () => {
+      expect(fitManualOrder(['A', 'GONE', 'B'], loaded)).toEqual(['A', 'GONE', 'B'])
+    })
+
+    it('drops the keys of issues no longer loaded once the list passes the cap', () => {
+      const long = [
+        'A',
+        ...Array.from({ length: MANUAL_ORDER_LIMIT }, (_, i) => `GONE-${String(i)}`),
+        'B',
+      ]
+      expect(fitManualOrder(long, loaded)).toEqual(['A', 'B'])
+    })
+
+    it('trims the tail when loaded issues alone pass the cap', () => {
+      const keys = Array.from({ length: MANUAL_ORDER_LIMIT + 5 }, (_, i) => `P-${String(i)}`)
+      const fitted = fitManualOrder(keys, new Set(keys))
+      expect(fitted).toHaveLength(MANUAL_ORDER_LIMIT)
+      expect(fitted[0]).toBe('P-0')
+    })
   })
 
   describe('moveInManualOrder', () => {

@@ -207,7 +207,9 @@ export function IssueTree({
 
   /** The id of the row an event happened in. */
   const rowIdOf = (event: DragEvent<HTMLDivElement>) =>
-    (event.target as Element).closest<HTMLElement>('[data-row-id]')?.dataset.rowId ?? null
+    (event.target instanceof Element
+      ? event.target.closest<HTMLElement>('[data-row-id]')?.dataset.rowId
+      : undefined) ?? null
 
   function onDragStart(event: DragEvent<HTMLDivElement>) {
     const id = rowIdOf(event)

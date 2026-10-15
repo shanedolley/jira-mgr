@@ -82,6 +82,14 @@ export const sameOrdering = (a: Display, b: Display): boolean =>
     ((a.manual ?? []).length === (b.manual ?? []).length &&
       (a.manual ?? []).every((key, index) => key === b.manual?.[index])))
 
+/** `shown` with the ordering of `before` put back: the order, the direction and the list, and no other setting. */
+export const restoreOrdering = (shown: Display, before: Display): Display => {
+  const next: Display = { ...shown, order: before.order, direction: before.direction }
+  if (before.manual === undefined) delete next.manual
+  else next.manual = before.manual
+  return next
+}
+
 /** How many edits the stack remembers. The oldest falls off the bottom. */
 export const UNDO_DEPTH = 50
 
