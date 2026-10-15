@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { SITE, counts, joinSprint, launch, logIn, releaseEdit } from './harness.js'
+import { SITE, counts, inboxChange, joinSprint, launch, logIn, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -246,6 +246,27 @@ test('opens on an Epics page row, listing what an Epic allows', async () => {
   ])
   await window.keyboard.press('Escape')
   await expect(menu()).toHaveCount(0)
+})
+
+test('opens on an Inbox row without opening the entry or marking it read', async () => {
+  await inboxChange(app, 'PSAPAC-2', 'other', [
+    { field: 'status', fromString: 'To Do', toString: 'In Progress' },
+  ])
+  await open()
+  await window.getByRole('link', { name: /^Inbox/ }).click()
+  const entry2 = window
+    .getByRole('region', { name: 'Inbox' })
+    .getByRole('button', { name: /PSAPAC-2/ })
+  await expect(entry2).toBeVisible()
+
+  await entry2.click({ button: 'right' })
+  await expect(menu()).toHaveAccessibleName('Actions for PSAPAC-2')
+  // Right-click does not open the entry's page or mark it read.
+  await expect(issuePage()).toHaveCount(0)
+  await expect(entry2).toHaveAttribute('data-unread', '')
+  await window.keyboard.press('Escape')
+  await expect(menu()).toHaveCount(0)
+  await expect(entry2).toBeFocused()
 })
 
 test('arrows move, Right opens a submenu, Left closes it, and a listed key runs its item', async () => {
