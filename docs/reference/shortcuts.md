@@ -73,9 +73,9 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Inbox list | `Enter` | Open the entry's page and mark it read; `Esc` on the page returns to the list |
 | Issue menu | `Up`, `Down`, `Home`, `End` | Move between items; `Up` from the first item goes to the last |
 | Issue menu | `Right`, `Enter` | Open the item's submenu, or run an item that has none |
-| Issue menu | `Left` | Close the open submenu and return to its item; in a search field only while it is empty |
+| Issue menu | `Left` | Close an open list of options and return to its item; in a search field only while it is empty. The date, estimate and Rename fields keep `Left` for the caret, and only `Esc` closes them |
 | Issue menu | `S`, `A`, `L`, `P`, `E`, `Shift+D`, `Shift+P`, `Shift+E`, `Shift+C` | Run the item that shows the key |
-| Issue menu | `Esc` | Close the open submenu, then the menu, and return focus to the row |
+| Issue menu | `Esc` | Close the open submenu, then the menu, and return focus to the row. `Tab` closes the menu too |
 | Pickers | `Up`, `Down` | Move the highlight |
 | Pickers without a search field | `Home`, `End` | First or last option; in a searchable picker they move the caret |
 | Pickers | `Enter` | Choose the highlighted option |
