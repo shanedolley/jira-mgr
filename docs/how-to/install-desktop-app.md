@@ -27,7 +27,7 @@ Use `~/Applications/` to install for yourself only. To upgrade, quit the app, ru
 
 Open it from Finder or Spotlight. A locally built app carries no quarantine flag, so Gatekeeper does not check it and no prompt appears. The build signs the app ad hoc, with no identity, which is what lets it run on Apple silicon.
 
-If you copy the app from another Mac or a download, macOS quarantines it and refuses to open it. Right-click the app, choose Open, then Open again; or clear the flag:
+If you copy the app from another Mac or a download, macOS quarantines it and refuses to open it. A copy that opens without a prompt needs Developer ID signing and notarisation, a one-off procedure in the [handover](../../handover.md). Right-click the app, choose Open, then Open again; or clear the flag:
 
 ```
 xattr -dr com.apple.quarantine /Applications/jira-mgr.app
