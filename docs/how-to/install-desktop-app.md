@@ -27,13 +27,38 @@ Use `~/Applications/` to install for yourself only. To upgrade, quit the app, ru
 
 Open it from Finder or Spotlight. A locally built app carries no quarantine flag, so Gatekeeper does not check it and no prompt appears. The build signs the app ad hoc, with no identity, which is what lets it run on Apple silicon.
 
-If you copy the app from another Mac or a download, macOS quarantines it and refuses to open it. A copy that opens without a prompt needs Developer ID signing and notarisation, a one-off procedure in the [handover](../../handover.md). Right-click the app, choose Open, then Open again; or clear the flag:
+If you copy the app from another Mac or a download, macOS quarantines it and refuses to open it. Right-click the app, choose Open, then Open again; or clear the flag:
 
 ```
 xattr -dr com.apple.quarantine /Applications/jira-mgr.app
 ```
 
 The login screen asks for the Jira site, project key, email and API token.
+
+## Share with Another Mac
+
+`pnpm package` signs ad hoc, so a copy opens on another Mac only through the quarantine steps above. For a copy that opens without a prompt, sign and notarise it by hand. This needs an Apple silicon Mac on macOS 13 or later, a "Developer ID Application" identity in your Keychain and an app-specific password for your Apple ID.
+
+1. Save the entitlements as `entitlements.plist`:
+
+   ```
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+     <key>com.apple.security.cs.allow-jit</key><true/>
+     <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+     <key>com.apple.security.cs.disable-library-validation</key><true/>
+   </dict>
+   </plist>
+   ```
+
+2. Sign inside-out, every time with `codesign --force --options runtime --timestamp --sign "<identity>"`: the dylibs under `Electron Framework.framework/Libraries`, `chrome_crashpad_handler`, Squirrel's `ShipIt`, each `.framework`, then each helper `.app` and the main app, those with `--entitlements entitlements.plist`.
+3. Zip the signed app: `ditto -c -k --keepParent jira-mgr.app submit.zip`.
+4. Store the credentials once: `xcrun notarytool store-credentials <profile> --apple-id <Apple ID> --team-id <team id>`, with the app-specific password when it asks.
+5. Submit: `xcrun notarytool submit submit.zip --keychain-profile <profile> --wait`. A 403 "A required agreement is missing or has expired" means the Account Holder must accept the updated Developer Program License Agreement at developer.apple.com/account.
+6. Staple and check: `xcrun stapler staple jira-mgr.app`, then `spctl --assess --type execute -vv jira-mgr.app`, which prints `source=Notarized Developer ID`.
+7. Zip the stapled app again with `ditto` and send that zip.
 
 ## Where Things Live
 
