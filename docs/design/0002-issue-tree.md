@@ -282,7 +282,7 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - A click on a row's avatar opens the Assignee list as a cell editor popover anchored to the avatar, as the status dot does, and opens no Peek. The row's old route, a click that opened the Peek and clicked its `A` control, is gone. `A` on the Tree opens the same list on the active row's avatar; with a page open it still opens the page's picker.
 - The list is the Peek's `AssigneePicker`, with the search field first. A choice applies at once and reverts with a Retry toast on refusal; `Esc` closes it with no write.
 - An unassigned row's dotted person is a click target too. A Hold row stays editable. `Shift+click` still checks a range.
-- The Sprint page's rows get the same target when #279's slot controls land.
+- The Sprint page's rows get the same target as a `Slot` around the avatar, named "Assignee of PSAPAC-4: Test User" or "Assignee of PSAPAC-3: Unassigned" (#279's pattern), so the row button still opens the issue and no control nests in another.
 
 ### Peek
 

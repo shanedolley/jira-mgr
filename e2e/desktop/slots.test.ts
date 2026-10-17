@@ -94,6 +94,7 @@ test('a row tabs through its controls in order, each with a name', async () => {
     /^Status of PSAPAC-4:/,
     'Original estimate 2h',
     /^Log work on PSAPAC-4,/,
+    /^Assignee of PSAPAC-4:/,
     'Edit summary of PSAPAC-4',
   ]
   for (const name of names) {
