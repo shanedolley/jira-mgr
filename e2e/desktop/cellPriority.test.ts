@@ -5,7 +5,16 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, joinSprint, launch, logIn, moveIssue, notices, releaseEdit } from './harness.js'
+import {
+  counts,
+  joinSprint,
+  launch,
+  logIn,
+  moveIssue,
+  notices,
+  releaseEdit,
+  showEverything,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -289,9 +298,38 @@ const MEMBERS = [
   'PSAPAC-22',
 ]
 
-async function openSprint() {
+const DISPLAY_PROPERTIES = [
+  'Labels',
+  'Sprint',
+  'Original estimate',
+  'Logged',
+  'Remaining',
+  'Remaining %',
+  'Due date',
+  'Created',
+  'Updated',
+]
+
+/** Turns each Display property on or off so that exactly `shown` are on. */
+async function showProperties(shown: readonly string[]) {
+  await window.getByRole('button', { name: 'Display', exact: true }).click()
+  const chips = window.getByRole('group', { name: 'Display properties', exact: true })
+  for (const name of DISPLAY_PROPERTIES) {
+    const chip = chips.getByRole('button', { name, exact: true })
+    if ((await chip.getAttribute('aria-pressed')) !== String(shown.includes(name))) {
+      await chip.click()
+    }
+  }
+  await window.keyboard.press('Escape')
+}
+
+async function openSprint(shown?: readonly string[]) {
   await joinSprint(app, MEMBERS, 5)
   await open()
+  if (shown !== undefined) {
+    await showEverything(window)
+    await showProperties(shown)
+  }
   await sidebar()
     .getByRole('region', { name: 'Sprints' })
     .getByRole('button', { name: /^Current/ })
@@ -408,4 +446,41 @@ test('holds its layout with a wide font: the Sprint page slot keeps 16px, clears
     }
   })
   expect(fits).toEqual({ inside: true, clipped: 0 })
+})
+
+/** Each Sprint page row's summary width, and whether its avatar sits on the row's first line. */
+const rowFit = () =>
+  sprintPage().evaluate((page) =>
+    [...page.querySelectorAll('li[data-issue-key]')].map((row) => {
+      const summary = row.querySelector('span.truncate')?.getBoundingClientRect()
+      const key = row.querySelector('span.font-mono')?.getBoundingClientRect()
+      const avatar = row.querySelector('[data-avatar]')?.getBoundingClientRect()
+      return {
+        key: row.getAttribute('data-issue-key'),
+        summary: summary?.width ?? 0,
+        slot: row.querySelector('[data-pick=priority]') !== null,
+        // The avatar starts above the key's bottom edge, so it shares the key's line.
+        firstLine: avatar !== undefined && key !== undefined && avatar.top < key.bottom,
+      }
+    }),
+  )
+
+test('with every Display property on and a wide font, the Sprint page summary keeps 160px and the avatar its line', async () => {
+  await openSprint(DISPLAY_PROPERTIES)
+  await window.addStyleTag({ content: '* { font-family: Verdana, sans-serif !important }' })
+  await expect(sprintSlot('PSAPAC-4')).toBeVisible()
+
+  const rows = await rowFit()
+  expect(rows.length).toBe(7)
+  expect(rows.filter((r) => !r.slot || r.summary < 160 || !r.firstLine)).toEqual([])
+})
+
+test('with every Display property off and a wide font, the Sprint page rows keep the priority slot and a summary', async () => {
+  await openSprint([])
+  await window.addStyleTag({ content: '* { font-family: Verdana, sans-serif !important }' })
+  await expect(sprintSlot('PSAPAC-4')).toBeVisible()
+
+  const rows = await rowFit()
+  expect(rows.length).toBe(7)
+  expect(rows.filter((r) => !r.slot || r.summary <= 0 || !r.firstLine)).toEqual([])
 })
