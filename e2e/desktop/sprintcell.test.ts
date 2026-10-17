@@ -5,7 +5,16 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, moveIssue, notices, refuseKeys, releaseEdit } from './harness.js'
+import {
+  counts,
+  expectBeside,
+  launch,
+  logIn,
+  moveIssue,
+  notices,
+  refuseKeys,
+  releaseEdit,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -76,11 +85,7 @@ test('a click on a Sprint slot opens the list below the slot and not the Peek', 
   await expect(option(/^Sprint 5/)).toHaveAttribute('aria-selected', 'true')
   await expect(option(/^Sprint 5/)).toContainText('14 Oct')
   await expect(option(/^Sprint 6/)).toContainText('Future')
-  const cell = await slot(/PSAPAC-13,/).boundingBox()
-  const list = await popover().boundingBox()
-  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
-  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+  await expectBeside(window, slot(/PSAPAC-13,/), popover())
 })
 
 test('choosing a sprint shows it at once, moves the issue and returns focus to the Tree', async () => {
@@ -146,11 +151,7 @@ test('Shift+C opens the same list below the active row slot, and arrows and Ente
   // No issue menu and no Peek: the list sits against the slot.
   await expect(peek()).toHaveCount(0)
   await expect(window.getByRole('menu')).toHaveCount(0)
-  const cell = await slot(/PSAPAC-13,/).boundingBox()
-  const list = await popover().boundingBox()
-  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
-  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+  await expectBeside(window, slot(/PSAPAC-13,/), popover())
 
   await expect(option(/^Sprint 6/)).toBeVisible()
   await window.keyboard.press('ArrowDown')

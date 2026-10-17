@@ -327,6 +327,8 @@ test('a click on the dot of a row clipped at the Tree foot scrolls it into view 
   const below = list.y >= moved.y + moved.height - 1
   const above = list.y + list.height <= moved.y + 1
   expect(below || above).toBe(true)
+  // Anchored to the dot, not fallen to a corner of the window.
+  expect(Math.abs(list.x - moved.x)).toBeLessThanOrEqual(4)
   await expect(item(row)).toHaveAttribute('data-active', 'true')
   await expect(peek()).toHaveCount(0)
 })
