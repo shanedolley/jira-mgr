@@ -2,16 +2,18 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
 import {
   counts,
   joinSprint,
   launch,
   logIn,
+  moveIssue,
   notices,
   refuseNextEdit,
   releaseEdit,
+  setEstimate,
   showEverything,
 } from './harness.js'
 
@@ -64,6 +66,25 @@ async function open() {
   await window.keyboard.press('Escape')
   await expect(chip('Remaining')).toBeHidden()
   await expect(slot(/PSAPAC-4,/)).toHaveText('Original estimate 2h')
+}
+
+/** The opacity a locator is drawn at: the product of its own and every ancestor's. */
+const effective = (locator: Locator) =>
+  locator.evaluate((el) => {
+    let opacity = 1
+    for (let node: Element | null = el; node !== null; node = node.parentElement) {
+      opacity *= Number(getComputedStyle(node).opacity)
+    }
+    return Math.round(opacity * 100) / 100
+  })
+
+/** Clicks a row, then closes the Peek the click opened, which would narrow the Tree under the width the slots need. */
+async function pick(row: RegExp) {
+  await item(row).click()
+  await expect(peek()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
 }
 
 /** Waits for the write to arrive, then lets the fake Jira answer it. */
@@ -125,14 +146,14 @@ test('Escape cancels, and leaving the field saves a valid draft and drops an inv
 
   await slot(/PSAPAC-4,/).click()
   await field().fill('soon')
-  await item(/PSAPAC-13,/).click()
+  await pick(/PSAPAC-13,/)
   await expect(field()).toHaveCount(0)
   await expect(slot(/PSAPAC-4,/)).toHaveText('Original estimate 2h')
   expect(await writes()).toBe(before)
 
   await slot(/PSAPAC-4,/).click()
   await field().fill('4h')
-  await item(/PSAPAC-13,/).click()
+  await pick(/PSAPAC-13,/)
   await expect(slot(/PSAPAC-4,/)).toHaveText('Original estimate 4h')
   await settle(before + 1)
   expect(await lastBody()).toMatchObject(estimateBody('4h'))
@@ -189,8 +210,12 @@ test('a refused write puts the old value back and offers Retry', async () => {
   await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
   await expect(slot(/PSAPAC-4,/)).toHaveText('Original estimate 2h')
 
+  // The fake counts an edit as applied only when it accepts it, so the refused one leaves it at 0.
   await alert.getByRole('button', { name: 'Retry' }).click()
-  await settle(before + 2)
+  await expect.poll(writes).toBe(before + 2)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(1)
+  expect(await lastBody()).toMatchObject(estimateBody('5h'))
   await expect(slot(/PSAPAC-4,/)).toHaveText('Original estimate 5h')
 })
 
@@ -218,13 +243,62 @@ test('an Epic offers no field', async () => {
 
 test('the row stays mounted while the field is open and the Tree scrolls', async () => {
   await open()
+  // A short window, so the rows overflow the Tree and the scroll below is a real one.
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setContentSize(1200, 320)
+  })
+  await expect
+    .poll(() => tree().evaluate((el) => el.scrollHeight - el.clientHeight))
+    .toBeGreaterThan(100)
   await slot(/PSAPAC-4,/).click()
   await field().fill('6h')
   await tree().evaluate((el) => {
     el.scrollTop = el.scrollHeight
   })
+  await expect.poll(() => tree().evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
   await expect(field()).toHaveValue('6h')
   await expect(field()).toBeFocused()
+})
+
+test('a click inside the open field, or a double-click on the slot, opens neither the Peek nor the page', async () => {
+  await open()
+  await slot(/PSAPAC-4,/).click()
+  await field().click()
+  await field().dblclick()
+  await expect(peek()).toHaveCount(0)
+  await expect(issuePage()).toHaveCount(0)
+  await expect(field()).toBeFocused()
+  await field().press('Escape')
+
+  await slot(/PSAPAC-4,/).dblclick()
+  await expect(peek()).toHaveCount(0)
+  await expect(issuePage()).toHaveCount(0)
+  await expect(field()).toBeFocused()
+  await expect(item(/PSAPAC-4,/)).toHaveAttribute('data-active', 'true')
+})
+
+test('the open field and its hint on a Hold row draw at full opacity while the rest of the row stays at 30%', async () => {
+  await moveIssue(app, 'PSAPAC-11', 'hold')
+  await setEstimate(app, 'PSAPAC-11', 2 * 3600)
+  await open()
+  const row = item(/PSAPAC-11,/)
+  await expect.poll(() => effective(row.locator('[data-prop=estimate]'))).toBe(0.3)
+
+  await slot(/PSAPAC-11,/).click()
+  await expect(field()).toHaveValue('2h')
+  await expect.poll(() => effective(field())).toBe(1)
+  await field().fill('nope')
+  await field().press('Enter')
+  const hint = window.getByText('Use a duration such as 2h 30m.')
+  await expect(hint).toBeVisible()
+  await expect.poll(() => effective(hint)).toBe(1)
+  await expect.poll(() => effective(row.locator('.tree-key'))).toBe(0.3)
+  await expect.poll(() => effective(row.locator('[data-avatar]'))).toBe(0.3)
+  await expect.poll(() => effective(row.locator('[data-glyph="status"]'))).toBe(0.3)
+
+  await field().press('Escape')
+  await expect.poll(() => effective(row.locator('[data-prop=estimate]'))).toBe(0.3)
+  await expect.poll(() => effective(row.locator('.tree-key'))).toBe(0.3)
 })
 
 test('edits the estimate on the Sprint page without opening the issue, and Enter on the focused slot opens it', async () => {

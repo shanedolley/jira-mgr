@@ -290,6 +290,20 @@ input {
   opacity: 1;
 }
 
+/*
+ * A Hold row whose estimate is being edited (#276): the field and its hint must not draw at 30%, and
+ * an ancestor's opacity cannot be undone from inside. So that row's fade moves from the content to
+ * each part of it but the open field, which makes every other field 30% as before. 0.3 is
+ * HOLD_OPACITY.
+ */
+[data-hold]:has([data-editing]) {
+  opacity: 1 !important;
+}
+[data-hold]:has([data-editing]) > :not([data-props]),
+[data-hold]:has([data-editing]) [data-props] > :not([data-editing]) {
+  opacity: 0.3;
+}
+
 /* A property whose edit waits on Jira: the value dims to 60%, and a spinner takes the chevron's place. */
 [data-pending] {
   position: relative;

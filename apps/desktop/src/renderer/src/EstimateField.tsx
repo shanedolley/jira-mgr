@@ -93,6 +93,8 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     // The Tree and the Shell leave an input its keys: this one has only Enter and Escape of its own.
+    // An Enter that commits an input method's composition is not the user's Enter.
+    if (event.nativeEvent.isComposing) return
     if (event.key === 'Enter') {
       event.preventDefault()
       leave(true, true)
@@ -135,6 +137,11 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
   return (
     <span
       data-prop="estimate"
+      // Marked as the closed slot is, so a click or double-click in the field is the field's alone
+      // (the row neither opens the Peek nor arms the page). `data-editing` keeps a Hold row's
+      // fade off the field and its hint, which a fade on the row would draw at 30%.
+      data-edit="estimate"
+      data-editing=""
       className="relative inline-block min-h-5 w-16 shrink-0 text-right text-xs tabular-nums"
       // The field's clicks and keys are its own, whichever row or button holds it.
       onClick={(event) => {
