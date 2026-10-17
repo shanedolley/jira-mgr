@@ -9,6 +9,8 @@ import {
   type ToggleEvent,
 } from 'react'
 
+import type { CellMode } from './cell'
+import { useShowOnMount } from './CellPopover'
 import { Kbd, keycap } from './Kbd'
 import { matches } from './properties'
 
@@ -78,6 +80,8 @@ export interface PickerProps {
   triggerRef?: RefObject<HTMLButtonElement | null>
   /** Called once a choice has closed the list, which a context menu takes as the action being done. */
   onPicked?: () => void
+  /** Opens the list at once, against a row's cell instead of the trigger, which is then not drawn. */
+  cell?: CellMode
 }
 
 /** What the context menu passes a picker to make it one of its items. */
@@ -186,6 +190,7 @@ export function Picker({
   wide = false,
   triggerRef: givenTriggerRef,
   onPicked,
+  cell,
 }: PickerProps) {
   const inMenu = variant === 'menu'
   const uid = useId()
@@ -227,6 +232,9 @@ export function Picker({
     else sections.push({ group: option.group, items: [{ option, index }] })
   })
 
+  const inCell = cell !== undefined
+  useShowOnMount(popoverRef, inCell)
+
   useEffect(() => {
     if (open && activeIndex >= 0) {
       document
@@ -254,6 +262,7 @@ export function Picker({
     ) {
       triggerRef.current?.focus()
     }
+    cell?.onClose()
   }
 
   function choose(id: string) {
@@ -339,7 +348,7 @@ export function Picker({
           event.preventDefault()
           popoverRef.current?.showPopover()
         }}
-        style={{ anchorName: anchorOf(uid) }}
+        style={{ anchorName: anchorOf(uid), ...(inCell && { display: 'none' }) }}
         className={`group flex items-center text-left disabled:opacity-60 aria-expanded:bg-hover ${TRIGGER[variant]}`}
       >
         {inMenu ? (
@@ -375,7 +384,7 @@ export function Picker({
         // Starts at the left edge of its button, so the property's name stays readable; against the
         // window's right edge it flips to open leftward.
         style={{
-          positionAnchor: anchorOf(uid),
+          positionAnchor: cell?.anchor ?? anchorOf(uid),
           positionTryFallbacks: 'flip-block, flip-inline',
           // A submenu opens beside its item and starts level with it.
           ...(inMenu && SUBMENU),

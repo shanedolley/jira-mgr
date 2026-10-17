@@ -597,8 +597,8 @@ export function moveActive(
  * elsewhere it opens an issue row in the Peek and toggles a header or chip. With `select`, a click
  * on a checkable issue row checks it instead: `toggle` flips it (its checkbox) and `range` adds
  * every checkable row from the anchor to it (Shift+click), the anchor being the active issue when
- * none is set. Neither opens the Peek. `activate` only makes the row active: a click on an in-row
- * field (#276) leaves the Peek as it is.
+ * none is set. Neither opens the Peek. `activate` only makes the row active: a click on an
+ * in-row field (#276) or on a cell with its own editor (#267) leaves the Peek as it is.
  */
 export function clickRow(
   rows: readonly TreeRow[],

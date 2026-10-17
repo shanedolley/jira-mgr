@@ -5,6 +5,7 @@ import type { Progress } from '@jira-mgr/core/hierarchy'
 import {
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -15,6 +16,7 @@ import {
   type RefObject,
 } from 'react'
 
+import type { CellProperty } from './cell'
 import { keepsLetters } from './keymap'
 import { extrasWidth, fittingCount } from './propertyFit'
 import { DOUBLE_CLICK_MS } from './summaryEdit'
@@ -50,6 +52,12 @@ const ISSUE_DRAG = 'application/x-jm-issue'
 /** Where a moved issue goes among its siblings: to the place of another, or one step up or down. */
 export type MoveTarget = { over: string } | { step: -1 | 1 }
 
+/** What the Shell can ask of the Tree. */
+export interface TreeControl {
+  /** Scrolls the row with this id into view, as a keyboard move does. */
+  reveal: (id: string) => void
+}
+
 interface IssueTreeProps {
   rows: readonly Row[]
   /** Active row, collapsed and revealed sets and the Peek: everything `moveActive` reads. */
@@ -66,10 +74,14 @@ interface IssueTreeProps {
   blocks: ReadonlyMap<string, OpenBlocks>
   /** Called with the next state after a key or a click. */
   onChange: (next: MoveResult) => void
-  /** A click on an issue row's status dot or avatar, made after the row became active. */
-  onPick: (key: string, property: 'status' | 'assignee') => void
+  /** A click on an issue row's avatar, made after the row became active. */
+  onPick: (key: string, property: 'assignee') => void
+  /** A click on a cell with its own editor, such as the status dot, made after the row became active. */
+  onCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** A click on an issue row's pencil, or a second click on its summary, which asks for the summary editor. */
   onEditSummary: (issue: Issue) => void
+  /** Lets the Shell scroll a row into view before a cell editor opens on it. */
+  control: RefObject<TreeControl | null>
   /** A click on a group header's "+". */
   onAdd: (row: Row) => void
   /** A drag dropped an issue on a sibling, or Alt+Shift with Up or Down moved the active one. */
@@ -104,6 +116,8 @@ export function IssueTree({
   onChange,
   onPick,
   onEditSummary,
+  onCell,
+  control,
   onAdd,
   onMove,
   progress,
@@ -186,23 +200,43 @@ export function IssueTree({
     setScrollTop(tree.scrollTop)
   }, [indexById, layout, treeRef])
 
+  // Scrolls a row into view, clear of the bulk bar. A keyboard move does it for the active row, and
+  // a cell editor for the row it opens on, so its popover finds the cell where the user can see it.
+  const reveal = useCallback(
+    (id: string | null) => {
+      const tree = treeRef.current
+      const index = id === null ? -1 : (indexById.get(id) ?? -1)
+      if (tree === null || index < 0) return
+      const top = layout.tops[index] ?? 0
+      const bottom = layout.tops[index + 1] ?? layout.total
+      // The bulk bar covers the foot of the Tree, so a row must clear it to count as in view.
+      const inset = selecting ? BAR_CLEARANCE : 0
+      if (top < tree.scrollTop) tree.scrollTop = top
+      else if (bottom > tree.scrollTop + tree.clientHeight - inset) {
+        tree.scrollTop = bottom - tree.clientHeight + inset
+      }
+      setScrollTop(tree.scrollTop)
+    },
+    [indexById, layout, selecting, treeRef],
+  )
+  useImperativeHandle(
+    control,
+    () => ({
+      reveal: (id) => {
+        ensured.current = id
+        reveal(id)
+      },
+    }),
+    [reveal],
+  )
+
   // A keyboard move scrolls the active row into view. Only a new active row does, so a rebuild
   // never pulls the view back from where the mouse wheel left it.
   useLayoutEffect(() => {
-    const tree = treeRef.current
-    if (tree === null || state.activeId === ensured.current) return
+    if (state.activeId === ensured.current) return
     ensured.current = state.activeId
-    if (activeIndex < 0) return
-    const top = layout.tops[activeIndex] ?? 0
-    const bottom = layout.tops[activeIndex + 1] ?? layout.total
-    // The bulk bar covers the foot of the Tree, so a row must clear it to count as in view.
-    const inset = selecting ? BAR_CLEARANCE : 0
-    if (top < tree.scrollTop) tree.scrollTop = top
-    else if (bottom > tree.scrollTop + tree.clientHeight - inset) {
-      tree.scrollTop = bottom - tree.clientHeight + inset
-    }
-    setScrollTop(tree.scrollTop)
-  }, [state.activeId, activeIndex, layout, treeRef, selecting])
+    reveal(state.activeId)
+  }, [state.activeId, reveal])
 
   const indices = useMemo(
     () => windowRange(layout, scrollTop, height, activeIndex),
@@ -317,6 +351,17 @@ export function IssueTree({
     [rows, state, onChange],
   )
 
+  const onRowCell = useCallback(
+    (issue: Issue, property: CellProperty, cell: HTMLElement) => {
+      // A click on a row clipped at the foot scrolls it into view; do it now, so the scroll is over before the editor opens.
+      const id = `i:${issue.key}`
+      ensured.current = id
+      reveal(id)
+      onCell(issue, property, cell)
+    },
+    [reveal, onCell],
+  )
+
   const onRowArm = useCallback((id: string | null) => {
     armed.current = id
   }, [])
@@ -398,6 +443,7 @@ export function IssueTree({
                 onOpen={onRowOpen}
                 onEdit={onRowEdit}
                 onPick={onPick}
+                onCell={onRowCell}
                 onAdd={onAdd}
                 done={children?.done}
                 total={children?.total}

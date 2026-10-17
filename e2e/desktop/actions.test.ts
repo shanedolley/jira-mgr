@@ -237,9 +237,9 @@ test('1 to 9 choose the numbered option in the Status and Priority pickers', asy
   await expect(window.getByRole('option').nth(1).locator('kbd')).toHaveText('2')
   await window.keyboard.press('1')
   await expect(window.getByRole('listbox')).toHaveCount(0)
-  await expect(peek().getByRole('button', { name: /^Status:/ })).toHaveAccessibleName(
-    `Status: ${statuses[0] ?? ''}`,
-  )
+  // `S` opens the list beside the row's dot, so no Peek is open: the row shows the choice.
+  await expect(peek()).toHaveCount(0)
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(new RegExp(`, ${statuses[0] ?? ''},`))
   await settle(before + 1)
   await expect(tree()).toBeFocused()
 
@@ -271,9 +271,7 @@ test('Cmd, Ctrl and Alt with a digit do nothing in a numbered picker', async () 
   for (const key of ['Meta+1', 'Control+1', 'Alt+1']) await window.keyboard.press(key)
   await expect(list).toBeVisible()
   expect(await writes()).toBe(before)
-  await expect(peek().getByRole('button', { name: /^Status:/ })).toHaveAccessibleName(
-    /^Status: In Progress/,
-  )
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/, In Progress,/)
 })
 
 test('digits type into the searchable Assignee picker instead of choosing', async () => {
@@ -287,26 +285,21 @@ test('digits type into the searchable Assignee picker instead of choosing', asyn
   await expect(window.getByRole('option').locator('kbd')).toHaveCount(0)
 })
 
-test('a click on a status dot opens that issue in the Peek with its Status picker', async () => {
+test('a click on a status dot opens its Status list beside the dot, not the Peek', async () => {
   await open()
   const before = await writes()
 
   await item(/PSAPAC-3,/)
     .getByTitle('Change status')
     .click()
-  await expect(peek()).toBeVisible()
-  await expect(peek().getByRole('button', { name: /^Status:/ })).toHaveAccessibleName(
-    /^Status: To Do/,
-  )
   await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
+  await expect(peek()).toHaveCount(0)
   await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
 
   await window.keyboard.press('2')
   await settle(before + 1)
-  await expect(peek().getByRole('button', { name: /^Status:/ })).not.toHaveAccessibleName(
-    /^Status: To Do/,
-  )
   await expect(item(/PSAPAC-3,/)).not.toHaveAccessibleName(/To Do/)
+  await expect(tree()).toBeFocused()
 })
 
 test('a click on an avatar opens that issue in the Peek with its Assignee picker, and picks one', async () => {

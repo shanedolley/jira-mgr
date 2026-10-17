@@ -90,14 +90,14 @@ function editEverywhere(
     )
   }
   client.setQueryData<IssueDetail>(issueDetailKey(key), (detail) => detail && edit(detail, true))
-  // The Sprint page lists its issues from its own read, so a row there shows the edit at once too.
-  client.setQueriesData<SprintReport>(
-    { queryKey: sprintKey },
-    (report) =>
-      report && {
-        ...report,
-        issues: report.issues.map((issue) => (issue.key === key ? edit(issue, false) : issue)),
-      },
+  // The Sprint page lists its own copies, which an edit made from its rows must show at once too.
+  client.setQueriesData<SprintReport>({ queryKey: sprintKey }, (report) =>
+    report?.issues.some((issue) => issue.key === key)
+      ? {
+          ...report,
+          issues: report.issues.map((issue) => (issue.key === key ? edit(issue, false) : issue)),
+        }
+      : report,
   )
 }
 
@@ -106,12 +106,16 @@ function listFields(patch: Partial<IssueDetail>): Partial<IssueDetail> {
   return Object.fromEntries(Object.entries(patch).filter(([field]) => !DETAIL_ONLY.includes(field)))
 }
 
-/** The query keys of the caches that hold the issue now. */
-function holding(client: QueryClient, key: string): (readonly string[])[] {
-  const keys: (readonly string[])[] = PHASES.map(phaseKey).filter((phaseQuery) =>
+/** The query keys of the caches that hold the issue now, the Sprint pages' reads included. */
+function holding(client: QueryClient, key: string): (readonly unknown[])[] {
+  const keys: (readonly unknown[])[] = PHASES.map(phaseKey).filter((phaseQuery) =>
     client.getQueryData<Issue[]>(phaseQuery)?.some((issue) => issue.key === key),
   )
   if (client.getQueryData(issueDetailKey(key)) !== undefined) keys.push(issueDetailKey(key))
+  // A refetch of a sprint that lands mid-edit would bring back the old value over the optimistic one.
+  for (const [queryKey, report] of client.getQueriesData<SprintReport>({ queryKey: sprintKey })) {
+    if (report?.issues.some((issue) => issue.key === key) === true) keys.push(queryKey)
+  }
   return keys
 }
 

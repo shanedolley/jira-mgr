@@ -157,19 +157,19 @@ test('the palette takes letters as text, and Esc closes it and returns focus', a
   await expect(filter).toBeFocused()
 })
 
-test('S, A, P and L open the Peek pickers for the active row, and a pick returns focus to the Tree', async () => {
+test('S opens the status list beside the row; A, P and L open the Peek pickers; a pick returns focus to the Tree', async () => {
   await open()
   await select(/PSAPAC-4,/)
   const before = await writes()
 
-  // S: the Peek opens with the status list focused.
+  // S: the status list opens beside the row's dot, with no Peek.
   await window.keyboard.press('s')
-  await expect(peek()).toBeVisible()
+  await expect(peek()).toHaveCount(0)
   await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
   await expect(option('To Do')).toBeVisible()
   await window.keyboard.press('ArrowUp')
   await window.keyboard.press('Enter')
-  await expect(peekPicker('Status')).toHaveAccessibleName('Status: To Do')
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/, To Do,/)
   await expect(tree()).toBeFocused()
   await settle(before + 1)
   expect(await lastBody()).toEqual({ transition: { id: 't1' } })
@@ -281,11 +281,11 @@ test('Esc closes a picker, then the Peek, from wherever focus is', async () => {
   await open()
   await select(/PSAPAC-4,/)
 
-  await window.keyboard.press('s')
-  await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
+  await window.keyboard.press('p')
+  await expect(window.getByRole('listbox', { name: 'Priority' })).toBeFocused()
   // The first Esc closes only the picker.
   await window.keyboard.press('Escape')
-  await expect(window.getByRole('listbox', { name: 'Status' })).toHaveCount(0)
+  await expect(window.getByRole('listbox', { name: 'Priority' })).toHaveCount(0)
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -468,7 +468,7 @@ test('Cmd+Z refuses to overwrite a change made elsewhere since', async () => {
   await window.keyboard.press('ArrowDown')
   await window.keyboard.press('Enter')
   await settle(before + 1)
-  await expect(peekPicker('Status')).toHaveAccessibleName('Status: In Progress')
+  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/, In Progress,/)
 
   // Someone moves the issue back to To Do; the next window focus reads it.
   await moveIssue(app, 'PSAPAC-3', 'todo')
@@ -477,14 +477,14 @@ test('Cmd+Z refuses to overwrite a change made elsewhere since', async () => {
     first?.emit('blur')
     first?.emit('focus')
   })
-  await expect(peekPicker('Status')).toHaveAccessibleName('Status: To Do')
+  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/, To Do,/)
 
   await window.keyboard.press('Meta+z')
   await expect(notice('Did not undo the status of PSAPAC-3')).toBeVisible()
   await expect(notice(/changed since/)).toBeVisible()
   // Nothing was sent, and the issue keeps what Jira holds.
   expect(await writes()).toBe(before + 1)
-  await expect(peekPicker('Status')).toHaveAccessibleName('Status: To Do')
+  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/, To Do,/)
 })
 
 test('a refused undo shows the value as it was, says why, and is not retried', async () => {
@@ -538,7 +538,6 @@ test('/ focuses the filter, and Enter lands on the first issue row with the quer
 
   // The active row is an issue, so a letter acts on it.
   await window.keyboard.press('s')
-  await expect(peek()).toBeVisible()
   await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
 })
 

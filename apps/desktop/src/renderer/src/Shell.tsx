@@ -44,6 +44,8 @@ import type {
 import { issueUrl } from '../../shared/links'
 import { Banner } from './Banner'
 import { BulkBar } from './BulkBar'
+import { isCellProperty, type CellProperty } from './cell'
+import { CellEditor, useCellEditor } from './CellEditor'
 import { copyText } from './clipboard'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
@@ -54,7 +56,7 @@ import { InboxPage } from './InboxPage'
 import { IssueDetail } from './IssueDetail'
 import { IssueMenu } from './IssueMenu'
 import { IssuePage } from './IssuePage'
-import { IssueTree, type MoveTarget } from './IssueTree'
+import { IssueTree, type MoveTarget, type TreeControl } from './IssueTree'
 import { Kbd } from './Kbd'
 import { useTreeTop } from './narrow'
 import { type OverviewLoad } from './OverviewFrame'
@@ -816,6 +818,38 @@ export function Shell({ session }: { session: Session }) {
     else control?.click()
   }
 
+  const treeControl = useRef<TreeControl>(null)
+  /** The cell editor: a picker opened against the cell of a Tree or Sprint page row. */
+  const cellEditor = useCellEditor(restoreFocus)
+  const cellTarget = cellEditor.target
+  const cellIssue =
+    cellTarget === null
+      ? undefined
+      : (issues.find((i) => i.key === cellTarget.issue.key) ?? cellTarget.issue)
+
+  /** Opens the editor of `property` on `cell`, a click on a Tree row's cell or a Sprint page row's. */
+  function editCell(issue: Issue, property: CellProperty, cell: HTMLElement) {
+    cellEditor.open({ issue, property, cell }, true)
+  }
+
+  /**
+   * Opens the cell editor for the command's property on the active Tree row, as a click on its
+   * cell does. False when the command names no property with an editor, a page is open or the cell
+   * is not drawn, and the caller falls back to the Peek's picker or the menu.
+   */
+  function openCell(command: string, key: string): boolean {
+    if (!isCellProperty(command) || pageKey !== null || activeRow === undefined) return false
+    const issue = issues.find((i) => i.key === key)
+    // The row may be clipped or scrolled away; its editor must open against a cell in view.
+    treeControl.current?.reveal(activeRow.id)
+    const cell = document
+      .getElementById(rowDomId(activeRow.id))
+      ?.querySelector<HTMLElement>(`[data-pick="${command}"]`)
+    if (issue === undefined || cell === undefined || cell === null) return false
+    cellEditor.open({ issue, property: command, cell }, false)
+    return true
+  }
+
   /**
    * Opens one property of `key`. The shortcut clicks the control that advertises its key with
    * `aria-keyshortcuts`, so it is the picker the mouse opens and no code is duplicated.
@@ -1242,6 +1276,8 @@ export function Shell({ session }: { session: Session }) {
             slot.click()
             return
           }
+          // A property with a cell editor opens it on the row's cell; the rest open the menu.
+          if (openCell(command, key)) return
           const row = document.getElementById(rowDomId(activeRow?.id ?? ''))
           if (row !== null) openMenuFor(key, row, null, command)
           return
@@ -1260,6 +1296,7 @@ export function Shell({ session }: { session: Session }) {
         if (command === 'assignMe') assignToMe(key)
         else if (command === 'copyKey') copyIssue(key, 'key')
         else if (command === 'copyLink') copyIssue(key, 'link')
+        else if (openCell(command, key)) return
         else openProperty(command, key)
       }
     }
@@ -1448,6 +1485,8 @@ export function Shell({ session }: { session: Session }) {
           openProperty(property, key)
         }}
         onEditSummary={setRenaming}
+        onCell={editCell}
+        control={treeControl}
         onAdd={(row) => {
           if (canCreate) setCreating(createContext(row, issues))
         }}
@@ -1701,6 +1740,7 @@ export function Shell({ session }: { session: Session }) {
             }}
             onOpenIssue={setPageKey}
             onEditSummary={setRenaming}
+            onEditCell={editCell}
           />
         </div>
       )}
@@ -1782,6 +1822,16 @@ export function Shell({ session }: { session: Session }) {
             }
           }}
           returnFocus={restoreFocus}
+        />
+      )}
+      {cellTarget !== null && cellIssue !== undefined && (
+        <CellEditor
+          key={`${cellTarget.issue.key}:${cellTarget.property}`}
+          target={cellTarget}
+          issue={cellIssue}
+          issues={issues}
+          me={meQuery.data}
+          onClose={cellEditor.close}
         />
       )}
       {menu !== null && menuIssue !== undefined && (
