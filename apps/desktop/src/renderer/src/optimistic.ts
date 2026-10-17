@@ -1,5 +1,6 @@
 import type { Issue, JiraMgrError } from '@jira-mgr/core'
 import type { IssueDetail } from '@jira-mgr/core/issue'
+import type { SprintReport } from '@jira-mgr/core/sprints'
 import type { MutationOptions, QueryClient } from '@tanstack/react-query'
 
 import type {
@@ -89,6 +90,15 @@ function editEverywhere(
     )
   }
   client.setQueryData<IssueDetail>(issueDetailKey(key), (detail) => detail && edit(detail, true))
+  // The Sprint page lists its issues from its own read, so a row there shows the edit at once too.
+  client.setQueriesData<SprintReport>(
+    { queryKey: sprintKey },
+    (report) =>
+      report && {
+        ...report,
+        issues: report.issues.map((issue) => (issue.key === key ? edit(issue, false) : issue)),
+      },
+  )
 }
 
 /** The fields of `patch` that a listed issue has. */
@@ -111,7 +121,14 @@ export function current(client: QueryClient, key: string): Issue | undefined {
     const found = client.getQueryData<Issue[]>(phaseKey(phase))?.find((issue) => issue.key === key)
     if (found !== undefined) return found
   }
-  return client.getQueryData<IssueDetail>(issueDetailKey(key))
+  const detail = client.getQueryData<IssueDetail>(issueDetailKey(key))
+  if (detail !== undefined) return detail
+  // An issue only an open Sprint page holds, such as a Done one before its phase loads.
+  for (const [, report] of client.getQueriesData<SprintReport>({ queryKey: sprintKey })) {
+    const found = report?.issues.find((issue) => issue.key === key)
+    if (found !== undefined) return found
+  }
+  return undefined
 }
 
 /** True while an edit to the issue is in flight, so its optimistic value is not Jira's yet. */

@@ -15,7 +15,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `A` | Open Assignee |
 | `L` | Open Labels |
 | `P` | Open Priority |
-| `E` | Edit the summary |
+| `E` | Edit the summary: in a modal from the Tree, in place in the Peek and on the issue page |
 | `Shift+D` | Open Due date. On the issue page it focuses the page's Due date field; from the Tree it opens the issue menu with the Due date field focused |
 | `Shift+P` | Open Parent, the same way |
 | `Shift+E` | Open Original estimate, the same way. From the Tree it focuses the estimate field in the active row when the row shows that slot |
