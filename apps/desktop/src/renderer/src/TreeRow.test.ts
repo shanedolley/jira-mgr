@@ -149,7 +149,7 @@ describe('rowProgress', () => {
 describe('the Logged slot', () => {
   const slot = (over: Partial<Issue>, provided = true) => {
     const { issue } = (row(over) as { node: { issue: Issue } }).node
-    const cell = createElement(TimeCell, { issue, property: 'logged' })
+    const cell = createElement(TimeCell, { issue, property: 'logged', always: false })
     return renderToStaticMarkup(
       provided ? createElement(LogWorkContext, { value: () => undefined }, cell) : cell,
     )
