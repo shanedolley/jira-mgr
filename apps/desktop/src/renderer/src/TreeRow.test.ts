@@ -231,10 +231,16 @@ describe('the priority slot', () => {
 })
 
 describe('the Sprint slot', () => {
-  const slot = (over: Partial<Issue>, always = false) => {
+  const slot = (over: Partial<Issue>, always = false, onEditCell?: () => void) => {
     const { issue } = (row({ labels: [], ...over }) as { node: { issue: Issue } }).node
     return renderToStaticMarkup(
-      createElement(Properties, { issue, properties: ['sprint'], today: '2026-10-10', always }),
+      createElement(Properties, {
+        issue,
+        properties: ['sprint'],
+        today: '2026-10-10',
+        always,
+        onEditCell,
+      }),
     )
   }
   const sprints = [{ id: 5, name: 'Sprint 5', state: 'active', endDate: '2026-10-14T14:00:00Z' }]
@@ -265,7 +271,29 @@ describe('the Sprint slot', () => {
     }
   })
 
-  it('is no target on the Sprint page yet', () => {
-    expect(slot({ sprints }, true)).not.toContain('data-pick')
+  it('is a button on the Sprint page, named by its value, with the full title back', () => {
+    const html = slot({ sprints }, true, () => undefined)
+    expect(html).toContain('<button')
+    expect(html).toContain('data-pick="sprint"')
+    expect(html).toContain('aria-label="Sprint of PSAPAC-11: Sprint 5"')
+    expect(html).toContain('title="Sprint 5, ends 2026-10-14"')
+    expect(slot({ sprints: [] }, true, () => undefined)).toContain(
+      'aria-label="Sprint of PSAPAC-11: Backlog"',
+    )
+  })
+
+  it('is a plain span on the Sprint page without an editor, and for an Epic or a Subtask', () => {
+    expect(slot({ sprints }, true)).not.toMatch(/<button|data-pick/)
+    const epic = { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 }
+    const subtask = { id: '8', name: 'Subtask', subtask: true, hierarchyLevel: -1 }
+    for (const issueType of [epic, subtask]) {
+      expect(slot({ issueType, sprints: [] }, true, () => undefined)).not.toMatch(
+        /<button|data-pick/,
+      )
+    }
+  })
+
+  it('never nests a control inside another on the Sprint page', () => {
+    expect(slot({ sprints }, true, () => undefined).match(/<button/g)).toHaveLength(1)
   })
 })

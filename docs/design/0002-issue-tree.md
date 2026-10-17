@@ -311,7 +311,7 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - The list is the issue page's `SprintPicker`: Backlog first, then the board's sprints, closed ones disabled, with Show all sprints. It names each sprint in full though the slot is abbreviated, and shows the sprint's end day as detail (`18 Oct`, with `'25` in another year, as the slot does), `Closed` for a closed sprint and the state when the sprint has no end day. The issue page, menu, create dialog and bulk bar pickers all use `sprintDetail`, so one sprint reads the same everywhere. The choice is optimistic through `sprintPatch` and `useSetSprint`, and a refusal reverts the slot and offers Retry.
 - The empty slot of a Story, Task or Bug (Backlog) is a click target titled "Set sprint". An Epic or a Subtask has no sprint (`propertyRules`), so its slot is not a target.
 - A Hold row stays editable. Moving a done issue into a sprint is allowed; Jira decides.
-- The Sprint page's slots join once the Sprint page's rows carry slot controls (#279).
+- On the Sprint page the slot is a `Slot` button (#279's pattern), named "Sprint of PSAPAC-13: Sprint 5" and titled with the full name and end day, that opens the same list. Moving the issue to another sprint or to Backlog takes its row off the page at once, a refusal puts it back with the Retry toast, and focus falls to the Sprint page when the row it was on is gone.
 
 ### Peek
 

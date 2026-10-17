@@ -31,6 +31,12 @@ const listbox = () => window.getByRole('listbox', { name: 'Sprint' })
 const option = (name: string | RegExp) => window.getByRole('option', { name })
 /** The open list, drawn by the cell editor against the clicked slot. */
 const popover = () => window.locator('.menu:popover-open')
+const sprintPage = () => window.getByRole('region', { name: 'Sprint page' })
+const sprintRow = (key: string) => sprintPage().locator(`li[data-issue-key=${key}]`)
+/** A Sprint page row's Sprint slot: a button beside the row's own, named by its value. */
+const sprintSlot = (key: string, name: string) =>
+  sprintRow(key).getByRole('button', { name: `Sprint of ${key}: ${name}` })
+const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 const chip = (name: string) =>
   window
     .getByRole('group', { name: 'Display properties', exact: true })
@@ -243,4 +249,91 @@ test('holds its layout with a wide font: the slot stays inside its row and the l
     )
   })
   expect(fits).toBe(true)
+})
+
+async function openSprintPage() {
+  await open()
+  await window
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('region', { name: 'Sprints' })
+    .getByRole('button', { name: /^Current/ })
+    .click()
+  await expect(sprintPage()).toBeVisible()
+  await expect(sprintRow('PSAPAC-13')).toBeVisible()
+}
+
+/** Whether focus is on the Sprint page or inside it. */
+const focusInPage = () => sprintPage().evaluate((el) => el.contains(document.activeElement))
+
+test('a Sprint page row offers the same list from its Sprint slot and still opens its issue', async () => {
+  await openSprintPage()
+  const before = await writes()
+  const slotButton = sprintSlot('PSAPAC-13', 'Sprint 5')
+  await expect(slotButton).toHaveText('S 5 (..14 Oct)')
+  // The full name is back as a tooltip, as on the Tree.
+  await expect(slotButton).toHaveAttribute('title', 'Sprint 5, ends 2026-10-14')
+
+  await slotButton.click()
+  await expect(listbox()).toBeFocused()
+  await expect(issuePage()).toHaveCount(0)
+  await expect(option(/^Sprint 5/)).toHaveAttribute('aria-selected', 'true')
+  await window.keyboard.press('Escape')
+  await expect(listbox()).toHaveCount(0)
+  expect(await focusInPage()).toBe(true)
+  expect(await writes()).toBe(before)
+
+  // The row button still opens the issue.
+  await sprintPage()
+    .getByRole('button', { name: /^PSAPAC-13 / })
+    .click()
+  await expect(issuePage()).toBeVisible()
+})
+
+test('moving an issue out of the sprint takes its row off the page at once and keeps focus on the page', async () => {
+  await openSprintPage()
+  const before = await writes()
+
+  await sprintSlot('PSAPAC-13', 'Sprint 5').click()
+  await option(/^Sprint 6/).click()
+
+  // The row leaves before Jira answers.
+  await expect(sprintRow('PSAPAC-13')).toHaveCount(0)
+  await settle(before + 1)
+  await expect(sprintRow('PSAPAC-13')).toHaveCount(0)
+  await expect(issuePage()).toHaveCount(0)
+  await expect.poll(focusInPage).toBe(true)
+})
+
+test('a Sprint page Sprint slot works by keyboard alone: Enter opens, arrows and Enter choose', async () => {
+  await openSprintPage()
+  const before = await writes()
+
+  await sprintSlot('PSAPAC-13', 'Sprint 5').focus()
+  await window.keyboard.press('Enter')
+  await expect(listbox()).toBeFocused()
+  await expect(option(/^Sprint 6/)).toBeVisible()
+  await window.keyboard.press('ArrowDown')
+  await window.keyboard.press('Enter')
+
+  await expect(sprintRow('PSAPAC-13')).toHaveCount(0)
+  await settle(before + 1)
+  await expect.poll(focusInPage).toBe(true)
+})
+
+test('a refused move on the Sprint page puts the row back with a Retry toast', async () => {
+  await openSprintPage()
+  await refuseKeys(app, ['PSAPAC-13'])
+  const before = await writes()
+
+  await sprintSlot('PSAPAC-13', 'Sprint 5').click()
+  await option('Backlog').click()
+  await expect(sprintRow('PSAPAC-13')).toHaveCount(0)
+  await expect.poll(writes).toBe(before + 1)
+  await releaseEdit(app)
+
+  const alert = notices(window).getByRole('alert')
+  await expect(alert).toContainText('Sprint not changed')
+  await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
+  await expect(sprintRow('PSAPAC-13')).toBeVisible()
+  await expect(sprintSlot('PSAPAC-13', 'Sprint 5')).toBeVisible()
 })
