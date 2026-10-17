@@ -41,6 +41,9 @@ interface ColumnHeaderProps {
   onResize: (property: RowProperty, width: number) => void
 }
 
+/** A separator's spoken value. */
+const pixels = (width: number) => `${String(width)} pixels`
+
 const treeOf = (from: Element) =>
   from.closest('[data-tree-pane]')?.querySelector<HTMLElement>('[role="tree"]')
 
@@ -71,6 +74,7 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
     else {
       setColWidth(d.pane, d.property, d.start)
       d.separator.setAttribute('aria-valuenow', String(d.start))
+      d.separator.setAttribute('aria-valuetext', pixels(d.start))
     }
     tree?.focus({ preventScroll: true })
   }
@@ -122,6 +126,7 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
     d.width = width
     setColWidth(d.pane, d.property, width)
     event.currentTarget.setAttribute('aria-valuenow', String(width))
+    event.currentTarget.setAttribute('aria-valuetext', pixels(width))
     setRemoving(width === 0 ? d.property : null)
   }
 
@@ -130,6 +135,7 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
     const width = fitted[property]
     const step = event.shiftKey ? BIG_STEP : STEP
     let next: number
+    let remove = false
     if (event.key === 'ArrowLeft') {
       next = Math.min(dragCap(properties, fitted, property, room), width + step)
     } else if (event.key === 'ArrowRight') {
@@ -137,11 +143,13 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
       next = Math.min(width, Math.max(1, width - step))
     } else if (event.key === 'Delete' || event.key === 'Backspace') {
       next = 0
+      remove = true
     } else return
     event.preventDefault()
     // The Tree and the Shell read arrows and Delete too, so the separator keeps its keys.
     event.stopPropagation()
-    if (next === width) return
+    // Delete acts on a column that is on, even one the window draws at 0.
+    if (next === width && !remove) return
     const tree = next === 0 ? treeOf(event.currentTarget) : null
     onResize(property, next)
     tree?.focus()
@@ -166,7 +174,11 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
             style={colWidth(property)}
             className="relative shrink-0"
           >
-            <span aria-hidden className="block truncate text-right text-xs leading-6 text-muted">
+            <span
+              aria-hidden
+              title={PROPERTY_LABELS[property]}
+              className="block truncate text-right text-xs leading-6 text-muted"
+            >
               {PROPERTY_LABELS[property]}
             </span>
             <div
@@ -176,9 +188,10 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
               aria-valuemin={0}
               aria-valuemax={dragCap(properties, fitted, property, room)}
               aria-valuenow={fitted[property]}
-              aria-valuetext={`${String(fitted[property])} pixels`}
+              aria-valuetext={pixels(fitted[property])}
               aria-keyshortcuts="ArrowLeft ArrowRight Delete"
-              tabIndex={0}
+              // A column the window draws at 0 has nothing to focus.
+              tabIndex={fitted[property] === 0 ? -1 : 0}
               data-col-sep={property}
               data-removing={removing === property ? '' : undefined}
               onPointerDown={(event) => {

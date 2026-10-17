@@ -8,7 +8,7 @@ import type { CellProperty } from './cell'
 import { Icon, PENCIL } from './Icon'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
-import { colVars, colWidth } from './propertyFit'
+import { colVars, colWidth, floorWidths } from './propertyFit'
 import { SECTION_HEADING } from './Section'
 import { Slot } from './Slot'
 import { holdFade, StatusDot } from './StatusDot'
@@ -204,7 +204,7 @@ const AFTER_STRIP = 73
 /**
  * The names of the properties above the first status section, at the widths the rows use, each
  * column's separator on its left edge as the Tree's header draws it. The widths are set in the Tree,
- * so this header only names them. A row that wraps its properties onto a second line (a narrow
+ * so this header only names them, at least `MIN_CELL` wide as the cells are. A row that wraps its properties onto a second line (a narrow
  * page) no longer lines up with it. It is drawn only: the rows name each value themselves.
  */
 function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
@@ -222,7 +222,10 @@ function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
           style={colWidth(property)}
           className="relative shrink-0"
         >
-          <span className="block truncate text-right text-xs leading-6 text-muted">
+          <span
+            title={PROPERTY_LABELS[property]}
+            className="block truncate text-right text-xs leading-6 text-muted"
+          >
             {PROPERTY_LABELS[property]}
           </span>
           <span className="absolute inset-y-0 -left-1 w-px bg-line" />
@@ -254,7 +257,11 @@ function Issues({
   const groups = groupByStatus(issues)
   return (
     <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px] max-stack:min-h-auto max-stack:overflow-y-visible max-stack:px-4">
-      <div style={colVars(properties, widths)} className="space-y-6">
+      <div
+        // A cell here is a button, so a column saved narrower than a click can hit draws at `MIN_CELL`.
+        style={colVars(properties, floorWidths(properties, widths))}
+        className="space-y-6"
+      >
         <div className="max-w-[40rem] space-y-1">
           <h1 className="text-xl font-semibold leading-7">{sprint.name}</h1>
           <p role="status" className="text-muted">

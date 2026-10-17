@@ -105,7 +105,7 @@ import { allows, type MenuAction, type MenuItemId } from './menuItems'
 import type { ActionId } from './paletteActions'
 import { assignMeOutcome, assigneePatch } from './properties'
 import { attemptWith } from './PropertyPickers'
-import { releasedAt } from './propertyFit'
+import { cellUsable, releasedAt } from './propertyFit'
 import { call } from './ipc'
 import {
   useBatch,
@@ -869,8 +869,8 @@ export function Shell({ session }: { session: Session }) {
     const cell = document
       .getElementById(rowDomId(activeRow.id))
       ?.querySelector<HTMLElement>(`[data-pick="${command}"]`)
-    // A slot the narrow Tree hides has no box to anchor to; the key then opens the Peek's picker.
-    if (issue === undefined || cell?.checkVisibility() !== true) {
+    // A slot the narrow Tree hides, or a column cut to a sliver, has no box to anchor to; the key then opens the Peek's picker.
+    if (issue === undefined || !cellUsable(cell)) {
       return false
     }
     cellEditor.open({ issue, property: command, cell }, false)
@@ -1300,7 +1300,7 @@ export function Shell({ session }: { session: Session }) {
                   .getElementById(rowDomId(activeRow?.id ?? ''))
                   ?.querySelector<HTMLElement>('[data-edit="estimate"]')
               : undefined
-          if (slot?.checkVisibility() === true) {
+          if (cellUsable(slot)) {
             slot.click()
             return
           }

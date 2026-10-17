@@ -1,4 +1,4 @@
-import type { PropertyWidths, RowProperty } from '@jira-mgr/core/display'
+import { WIDTH_MAX, type PropertyWidths, type RowProperty } from '@jira-mgr/core/display'
 import type { CSSProperties } from 'react'
 
 import type { Display } from '../../shared/ipc'
@@ -110,7 +110,7 @@ export function fitWidths(
 
 /**
  * The widest `property` can be dragged in a strip with `room` pixels: what the other columns
- * leave, so the title keeps its minimum.
+ * leave, so the title keeps its minimum, and never more than a file may hold (`WIDTH_MAX`).
  */
 export function dragCap(
   properties: readonly RowProperty[],
@@ -119,7 +119,28 @@ export function dragCap(
   room: number,
 ): number {
   const others = properties.reduce((sum, p) => sum + (p === property ? 0 : fitted[p]), 0)
-  return Math.max(0, Math.floor(room - gaps(properties.length) - others))
+  return Math.min(WIDTH_MAX, Math.max(0, Math.floor(room - gaps(properties.length) - others)))
+}
+
+/** The narrowest a cell can be and still take a click or an editor against it. */
+export const MIN_CELL = 16
+
+/**
+ * Whether a cell has a box an editor can anchor to: drawn, and at least `MIN_CELL` wide. A column
+ * fitted to 0 or saved at 1px passes `checkVisibility()` with a sliver of a box.
+ */
+export function cellUsable(cell: HTMLElement | null | undefined): cell is HTMLElement {
+  return cell?.checkVisibility() === true && cell.getBoundingClientRect().width >= MIN_CELL
+}
+
+/** `widths` with each listed column at least `MIN_CELL` wide, for a page whose cells are buttons. */
+export function floorWidths(
+  properties: readonly RowProperty[],
+  widths: PropertyWidths,
+): PropertyWidths {
+  return Object.fromEntries(
+    properties.map((p) => [p, Math.max(MIN_CELL, widths[p] ?? SLOT_WIDTH[p])]),
+  )
 }
 
 /** A drag at `width` pixels, whole and between 0 and `cap`. */

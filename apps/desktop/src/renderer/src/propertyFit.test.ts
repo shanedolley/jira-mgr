@@ -1,15 +1,18 @@
-import { ROW_PROPERTIES, type RowProperty } from '@jira-mgr/core/display'
+import { ROW_PROPERTIES, WIDTH_MAX, type RowProperty } from '@jira-mgr/core/display'
 import { describe, expect, it } from 'vitest'
 
 import type { Display } from '../../shared/ipc'
 import {
+  MIN_CELL,
   SLOT_WIDTH,
+  cellUsable,
   clampWidth,
   colVars,
   colWidth,
   dragCap,
   extrasWidth,
   fitWidths,
+  floorWidths,
   releasedAt,
   sameWidths,
   stripRoom,
@@ -93,6 +96,11 @@ describe('dragCap', () => {
   it('is never negative, so a cramped Tree holds a column at 0', () => {
     const fitted = fitWidths(['labels', 'due'], {}, 1000)
     expect(dragCap(['labels', 'due'], fitted, 'due', 10)).toBe(0)
+  })
+
+  it('never exceeds what a file may hold, so a wide window cannot build a drag the IPC schema refuses', () => {
+    const fitted = fitWidths(['labels'], {}, 5000)
+    expect(dragCap(['labels'], fitted, 'labels', 5000)).toBe(WIDTH_MAX)
   })
 
   it('keeps the title at its minimum: the widest drag fills the room exactly', () => {
@@ -187,5 +195,37 @@ describe('extrasWidth', () => {
     expect(extrasWidth({ ...none, blocked: true, blocking: true })).toBeGreaterThan(
       extrasWidth({ ...none, blocked: true }),
     )
+  })
+})
+
+describe('cellUsable', () => {
+  const cell = (visible: boolean, width: number) =>
+    ({
+      checkVisibility: () => visible,
+      getBoundingClientRect: () => ({ width }),
+    }) as unknown as HTMLElement
+
+  it('wants a cell that is drawn and wide enough to anchor an editor to', () => {
+    expect(cellUsable(cell(true, 64))).toBe(true)
+    expect(cellUsable(cell(true, MIN_CELL))).toBe(true)
+  })
+
+  it('refuses a missing cell, a hidden one and a column cut to a sliver', () => {
+    expect(cellUsable(null)).toBe(false)
+    expect(cellUsable(undefined)).toBe(false)
+    expect(cellUsable(cell(false, 64))).toBe(false)
+    expect(cellUsable(cell(true, 0))).toBe(false)
+    expect(cellUsable(cell(true, 1))).toBe(false)
+    expect(cellUsable(cell(true, MIN_CELL - 1))).toBe(false)
+  })
+})
+
+describe('floorWidths', () => {
+  it('lifts a narrow column to the least a button can be clicked at and leaves the rest', () => {
+    expect(floorWidths(['labels', 'due', 'updated'], { labels: 1, due: 40 })).toEqual({
+      labels: MIN_CELL,
+      due: 40,
+      updated: SLOT_WIDTH.updated,
+    })
   })
 })
