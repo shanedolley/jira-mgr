@@ -77,6 +77,8 @@ async function openSprint() {
   await joinSprint(app, ['PSAPAC-4', 'PSAPAC-11', 'PSAPAC-40'], 5)
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
+  // The fake holds the first Done page, so the toolbar stops reflowing under a click.
+  await expect(window.getByText('Loading Done issues:')).toBeVisible()
   await showDue()
   await window
     .getByRole('navigation', { name: 'Main' })
@@ -342,7 +344,9 @@ test('Esc on Clear writes nothing, even after a date was typed', async () => {
 
   await due('PSAPAC-40', '2020-01-02').click()
   await field().fill('2099-05-06')
-  await window.keyboard.press('Tab')
+  // One Tab only reaches the next segment of the date field, so move focus to Clear directly: the
+  // field's blur still names Clear as `relatedTarget`.
+  await editor().getByRole('button', { name: 'Clear' }).focus()
   await expect(editor().getByRole('button', { name: 'Clear' })).toBeFocused()
   await window.keyboard.press('Escape')
 
