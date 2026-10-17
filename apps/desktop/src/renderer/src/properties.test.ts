@@ -117,7 +117,7 @@ describe('shownSprints', () => {
 })
 
 describe('currentSprint', () => {
-  const s = (id: number, state: string) => ({ id, name: `S${String(id)}`, state })
+  const s = (id: number, state: string) => ({ id, name: `S${String(id)}`, state, endDate: null })
 
   it('prefers the active sprint, then a future one, and never a closed one', () => {
     expect(currentSprint({ sprints: [s(1, 'closed'), s(2, 'future'), s(3, 'active')] })?.id).toBe(3)
@@ -231,8 +231,8 @@ describe('patches', () => {
   it('moves into a sprint keeping the closed ones, and to the backlog dropping the open one', () => {
     const base = issue('P-1', {
       sprints: [
-        { id: 1, name: 'Old', state: 'closed' },
-        { id: 2, name: 'Now', state: 'active' },
+        { id: 1, name: 'Old', state: 'closed', endDate: null },
+        { id: 2, name: 'Now', state: 'active', endDate: null },
       ],
     })
     const target: SprintOption = {

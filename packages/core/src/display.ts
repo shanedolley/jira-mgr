@@ -72,3 +72,47 @@ const LEVELS: Record<string, number> = {
 
 /** How many of four bars a priority fills, 4 the highest; a name that is not listed fills none. */
 export const priorityLevel = (name: string): number => LEVELS[name.toLowerCase()] ?? 0
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** The part of a sprint the row's label and title read. */
+export interface SprintLabelInput {
+  name: string
+  endDate?: string | null
+}
+
+/**
+ * The day (`YYYY-MM-DD`) a sprint ends, or `null` without a usable end date. It is the date part of
+ * Jira's timestamp, not the local day: PSAPAC sprints end at 14:00Z, which is 19 Oct in Sydney, but
+ * the sprint is named "to 18 Oct".
+ */
+function endDay(sprint: SprintLabelInput): string | null {
+  const day = sprint.endDate?.slice(0, 10)
+  if (day === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null
+  const month = Number(day.slice(5, 7))
+  return month >= 1 && month <= 12 ? day : null
+}
+
+/**
+ * The sprint as the canvas shows it: `S 36 (..14 Oct)` for "Sprint 36" ending 14 October, with the
+ * year (`..14 Oct '25`) when the end falls outside the year of `today`. The number is the last run
+ * of digits in the name before any bracket, so the dates PSAPAC puts in a name
+ * (`PS Sprint 36 (05 Oct-18 Oct)`) do not count. A sprint with no usable end date reads `S 36`,
+ * and one with no number in its name reads as the full name.
+ */
+export function sprintLabel(sprint: SprintLabelInput, today: string): string {
+  const digits = sprint.name.split('(')[0]?.match(/\d+/g)?.at(-1)
+  if (digits === undefined) return sprint.name
+  const number = String(Number(digits))
+  const day = endDay(sprint)
+  if (day === null) return `S ${number}`
+  const [y = '', m = '', d = ''] = day.split('-')
+  const date = `${String(Number(d))} ${MONTHS[Number(m) - 1] ?? ''}`
+  return `S ${number} (..${y === today.slice(0, 4) ? date : `${date} '${y.slice(2)}`})`
+}
+
+/** The full sprint name, with its end day (`Sprint 5, ends 2026-10-14`) when it has one. */
+export function sprintTitle(sprint: SprintLabelInput): string {
+  const day = endDay(sprint)
+  return day === null ? sprint.name : `${sprint.name}, ends ${day}`
+}

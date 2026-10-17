@@ -107,7 +107,7 @@ const ISSUE = {
   priority: { id: '3', name: 'Medium' },
   customer: { id: '10100', value: 'Acme Corp' },
   engagement: { id: '10200', value: 'Data migration' },
-  sprints: [{ id: 7, name: 'Sprint 7', state: 'active' }],
+  sprints: [{ id: 7, name: 'Sprint 7', state: 'active', endDate: null }],
   startDate: '2026-10-01',
   dueDate: '2026-10-14',
   originalEstimateSeconds: 28800,

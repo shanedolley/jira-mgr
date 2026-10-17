@@ -35,13 +35,13 @@ describe('filterChoices', () => {
       status: { id: '9', name: 'Waiting', category: 'indeterminate' },
       assignee: { accountId: 'u2', displayName: 'Zed', avatarUrl: null },
       labels: ['beta', 'alpha'],
-      sprints: [{ id: 7, name: 'Sprint 7', state: 'closed' }],
+      sprints: [{ id: 7, name: 'Sprint 7', state: 'closed', endDate: null }],
     }),
     issue('P-2', {
       assignee: { accountId: 'u1', displayName: 'Ann', avatarUrl: null },
       issueType: { id: '2', name: 'Bug', subtask: false, hierarchyLevel: 0 },
       labels: ['alpha'],
-      sprints: [{ id: 8, name: 'Sprint 8', state: 'active' }],
+      sprints: [{ id: 8, name: 'Sprint 8', state: 'active', endDate: null }],
     }),
     issue('P-3', { assignee: { accountId: 'u1', displayName: 'Ann', avatarUrl: null } }),
   ])

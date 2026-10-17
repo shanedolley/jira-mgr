@@ -152,7 +152,7 @@ describe('the entries', () => {
   })
 
   it('moves a sprint back by the old sprint, or to the backlog', () => {
-    const sprint = { id: 5, name: 'Sprint 5', state: 'active' as const }
+    const sprint = { id: 5, name: 'Sprint 5', state: 'active' as const, endDate: null }
     const into = sprintEntry(
       { key: 'P-1' },
       { patch: { sprints: [sprint] }, before: { sprints: [] } },
@@ -213,7 +213,7 @@ describe('changedSince', () => {
         assignee: { ...ann, avatarUrl: 'https://example.test/a.png' },
       }),
     ).toBe('')
-    const set = { id: 5, name: 'Sprint 5', state: 'active' as const }
+    const set = { id: 5, name: 'Sprint 5', state: 'active' as const, endDate: null }
     expect(
       changedSince(entry({ sprints: [set] }), {
         sprints: [{ ...set, startDate: '2026-10-01' } as Issue['sprints'][number]],
@@ -457,7 +457,7 @@ describe('batch entries', () => {
       {
         key: 'P-2',
         change: { kind: 'sprint', sprintId: 5 },
-        patch: { sprints: [{ id: 5, name: 'S5', state: 'active' }] },
+        patch: { sprints: [{ id: 5, name: 'S5', state: 'active', endDate: null }] },
         before: { sprints: [] },
       },
     ])

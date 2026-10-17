@@ -23,7 +23,7 @@ interface Spec {
   status?: string
   assignee?: string
   labels?: string[]
-  sprints?: { id: number; name: string; state: string }[]
+  sprints?: Issue['sprints']
   parent?: string
   creator?: string
   priority?: string
@@ -75,9 +75,9 @@ function issue(key: string, spec: Spec = {}): Issue {
 const keys = (issues: Issue[]) => issues.map((i) => i.key)
 const filter = (issues: Issue[], filters: ViewFilters) => keys(filterIssues(issues, filters, ctx))
 
-const ACTIVE = { id: 1, name: 'Sprint 1', state: 'active' }
-const FUTURE = { id: 2, name: 'Sprint 2', state: 'future' }
-const CLOSED = { id: 3, name: 'Sprint 0', state: 'closed' }
+const ACTIVE = { id: 1, name: 'Sprint 1', state: 'active', endDate: null }
+const FUTURE = { id: 2, name: 'Sprint 2', state: 'future', endDate: null }
+const CLOSED = { id: 3, name: 'Sprint 0', state: 'closed', endDate: null }
 
 describe('issueMatcher', () => {
   it('selects everything when no filter is set', () => {
@@ -177,7 +177,9 @@ describe('issueMatcher', () => {
     })
 
     it('reads "current" in any case, and it beats a sprint named "Current"', () => {
-      const named = issue('P-6', { sprints: [{ id: 9, name: 'Current', state: 'closed' }] })
+      const named = issue('P-6', {
+        sprints: [{ id: 9, name: 'Current', state: 'closed', endDate: null }],
+      })
       expect(filter([...all, named], { sprint: ['Current'] })).toEqual(['P-1', 'P-4'])
     })
 

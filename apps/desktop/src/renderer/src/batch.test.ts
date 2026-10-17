@@ -191,7 +191,9 @@ describe('bulk actions', () => {
       startDate: null,
       endDate: null,
     }
-    const inside = issue(2, { sprints: [{ id: 5, name: 'Sprint 5', state: 'active' }] })
+    const inside = issue(2, {
+      sprints: [{ id: 5, name: 'Sprint 5', state: 'active', endDate: null }],
+    })
     expect(planBatch([issue(1), inside], sprintAction(sprint)).map((i) => i.key)).toEqual(['P-1'])
     expect(planBatch([issue(1), inside], sprintAction(null))).toEqual([
       expect.objectContaining({

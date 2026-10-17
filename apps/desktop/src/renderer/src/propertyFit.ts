@@ -3,7 +3,7 @@ import type { RowProperty } from '@jira-mgr/core/display'
 /** The pixel width of each property's slot in `TreeRow.tsx`. Change them together. */
 const SLOT_WIDTH: Record<RowProperty, number> = {
   labels: 96,
-  sprint: 96,
+  sprint: 104,
   estimate: 64,
   logged: 64,
   remaining: 64,

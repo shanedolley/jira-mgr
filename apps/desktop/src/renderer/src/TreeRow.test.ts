@@ -63,6 +63,17 @@ describe('rowName', () => {
     expect(rowName(timed, ['logged'])).toMatch(/, logged 2h 30m$/)
   })
 
+  it('names the full sprint and its end day while the Sprint property is on', () => {
+    const sprinted = row({
+      sprints: [{ id: 5, name: 'Sprint 5', state: 'active', endDate: '2026-10-14T00:00:00.000Z' }],
+    })
+    expect(rowName(sprinted)).not.toContain('sprint')
+    expect(rowName(sprinted, ['sprint'])).toBe(
+      'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, sprint Sprint 5, ends 2026-10-14',
+    )
+    expect(rowName(row({ sprints: [] }), ['sprint'])).not.toContain('sprint')
+  })
+
   it('names no time value for an issue without one, or for an Epic', () => {
     const empty = row({
       originalEstimateSeconds: null,

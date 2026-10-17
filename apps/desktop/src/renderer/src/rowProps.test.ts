@@ -43,9 +43,9 @@ describe('dueTone', () => {
 })
 
 describe('rowSprint', () => {
-  const closed = { id: 3, name: 'S3', state: 'closed' }
-  const future = { id: 7, name: 'S7', state: 'future' }
-  const active = { id: 5, name: 'S5', state: 'active' }
+  const closed = { id: 3, name: 'S3', state: 'closed', endDate: null }
+  const future = { id: 7, name: 'S7', state: 'future', endDate: null }
+  const active = { id: 5, name: 'S5', state: 'active', endDate: null }
 
   it('prefers the active sprint, then the newest', () => {
     expect(rowSprint(sprints(closed, active, future))).toEqual(active)

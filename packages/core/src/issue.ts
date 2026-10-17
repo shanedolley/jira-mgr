@@ -90,7 +90,16 @@ const jiraFields = z.object({
   updated: jiraTime,
   customer: option.nullish(),
   engagement: option.nullish(),
-  sprint: z.array(z.object({ id: z.number(), name: z.string(), state: z.string() })).nullish(),
+  sprint: z
+    .array(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+        state: z.string(),
+        endDate: z.string().nullish(),
+      }),
+    )
+    .nullish(),
   startDate: z.string().nullish(),
   timeRemaining: z.number().nullish(),
 })
@@ -151,7 +160,7 @@ export function issueSchema(ids: FieldIds) {
       priority: f.priority ?? null,
       customer: f.customer ?? null,
       engagement: f.engagement ?? null,
-      sprints: f.sprint ?? [],
+      sprints: (f.sprint ?? []).map((s) => ({ ...s, endDate: s.endDate ?? null })),
       startDate: f.startDate ?? null,
       dueDate: f.duedate ?? null,
       originalEstimateSeconds: f.timetracking?.originalEstimateSeconds ?? null,
