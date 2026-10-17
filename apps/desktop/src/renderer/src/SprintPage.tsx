@@ -209,9 +209,7 @@ function Issues({
   onEditSummary: (issue: Issue) => void
   onEditCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
 }) {
-  const { sprint } = report
-  // A move out of this sprint takes its row off the page at once, and a refusal puts it back.
-  const issues = report.issues.filter((issue) => issue.sprints.some((s) => s.id === sprint.id))
+  const { sprint, issues } = report
   const groups = groupByStatus(issues)
   return (
     <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px] max-stack:min-h-auto max-stack:overflow-y-visible max-stack:px-4">

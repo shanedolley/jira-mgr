@@ -618,6 +618,59 @@ describe('a Sprint page copy', () => {
   })
 })
 
+describe('a move out of the sprint on a Sprint page copy', () => {
+  const report = (...issues: Issue[]): SprintReport =>
+    ({ sprint: { id: 5 }, issues, stats: {} }) as unknown as SprintReport
+  const keys = (client: QueryClient) =>
+    client.getQueryData<SprintReport>([...sprintKey, 5])?.issues.map((i) => i.key)
+  const inSprint = (key: string) =>
+    issue(key, key, { sprints: [{ id: 5, name: 'Sprint 5', state: 'active', endDate: null }] })
+
+  function setup() {
+    const client = new QueryClient()
+    client.setQueryData([...sprintKey, 5], report(inSprint('PSAPAC-1'), inSprint('PSAPAC-2')))
+    client.setQueryData([...sprintKey, 6], { ...report(), sprint: { id: 6 } })
+    const request = deferred<null>()
+    const { read } = reader()
+    const observer = new MutationObserver(
+      client,
+      issueMutation(
+        client,
+        () => request.promise,
+        ({ patch }: { key: string; patch: Partial<Issue> }) => patch,
+        read,
+      ),
+    )
+    return { client, request, observer }
+  }
+
+  it('takes the row off at once, whatever the issue lists, and puts it back when Jira refuses', async () => {
+    const { client, request, observer } = setup()
+
+    const done = observer.mutate({ key: 'PSAPAC-1', patch: { sprints: [] } })
+    await expect.poll(() => keys(client)).toEqual(['PSAPAC-2'])
+    request.reject(new JiraMgrError('validation_failed', 'Jira refused the move.'))
+    await expect(done).rejects.toMatchObject({ code: 'validation_failed' })
+    expect(keys(client)).toEqual(['PSAPAC-2', 'PSAPAC-1'])
+    // As it was before the move, not as the move showed it.
+    expect(
+      client.getQueryData<SprintReport>([...sprintKey, 5])?.issues.at(-1)?.sprints,
+    ).toHaveLength(1)
+  })
+
+  it('keeps the row when the patch still lists the sprint, and ignores edits that do not set sprints', async () => {
+    const { client, request, observer } = setup()
+    const patch = { sprints: inSprint('x').sprints }
+
+    const done = observer.mutate({ key: 'PSAPAC-1', patch })
+    await expect.poll(() => keys(client)).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+    request.resolve(null)
+    await done
+    await observer.mutate({ key: 'PSAPAC-2', patch: { summary: 'Two, edited' } })
+    expect(keys(client)).toEqual(['PSAPAC-1', 'PSAPAC-2'])
+  })
+})
+
 describe('a Sprint page read in flight', () => {
   it('is cancelled by an edit of an issue it holds, so it cannot bring back the old value', async () => {
     const client = new QueryClient()
