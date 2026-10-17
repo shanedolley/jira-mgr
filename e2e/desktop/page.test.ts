@@ -1128,7 +1128,11 @@ for (const [name, css] of FONTS) {
     await expect(heading('Migrate the dashboards')).toBeVisible()
     if (css !== undefined) await window.addStyleTag({ content: css })
 
-    await picker('Parent', /^Parent: PSAPAC-10/).click()
+    const parent = picker('Parent', /^Parent: PSAPAC-10/)
+    await parent.click()
+    // The popover shows at once, but the picker moves focus into it on the later toggle event. Esc before
+    // then lands on the trigger, outside the popover, and the page takes it and goes back.
+    await expect(parent).toHaveAttribute('aria-expanded', 'true')
     const listbox = window.getByRole('listbox', { name: 'Parent' })
     const box = await listbox.locator('xpath=..').boundingBox()
     const view = await window.evaluate(() => ({ w: innerWidth, h: innerHeight }))
