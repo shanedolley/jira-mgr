@@ -65,6 +65,16 @@ test('draws a Sprint page row summary in the key colour', async () => {
   const colour = (field: Locator) => field.evaluate((el) => getComputedStyle(el).color)
   const key = await colour(row.getByText('PSAPAC-2', { exact: true }))
   expect(await colour(row.getByText('Review the data model'))).toBe(key)
+  // Pinned to the token, so the test fails if the key and summary both turn ink.
+  const muted = await window.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--muted)'
+    document.body.append(probe)
+    const painted = getComputedStyle(probe).color
+    probe.remove()
+    return painted
+  })
+  expect(key).toBe(muted)
 })
 
 test('opens the active sprint from the sidebar with counts that equal its issues', async () => {

@@ -480,7 +480,7 @@ function Content({
         </span>
       )
     case 'issue': {
-      const { issue, customerMismatch } = row.node
+      const { issue, contextOnly, customerMismatch } = row.node
       return (
         <span {...holdFade(issue.status)} className="flex min-w-0 flex-1 items-center gap-2">
           <TypeIcon type={issue.issueType} />
@@ -490,7 +490,9 @@ function Content({
           <span className="tree-key w-[5.5rem] min-w-fit shrink-0 text-xs font-[450] tabular-nums text-muted">
             {issue.key}
           </span>
-          <span className="tree-summary min-w-0 flex-1 truncate font-medium text-muted @tree:min-w-20">
+          <span
+            className={`tree-summary min-w-0 flex-1 truncate text-muted @tree:min-w-20 ${contextOnly ? 'font-normal' : 'font-medium'}`}
+          >
             {issue.summary}
           </span>
           <BlockPills {...blocks} />
