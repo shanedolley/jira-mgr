@@ -47,6 +47,7 @@ import {
   useTransitions,
   useUsers,
 } from './queries'
+import { useToday } from './today'
 import { TypeIcon } from './TypeIcon'
 import { useDebounced } from './useDebounced'
 
@@ -363,13 +364,14 @@ export function SprintPicker({ issue, menu, cell }: PickerProps) {
   const [allSprints, setAllSprints] = useState(false)
   const sprints = useSprints(allSprints, open)
   const sprint = currentSprint(issue)
+  const today = useToday()
   const sprintList = shownSprints(sprints.data ?? [], allSprints)
   const options: PickerOption[] = [
     { id: NONE, label: 'Backlog' },
     ...sprintList.map((s) => ({
       id: String(s.id),
       label: s.name,
-      detail: sprintDetail(s),
+      detail: sprintDetail(s, today),
       // Jira refuses a move into a closed sprint.
       disabled: s.state === 'closed',
     })),

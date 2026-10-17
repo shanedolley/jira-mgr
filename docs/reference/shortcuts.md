@@ -19,7 +19,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Shift+D` | Open Due date. On the issue page it focuses the page's Due date field; from the Tree it opens the issue menu with the Due date field focused |
 | `Shift+P` | Open Parent, the same way |
 | `Shift+E` | Open Original estimate, the same way. From the Tree it focuses the estimate field in the active row when the row shows that slot |
-| `Shift+C` | Open Sprint, the same way. These four never fall through to `C`, `P` or `E`, and do nothing where the issue's type has no such field (an Epic has no sprint, parent or estimate) |
+| `Shift+C` | Open Sprint, the same way; on the Tree it opens the Sprint list beside the row's Sprint slot (#273), and falls back to the issue menu's when the slot is hidden. These four never fall through to `C`, `P` or `E`, and do nothing where the issue's type has no such field (an Epic has no sprint, parent or estimate) |
 | `I` | Assign the issue to me |
 | `Y` | Copy the issue key |
 | `U` | Copy the link to the issue on the Jira site |

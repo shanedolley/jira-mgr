@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { sprintEnd } from '@jira-mgr/core/display'
 import { formatEstimate, parentCandidates, parseEstimate } from '@jira-mgr/core/issue'
 
 import type { FieldChoice, SprintOption, StatusOption, UserOption } from '../../shared/ipc'
@@ -42,18 +43,16 @@ export const STATE_LABELS: Record<SprintOption['state'], string> = {
   closed: 'Closed',
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /**
- * What a list shows beside a sprint's full name: its end day (`18 Oct`), else its state. The day
- * is the date part of Jira's timestamp, as the Tree's slot reads it, not the local day.
+ * What a list shows beside a sprint's full name, so one sprint reads the same in every picker: the
+ * end day as the Tree's slot shows it (`18 Oct`), `Closed` for a closed sprint, else the state.
  */
-export function sprintDetail(sprint: Pick<SprintOption, 'state' | 'endDate'>): string {
-  const parts = /^\d{4}-(\d{2})-(\d{2})/.exec(sprint.endDate ?? '')
-  const month = MONTHS[Number(parts?.[1]) - 1]
-  return parts === null || month === undefined
-    ? STATE_LABELS[sprint.state]
-    : `${String(Number(parts[2]))} ${month}`
+export function sprintDetail(
+  sprint: Pick<SprintOption, 'name' | 'state' | 'endDate'>,
+  today: string,
+): string {
+  if (sprint.state === 'closed') return STATE_LABELS.closed
+  return sprintEnd(sprint, today) ?? STATE_LABELS[sprint.state]
 }
 
 /** An assignee, as the pickers list one. */

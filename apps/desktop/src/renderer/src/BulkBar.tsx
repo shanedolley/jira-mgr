@@ -20,16 +20,17 @@ import type { BatchRun } from './optimistic'
 import { Picker, type PickerOption, type PickerVariant } from './Picker'
 import {
   NONE,
-  STATE_LABELS,
   assigneeChoices,
   assigneeOptions,
   isLabel,
   projectLabels,
   recentAssignees,
   shownSprints,
+  sprintDetail,
   type Person,
 } from './properties'
 import { statusChoices, statusOptions } from './PropertyPickers'
+import { useToday } from './today'
 import { useFieldOptions, useSprints, useTransitions, useUsers, type BatchOptions } from './queries'
 import { useDebounced } from './useDebounced'
 
@@ -166,6 +167,7 @@ function LabelsChoice({ checked, all, variant, disabled, apply }: ChoiceProps) {
 }
 
 function SprintChoice({ variant, disabled, apply }: ChoiceProps) {
+  const today = useToday()
   const [open, setOpen] = useState(false)
   const sprints = useSprints(false, open)
   const shown = shownSprints(sprints.data ?? [], false)
@@ -176,7 +178,7 @@ function SprintChoice({ variant, disabled, apply }: ChoiceProps) {
       disabled={disabled}
       options={[
         { id: NONE, label: 'Backlog' },
-        ...shown.map((s) => ({ id: String(s.id), label: s.name, detail: STATE_LABELS[s.state] })),
+        ...shown.map((s) => ({ id: String(s.id), label: s.name, detail: sprintDetail(s, today) })),
       ]}
       onSelect={(id) => {
         const sprint = shown.find((s) => String(s.id) === id)

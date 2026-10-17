@@ -36,7 +36,7 @@ const chip = (name: string) =>
     .getByRole('group', { name: 'Display properties', exact: true })
     .getByRole('button', { name, exact: true })
 
-/** PSAPAC-13 is a Task in the active Sprint 5 (ends 14 Oct); PSAPAC-3 is a Story in the backlog; PSAPAC-10 is an Epic. */
+/** PSAPAC-13 is a Task in the active Sprint 5 (ends 14 Oct); PSAPAC-3 is a Bug in the backlog; PSAPAC-10 is an Epic. */
 async function open() {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
@@ -45,6 +45,7 @@ async function open() {
   await window.getByRole('button', { name: 'Display', exact: true }).click()
   await chip('Sprint').click()
   await window.keyboard.press('Escape')
+  await expect(chip('Sprint')).toBeHidden()
   await expect(slot(/PSAPAC-13,/)).toHaveText('S 5 (..14 Oct)')
 }
 
@@ -152,6 +153,19 @@ test('Shift+C opens the same list below the active row slot, and arrows and Ente
   await expect(slot(/PSAPAC-13,/)).toHaveText('S 6')
   await settle(before + 1)
   await expect(tree()).toBeFocused()
+})
+
+test('Shift+C opens the issue menu list when the Peek narrows the Tree and hides the slot', async () => {
+  await open()
+  await item(/PSAPAC-13,/).click()
+  await expect(peek()).toBeVisible()
+  // The open Peek leaves the Tree too narrow to draw its slots.
+  await expect(slot(/PSAPAC-13,/)).toBeHidden()
+
+  await window.keyboard.press('Shift+C')
+  await expect(listbox()).toBeFocused()
+  await expect(window.getByRole('menu')).toBeVisible()
+  await expect(option(/^Sprint 6/)).toBeVisible()
 })
 
 test('an Epic offers no Sprint target, and Shift+C opens nothing on it', async () => {

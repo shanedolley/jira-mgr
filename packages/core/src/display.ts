@@ -104,11 +104,20 @@ export function sprintLabel(sprint: SprintLabelInput, today: string): string {
   const digits = sprint.name.split('(')[0]?.match(/\d+/g)?.at(-1)
   if (digits === undefined) return sprint.name
   const number = String(Number(digits))
+  const end = sprintEnd(sprint, today)
+  return end === null ? `S ${number}` : `S ${number} (..${end})`
+}
+
+/**
+ * The day a sprint ends as a short date: `14 Oct`, with `'25` after the month when the end falls
+ * outside the year of `today`. `null` without a usable end date.
+ */
+export function sprintEnd(sprint: SprintLabelInput, today: string): string | null {
   const day = endDay(sprint)
-  if (day === null) return `S ${number}`
+  if (day === null) return null
   const [y = '', m = '', d = ''] = day.split('-')
   const date = `${String(Number(d))} ${MONTHS[Number(m) - 1] ?? ''}`
-  return `S ${number} (..${y === today.slice(0, 4) ? date : `${date} '${y.slice(2)}`})`
+  return y === today.slice(0, 4) ? date : `${date} '${y.slice(2)}`
 }
 
 /** The full sprint name, with its end day (`Sprint 5, ends 2026-10-14`) when it has one. */
