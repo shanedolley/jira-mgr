@@ -138,6 +138,11 @@
   font-weight: 600;
 }
 
+/* The summary follows the key's colour on the open row, not its weight (#266). */
+.tree-row[aria-selected='true'] .tree-summary {
+  color: var(--ink);
+}
+
 [role='tree']:focus .tree-row[data-active='true'][aria-selected='true'],
 [role='tree']:focus .tree-row[data-active='true'][aria-checked='true'] {
   background: var(--row-selected-focus);

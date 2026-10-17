@@ -137,11 +137,11 @@ test('keeps an open Story under No Epic while its Epic is Done and Hide done is 
 
   await releaseDone(app)
   await expect(window.getByText('Loading Done issues:')).toHaveCount(0)
-  // No dimmed Done Epic appears, and the Story does not move.
+  // No Done Epic context row appears, and the Story does not move.
   await expect(item(/PSAPAC-20,/)).toHaveCount(0)
   expect(await keysOf()).toEqual(before)
 
-  // With "Hide done" off, the Done Epic shows, not dimmed, with the Story below it.
+  // With "Hide done" off, the Done Epic shows, not as context, with the Story below it.
   await toggle('Hide done').click()
   await expect(item(/PSAPAC-20, Epic, Done/)).toBeVisible()
   await expect(item(/PSAPAC-20,.*context/)).toHaveCount(0)
@@ -450,8 +450,10 @@ test('Esc clears the text filter, then returns focus to the Tree', async () => {
   await filter.fill('export')
   await expect(item(/PSAPAC-3,/)).toBeVisible()
   await expect(item(/PSAPAC-2,/)).toHaveCount(0)
-  // The match keeps its Epic as a dimmed context row.
+  // The match keeps its Epic as a context row, whose summary draws at regular weight.
   await expect(item(/PSAPAC-10,.*context/)).toBeVisible()
+  await expect(item(/PSAPAC-10,.*context/).locator('.tree-summary')).toHaveCSS('font-weight', '400')
+  await expect(item(/PSAPAC-3,/).locator('.tree-summary')).toHaveCSS('font-weight', '500')
 
   await filter.press('Escape')
   await expect(filter).toHaveValue('')
@@ -574,17 +576,17 @@ test('type icons are grey at rest except Bug, and show their type colour on hove
   }
 })
 
-test('Assignee: me keeps my issues with their ancestors dimmed', async () => {
+test('Assignee: me keeps my issues with their ancestors as context', async () => {
   await openWithDone()
 
   await toggle('Assignee: me').click()
 
   await expect(toggle('Assignee: me')).toHaveAttribute('aria-pressed', 'true')
   await expect(item(/PSAPAC-3,/)).toHaveCount(0)
-  // Mine, not dimmed.
+  // Mine, not context.
   await expect(item(/PSAPAC-2,/)).toBeVisible()
   await expect(item(/PSAPAC-2,/)).not.toHaveAttribute('aria-label', /context/)
-  // Their ancestors, dimmed: another person's Story above my Subtask. "Hide done" is on, so a
+  // Their ancestors, as context: another person's Story above my Subtask. "Hide done" is on, so a
   // Done Epic does not show as context.
   await expect(item(/PSAPAC-11,.*context/)).toBeVisible()
   await expect(item(/PSAPAC-10,.*context/)).toBeVisible()
@@ -968,6 +970,29 @@ test('marks the active and the open row by distinct fills, with no ring, edge or
     expect(state.radius).toBe('8px')
     expect(state.inset).toEqual(['8px', '8px'])
   }
+})
+
+test('draws the summary of a row in the key colour, at medium weight, open or not', async () => {
+  await open()
+  const colour = (field: Locator) => field.evaluate((el) => getComputedStyle(el).color)
+  const summaryOf = (row: Locator) => row.locator('.tree-summary')
+
+  const rest = item(/PSAPAC-3,/)
+  const restKey = await colour(rest.locator('.tree-key'))
+  expect(await colour(summaryOf(rest))).toBe(restKey)
+  expect(restKey).toBe(await painted('var(--muted)'))
+  await expect(summaryOf(rest)).toHaveCSS('font-weight', '500')
+
+  // The open row's key turns ink, and its summary follows in colour but not in weight.
+  await window.keyboard.press('j')
+  await window.keyboard.press(' ')
+  await expect(peek()).toBeVisible()
+  const peeked = item(/PSAPAC-10,/)
+  await expect(peeked).toHaveAttribute('aria-selected', 'true')
+  const openKey = await colour(peeked.locator('.tree-key'))
+  expect(openKey).toBe(await painted('var(--ink)'))
+  expect(await colour(summaryOf(peeked))).toBe(openKey)
+  await expect(summaryOf(peeked)).toHaveCSS('font-weight', '500')
 })
 
 test('keeps the bold key inside its box in a wide font', async () => {

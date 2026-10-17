@@ -212,7 +212,7 @@ const CLOSED_FROM: Record<Exclude<TreeLevel, 'all'>, number> = {
  * The row ids a level closes, shown or not: every row that can expand at its depth or below.
  * While the filter bar narrows the Tree (`filtering`), no issue and no No Epic header closes, so a
  * match nested under a match shows; the Customer headers still follow the level. Otherwise an
- * issue shown only as dimmed context at Story depth or below never closes, since closing it
+ * issue shown only as context at Story depth or below never closes, since closing it
  * would hide the match below it ("Assignee: me" included). A context Epic follows the level, and
  * so does every row the user owns. Done children sit two levels under their parent, behind
  * their chip.
