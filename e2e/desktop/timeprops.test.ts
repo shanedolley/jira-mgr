@@ -76,16 +76,16 @@ test('lists the four chips, shows their slots in the Tree and hides them again',
   await expect.poll(savedProperties).toEqual([...TIME, 'updated'])
 
   // 2h estimate, 30m logged; the fake leaves the remaining estimate at the estimate.
-  await expect(prop(/PSAPAC-4,/, 'estimate')).toContainText('2h')
-  await expect(prop(/PSAPAC-4,/, 'logged')).toContainText('30m')
-  await expect(prop(/PSAPAC-4,/, 'remaining')).toContainText('2h')
-  await expect(prop(/PSAPAC-4,/, 'remainingPercent')).toContainText('75%')
+  await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('Original estimate 2h')
+  await expect(prop(/PSAPAC-4,/, 'logged')).toHaveText('Logged 30m')
+  await expect(prop(/PSAPAC-4,/, 'remaining')).toHaveText('Remaining 2h')
+  await expect(prop(/PSAPAC-4,/, 'remainingPercent')).toHaveText('Remaining percent 75%')
   await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(
     /, original estimate 2h, logged 30m, remaining 2h, remaining percent 75%$/,
   )
 
   // No estimate: the slots keep their place, empty where Jira holds nothing.
-  await expect(prop(/PSAPAC-3,/, 'logged')).toContainText('1h')
+  await expect(prop(/PSAPAC-3,/, 'logged')).toHaveText('Logged 1h')
   for (const name of ['estimate', 'remaining', 'remainingPercent']) {
     await expect(prop(/PSAPAC-3,/, name)).toHaveText('')
   }
@@ -108,8 +108,8 @@ test('floors Remaining % at 0% once more is logged than estimated', async () => 
   await logWork(app, 'PSAPAC-4', daysAgo(2), 2 * HOUR)
   await open()
   await toggle('Logged', 'Remaining %')
-  await expect(prop(/PSAPAC-4,/, 'logged')).toContainText('2h 30m')
-  await expect(prop(/PSAPAC-4,/, 'remainingPercent')).toContainText('0%')
+  await expect(prop(/PSAPAC-4,/, 'logged')).toHaveText('Logged 2h 30m')
+  await expect(prop(/PSAPAC-4,/, 'remainingPercent')).toHaveText('Remaining percent 0%')
 })
 
 test('shows the chosen slots on the Sprint page and follows the Display menu', async () => {
@@ -124,12 +124,11 @@ test('shows the chosen slots on the Sprint page and follows the Display menu', a
   const row = sprintRow('PSAPAC-4')
   await expect(row.locator('[data-prop=estimate]')).toHaveText('Original estimate 2h')
   await expect(row.locator('[data-prop=remainingPercent]')).toHaveText('Remaining percent 75%')
-  await expect(row.locator('[data-prop=logged]')).toContainText('30m')
-  await expect(row.locator('[data-prop=remainingPercent]')).toContainText('75%')
+  await expect(row.locator('[data-prop=logged]')).toHaveText('Logged 30m')
   await expect(row.locator('[data-prop=remaining]')).toHaveCount(0)
   // No estimate: empty slots, so the columns line up.
   await expect(sprintRow('PSAPAC-3').locator('[data-prop=estimate]')).toHaveText('')
-  await expect(sprintRow('PSAPAC-3').locator('[data-prop=logged]')).toContainText('1h')
+  await expect(sprintRow('PSAPAC-3').locator('[data-prop=logged]')).toHaveText('Logged 1h')
 
   await sprintPage().getByRole('button', { name: 'Back to issues' }).click()
   await expect(sprintPage()).toHaveCount(0)
@@ -146,7 +145,7 @@ test('shows the chosen slots on the Sprint page and follows the Display menu', a
 test('fits the four slots beside Due date and Updated in a wide font, in the Tree and on the Sprint page', async () => {
   await open()
   await toggle('Due date', ...CHIPS)
-  await expect(prop(/PSAPAC-4,/, 'estimate')).toContainText('2h')
+  await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('Original estimate 2h')
   const style = await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
@@ -186,14 +185,19 @@ test('fits the four slots beside Due date and Updated in a wide font, in the Tre
   await expect(sprintRow('PSAPAC-4').locator(slots)).toHaveCount(4)
 })
 
-test('keeps the title and the avatar with all nine properties on, dropping the trailing slots', async () => {
-  await open()
-  await toggle('Labels', 'Sprint', 'Created', 'Due date', ...CHIPS)
-  await expect(prop(/PSAPAC-4,/, 'estimate')).toContainText('2h')
-  const style = await window.addStyleTag({
-    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
-  })
-  const rows = await tree()
+/** Sets the window's content width, below the app's own minimum if need be. */
+async function resize(width: number) {
+  await app.evaluate(({ BrowserWindow }, w) => {
+    const win = BrowserWindow.getAllWindows()[0]
+    win?.setMinimumSize(1, 1)
+    win?.setContentSize(w, 700)
+  }, width)
+  await expect.poll(() => window.evaluate(() => globalThis.innerWidth)).toBe(width)
+}
+
+/** For each issue row: its title's width, whether it overflows or clips its avatar, and the left edge of each slot it shows. */
+const layout = () =>
+  tree()
     .getByRole('treeitem')
     .evaluateAll((all) =>
       all
@@ -201,6 +205,11 @@ test('keeps the title and the avatar with all nine properties on, dropping the t
         .map((row) => {
           const box = row.getBoundingClientRect()
           const avatar = row.querySelector('[data-pick=assignee]')?.getBoundingClientRect()
+          const slots = [...row.querySelectorAll<HTMLElement>('[data-props] > [data-prop]')]
+            .map((cell) => [cell.dataset.prop ?? '', cell.getBoundingClientRect()] as const)
+            // A slot that does not fit wraps below the row and is clipped.
+            .filter(([, r]) => r.top >= box.top && r.bottom <= box.bottom)
+            .map(([name, r]) => `${name}@${String(Math.round(r.left))}`)
           return {
             title:
               row.querySelector('.tree-key')?.nextElementSibling?.getBoundingClientRect().width ??
@@ -208,14 +217,52 @@ test('keeps the title and the avatar with all nine properties on, dropping the t
             overflowing: row.scrollWidth > row.clientWidth,
             avatarShown:
               avatar !== undefined && avatar.right <= box.right && avatar.left >= box.left,
+            slots: slots.join(' '),
           }
         }),
     )
+
+/** What is wrong with the rows now: a short title, an overflow, a clipped avatar, or slots that differ from the first row's. */
+async function problems() {
+  const rows = await layout()
+  const first = rows[0]?.slots
+  return [
+    ...(rows.length > 5 ? [] : ['too few rows']),
+    ...(first === '' ? ['no slots'] : []),
+    ...rows.filter((r) => r.title < 80).map((r) => `title ${String(r.title)}`),
+    ...rows.filter((r) => r.overflowing).map(() => 'overflow'),
+    ...rows.filter((r) => !r.avatarShown).map(() => 'avatar'),
+    ...rows.filter((r) => r.slots !== first).map((r) => `slots ${r.slots} vs ${first ?? ''}`),
+  ]
+}
+
+test('keeps the title, the avatar and the same slots in every row with seven and nine properties on', async () => {
+  await open()
+  await toggle('Labels', 'Sprint', ...CHIPS.slice(0, 3))
+  await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('Original estimate 2h')
+  const style = await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  const shown: number[] = []
+  // Seven on (the three time chips, Labels, Sprint, Updated and Remaining %), then nine.
+  for (const [extra, count] of [
+    [[CHIPS[3] ?? ''], 7],
+    [['Due date', 'Created'], 9],
+  ] as const) {
+    await toggle(...extra)
+    for (const width of [1200, 1000]) {
+      await resize(width)
+      await expect.poll(problems).toEqual([])
+      const slots = (await layout())[0]?.slots.split(' ').length ?? 0
+      expect(slots).toBeLessThanOrEqual(count)
+      shown.push(slots)
+    }
+  }
   await style.evaluate((node) => {
     node.parentNode?.removeChild(node)
   })
-  expect(rows.length).toBeGreaterThan(5)
-  expect(rows.filter((r) => r.title < 80)).toEqual([])
-  expect(rows.filter((r) => r.overflowing)).toEqual([])
-  expect(rows.filter((r) => !r.avatarShown)).toEqual([])
+  // Fewer slots in a narrower window, and fewer than all nine at 1000px.
+  expect(shown[1]).toBeLessThan(shown[0] ?? 0)
+  expect(shown[3]).toBeLessThan(9)
+  expect(shown[3]).toBeGreaterThan(1)
 })
