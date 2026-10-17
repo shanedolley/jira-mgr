@@ -147,7 +147,14 @@ describe('searchIssues', () => {
       priority: { id: '4', name: 'Minor' },
       customer: { id: '16451', value: 'Collibra (Internal team)' },
       engagement: { id: '22264', value: 'Non Collibra Engagement' },
-      sprints: [{ id: 10170, name: 'PS Sprint 36 (05 Oct-18 Oct)', state: 'active' }],
+      sprints: [
+        {
+          id: 10170,
+          name: 'PS Sprint 36 (05 Oct-18 Oct)',
+          state: 'active',
+          endDate: '2026-10-18T14:00:00.000Z',
+        },
+      ],
       startDate: '2026-10-05',
       dueDate: '2026-10-18',
       originalEstimateSeconds: 28800,
@@ -249,6 +256,20 @@ describe('searchIssues', () => {
       })
     },
   )
+
+  it.each([undefined, null])('reads a sprint whose endDate is %j as null', async (endDate) => {
+    const raw = recorded('search-unresolved-1').issues.find((i) => i.key === 'PSAPAC-3117')
+    if (raw === undefined) throw new Error('PSAPAC-3117 is missing from the fixture.')
+    const issue = structuredClone(raw)
+    Object.assign(issue.fields, {
+      [IDS.sprint]: [{ id: 1, name: 'Sprint 1', state: 'future', endDate }],
+    })
+    serveRaw({ issues: [issue], isLast: true })
+
+    const [mapped] = await searchIssues(client)
+
+    expect(mapped?.sprints).toEqual([{ id: 1, name: 'Sprint 1', state: 'future', endDate: null }])
+  })
 
   it('maps a Done issue with its resolution and a Subtask with its hierarchy level', async () => {
     serveSearch()

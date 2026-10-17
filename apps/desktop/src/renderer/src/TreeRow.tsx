@@ -1,5 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
-import type { RowProperty } from '@jira-mgr/core/display'
+import { sprintLabel, sprintTitle, type RowProperty } from '@jira-mgr/core/display'
 import type { Progress } from '@jira-mgr/core/hierarchy'
 import { propertyRules } from '@jira-mgr/core/issue'
 import { memo, type MouseEvent, type ReactNode } from 'react'
@@ -72,6 +72,7 @@ export function rowName(
       return `${String(row.doneCount)} done`
     case 'issue': {
       const { issue, contextOnly, customerMismatch } = row.node
+      const sprint = properties.includes('sprint') ? rowSprint(issue) : undefined
       return [
         issue.key,
         issue.issueType.name,
@@ -84,6 +85,7 @@ export function rowName(
         ...(blocks.blocking > 0 ? [blockingTitle(blocks.blocking).toLowerCase()] : []),
         ...(hasPriorityGlyph(issue.priority) ? [`priority ${issue.priority.name}`] : []),
         ...(properties.includes('due') && issue.dueDate !== null ? [`due ${issue.dueDate}`] : []),
+        ...(sprint === undefined ? [] : [`sprint ${sprintTitle(sprint)}`]),
         ...properties.filter(isTime).flatMap((property) => {
           const value = timeValue(issue, property)
           return value === null ? [] : [`${TIME_NAMES[property].toLowerCase()} ${value}`]
@@ -466,10 +468,10 @@ export function Properties({
               <span
                 key={property}
                 data-prop="sprint"
-                title={sprint?.name}
+                title={sprint === undefined ? undefined : sprintTitle(sprint)}
                 className="w-24 shrink-0 truncate text-right text-xs text-muted"
               >
-                {sprint?.name}
+                {sprint === undefined ? undefined : sprintLabel(sprint, today)}
               </span>
             )
           case 'estimate':

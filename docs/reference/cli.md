@@ -268,7 +268,8 @@ An array of issues.
         {
           "id": 7,
           "name": "Sprint 7",
-          "state": "active"
+          "state": "active",
+          "endDate": null
         }
       ],
       "startDate": "2026-10-01",
@@ -398,7 +399,8 @@ An array of Customer groups, each with its Epics and the issues under no Epic.
               {
                 "id": 7,
                 "name": "Sprint 7",
-                "state": "active"
+                "state": "active",
+                "endDate": null
               }
             ],
             "startDate": "2026-10-01",
@@ -522,7 +524,8 @@ The issue, its description as ADF and as Markdown, its subtasks and its URL.
       {
         "id": 7,
         "name": "Sprint 7",
-        "state": "active"
+        "state": "active",
+        "endDate": null
       }
     ],
     "startDate": "2026-10-01",
@@ -676,7 +679,8 @@ The new issue, read back after the create: the same object as `jm issue get`. It
       {
         "id": 7,
         "name": "Sprint 7",
-        "state": "active"
+        "state": "active",
+        "endDate": null
       }
     ],
     "startDate": "2026-10-01",

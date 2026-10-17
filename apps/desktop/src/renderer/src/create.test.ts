@@ -423,7 +423,7 @@ describe('copyDraft', () => {
     labels: ['docs', 'ops'],
     priority: { id: '2', name: 'High' },
     assignee: { accountId: 'u9', displayName: 'Other', avatarUrl: null },
-    sprints: [{ id: 5, name: 'Sprint 5', state: 'active' }],
+    sprints: [{ id: 5, name: 'Sprint 5', state: 'active', endDate: null }],
     startDate: '2026-10-01',
     dueDate: '2026-10-14',
     originalEstimateSeconds: 9000,
@@ -584,7 +584,7 @@ describe('describeCreated', () => {
       ...issue('P-9', { parent: 'P-1', customer: ACME, engagement: NORTH }),
       summary: 'Write it',
       originalEstimateSeconds: 7200,
-      sprints: [{ id: 6, name: 'Sprint 6', state: 'future' }],
+      sprints: [{ id: 6, name: 'Sprint 6', state: 'future', endDate: null }],
       ...changes,
       description: null,
       subtasks: [],
@@ -605,7 +605,7 @@ describe('describeCreated', () => {
       held({
         customer: BETA,
         parentKey: 'P-50',
-        sprints: [{ id: 5, name: 'Sprint 5', state: 'active' }],
+        sprints: [{ id: 5, name: 'Sprint 5', state: 'active', endDate: null }],
         labels: ['PSAPAC'],
         originalEstimateSeconds: 14400,
       }),
@@ -636,7 +636,7 @@ describe('describeCreated', () => {
   it('says so when Jira put the issue in a sprint nobody chose', () => {
     const notice = describeCreated(
       { ...draft, sprint: null },
-      held({ sprints: [{ id: 5, name: 'Sprint 5', state: 'active' }] }),
+      held({ sprints: [{ id: 5, name: 'Sprint 5', state: 'active', endDate: null }] }),
     )
 
     expect(notice.notes).toEqual(['Sprint is Sprint 5 (you chose none).'])

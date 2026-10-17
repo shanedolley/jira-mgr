@@ -113,7 +113,10 @@ test('shows Updated by default, and each property appears on the rows and surviv
 
   await expect(prop(row, 'labels')).toHaveText('docs')
   await expect(prop(row, 'updated')).toHaveCount(0)
-  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('Sprint 5')
+  // The cell abbreviates to the number and end day; the title and the row's name keep the full name.
+  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('S 5 (..14 Oct)')
+  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveAttribute('title', 'Sprint 5, ends 2026-10-14')
+  await expect(item(/PSAPAC-13,/)).toHaveAccessibleName(/, sprint Sprint 5, ends 2026-10-14/)
   await expect(prop(row, 'created')).toHaveText(SHORT_DATE)
   // Far-off, past and missing due dates: grey, red, nothing.
   await expect(prop(/PSAPAC-31,/, 'due')).toHaveAttribute('data-tone', 'later')
@@ -133,7 +136,7 @@ test('shows Updated by default, and each property appears on the rows and surviv
   ;({ app, window } = await launch(stateDir))
   await open()
   await expect(prop(row, 'labels')).toHaveText('docs')
-  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('Sprint 5')
+  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('S 5 (..14 Oct)')
   await expect(prop(row, 'updated')).toHaveCount(0)
 })
 
@@ -534,30 +537,42 @@ test('keeps a prior-year date inside the Created, Updated and Due slots in a wid
   ])
 })
 
-test('shows PS Sprint 62 before the ellipsis for a real sprint name in a wide font', async () => {
+test('fits the widest abbreviated sprint in a wide font', async () => {
   await open()
   await inDisplayMenu(async () => {
     await choice('Display properties', 'Sprint').click()
   })
-  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('Sprint 5')
+  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('S 5 (..14 Oct)')
   const style = await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
-  // The fake's only active sprint is "Sprint 5", so the cell takes a board name by hand.
-  const shown = await prop(/PSAPAC-13,/, 'sprint').evaluate((cell) => {
-    cell.textContent = 'PS Sprint 62 (04 Oct-17 Oct)'
-    // The ellipsis is not in the DOM, so measure what must fit: the lead and an ellipsis, in the cell's font.
-    const probe = document.createElement('span')
-    probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap'
-    probe.textContent = 'PS Sprint 62…'
-    cell.append(probe)
-    const lead = probe.getBoundingClientRect().width
-    probe.remove()
-    return { cell: cell.clientWidth, lead, truncated: cell.scrollWidth > cell.clientWidth }
-  })
+  // The fake's only active sprint is "Sprint 5", so the cell takes the widest labels by hand: the
+  // widest months and two-digit numbers. A year ('25) may truncate; the title carries it.
+  const truncated = await prop(/PSAPAC-13,/, 'sprint').evaluate((cell) =>
+    ['S 88 (..28 Mar)', 'S 88 (..28 Aug)', 'S 88 (..28 Dec)'].map((label) => {
+      cell.textContent = label
+      return cell.scrollWidth > cell.clientWidth
+    }),
+  )
   await style.evaluate((node) => {
     node.parentNode?.removeChild(node)
   })
-  expect(shown.truncated).toBe(true)
-  expect(shown.cell).toBeGreaterThanOrEqual(shown.lead)
+  expect(truncated).toEqual([false, false, false])
+})
+
+test('abbreviates the sprint on the Sprint page too, with the full name in the title', async () => {
+  await open()
+  await inDisplayMenu(async () => {
+    await choice('Display properties', 'Sprint').click()
+  })
+  await window
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('region', { name: 'Sprints' })
+    .getByRole('button', { name: /^Current/ })
+    .click()
+  const page = window.getByRole('region', { name: 'Sprint page' })
+  await expect(page).toBeVisible()
+  const cell = page.locator('[data-issue-key=PSAPAC-13] [data-prop=sprint]')
+  await expect(cell).toHaveText('S 5 (..14 Oct)')
+  await expect(cell).toHaveAttribute('title', 'Sprint 5, ends 2026-10-14')
 })

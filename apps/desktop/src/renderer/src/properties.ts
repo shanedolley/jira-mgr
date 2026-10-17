@@ -240,7 +240,9 @@ export const labelsPatch = (issue: Issue, label: string, on: boolean): Partial<I
 export const sprintPatch = (issue: Issue, sprint: SprintOption | null): Partial<Issue> => ({
   sprints: [
     ...issue.sprints.filter((s) => s.state === 'closed'),
-    ...(sprint === null ? [] : [{ id: sprint.id, name: sprint.name, state: sprint.state }]),
+    ...(sprint === null
+      ? []
+      : [{ id: sprint.id, name: sprint.name, state: sprint.state, endDate: sprint.endDate }]),
   ],
 })
 
