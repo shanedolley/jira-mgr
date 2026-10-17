@@ -5,6 +5,7 @@ import {
   bucketWorklogs,
   formatDuration,
   formatHours,
+  percentRemaining,
   percentUsed,
   timeTrackingConfig,
 } from './time-tracking.js'
@@ -62,6 +63,24 @@ describe('percentUsed', () => {
   it('has no percentage without an estimate', () => {
     expect(percentUsed(HOUR, null)).toBeNull()
     expect(percentUsed(HOUR, 0)).toBeNull()
+  })
+})
+
+describe('percentRemaining', () => {
+  it('is 100 minus the percent used', () => {
+    expect(percentRemaining(12 * HOUR, 24 * HOUR)).toBe(50)
+    expect(percentRemaining(HOUR, 3 * HOUR)).toBe(67)
+    expect(percentRemaining(0, 3 * HOUR)).toBe(100)
+    expect(percentRemaining(3 * HOUR, 3 * HOUR)).toBe(0)
+  })
+
+  it('floors at 0 when more is logged than estimated', () => {
+    expect(percentRemaining(30 * HOUR, 24 * HOUR)).toBe(0)
+  })
+
+  it('has no percentage without an estimate', () => {
+    expect(percentRemaining(HOUR, null)).toBeNull()
+    expect(percentRemaining(HOUR, 0)).toBeNull()
   })
 })
 

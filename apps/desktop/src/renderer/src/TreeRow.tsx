@@ -6,7 +6,7 @@ import { memo, type ReactNode } from 'react'
 import { Avatar } from './Avatar'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { ProgressPill, progressText } from './Progress'
-import { dueTone, localDay, rowSprint, shortDate } from './rowProps'
+import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
 import { StatusDot, summaryFade } from './StatusDot'
 import { TimerClock } from './TimerClock'
 import { HEADER_GAP, HEADER_HEIGHT, ROW_HEIGHT, type TreeRow as Row } from './tree'
@@ -36,10 +36,20 @@ const NO_BLOCKS: BlockCounts = { blockedBy: 0, blocking: 0 }
 const blockedTitle = (n: number) => `Blocked by ${plural(n, 'issue')}`
 const blockingTitle = (n: number) => `Blocking ${plural(n, 'issue')}`
 
+/** What each time property is called, in a row's accessible name (lower-cased) and a slot's title. */
+const TIME_NAMES: Record<TimeProperty, string> = {
+  estimate: 'Original estimate',
+  logged: 'Logged',
+  remaining: 'Remaining',
+  remainingPercent: 'Remaining',
+}
+
+const isTime = (property: RowProperty): property is TimeProperty => property in TIME_NAMES
+
 /**
  * The accessible name of a row, in one format per kind. An issue's name ends with what the row
  * shows only as a glyph, a pill or a column: its open blockers, its priority when not Medium, its
- * due date when the Due property is on, and its children's progress. The rest of the contents are
+ * due date and time values when their properties are on, and its children's progress. The rest of the contents are
  * presentation only.
  */
 export function rowName(
@@ -69,6 +79,10 @@ export function rowName(
         ...(blocks.blocking > 0 ? [blockingTitle(blocks.blocking).toLowerCase()] : []),
         ...(hasPriorityGlyph(issue.priority) ? [`priority ${issue.priority.name}`] : []),
         ...(properties.includes('due') && issue.dueDate !== null ? [`due ${issue.dueDate}`] : []),
+        ...properties.filter(isTime).flatMap((property) => {
+          const value = timeValue(issue, property)
+          return value === null ? [] : [`${TIME_NAMES[property].toLowerCase()} ${value}`]
+        }),
         ...(progress === undefined ? [] : [progressText(progress)]),
       ].join(', ')
     }
@@ -307,6 +321,20 @@ function DueDate({ issue, today }: { issue: Issue; today: string }) {
   )
 }
 
+/** A time property in a fixed slot: empty without a value, so the columns line up. */
+function TimeCell({ issue, property }: { issue: Issue; property: TimeProperty }) {
+  const value = timeValue(issue, property)
+  return (
+    <span
+      data-prop={property}
+      title={value === null ? undefined : `${TIME_NAMES[property]} ${value}`}
+      className={`shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${property === 'remainingPercent' ? 'w-12' : 'w-16'}`}
+    >
+      {value}
+    </span>
+  )
+}
+
 function DateCell({ property, at, today }: { property: string; at: string; today: string }) {
   return (
     <span
@@ -321,22 +349,28 @@ function DateCell({ property, at, today }: { property: string; at: string; today
 
 /**
  * The properties the Display menu chose, in the menu's order. Each keeps a fixed slot, so the
- * columns line up down the Tree, and they show only while the Tree is wide, as the title needs the room.
+ * columns line up down the list. The Tree shows them only while it is wide, as the title needs the
+ * room; `always` is for the Sprint page's list: it shows them at any width, and they wrap onto their own line when the title would have no room.
  */
-function Properties({
+export function Properties({
   issue,
   properties,
   today,
+  always = false,
 }: {
   issue: Issue
   properties: readonly RowProperty[]
   today: string
+  always?: boolean
 }) {
   if (properties.length === 0) return null
   const sprint = rowSprint(issue)
   const [firstLabel, ...moreLabels] = issue.labels
   return (
-    <span data-props className="hidden shrink-0 items-center gap-2 @tree:flex">
+    <span
+      data-props
+      className={`items-center gap-2 ${always ? 'flex max-w-full flex-wrap justify-end' : 'hidden shrink-0 @tree:flex'}`}
+    >
       {properties.map((property) => {
         switch (property) {
           case 'labels':
@@ -369,6 +403,11 @@ function Properties({
                 {sprint?.name}
               </span>
             )
+          case 'estimate':
+          case 'logged':
+          case 'remaining':
+          case 'remainingPercent':
+            return <TimeCell key={property} issue={issue} property={property} />
           case 'due':
             return <DueDate key={property} issue={issue} today={today} />
           case 'created':

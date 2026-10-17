@@ -46,6 +46,36 @@ describe('rowName', () => {
     expect(rowName(row({}), ['due'])).not.toContain('due')
   })
 
+  it('names the time values the chosen properties show, after the due date', () => {
+    const timed = row({
+      dueDate: '2026-10-14',
+      originalEstimateSeconds: 36000,
+      timeSpentSeconds: 9000,
+      remainingEstimateSeconds: 27000,
+    })
+    expect(rowName(timed)).not.toContain('logged')
+    expect(rowName(timed, ['due', 'estimate', 'logged', 'remaining', 'remainingPercent'])).toBe(
+      'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, due 2026-10-14, original estimate 10h, logged 2h 30m, remaining 7h 30m, remaining 75%',
+    )
+    expect(rowName(timed, ['logged'])).toMatch(/, logged 2h 30m$/)
+  })
+
+  it('names no time value for an issue without one, or for an Epic', () => {
+    const empty = row({
+      originalEstimateSeconds: null,
+      timeSpentSeconds: null,
+      remainingEstimateSeconds: null,
+    })
+    expect(rowName(empty, ['estimate', 'logged', 'remaining', 'remainingPercent'])).toBe(
+      rowName(empty),
+    )
+    const epic = row({
+      issueType: { id: '1', name: 'Epic', subtask: false, hierarchyLevel: 1 },
+      originalEstimateSeconds: 3600,
+    })
+    expect(rowName(epic, ['estimate'])).toBe(rowName(epic))
+  })
+
   it('puts the priority before the due date, both at the end', () => {
     const both = row({ priority: { id: '1', name: 'Highest' }, dueDate: '2026-10-14' })
     expect(rowName(both, ['due'])).toMatch(/, priority Highest, due 2026-10-14$/)

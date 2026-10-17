@@ -510,6 +510,25 @@ describe('display', () => {
     })
   })
 
+  it('reads the time properties in row order, and a file without them as before', async () => {
+    const raw = {
+      display: { properties: ['updated', 'remainingPercent', 'estimate', 'logged', 'remaining'] },
+    }
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
+    expect((await readSettings()).display.properties).toEqual([
+      'estimate',
+      'logged',
+      'remaining',
+      'remainingPercent',
+      'updated',
+    ])
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({ display: { properties: ['due'] } }),
+    )
+    expect((await readSettings()).display.properties).toEqual(['due'])
+  })
+
   it('reads an unknown order as key and never fails the file', async () => {
     const raw = { display: { properties: ['due'], order: 'rank' } }
     await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
@@ -556,6 +575,22 @@ describe('display', () => {
     const [old, chosen] = await readViews()
     expect(old?.display).toEqual({ properties: ['due'], order: 'due', direction: 'asc' })
     expect(chosen?.display).toEqual({ properties: [], order: 'status', direction: 'desc' })
+  })
+
+  it('reads a view with time properties, and drops one an older build does not know', async () => {
+    const view = (properties: string[]) => ({
+      id: 'v',
+      name: 'V',
+      filters: {},
+      toggles,
+      display: { properties, order: 'key' },
+    })
+    await writeFile(
+      join(dir, 'views.json'),
+      JSON.stringify([view(['remainingPercent', 'logged', 'wat'])]),
+    )
+    const [read] = await readViews()
+    expect(read?.display?.properties).toEqual(['logged', 'remainingPercent'])
   })
 
   it.each([
