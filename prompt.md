@@ -2,7 +2,7 @@
 
 ## Start Here
 
-Shane ordered on 2026-10-17: "for each of the new stories, please build them in parallel where possible. do not run e2e tests until everything is built and ready to be tested at the same time." The batch is #266 to #279 (14 stories; #279 is the orchestrator's follow-up from the #276 review). All 14 are built and reviewed in one linear local stack on main 201bfe6, ending at `batch-final-fixes` 63644ed; only `267-status-cell` is pushed, and no pull request is open for the batch. [handover.md](handover.md) "Where Work Stands" lists every branch and tip. Checked 2026-10-18 03:03 AEST.
+Shane ordered on 2026-10-17: "for each of the new stories, please build them in parallel where possible. do not run e2e tests until everything is built and ready to be tested at the same time." The batch is #266 to #279 (14 stories; #279 is the orchestrator's follow-up from the #276 review). All 14 are built and reviewed in one linear local stack on main 201bfe6, ending at `batch-final-fixes` 63644ed; `267-status-cell` and `batch-final-fixes` (the whole stack, 799a096) are pushed to origin, and no pull request is open for the batch. [handover.md](handover.md) "Where Work Stands" lists every branch and tip. Checked 2026-10-18 03:03 AEST.
 
 1. Finish the e2e fixes. Full run 1 on 63644ed (2026-10-18) passed 761 of 794 tests and failed 32. `e2e-fix-sprint` (jira-mgr-fixA, tip bd6a51a) and `e2e-fix-tree` (jira-mgr-fixB, tip 72b9fa7 plus uncommitted edits) repair them; three Tree keyboard tests (duedate 223, startdate 207, labels 221) were still open.
 2. Merge both fix branches onto `batch-final-fixes`, dedupe any repeated prop, and have a reviewer other than the fix builders review the merge.
