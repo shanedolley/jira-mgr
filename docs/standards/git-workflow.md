@@ -50,11 +50,12 @@ du -sh node_modules/.pnpm/electron@*/node_modules/electron/dist
 lockf /tmp/jira-mgr-e2e.lock pnpm e2e --workers=1
 ```
 
-- Run the route on a clean, committed tree (`git status --short` prints nothing) (`node -v` prints 24): `pnpm ci:local` checks neither.
+- Run the route on a clean, committed tree (`git status --short` prints nothing) under Node 24 (`node -v` prints v24.x). `pnpm ci:local` checks neither.
 - `pnpm ci:local` runs `pnpm install --frozen-lockfile`, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm docs:reference` with no diff under `docs/reference`. It stops at the first failure. (`pnpm ci` is pnpm's own clean install, so the script has another name.)
 - The Electron dist is about 307 MB with `path.txt` beside it. If it is missing or truncated, run `pnpm --filter @jira-mgr/e2e exec install-electron` first.
 - `lockf` serialises e2e across worktrees on the shared lock file. Run it on one worker and never in parallel with another e2e run.
 - Read the pass, fail and skip counts of `pnpm test` and `pnpm e2e` from the output, not from the exit status of a pipeline.
+- A documentation-only change skips the Electron dist check and the e2e run (Shane, 2026-10-17). A change is documentation-only when every changed file in `git diff --name-only --no-renames origin/main...HEAD` ends in `.md` or `.mdx` or sits under a folder named exactly `docs`. It still runs `pnpm ci:local`, which checks the generated reference (no diff under `docs/reference`). The pull request says it is documentation-only and records the `pnpm ci:local` result in place of e2e counts.
 - The pull request title uses the commit types and scopes above (the `pr-title` job enforced them).
 - The pull request description records the head SHA and the pass and fail counts of the run. A push makes the record stale: run the route again.
 - A story's builder runs only that story's e2e files (`cd e2e && lockf <lock file> npx playwright test desktop/<file>.test.ts --workers=1`, after `pnpm build`). The full route runs once on the tip of a batch before the pull requests merge.

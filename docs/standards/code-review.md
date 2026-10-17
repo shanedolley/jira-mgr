@@ -25,7 +25,7 @@
 A change is done when every item holds:
 
 - [ ] The acceptance criteria are met, and each one is demonstrated by a test or a recorded manual check.
-- [ ] The local CI route passes on the pushed head: format check, lint, type check, unit tests, build, reference docs, and end-to-end tests ([Local CI](git-workflow.md#local-ci)). The pull request records the pass and fail counts.
+- [ ] The local CI route passes on the pushed head: format check, lint, type check, unit tests, build, reference docs, and end-to-end tests ([Local CI](git-workflow.md#local-ci)). The pull request records the pass and fail counts. A documentation-only change skips the end-to-end tests.
 - [ ] Every bug fix has a regression test that failed before the fix.
 - [ ] A new or changed Jira call has a fixture recorded from PSAPAC as recorded, from response bodies only, and runs against the MSW fake.
 - [ ] A changed CLI command updates the command schema, so `docs/reference/cli.md` regenerates.
