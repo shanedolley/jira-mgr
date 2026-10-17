@@ -555,7 +555,7 @@ const SLOTS = '[&>*]:h-5 [&>*]:leading-5 [&>[data-prop]]:overflow-hidden'
 /**
  * The properties the Display menu chose, in the menu's order. Each keeps a fixed slot, so the
  * columns line up down the list. The Tree shows them only while it is wide, as the title needs the
- * room; `always` is for the Sprint page's list: it shows them at any width, and they wrap onto their own line when the title would have no room.
+ * room; `always` is for the Sprint page's list: it shows them at any width, and they wrap onto their own line, pushed right (`ml-auto`) under the header, when the title would have no room.
  */
 export function Properties({
   issue,
@@ -587,7 +587,7 @@ export function Properties({
     <span
       id={id}
       data-props
-      className={`items-center gap-x-2 ${SLOTS} ${always ? 'flex max-w-full flex-wrap justify-end gap-y-1' : TREE_PROPS}`}
+      className={`items-center gap-x-2 ${SLOTS} ${always ? 'ml-auto flex max-w-full flex-wrap justify-end gap-y-1' : TREE_PROPS}`}
     >
       {properties.map((property) => {
         switch (property) {

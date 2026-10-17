@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { joinSprint, launch, logIn, showEverything } from './harness.js'
+import { joinSprint, launch, logIn, logWork, showEverything } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -80,7 +80,10 @@ test('no control on the Sprint page sits inside another, with a slot closed or o
 })
 
 test('a row button is described by the property values its name leaves out', async () => {
+  // PSAPAC-13 has an hour logged; PSAPAC-4 has nothing.
+  await logWork(app, 'PSAPAC-13', new Date(Date.now() - 86_400_000).toISOString(), 3600)
   await openSprint()
+  await expect(overlay('PSAPAC-13')).toHaveAccessibleDescription(/Logged 1h/)
   const row = overlay('PSAPAC-4')
   await expect(row).toHaveAccessibleName(/^PSAPAC-4 \S/)
   await expect(row).toHaveAccessibleDescription(/Original estimate 2h/)

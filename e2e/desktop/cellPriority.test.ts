@@ -458,12 +458,21 @@ const rowFit = () =>
       const key = row.querySelector('span.font-mono')?.getBoundingClientRect()
       // The assignee slot, which holds an unassigned row's dotted circle too: only a person's avatar carries `data-avatar`.
       const avatar = row.querySelector('[data-pick=assignee]')?.getBoundingClientRect()
+      const slots = [...row.querySelectorAll('[data-props] > [data-prop]')]
+      const lastSlot = slots.at(-1)?.getBoundingClientRect()
+      const pencil = row.querySelector('[aria-label^="Edit summary of"]')?.getBoundingClientRect()
       return {
         key: row.getAttribute('data-issue-key'),
         summary: summary?.width ?? 0,
         slot: row.querySelector('[data-pick=priority]') !== null,
         // The avatar starts above the key's bottom edge, so it shares the key's line.
         firstLine: avatar !== undefined && key !== undefined && avatar.top < key.bottom,
+        // The avatar sits right of the last property slot, whichever line that slot is on, and left of the pencil.
+        clear:
+          avatar !== undefined &&
+          pencil !== undefined &&
+          (lastSlot === undefined || avatar.left >= lastSlot.right) &&
+          avatar.right <= pencil.left,
       }
     }),
   )
@@ -475,7 +484,7 @@ test('with every Display property on and a wide font, the Sprint page summary ke
 
   const rows = await rowFit()
   expect(rows.length).toBe(7)
-  expect(rows.filter((r) => !r.slot || r.summary < 160 || !r.firstLine)).toEqual([])
+  expect(rows.filter((r) => !r.slot || r.summary < 160 || !r.firstLine || !r.clear)).toEqual([])
 })
 
 test('with every Display property off and a wide font, the Sprint page rows keep the priority slot and a summary', async () => {

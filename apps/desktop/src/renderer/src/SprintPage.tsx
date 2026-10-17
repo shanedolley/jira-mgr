@@ -204,8 +204,8 @@ const AFTER_STRIP = 73
 /**
  * The names of the properties above the first status section, at the widths the rows use, each
  * column's separator on its left edge as the Tree's header draws it. The widths are set in the Tree,
- * so this header only names them, at least `MIN_CELL` wide as the cells are. A row that wraps its properties onto a second line (a narrow
- * page) no longer lines up with it. It is drawn only: the rows name each value themselves.
+ * so this header only names them, at least `MIN_CELL` wide as the cells are. A row whose properties
+ * wrap onto a line of their own still ends them under it; one whose properties wrap among themselves (a narrow page) no longer lines up. It is drawn only: the rows name each value themselves.
  */
 function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
   return (
