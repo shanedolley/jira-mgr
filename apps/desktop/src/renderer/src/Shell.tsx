@@ -1626,6 +1626,8 @@ export function Shell({ session }: { session: Session }) {
         <div inert={pageOpen} className="[grid-column:2/-1] row-start-1 min-h-0">
           <SprintPage
             sprintId={sprintId}
+            properties={display?.properties ?? []}
+            today={today}
             pageRef={sprintRef}
             onBack={() => {
               setSprintId(null)

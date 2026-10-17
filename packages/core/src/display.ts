@@ -1,5 +1,15 @@
 /** The properties a Tree row can show beyond its fixed anatomy, in the order the row lays them out. */
-export const ROW_PROPERTIES = ['labels', 'sprint', 'due', 'created', 'updated'] as const
+export const ROW_PROPERTIES = [
+  'labels',
+  'sprint',
+  'estimate',
+  'logged',
+  'remaining',
+  'remainingPercent',
+  'due',
+  'created',
+  'updated',
+] as const
 
 export type RowProperty = (typeof ROW_PROPERTIES)[number]
 

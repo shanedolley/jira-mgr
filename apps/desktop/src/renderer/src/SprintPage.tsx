@@ -1,3 +1,4 @@
+import type { RowProperty } from '@jira-mgr/core/display'
 import type { SprintReport } from '@jira-mgr/core/sprints'
 import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 
@@ -15,6 +16,7 @@ import {
   type BreakdownId,
 } from './sprintView'
 import { useSprintReport } from './sprintQueries'
+import { Properties } from './TreeRow'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -188,13 +190,23 @@ function Panel({ report }: { report: SprintReport }) {
 }
 
 /** The sprint's issues, grouped by status, each opening its page. */
-function Issues({ report, onOpen }: { report: SprintReport; onOpen: (key: string) => void }) {
+function Issues({
+  report,
+  properties,
+  today,
+  onOpen,
+}: {
+  report: SprintReport
+  properties: readonly RowProperty[]
+  today: string
+  onOpen: (key: string) => void
+}) {
   const { sprint, issues } = report
   const groups = groupByStatus(issues)
   return (
     <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px] max-stack:min-h-auto max-stack:overflow-y-visible max-stack:px-4">
-      <div className="max-w-[40rem] space-y-6">
-        <div className="space-y-1">
+      <div className="space-y-6">
+        <div className="max-w-[40rem] space-y-1">
           <h1 className="text-xl font-semibold leading-7">{sprint.name}</h1>
           <p role="status" className="text-muted">
             {issues.length === 1 ? '1 issue' : `${String(issues.length)} issues`}
@@ -203,12 +215,14 @@ function Issues({ report, onOpen }: { report: SprintReport; onOpen: (key: string
         {groups.length === 0 && <p className="text-muted">No issues in this sprint.</p>}
         {groups.map(({ status, issues: inGroup }) => (
           <section key={status.id} aria-label={status.name} className="space-y-1">
-            <h2 className={`${SECTION_HEADING} flex items-center gap-2`}>
+            <h2 className={`${SECTION_HEADING} flex max-w-[40rem] items-center gap-2`}>
               <StatusDot status={status} />
               {status.name}
               <span className="font-normal text-muted">{inGroup.length}</span>
             </h2>
-            <ul className="divide-y divide-line rounded-md border border-line">
+            <ul
+              className={`divide-y divide-line rounded-md border border-line ${properties.length === 0 ? 'max-w-[40rem]' : 'max-w-[64rem]'}`}
+            >
               {inGroup.map((issue) => (
                 <li key={issue.key}>
                   <button
@@ -218,12 +232,16 @@ function Issues({ report, onOpen }: { report: SprintReport; onOpen: (key: string
                     onClick={() => {
                       onOpen(issue.key)
                     }}
-                    className="flex h-8 w-full items-center gap-3 px-3 text-left hover:bg-hover"
+                    className="flex min-h-8 w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 text-left hover:bg-hover"
                   >
                     <span className="w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
-                    <span className="min-w-0 flex-1 truncate" style={summaryFade(status)}>
+                    <span
+                      className={`flex-1 truncate ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
+                      style={summaryFade(status)}
+                    >
                       {issue.summary}
                     </span>
+                    <Properties issue={issue} properties={properties} today={today} always />
                     <Avatar person={issue.assignee} />
                   </button>
                 </li>
@@ -238,6 +256,10 @@ function Issues({ report, onOpen }: { report: SprintReport; onOpen: (key: string
 
 interface SprintPageProps {
   sprintId: number
+  /** The row properties the Display menu chose, which the Tree shows too. */
+  properties: readonly RowProperty[]
+  /** Today's local date, which the short dates and the due date's colour read. */
+  today: string
   pageRef: RefObject<HTMLElement | null>
   onBack: () => void
   /** Opens the page of one of the sprint's issues. */
@@ -249,7 +271,14 @@ interface SprintPageProps {
  * breakdowns. Completed means the status category is Done. It shows the last copy it read at
  * once and reads again on opening. Esc and Back return to the Tree.
  */
-export function SprintPage({ sprintId, pageRef, onBack, onOpenIssue }: SprintPageProps) {
+export function SprintPage({
+  sprintId,
+  properties,
+  today,
+  pageRef,
+  onBack,
+  onOpenIssue,
+}: SprintPageProps) {
   const report = useSprintReport(sprintId)
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -287,7 +316,7 @@ export function SprintPage({ sprintId, pageRef, onBack, onOpenIssue }: SprintPag
         </div>
       ) : (
         <>
-          <Issues report={report.data} onOpen={onOpenIssue} />
+          <Issues report={report.data} properties={properties} today={today} onOpen={onOpenIssue} />
           <Panel report={report.data} />
         </>
       )}

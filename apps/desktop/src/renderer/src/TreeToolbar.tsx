@@ -66,6 +66,10 @@ const DIRECTION_LABELS: Record<OrderDirection, string> = {
 const PROPERTY_LABELS: Record<RowProperty, string> = {
   labels: 'Labels',
   sprint: 'Sprint',
+  estimate: 'Original estimate',
+  logged: 'Logged',
+  remaining: 'Remaining',
+  remainingPercent: 'Remaining %',
   due: 'Due date',
   created: 'Created',
   updated: 'Updated',

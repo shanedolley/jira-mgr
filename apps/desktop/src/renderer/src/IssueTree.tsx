@@ -14,6 +14,7 @@ import {
   type RefObject,
 } from 'react'
 
+import { extrasWidth, fittingCount } from './propertyFit'
 import { TreeRow, rowDomId, rowProgress } from './TreeRow'
 import {
   ROW_HEIGHT,
@@ -105,6 +106,7 @@ export function IssueTree({
 }: IssueTreeProps) {
   const [scrollTop, setScrollTop] = useState(0)
   const [height, setHeight] = useState(0)
+  const [width, setWidth] = useState(0)
   const anchor = useRef<Anchor | null>(null)
   const ensured = useRef<string | null>(null)
   /** The issue row being dragged, and the sibling it hovers. */
@@ -113,6 +115,28 @@ export function IssueTree({
   const layout = useMemo(() => layoutRows(rows), [rows])
   const indexById = useMemo(() => new Map(rows.map((r, i) => [r.id, i])), [rows])
   const activeIndex = state.activeId === null ? -1 : (indexById.get(state.activeId) ?? -1)
+  // The deepest row and the widest extras decide how many properties every row shows, so the
+  // columns line up whatever a row holds.
+  const shown = useMemo(() => {
+    let level = 1
+    let extras = 0
+    for (const row of rows) {
+      if (row.kind !== 'issue') continue
+      level = Math.max(level, row.level)
+      const held = blocks.get(row.node.issue.key)
+      extras = Math.max(
+        extras,
+        extrasWidth({
+          blocked: (held?.blockedBy.length ?? 0) > 0,
+          blocking: (held?.blocking.length ?? 0) > 0,
+          differs: row.node.customerMismatch !== null,
+          timer: row.node.issue.key === timerKey,
+          progress: rowProgress(row, progress) !== undefined,
+        }),
+      )
+    }
+    return fittingCount(properties, width - 16, level, extras)
+  }, [rows, blocks, progress, timerKey, properties, width])
   const pageSize = Math.max(1, Math.floor(height / ROW_HEIGHT))
   const selecting = state.checked.size > 0
 
@@ -126,6 +150,7 @@ export function IssueTree({
     if (tree === null) return
     const observer = new ResizeObserver(() => {
       setHeight(tree.clientHeight)
+      setWidth(tree.clientWidth)
     })
     observer.observe(tree)
     return () => {
@@ -329,6 +354,7 @@ export function IssueTree({
                 dragging={drag?.id === row.id}
                 dropEdge={indicator?.id === row.id ? indicator.edge : undefined}
                 properties={properties}
+                shown={shown}
                 today={today}
                 blockedBy={held?.blockedBy.length ?? 0}
                 blocking={held?.blocking.length ?? 0}

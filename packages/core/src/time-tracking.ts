@@ -52,6 +52,12 @@ export function percentUsed(logged: number, estimate: number | null): number | n
   return estimate === null || estimate <= 0 ? null : Math.round((logged / estimate) * 100)
 }
 
+/** What is left of the estimate, as a whole percent: 100 minus the percent used, never below 0. `null` without an estimate. */
+export function percentRemaining(logged: number, estimate: number | null): number | null {
+  const used = percentUsed(logged, estimate)
+  return used === null ? null : Math.max(0, 100 - used)
+}
+
 export type ChartPeriod = 'days' | 'weeks' | 'months'
 
 /** How many bars each period shows: the last 14 days, 12 weeks and 12 months. */

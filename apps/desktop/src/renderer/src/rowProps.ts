@@ -1,4 +1,6 @@
 import type { Issue } from '@jira-mgr/core'
+import { formatEstimate, propertyRules } from '@jira-mgr/core/issue'
+import { percentRemaining } from '@jira-mgr/core/time-tracking'
 import { dayKey } from '@jira-mgr/core/view-filter'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -42,4 +44,27 @@ export function rowSprint(issue: Issue): Issue['sprints'][number] | undefined {
       undefined,
     )
   )
+}
+
+/** The four time properties a row can show. */
+export type TimeProperty = 'estimate' | 'logged' | 'remaining' | 'remainingPercent'
+
+/**
+ * What a row shows for a time property, `null` for an empty slot: a type with no estimates (an
+ * Epic) or an issue Jira holds no value for. Remaining is Jira's remaining estimate; Remaining %
+ * is 100 minus the percent used, so it needs an original estimate and counts no logged time as none.
+ */
+export function timeValue(issue: Issue, property: TimeProperty): string | null {
+  if (!propertyRules(issue.issueType).estimates) return null
+  const seconds = {
+    estimate: issue.originalEstimateSeconds,
+    logged: issue.timeSpentSeconds,
+    remaining: issue.remainingEstimateSeconds,
+  }
+  if (property !== 'remainingPercent') {
+    const own = seconds[property]
+    return own === null ? null : formatEstimate(own)
+  }
+  const percent = percentRemaining(issue.timeSpentSeconds ?? 0, issue.originalEstimateSeconds)
+  return percent === null ? null : `${String(percent)}%`
 }

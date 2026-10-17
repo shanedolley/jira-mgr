@@ -1,7 +1,7 @@
 import type { Issue } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
-import { dueTone, rowSprint, shortDate } from './rowProps'
+import { dueTone, rowSprint, shortDate, timeValue } from './rowProps'
 
 const sprints = (...list: Issue['sprints']) => ({ sprints: list }) as Issue
 
@@ -51,5 +51,59 @@ describe('rowSprint', () => {
     expect(rowSprint(sprints(closed, active, future))).toEqual(active)
     expect(rowSprint(sprints(closed, future))).toEqual(future)
     expect(rowSprint(sprints())).toBeUndefined()
+  })
+})
+
+describe('timeValue', () => {
+  const HOUR = 3600
+  const story = {
+    issueType: { id: '2', name: 'Story', subtask: false, hierarchyLevel: 0 },
+    originalEstimateSeconds: 10 * HOUR,
+    timeSpentSeconds: 2.5 * HOUR,
+    remainingEstimateSeconds: 7.5 * HOUR,
+  } as Issue
+  const none = {
+    ...story,
+    originalEstimateSeconds: null,
+    timeSpentSeconds: null,
+    remainingEstimateSeconds: null,
+  } as Issue
+
+  it('writes hours and minutes, and Remaining % as 100 minus the percent used', () => {
+    expect(timeValue(story, 'estimate')).toBe('10h')
+    expect(timeValue(story, 'logged')).toBe('2h 30m')
+    expect(timeValue(story, 'remaining')).toBe('7h 30m')
+    expect(timeValue(story, 'remainingPercent')).toBe('75%')
+  })
+
+  it('takes Remaining from the remaining estimate, which may disagree with Remaining %', () => {
+    expect(timeValue({ ...story, remainingEstimateSeconds: HOUR }, 'remaining')).toBe('1h')
+    expect(timeValue({ ...story, remainingEstimateSeconds: HOUR }, 'remainingPercent')).toBe('75%')
+  })
+
+  it('floors Remaining % at 0% when more is logged than estimated, and reads 0% when exact', () => {
+    expect(timeValue({ ...story, timeSpentSeconds: 12 * HOUR }, 'remainingPercent')).toBe('0%')
+    expect(timeValue({ ...story, timeSpentSeconds: 10 * HOUR }, 'remainingPercent')).toBe('0%')
+  })
+
+  it('leaves Remaining % empty without an estimate, and reads no logged time as none', () => {
+    expect(timeValue({ ...story, originalEstimateSeconds: null }, 'remainingPercent')).toBeNull()
+    expect(timeValue({ ...story, timeSpentSeconds: null }, 'remainingPercent')).toBe('100%')
+  })
+
+  it('is empty for an issue Jira holds no time for', () => {
+    for (const p of ['estimate', 'logged', 'remaining', 'remainingPercent'] as const) {
+      expect(timeValue(none, p)).toBeNull()
+    }
+  })
+
+  it('is empty for every property on an Epic', () => {
+    const epic = {
+      ...story,
+      issueType: { ...story.issueType, name: 'Epic', hierarchyLevel: 1 },
+    }
+    for (const p of ['estimate', 'logged', 'remaining', 'remainingPercent'] as const) {
+      expect(timeValue(epic, p)).toBeNull()
+    }
   })
 })
