@@ -242,6 +242,8 @@ function Issues({
                     type="button"
                     data-row
                     aria-label={`${issue.key} ${issue.summary}`}
+                    // The property values, which the name leaves out.
+                    aria-describedby={properties.length === 0 ? undefined : `props-${issue.key}`}
                     onClick={() => {
                       onOpen(issue.key)
                     }}
@@ -273,7 +275,13 @@ function Issues({
                       >
                         {issue.summary}
                       </span>
-                      <Properties issue={issue} properties={properties} today={today} always />
+                      <Properties
+                        id={`props-${issue.key}`}
+                        issue={issue}
+                        properties={properties}
+                        today={today}
+                        always
+                      />
                       <Avatar person={issue.assignee} />
                     </span>
                     <Slot

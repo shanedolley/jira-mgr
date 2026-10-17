@@ -450,17 +450,21 @@ export function Properties({
   properties,
   today,
   always = false,
+  id,
 }: {
   issue: Issue
   properties: readonly RowProperty[]
   today: string
   always?: boolean
+  /** Lets the Sprint page's row button describe itself by these values. */
+  id?: string
 }) {
   if (properties.length === 0) return null
   const sprint = rowSprint(issue)
   const [firstLabel, ...moreLabels] = issue.labels
   return (
     <span
+      id={id}
       data-props
       className={`items-center gap-x-2 ${always ? 'flex max-w-full flex-wrap justify-end gap-y-1' : TREE_PROPS}`}
     >

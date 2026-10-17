@@ -79,6 +79,14 @@ test('no control on the Sprint page sits inside another, with a slot closed or o
   expect(await nested()).toEqual([])
 })
 
+test('a row button is described by the property values its name leaves out', async () => {
+  await openSprint()
+  const row = overlay('PSAPAC-4')
+  await expect(row).toHaveAccessibleName(/^PSAPAC-4 \S/)
+  await expect(row).toHaveAccessibleDescription(/Original estimate 2h/)
+  await expect(row).toHaveAccessibleDescription(/Logged/)
+})
+
 test('a row tabs through its controls in order, each with a name', async () => {
   await openSprint()
   await overlay('PSAPAC-4').focus()

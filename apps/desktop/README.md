@@ -304,26 +304,35 @@ An editor anchored to a cell of a Tree or Sprint page row, for editing a propert
   2. A `div` of the row's content, `pointer-events-none relative`. A click on text or empty space falls through it to the button below. The Hold fade is one `span` in it (`holdFade`); the status slot and the pencil sit outside that span, so a focus ring is never faded.
   3. Each control in the content is a `Slot` (`Slot.tsx`): a real `<button type="button">` with `pointer-events-auto`. `SLOT` is the same class, for a control that is not a button, such as the estimate field while it is open.
 
-  A story that adds a Sprint page target wraps its Properties cell in `Slot`. `Properties` passes `always` to a cell on the Sprint page, and the cell draws `<Slot {...cell}>` in place of its Tree `<span {...cell}>`, with the same `data-prop` and classes:
+  A story that adds a Sprint page target makes it a `Slot`, in the place the cell already has:
+  - **Time cells** (`TimeCell`, `EstimateCell`) already take `always` and draw a `Slot` in place of their Tree `<span>`.
+  - **Labels and sprint** are cells of `Properties` (`TreeRow.tsx`), which passes `always` only to the time cells. Pass it to the cell, and draw the `Slot` when it is set. `DueDate` is a cell too and must receive `always` the same way.
+  - **Assignee** is the `Avatar` in `SprintPage.tsx`, outside `Properties`. Wrap it there in a `Slot`.
+  - **Priority** is not a Sprint row cell at all. Add a slot to the row first, then make it a `Slot`.
+
+  `Properties` has no `onEditCell` yet: the first story to need it adds the prop and `SprintPage` passes it. A labels cell then reads:
 
   ```tsx
   return always ? (
     <Slot
-      data-prop="priority"
-      data-pick="priority"
-      aria-label={`Priority of ${issue.key}: ${name}`}
+      data-prop="labels"
+      data-pick="labels"
+      aria-label={`Labels of ${issue.key}: ${issue.labels.join(', ') || 'none'}`}
       onClick={(event) => {
-        onEditCell(issue, 'priority', event.currentTarget)
+        onEditCell(issue, 'labels', event.currentTarget)
       }}
+      className={CLASSES}
     >
-      {text}
+      {chips}
     </Slot>
   ) : (
-    <span data-prop="priority">{text}</span>
+    <span data-prop="labels" className={CLASSES}>
+      {chips}
+    </span>
   )
   ```
 
-  Give it an accessible name (its text, an `aria-label` or a `title`), keep it a direct control of the content and never put one inside another. A control that opens an editor calls `onEditCell(issue, '<name>', event.currentTarget)` and focus returns to it. Tab order follows the visual order: the row button, Status, the property slots in the Display menu's order, then the pencil. `slots.test.ts` fails when a control nests in another.
+  Give it an accessible name (its text, an `aria-label` or a `title`), keep it a direct control of the content and never put one inside another. A control that opens an editor calls `onEditCell(issue, '<name>', event.currentTarget)` and focus returns to it. The row button is described by the `Properties` values (`aria-describedby`), so a keyboard user hears them on arriving at the row. Tab order follows the visual order: the row button, Status, the property slots in the Display menu's order, then the pencil. `slots.test.ts` fails when a control nests in another.
 
 - **Tests.** `cell.test.ts` covers the reducer's open, close and focus return, and `e2e/desktop/cell.test.ts` the Tree and the Sprint page in the app.
 
