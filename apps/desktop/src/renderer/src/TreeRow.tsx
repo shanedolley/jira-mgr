@@ -316,15 +316,27 @@ const DUE_TONES = {
   later: 'text-muted',
 } as const
 
-function DueDate({ issue, today }: { issue: Issue; today: string }) {
+/**
+ * The due date in a fixed slot. On the Tree the whole slot, filled or empty, is a click target for
+ * the date editor (`data-pick`, as `Pick` marks a cell), and `Shift+D` is the keyboard's way to it.
+ * The Sprint page's slot (`always`) stays drawn only until #279 gives its rows slot controls.
+ */
+function DueDate({ issue, today, edit }: { issue: Issue; today: string; edit: boolean }) {
   const due = issue.dueDate
   const tone = due === null ? null : dueTone(due, today, issue.status.category === 'done')
   return (
     <span
       data-prop="due"
+      data-pick={edit ? 'dueDate' : undefined}
       data-tone={tone ?? undefined}
-      title={due === null ? undefined : `Due ${due}`}
-      className="inline-flex w-[6rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted"
+      title={
+        edit
+          ? `${due === null ? 'Set due date' : `Due ${due}`} (Shift+D)`
+          : due === null
+            ? undefined
+            : `Due ${due}`
+      }
+      className={`inline-flex w-[6rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted ${edit ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`}
     >
       {due !== null && tone !== null && (
         <>
@@ -505,7 +517,7 @@ export function Properties({
           case 'remainingPercent':
             return <TimeCell key={property} issue={issue} property={property} always={always} />
           case 'due':
-            return <DueDate key={property} issue={issue} today={today} />
+            return <DueDate key={property} issue={issue} today={today} edit={!always} />
           case 'created':
             return <DateCell key={property} property={property} at={issue.created} today={today} />
           case 'updated':

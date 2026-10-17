@@ -284,6 +284,13 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - An unassigned row's dotted person is a click target too. A Hold row stays editable. `Shift+click` still checks a range.
 - The Sprint page's rows get the same target as a `Slot` around the avatar, named "Assignee of PSAPAC-4: Test User" or "Assignee of PSAPAC-3: Unassigned" (#279's pattern), so the row button still opens the issue and no control nests in another.
 
+*Amended 2026-10-18, build of #270.* Shane wants to select the due date on the canvas and edit it there. The orchestrator decided these, pending Shane's confirmation:
+
+- A click on a row's due-date slot, filled or empty, opens a popover anchored to the slot with the Peek's native date field and a Clear button, the third cell editor (`DateCell.tsx`). No calendar library is added. `Shift+D` opens it on the active row when the property is shown, and the issue menu's field otherwise.
+- Enter or leaving the field saves the date; Esc drops it; Clear sends `null`. A picked date saves the same way, not on the pick, because typing a date fires a change at every digit of the year. The edit is optimistic with a Retry toast on refusal. A Hold row and a Done issue stay editable.
+- The slot keeps its width, with a hover fill as the only change, and its title names the key.
+- The Sprint page's slot gets the same editor after #279 gives its rows slot controls.
+
 ### Peek
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.

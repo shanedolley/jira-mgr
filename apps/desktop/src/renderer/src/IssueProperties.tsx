@@ -79,6 +79,8 @@ interface TextFieldProps {
   hint?: string
   /** The longest text the field takes. */
   maxLength?: number
+  /** Marks the field for a `CellPopover`, which focuses it on opening. */
+  autofocus?: boolean
 }
 
 /** A field that edits locally and saves on Enter or when focus leaves, and reverts on Esc. */
@@ -93,6 +95,7 @@ export function TextField({
   valid = () => true,
   hint,
   maxLength,
+  autofocus = false,
 }: TextFieldProps) {
   const [draft, setDraft] = useState(value)
   // Jira's answer replaces what was typed, adjusting state during render as React advises.
@@ -141,6 +144,7 @@ export function TextField({
           aria-label={label}
           aria-keyshortcuts={shortcut}
           maxLength={maxLength}
+          data-autofocus={autofocus || undefined}
           aria-invalid={invalid || undefined}
           placeholder={type === 'date' ? undefined : placeholder}
           value={draft}

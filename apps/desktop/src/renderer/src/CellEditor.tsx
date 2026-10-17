@@ -17,6 +17,7 @@ import {
   type CellProperty,
   type CellTarget,
 } from './cell'
+import { DateCell } from './DateCell'
 import { AssigneePicker, StatusPicker } from './PropertyPickers'
 
 /** The anchor name the cell being edited carries. One editor is open at a time. */
@@ -118,6 +119,9 @@ const EDITORS: Record<CellProperty, (context: CellContext) => ReactNode> = {
   status: ({ issue, cell }) => <StatusPicker issue={issue} cell={cell} />,
   assignee: ({ issue, issues, me, cell }) => (
     <AssigneePicker issue={issue} issues={issues} me={me} cell={cell} />
+  ),
+  dueDate: ({ issue, cell }) => (
+    <DateCell issue={issue} field="dueDate" label="Due date" cell={cell} />
   ),
 }
 
