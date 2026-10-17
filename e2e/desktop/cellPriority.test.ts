@@ -26,6 +26,7 @@ const item = (name: RegExp) => tree().getByRole('treeitem', { name })
 /** The priority slot's click target on a row: drawn or empty, it is always there. */
 const slot = (row: RegExp) => item(row).locator('[data-pick=priority]')
 const peek = () => window.getByRole('complementary', { name: 'Peek' })
+const sidebar = () => window.getByRole('navigation', { name: 'Main' })
 const listbox = () => window.getByRole('listbox', { name: 'Priority' })
 /** `High` and not `Highest`. */
 const high = () => window.getByRole('option', { name: /^High(?!est)/ })
@@ -97,7 +98,7 @@ test('choosing a priority draws the bars at once, writes once and returns focus 
   await expect(item(/PSAPAC-3,/)).not.toHaveAccessibleName(/priority/)
 })
 
-test('Esc closes the list with no write, and a click outside closes it too', async () => {
+test('Esc closes the list with no write, and a click outside closes it, and a second click on the slot too', async () => {
   await open()
   const before = await writes()
 
@@ -107,6 +108,13 @@ test('Esc closes the list with no write, and a click outside closes it too', asy
   await expect(listbox()).toHaveCount(0)
   await expect(tree()).toBeFocused()
   await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
+
+  await slot(/PSAPAC-3,/).click()
+  await expect(listbox()).toBeVisible()
+  await sidebar()
+    .getByRole('link', { name: /^Issues/ })
+    .click()
+  await expect(listbox()).toHaveCount(0)
 
   await slot(/PSAPAC-3,/).click()
   await expect(listbox()).toBeVisible()
@@ -133,6 +141,7 @@ test('P opens the same list on the active row, and arrows and Enter choose', asy
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
   const before = await writes()
 
   await window.keyboard.press('p')
@@ -227,21 +236,21 @@ test('holds its layout with a wide font: the slot keeps 16px, bars or none, and 
   expect(widths.length).toBeGreaterThan(0)
   expect(new Set(widths)).toEqual(new Set([16]))
 
-  // Setting a priority moves nothing: the key column keeps its place.
-  const keyLeft = () =>
+  // Setting a priority moves nothing: the slot and the avatar after it keep their places.
+  const avatarLeft = () =>
     item(/PSAPAC-3,/)
-      .locator('.tree-key')
+      .locator('[data-pick=assignee]')
       .evaluate((el) => el.getBoundingClientRect().left)
   const slotLeft = () =>
     item(/PSAPAC-3,/)
       .locator('[data-slot=priority]')
       .evaluate((el) => el.getBoundingClientRect().left)
-  const [keyBefore, slotBefore] = [await keyLeft(), await slotLeft()]
+  const [avatarBefore, slotBefore] = [await avatarLeft(), await slotLeft()]
   const before = await writes()
   await slot(/PSAPAC-3,/).click()
   await high().click()
   await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/priority High/)
-  expect(await keyLeft()).toBe(keyBefore)
+  expect(await avatarLeft()).toBe(avatarBefore)
   expect(await slotLeft()).toBe(slotBefore)
   await settle(before + 1)
 

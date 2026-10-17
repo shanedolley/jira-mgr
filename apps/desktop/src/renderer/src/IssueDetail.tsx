@@ -269,8 +269,8 @@ function PeekIssue({
  * The space-bar preview: summary, key, a 3-line read-only description, status, type, people,
  * Customer and Engagement. The summary edits in place, Start timer follows the `T` rule (never on
  * an Epic), a mismatch offers its one-click fix, and Open goes to the full page. Status,
- * Assignee, Priority and Labels are the page's own pickers, so the Tree's `S`, `A`, `P` and `L`
- * open them here (D7) without leaving the list.
+ * Assignee, Priority and Labels are the page's own pickers. The Tree's `A` and `L` open them here
+ * (D7) without leaving the list; `S` and `P` open the cell editor beside the row instead.
  */
 export function IssueDetail({
   issue,

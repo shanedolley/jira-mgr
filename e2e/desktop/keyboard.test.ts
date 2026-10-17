@@ -441,6 +441,7 @@ test('Cmd+Z leaves native undo to a text field, and a refused edit leaves nothin
 
   // From the Tree it undoes. Now an edit Jira refuses: Highest is refused by the fake.
   await filter.fill('')
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/priority Low/)
   await item(/PSAPAC-4,/).click()
   await window.keyboard.press('Escape')
   await window.keyboard.press('Meta+z')
