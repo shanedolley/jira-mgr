@@ -245,7 +245,10 @@ test('the row stays mounted while the field is open and the Tree scrolls', async
   await open()
   // A short window, so the rows overflow the Tree and the scroll below is a real one.
   await app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1200, 320)
+    const win = BrowserWindow.getAllWindows()[0]
+    // The window's own minimum height is 520.
+    win?.setMinimumSize(1, 1)
+    win?.setContentSize(1200, 320)
   })
   await expect
     .poll(() => tree().evaluate((el) => el.scrollHeight - el.clientHeight))
