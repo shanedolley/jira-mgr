@@ -246,9 +246,104 @@ test('a Hold row stays editable', async () => {
 
   await dot(/PSAPAC-3,/).click()
   await expect(listbox()).toBeFocused()
+  // The row fades to 30%, but the list over it is not part of the row.
+  const drawn = await popover().evaluate((el) => {
+    let opacity = 1
+    for (let node: Element | null = el; node !== null; node = node.parentElement) {
+      opacity *= Number(getComputedStyle(node).opacity)
+    }
+    return opacity
+  })
+  expect(drawn).toBe(1)
   await option('In Progress').click()
   await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/In Progress/)
   await settle(before + 1)
+})
+
+/** Shrinks the window to its smallest height, so the Tree is short enough to have a row at its foot. */
+async function shortWindow() {
+  const width = await window.evaluate(() => globalThis.innerWidth)
+  await app.evaluate(({ BrowserWindow }, w) => {
+    BrowserWindow.getAllWindows()[0]?.setContentSize(w, 520)
+  }, width)
+  await expect.poll(() => window.evaluate(() => globalThis.innerHeight)).toBe(520)
+}
+
+/**
+ * Scrolls the Tree until the issue row that crosses its foot hangs 12px below it, and returns that
+ * row's key. Its dot is in view and the lower part of the row is clipped.
+ */
+async function clipAtFoot() {
+  const key = await tree().evaluate((el) => {
+    const frame = el.getBoundingClientRect()
+    for (const row of el.querySelectorAll('[role=treeitem]')) {
+      const box = row.getBoundingClientRect()
+      const key = /^(PSAPAC-\d+),/.exec(row.getAttribute('aria-label') ?? '')?.[1]
+      if (key !== undefined && box.top < frame.bottom - 20 && box.bottom > frame.bottom) {
+        el.scrollTop += box.bottom - frame.bottom + 12
+        return key
+      }
+    }
+    throw new Error('no row crosses the foot of the Tree')
+  })
+  return new RegExp(`^${key},`)
+}
+
+/** Whether the dot of `row` sits wholly inside the Tree. */
+const dotInView = (row: RegExp) =>
+  dot(row).evaluate((el) => {
+    const box = el.getBoundingClientRect()
+    const frame = el.closest('[role=tree]')?.getBoundingClientRect()
+    return frame !== undefined && box.top >= frame.top && box.bottom <= frame.bottom
+  })
+
+test('a click on the dot of a row clipped at the Tree foot scrolls it into view and keeps the list open', async () => {
+  await open()
+  await shortWindow()
+  const row = await clipAtFoot()
+  expect(await dotInView(row)).toBe(true)
+  const cell = await dot(row).boundingBox()
+  if (cell === null) throw new Error('the dot is not drawn')
+  // A raw click, so Playwright does not scroll the dot into view first.
+  await window.mouse.click(cell.x + cell.width / 2, cell.y + cell.height / 2)
+
+  await expect(listbox()).toBeFocused()
+  // The row scrolls fully into view, and the list stays open through it, below the dot.
+  await window.waitForTimeout(500)
+  await expect(listbox()).toBeVisible()
+  const overhang = await item(row).evaluate((el) => {
+    const frame = el.closest('[role=tree]')?.getBoundingClientRect()
+    return el.getBoundingClientRect().bottom - (frame?.bottom ?? 0)
+  })
+  expect(overhang).toBeLessThanOrEqual(0)
+  const moved = await dot(row).boundingBox()
+  const list = await popover().boundingBox()
+  if (moved === null || list === null) throw new Error('the dot or the list is not drawn')
+  expect(list.y).toBeGreaterThanOrEqual(moved.y + moved.height - 1)
+  await expect(item(row)).toHaveAttribute('data-active', 'true')
+  await expect(peek()).toHaveCount(0)
+})
+
+test('S on an active row scrolled partly out at the Tree top brings its dot into view before the list opens', async () => {
+  await open()
+  await item(/PSAPAC-3,/).click()
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+  // The wheel scrolls the row 12px above the top edge. The keyboard did not move the active row.
+  await tree().evaluate((el) => {
+    const row = [...el.querySelectorAll('[role=treeitem]')].find((r) =>
+      (r.getAttribute('aria-label') ?? '').startsWith('PSAPAC-3,'),
+    )
+    if (row === undefined) throw new Error('no such row')
+    el.scrollTop += row.getBoundingClientRect().top - el.getBoundingClientRect().top + 12
+  })
+  expect(await dotInView(/PSAPAC-3,/)).toBe(false)
+
+  await window.keyboard.press('s')
+  await expect(listbox()).toBeFocused()
+  await window.waitForTimeout(500)
+  await expect(listbox()).toBeVisible()
+  expect(await dotInView(/PSAPAC-3,/)).toBe(true)
 })
 
 test('the Sprint page rows offer the same list and still open their issue', async () => {

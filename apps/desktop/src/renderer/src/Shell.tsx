@@ -55,7 +55,7 @@ import { InboxPage } from './InboxPage'
 import { IssueDetail } from './IssueDetail'
 import { IssueMenu } from './IssueMenu'
 import { IssuePage } from './IssuePage'
-import { IssueTree, type MoveTarget } from './IssueTree'
+import { IssueTree, type MoveTarget, type TreeControl } from './IssueTree'
 import { Kbd } from './Kbd'
 import { useTreeTop } from './narrow'
 import { type OverviewLoad } from './OverviewFrame'
@@ -817,6 +817,7 @@ export function Shell({ session }: { session: Session }) {
     else control?.click()
   }
 
+  const treeControl = useRef<TreeControl>(null)
   /** The cell editor: a picker opened against the cell of a Tree or Sprint page row. */
   const cellEditor = useCellEditor(restoreFocus)
   const cellTarget = cellEditor.target
@@ -832,6 +833,8 @@ export function Shell({ session }: { session: Session }) {
   function openStatusCell(key: string): boolean {
     if (pageKey !== null || activeRow === undefined) return false
     const issue = issues.find((i) => i.key === key)
+    // The row may be clipped or scrolled away; its list must open against a dot in view.
+    treeControl.current?.reveal(activeRow.id)
     const dot = document
       .getElementById(rowDomId(activeRow.id))
       ?.querySelector<HTMLElement>('[data-pick="status"]')
@@ -1476,6 +1479,7 @@ export function Shell({ session }: { session: Session }) {
         onCell={(issue, property, cell) => {
           cellEditor.open({ issue, property, cell }, true)
         }}
+        control={treeControl}
         onAdd={(row) => {
           if (canCreate) setCreating(createContext(row, issues))
         }}
@@ -1820,6 +1824,8 @@ export function Shell({ session }: { session: Session }) {
           key={`${cellTarget.issue.key}:${cellTarget.property}`}
           target={cellTarget}
           issue={cellIssue}
+          issues={issues}
+          me={meQuery.data}
           onClose={cellEditor.close}
         />
       )}

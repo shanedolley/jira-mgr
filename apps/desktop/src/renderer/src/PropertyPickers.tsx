@@ -12,7 +12,8 @@ import { LabelDot, PriorityBars } from './Glyphs'
 import { useNotify, type Notify } from './notify'
 import { current } from './optimistic'
 import { ParentPrompt } from './ParentPrompt'
-import { Picker, menuProps, type CellMode, type MenuMode, type PickerOption } from './Picker'
+import type { CellMode } from './cell'
+import { Picker, menuProps, type MenuMode, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
 import {
   NONE,

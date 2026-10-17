@@ -9,6 +9,8 @@ import {
   type ToggleEvent,
 } from 'react'
 
+import type { CellMode } from './cell'
+import { useShowOnMount } from './CellPopover'
 import { Kbd, keycap } from './Kbd'
 import { matches } from './properties'
 
@@ -80,17 +82,6 @@ export interface PickerProps {
   onPicked?: () => void
   /** Opens the list at once, against a row's cell instead of the trigger, which is then not drawn. */
   cell?: CellMode
-}
-
-/**
- * What the cell editor passes a picker to anchor it to a cell of a row (`CellEditor.tsx`). The
- * picker draws no trigger and opens on mount; the cell carries the CSS anchor named `anchor`.
- */
-export interface CellMode {
-  /** The CSS anchor name the cell carries, which the list positions itself against. */
-  anchor: string
-  /** Called once the list has closed, however it closed: a choice, Esc or a click outside. */
-  onClose: () => void
 }
 
 /** What the context menu passes a picker to make it one of its items. */
@@ -242,11 +233,7 @@ export function Picker({
   })
 
   const inCell = cell !== undefined
-  useEffect(() => {
-    const popover = popoverRef.current
-    // Strict mode runs this twice; showing an open popover throws.
-    if (inCell && popover?.matches(':popover-open') === false) popover.showPopover()
-  }, [inCell])
+  useShowOnMount(popoverRef, inCell)
 
   useEffect(() => {
     if (open && activeIndex >= 0) {

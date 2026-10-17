@@ -8,8 +8,15 @@ import {
   type ReactNode,
 } from 'react'
 
-import { CLOSED, cellReducer, focusLost, type CellProperty, type CellTarget } from './cell'
-import type { CellMode } from './Picker'
+import type { CurrentUser } from '../../shared/ipc'
+import {
+  CLOSED,
+  cellReducer,
+  focusLost,
+  type CellMode,
+  type CellProperty,
+  type CellTarget,
+} from './cell'
 import { StatusPicker } from './PropertyPickers'
 
 /** The anchor name the cell being edited carries. One editor is open at a time. */
@@ -65,6 +72,24 @@ export function useCellEditor(restoreFocus: () => void) {
     }
   }, [isOpen])
 
+  // A press that is released away from its cell sends no click, so the next real click must not be
+  // taken for its second half. The click follows the release at once, so a frame later is safe.
+  const pressed = state.pressed !== null
+  useEffect(() => {
+    if (!pressed) return
+    let frame = 0
+    const onRelease = () => {
+      frame = requestAnimationFrame(() => {
+        dispatch({ type: 'press', cell: null })
+      })
+    }
+    document.addEventListener('pointerup', onRelease, { capture: true, once: true })
+    return () => {
+      document.removeEventListener('pointerup', onRelease, true)
+      cancelAnimationFrame(frame)
+    }
+  }, [pressed])
+
   return {
     target: state.target,
     open: (target: CellTarget<HTMLElement>, pointer: boolean) => {
@@ -76,28 +101,43 @@ export function useCellEditor(restoreFocus: () => void) {
   }
 }
 
-/** The picker each property opens. Each one hands `cell` to its `Picker`, which then draws no trigger. */
-const PICKERS: Record<CellProperty, (issue: Issue, cell: CellMode) => ReactNode> = {
-  status: (issue, cell) => <StatusPicker issue={issue} cell={cell} />,
+/** What an editor can read when it opens: the issue as the caches show it now, the loaded issues and the user. */
+export interface CellContext {
+  issue: Issue
+  issues: readonly Issue[]
+  me: CurrentUser | undefined
+  /** Passed to the editor: a `Picker` or a `CellPopover` takes it as its `cell`. */
+  cell: CellMode
+}
+
+/**
+ * The editor each property opens: a list from `PropertyPickers.tsx` given `cell` (see
+ * `StatusPicker`), or a `CellPopover` around a field for an editor that is not a list.
+ */
+const EDITORS: Record<CellProperty, (context: CellContext) => ReactNode> = {
+  status: ({ issue, cell }) => <StatusPicker issue={issue} cell={cell} />,
 }
 
 interface CellEditorProps {
   target: CellTarget<HTMLElement>
-  /** The issue as the caches show it now, so the picker marks the current value. */
+  /** The issue as the caches show it now, so the editor marks the current value. */
   issue: Issue
+  issues: readonly Issue[]
+  me: CurrentUser | undefined
   onClose: () => void
 }
 
 /**
- * Opens the picker of `target.property` against `target.cell`, the element the user clicked. It
- * mounts open and unmounts when closed. The list closes on Esc, a click outside or a choice, and
- * when the page scrolls under the cell, which would leave the list hanging in the air.
- * Add a property by adding an entry to `PICKERS`, passing `cell` to its picker (see `StatusPicker`).
+ * Opens the editor of `target.property` against `target.cell`, the element the user clicked. It
+ * mounts open and unmounts when closed. The popover closes on Esc, a click outside or a choice,
+ * and when the cell scrolls or leaves the page, which would leave it hanging in the air. A scroll
+ * in the first two frames is ignored: the row that was clicked may have been scrolled into view.
+ * Add a property by adding an entry to `EDITORS` (see the Cell Editor section of the README).
  */
-export function CellEditor({ target, issue, onClose }: CellEditorProps) {
+export function CellEditor({ target, issue, issues, me, onClose }: CellEditorProps) {
   const { cell } = target
 
-  // Before the picker's own effect shows the list, so the list finds its anchor.
+  // Before the editor's own effect shows the popover, so it finds its anchor.
   useLayoutEffect(() => {
     cell.style.setProperty('anchor-name', CELL_ANCHOR)
     return () => {
@@ -105,15 +145,28 @@ export function CellEditor({ target, issue, onClose }: CellEditorProps) {
     }
   }, [cell])
 
+  const closeAway = useEffectEvent(onClose)
   useEffect(() => {
+    let armed = false
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        armed = true
+      })
+    })
     const onScroll = (event: Event) => {
-      if (event.target instanceof Node && event.target.contains(cell)) onClose()
+      if (armed && event.target instanceof Node && event.target.contains(cell)) closeAway()
     }
     window.addEventListener('scroll', onScroll, true)
     return () => {
+      cancelAnimationFrame(frame)
       window.removeEventListener('scroll', onScroll, true)
     }
-  }, [cell, onClose])
+  }, [cell])
 
-  return PICKERS[target.property](issue, { anchor: CELL_ANCHOR, onClose })
+  // The Tree unmounts a row that leaves its window, taking the cell with it.
+  useEffect(() => {
+    if (!cell.isConnected) closeAway()
+  })
+
+  return EDITORS[target.property]({ issue, issues, me, cell: { anchor: CELL_ANCHOR, onClose } })
 }

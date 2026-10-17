@@ -1,7 +1,15 @@
 import type { Issue } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
-import { CLOSED, cellReducer, focusLost, type CellState, type CellTarget } from './cell'
+import {
+  CELL_PROPERTIES,
+  CLOSED,
+  cellReducer,
+  focusLost,
+  isCellProperty,
+  type CellState,
+  type CellTarget,
+} from './cell'
 
 interface Cell {
   name: string
@@ -86,5 +94,14 @@ describe('focusLost', () => {
 
   it('is false when a click has put focus on a control, which keeps it', () => {
     expect(focusLost(tree, body)).toBe(false)
+  })
+})
+
+describe('isCellProperty', () => {
+  it('accepts each property with a cell editor and nothing else a cell can carry', () => {
+    for (const property of CELL_PROPERTIES) expect(isCellProperty(property)).toBe(true)
+    // The avatar still opens the Peek's picker; a missing attribute is no property.
+    expect(isCellProperty('assignee')).toBe(false)
+    expect(isCellProperty(undefined)).toBe(false)
   })
 })

@@ -1,7 +1,25 @@
 import type { Issue } from '@jira-mgr/core'
 
-/** The properties a row's cell can edit in place. Each later story adds its own. */
-export type CellProperty = 'status'
+/** The properties a row's cell can edit in place. Each later story adds its own name here. */
+export const CELL_PROPERTIES = ['status'] as const
+
+export type CellProperty = (typeof CELL_PROPERTIES)[number]
+
+/** Whether a `data-pick` value names a property with a cell editor, so the row opens one for it. */
+export const isCellProperty = (value: string | undefined): value is CellProperty =>
+  (CELL_PROPERTIES as readonly (string | undefined)[]).includes(value)
+
+/**
+ * What the cell editor passes an editor to anchor it to a cell of a row (`CellEditor.tsx`). A
+ * `Picker` draws no trigger and a `CellPopover` draws no button: each opens on mount against the
+ * element that carries the CSS anchor named `anchor`.
+ */
+export interface CellMode {
+  /** The CSS anchor name the cell carries, which the popover positions itself against. */
+  anchor: string
+  /** Called once the popover has closed, however it closed: a choice, Esc or a click outside. */
+  onClose: () => void
+}
 
 /** The cell being edited: the issue, the property, and the element the list anchors to. */
 export interface CellTarget<E> {

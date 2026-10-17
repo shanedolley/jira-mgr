@@ -5,7 +5,7 @@ import { propertyRules } from '@jira-mgr/core/issue'
 import { memo, type MouseEvent, type ReactNode } from 'react'
 
 import { Avatar } from './Avatar'
-import type { CellProperty } from './cell'
+import { isCellProperty, type CellProperty } from './cell'
 import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { Icon, PENCIL } from './Icon'
@@ -714,7 +714,7 @@ export const TreeRow = memo(function TreeRow({
               ? 'activate'
               : event.shiftKey
                 ? 'range'
-                : picked === 'status' && row.kind === 'issue'
+                : isCellProperty(picked) && row.kind === 'issue'
                   ? 'activate'
                   : undefined
         onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
@@ -728,8 +728,8 @@ export const TreeRow = memo(function TreeRow({
           onPencil: target.closest('[data-edit="summary"]') !== null,
         })
         if (edit !== null) onEdit(row.node.issue, edit === 'later')
-        if (picked === 'status' && select === 'activate' && pick !== null) {
-          onCell(row.node.issue, 'status', pick)
+        if (select === 'activate' && pick !== null && isCellProperty(picked)) {
+          onCell(row.node.issue, picked, pick)
         } else if (picked === 'assignee') onPick(row.node.issue.key, picked)
       }}
       // A double-click opens the issue its first click hit, not the row under the pointer by then:

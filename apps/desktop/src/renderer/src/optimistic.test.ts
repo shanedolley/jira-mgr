@@ -618,6 +618,29 @@ describe('a Sprint page copy', () => {
   })
 })
 
+describe('a Sprint page read in flight', () => {
+  it('is cancelled by an edit of an issue it holds, so it cannot bring back the old value', async () => {
+    const client = new QueryClient()
+    const queryKey = [...sprintKey, 5]
+    const held = { sprint: { id: 5 }, issues: [issue('PSAPAC-1', 'One')], stats: {} }
+    client.setQueryData(queryKey, held)
+    const read = deferred<typeof held>()
+    const observer = new QueryObserver(client, { queryKey, queryFn: () => read.promise })
+    const stop = observer.subscribe(() => undefined)
+    await client.invalidateQueries({ queryKey, refetchType: 'none' })
+    void observer.refetch()
+    await expect.poll(() => client.getQueryState(queryKey)?.fetchStatus).toBe('fetching')
+
+    const edit = new MutationObserver(
+      client,
+      summaryMutation(client, () => deferred<null>().promise, reader().read),
+    )
+    void edit.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    await expect.poll(() => client.getQueryState(queryKey)?.fetchStatus).toBe('idle')
+    stop()
+  })
+})
+
 describe('applyFreshIssue', () => {
   it('starts the Done load again when an issue reaches Done while that phase is still loading', async () => {
     const client = new QueryClient()
