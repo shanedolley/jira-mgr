@@ -262,7 +262,14 @@ An editor anchored to a cell of a Tree or Sprint page row, for editing a propert
 
 - **Open.** `useCellEditor(restoreFocus)` in the Shell holds the one open editor. A cell calls `open({ issue, property, cell }, pointer)` with the element that was clicked, which carries `data-pick`. The Shell renders `<CellEditor target issue issues me onClose />` beside the issue menu, with the issue read from the caches so the editor marks the current value.
 - **Anchor.** `CellEditor` gives `cell` the CSS anchor `--cell-editor` and hands the editor a `CellMode` (`cell.ts`): `{ anchor, onClose }`. The editor draws no trigger, shows its popover on mount and positions it against the anchor, below the cell and starting at its left edge, flipping at the window's edges. `useShowOnMount` and `CellPopover` (`CellPopover.tsx`) are the shared parts.
-- **Registering a property.** `CELL_PROPERTIES` in `cell.ts` names the properties with an editor, and `isCellProperty` is the guard the row's click uses, so the row needs no change. To add one: add the name there, add an entry to `EDITORS` in `CellEditor.tsx`, wrap the cell in `Pick` in `TreeRow.tsx` (and give the Sprint page's row a button with `data-pick`), and have that cell call `open`. An entry receives a `CellContext`: `{ issue, issues, me, cell }`, so an assignee editor has the loaded issues and the user.
+- **Registering a property.** The Shell, the row and the key route by name, so a property needs exactly these:
+  1. Its name in `CELL_PROPERTIES` (`cell.ts`). The name is the keymap command's name (`status`, `assignee`, `priority`, `labels`, `dueDate`, `sprint`), so its key routes with no Shell change: the Shell's `openCell(command, key)` opens the editor on the active row's `[data-pick="<name>"]` cell when `isCellProperty(command)`, and otherwise falls back to the Peek's picker or, for `Shift+D`, `Shift+P`, `Shift+E` and `Shift+C`, to the issue menu. A property whose key has no keymap command adds its command in `keymap.ts` first.
+  2. An entry in `EDITORS` (`CellEditor.tsx`), which receives a `CellContext`: `{ issue, issues, me, cell }`.
+  3. Its Tree cell: a `Pick` with that `property` in `TreeRow.tsx`. The row's click needs no change; `isCellProperty` sends it to `onCell`.
+  4. Its Sprint page cell: a button with `data-pick="<name>"` that calls `onEditCell(issue, '<name>', event.currentTarget)`.
+
+  A property that still opens the Peek's picker from a click (the avatar until #268) keeps its `onPick` route until it is registered.
+
 - **A list editor** reuses a picker. Make the picker in `PropertyPickers.tsx` take `cell?: CellMode` and pass it on to `Picker`, as `StatusPicker` does, then register it:
 
   ```tsx

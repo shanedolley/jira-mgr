@@ -4,6 +4,7 @@ import type { SprintReport } from '@jira-mgr/core/sprints'
 import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 
 import { Avatar } from './Avatar'
+import type { CellProperty } from './cell'
 import { Icon, PENCIL } from './Icon'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
@@ -198,14 +199,14 @@ function Issues({
   today,
   onOpen,
   onEditSummary,
-  onEditStatus,
+  onEditCell,
 }: {
   report: SprintReport
   properties: readonly RowProperty[]
   today: string
   onOpen: (key: string) => void
   onEditSummary: (issue: Issue) => void
-  onEditStatus: (issue: Issue, cell: HTMLElement) => void
+  onEditCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
 }) {
   const { sprint, issues } = report
   const groups = groupByStatus(issues)
@@ -265,7 +266,7 @@ function Issues({
                     aria-label={`Status of ${issue.key}: ${issue.status.name}`}
                     aria-haspopup="listbox"
                     onClick={(event) => {
-                      onEditStatus(issue, event.currentTarget)
+                      onEditCell(issue, 'status', event.currentTarget)
                     }}
                     className="absolute left-2.5 top-1.5 flex size-5 items-center justify-center rounded-full hover:bg-line"
                   >
@@ -305,8 +306,8 @@ interface SprintPageProps {
   onOpenIssue: (key: string) => void
   /** Opens the summary editor of one of the sprint's issues. */
   onEditSummary: (issue: Issue) => void
-  /** A click on a row's status button: the cell editor opens its picker against `cell`. */
-  onEditStatus: (issue: Issue, cell: HTMLElement) => void
+  /** A click on a row's cell button: the cell editor opens the editor of `property` against `cell`. */
+  onEditCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
 }
 
 /**
@@ -322,7 +323,7 @@ export function SprintPage({
   onBack,
   onOpenIssue,
   onEditSummary,
-  onEditStatus,
+  onEditCell,
 }: SprintPageProps) {
   const report = useSprintReport(sprintId)
 
@@ -367,7 +368,7 @@ export function SprintPage({
             today={today}
             onOpen={onOpenIssue}
             onEditSummary={onEditSummary}
-            onEditStatus={onEditStatus}
+            onEditCell={onEditCell}
           />
           <Panel report={report.data} />
         </>

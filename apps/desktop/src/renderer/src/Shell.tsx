@@ -44,6 +44,7 @@ import type {
 import { issueUrl } from '../../shared/links'
 import { Banner } from './Banner'
 import { BulkBar } from './BulkBar'
+import { isCellProperty, type CellProperty } from './cell'
 import { CellEditor, useCellEditor } from './CellEditor'
 import { copyText } from './clipboard'
 import { CommandPalette } from './CommandPalette'
@@ -826,20 +827,26 @@ export function Shell({ session }: { session: Session }) {
       ? undefined
       : (issues.find((i) => i.key === cellTarget.issue.key) ?? cellTarget.issue)
 
+  /** Opens the editor of `property` on `cell`, a click on a Tree row's cell or a Sprint page row's. */
+  function editCell(issue: Issue, property: CellProperty, cell: HTMLElement) {
+    cellEditor.open({ issue, property, cell }, true)
+  }
+
   /**
-   * Opens the status editor on the dot of the active Tree row, as a click on it does. False when
-   * a page is open or the row is not drawn, and the caller opens the Peek's picker instead.
+   * Opens the cell editor for the command's property on the active Tree row, as a click on its
+   * cell does. False when the command names no property with an editor, a page is open or the cell
+   * is not drawn, and the caller falls back to the Peek's picker or the menu.
    */
-  function openStatusCell(key: string): boolean {
-    if (pageKey !== null || activeRow === undefined) return false
+  function openCell(command: string, key: string): boolean {
+    if (!isCellProperty(command) || pageKey !== null || activeRow === undefined) return false
     const issue = issues.find((i) => i.key === key)
-    // The row may be clipped or scrolled away; its list must open against a dot in view.
+    // The row may be clipped or scrolled away; its editor must open against a cell in view.
     treeControl.current?.reveal(activeRow.id)
-    const dot = document
+    const cell = document
       .getElementById(rowDomId(activeRow.id))
-      ?.querySelector<HTMLElement>('[data-pick="status"]')
-    if (issue === undefined || dot === undefined || dot === null) return false
-    cellEditor.open({ issue, property: 'status', cell: dot }, false)
+      ?.querySelector<HTMLElement>(`[data-pick="${command}"]`)
+    if (issue === undefined || cell === undefined || cell === null) return false
+    cellEditor.open({ issue, property: command, cell }, false)
     return true
   }
 
@@ -1269,6 +1276,8 @@ export function Shell({ session }: { session: Session }) {
             slot.click()
             return
           }
+          // A property with a cell editor opens it on the row's cell; the rest open the menu.
+          if (openCell(command, key)) return
           const row = document.getElementById(rowDomId(activeRow?.id ?? ''))
           if (row !== null) openMenuFor(key, row, null, command)
           return
@@ -1287,7 +1296,7 @@ export function Shell({ session }: { session: Session }) {
         if (command === 'assignMe') assignToMe(key)
         else if (command === 'copyKey') copyIssue(key, 'key')
         else if (command === 'copyLink') copyIssue(key, 'link')
-        else if (command === 'status' && openStatusCell(key)) return
+        else if (openCell(command, key)) return
         else openProperty(command, key)
       }
     }
@@ -1476,9 +1485,7 @@ export function Shell({ session }: { session: Session }) {
           openProperty(property, key)
         }}
         onEditSummary={setRenaming}
-        onCell={(issue, property, cell) => {
-          cellEditor.open({ issue, property, cell }, true)
-        }}
+        onCell={editCell}
         control={treeControl}
         onAdd={(row) => {
           if (canCreate) setCreating(createContext(row, issues))
@@ -1733,9 +1740,7 @@ export function Shell({ session }: { session: Session }) {
             }}
             onOpenIssue={setPageKey}
             onEditSummary={setRenaming}
-            onEditStatus={(issue, cell) => {
-              cellEditor.open({ issue, property: 'status', cell }, true)
-            }}
+            onEditCell={editCell}
           />
         </div>
       )}

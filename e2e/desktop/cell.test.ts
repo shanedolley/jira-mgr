@@ -270,7 +270,7 @@ async function shortWindow() {
 }
 
 /**
- * Scrolls the Tree until the issue row that crosses its foot hangs 12px below it, and returns that
+ * Scrolls the Tree until the issue row that crosses its foot hangs 6px below it, and returns that
  * row's key. Its dot is in view and the lower part of the row is clipped.
  */
 async function clipAtFoot() {
@@ -280,7 +280,7 @@ async function clipAtFoot() {
       const box = row.getBoundingClientRect()
       const key = /^(PSAPAC-\d+),/.exec(row.getAttribute('aria-label') ?? '')?.[1]
       if (key !== undefined && box.top < frame.bottom - 20 && box.bottom > frame.bottom) {
-        el.scrollTop += box.bottom - frame.bottom + 12
+        el.scrollTop += box.bottom - frame.bottom - 6
         return key
       }
     }
@@ -301,6 +301,13 @@ test('a click on the dot of a row clipped at the Tree foot scrolls it into view 
   await open()
   await shortWindow()
   const row = await clipAtFoot()
+  // The precondition: the row hangs below the Tree's foot, with its dot in view to click.
+  const hanging = () =>
+    item(row).evaluate((el) => {
+      const frame = el.closest('[role=tree]')?.getBoundingClientRect()
+      return el.getBoundingClientRect().bottom - (frame?.bottom ?? 0)
+    })
+  expect(await hanging()).toBeGreaterThan(0)
   expect(await dotInView(row)).toBe(true)
   const cell = await dot(row).boundingBox()
   if (cell === null) throw new Error('the dot is not drawn')
@@ -311,10 +318,7 @@ test('a click on the dot of a row clipped at the Tree foot scrolls it into view 
   // The row scrolls fully into view, and the list stays open through it, below the dot.
   await window.waitForTimeout(500)
   await expect(listbox()).toBeVisible()
-  const overhang = await item(row).evaluate((el) => {
-    const frame = el.closest('[role=tree]')?.getBoundingClientRect()
-    return el.getBoundingClientRect().bottom - (frame?.bottom ?? 0)
-  })
+  const overhang = await hanging()
   expect(overhang).toBeLessThanOrEqual(0)
   const moved = await dot(row).boundingBox()
   const list = await popover().boundingBox()

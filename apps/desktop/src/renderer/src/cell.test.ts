@@ -100,8 +100,8 @@ describe('focusLost', () => {
 describe('isCellProperty', () => {
   it('accepts each property with a cell editor and nothing else a cell can carry', () => {
     for (const property of CELL_PROPERTIES) expect(isCellProperty(property)).toBe(true)
-    // The avatar still opens the Peek's picker; a missing attribute is no property.
-    expect(isCellProperty('assignee')).toBe(false)
+    // An unregistered name and a missing attribute are no property.
+    expect(isCellProperty('nonsense')).toBe(false)
     expect(isCellProperty(undefined)).toBe(false)
   })
 })

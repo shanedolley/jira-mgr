@@ -163,10 +163,22 @@ export function CellEditor({ target, issue, issues, me, onClose }: CellEditorPro
     }
   }, [cell])
 
-  // The Tree unmounts a row that leaves its window, taking the cell with it.
+  // The Tree unmounts a row that leaves its window, taking the cell with it, and a resize can
+  // hide it. Either leaves the popover hanging over nothing.
   useEffect(() => {
     if (!cell.isConnected) closeAway()
   })
+  useEffect(() => {
+    // The first callback comes at once, with the cell's size as it is.
+    const observer = new ResizeObserver(() => {
+      const { width, height } = cell.getBoundingClientRect()
+      if (!cell.isConnected || width === 0 || height === 0) closeAway()
+    })
+    observer.observe(cell)
+    return () => {
+      observer.disconnect()
+    }
+  }, [cell])
 
   return EDITORS[target.property]({ issue, issues, me, cell: { anchor: CELL_ANCHOR, onClose } })
 }
