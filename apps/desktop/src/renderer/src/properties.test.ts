@@ -7,6 +7,7 @@ import {
   assigneeChoices,
   assigneePatch,
   currentSprint,
+  datePatch,
   hoursFromText,
   hoursText,
   isLabel,
@@ -221,6 +222,12 @@ describe('patches', () => {
     expect(statusPatch(base, { id: '5', name: 'Hold', category: null }).status?.category).toBe(
       'new',
     )
+  })
+
+  it('sends a date as typed and an emptied date field as null', () => {
+    expect(datePatch('dueDate', '2026-11-03')).toEqual({ dueDate: '2026-11-03' })
+    expect(datePatch('dueDate', '')).toEqual({ dueDate: null })
+    expect(datePatch('startDate', '2026-11-03')).toEqual({ startDate: '2026-11-03' })
   })
 
   it('changes the type name and id but keeps the hierarchy level', () => {

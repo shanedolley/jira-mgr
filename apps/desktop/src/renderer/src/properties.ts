@@ -221,6 +221,12 @@ export const typePatch = (issue: Issue, choice: FieldChoice): Partial<Issue> => 
   issueType: { ...issue.issueType, id: choice.id, name: choice.name },
 })
 
+/** The change a date field sends for `draft`: the date as `YYYY-MM-DD`, or `null` for an emptied field. */
+export const datePatch = (
+  field: 'startDate' | 'dueDate',
+  draft: string,
+): Partial<Pick<Issue, 'startDate' | 'dueDate'>> => ({ [field]: draft === '' ? null : draft })
+
 export const customerPatch = (choice: FieldChoice): Partial<Issue> => ({
   customer: { id: choice.id, value: choice.name },
 })

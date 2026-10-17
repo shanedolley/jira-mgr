@@ -1,6 +1,13 @@
 import type { Issue } from '@jira-mgr/core'
 import { formatEstimate, parseEstimate, propertyRules } from '@jira-mgr/core/issue'
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 
 import type { CurrentUser, FieldChoice } from '../../shared/ipc'
 import { Reason } from './Failure'
@@ -79,6 +86,10 @@ interface TextFieldProps {
   hint?: string
   /** The longest text the field takes. */
   maxLength?: number
+  /** Marks the field for a `CellPopover`, which focuses it on opening. */
+  autofocus?: boolean
+  /** Sends a changed draft when the field unmounts without a blur, as a popover closed by a scroll does. */
+  commitOnUnmount?: boolean
 }
 
 /** A field that edits locally and saves on Enter or when focus leaves, and reverts on Esc. */
@@ -93,6 +104,8 @@ export function TextField({
   valid = () => true,
   hint,
   maxLength,
+  autofocus = false,
+  commitOnUnmount = false,
 }: TextFieldProps) {
   const [draft, setDraft] = useState(value)
   // Jira's answer replaces what was typed, adjusting state during render as React advises.
@@ -106,10 +119,13 @@ export function TextField({
   // differs from `value`, so Enter followed at once by leaving the field would send it twice.
   const sent = useRef<string | null>(null)
 
-  function commit(input: HTMLInputElement) {
+  // Whether the browser holds a half-edited date, which reports "" as its value.
+  const badInput = useRef(false)
+
+  function commit() {
     // A date field the user has half edited reports "" as its value, which is also what
     // an emptied field reports. Only an emptied one clears the property, so a half edit reverts.
-    if (input.validity.badInput) {
+    if (badInput.current) {
       setDraft(value)
       return
     }
@@ -119,10 +135,23 @@ export function TextField({
     onCommit(draft)
   }
 
+  // The field can unmount with a draft nobody left or confirmed. A passive cleanup runs after the
+  // input has gone, so it reads the last render's draft rather than the element.
+  const flush = useEffectEvent(() => {
+    if (commitOnUnmount) commit()
+  })
+  useEffect(
+    () => () => {
+      flush()
+    },
+    [],
+  )
+
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter') {
       event.preventDefault()
-      commit(event.currentTarget)
+      badInput.current = event.currentTarget.validity.badInput
+      commit()
     } else if (event.key === 'Escape') {
       // The page's own Esc is for leaving, and this one only abandons the edit.
       event.stopPropagation()
@@ -141,15 +170,18 @@ export function TextField({
           aria-label={label}
           aria-keyshortcuts={shortcut}
           maxLength={maxLength}
+          data-autofocus={autofocus || undefined}
           aria-invalid={invalid || undefined}
           placeholder={type === 'date' ? undefined : placeholder}
           value={draft}
           onChange={(event) => {
             sent.current = null
+            badInput.current = event.target.validity.badInput
             setDraft(event.target.value)
           }}
           onBlur={(event) => {
-            commit(event.currentTarget)
+            badInput.current = event.currentTarget.validity.badInput
+            commit()
           }}
           onKeyDown={onKeyDown}
           className={`${FIELD} aria-invalid:border-danger ${clock ? 'pl-7' : ''} ${emptyDate ? 'date-empty' : ''}`}
