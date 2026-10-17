@@ -512,8 +512,6 @@ export function Properties({
   onEditCell?: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** Lets the Sprint page's row button describe itself by these values. */
   id?: string
-  /** The Sprint page's cell buttons call this; the Tree's cells are read by the row's click. */
-  onEditCell?: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
 }) {
   if (properties.length === 0) return null
   const sprint = rowSprint(issue)
