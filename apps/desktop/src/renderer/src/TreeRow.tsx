@@ -505,12 +505,13 @@ export function Properties({
   properties: readonly RowProperty[]
   today: string
   always?: boolean
-  /** Opens the cell editor on a Sprint page cell; the cells that have an editor are slots only when it is set. */
+  /**
+   * Opens the cell editor on a Sprint page cell; the cells that have an editor are slots only when
+   * it is set. The Tree's cells are read by the row's click.
+   */
   onEditCell?: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** Lets the Sprint page's row button describe itself by these values. */
   id?: string
-  /** The Sprint page's cells call this to open their cell editor; the Tree's cells are read by the row's click. */
-  onEditCell?: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
 }) {
   if (properties.length === 0) return null
   const sprint = rowSprint(issue)
