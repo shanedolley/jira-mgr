@@ -38,7 +38,25 @@ Work is tracked in GitHub issues on [shanedolley/jira-mgr](https://github.com/sh
 
 Squash-merge every pull request. The pull request title becomes the commit on `main`, so it follows the commit format above, and the description carries the `Refs` line. `main` keeps a linear history of one commit per pull request.
 
-Merge only when every CI check passes and a reviewer other than the builder has approved. Find the run for the head you pushed with `gh run list --commit <full sha> --json databaseId,status` (a short SHA returns nothing, and the run can lag the push), then wait for it with `gh run watch <id> --exit-status`. Delete the branch after the merge.
+Merge only when the local CI route passes on the head you push and a reviewer other than the builder has approved. Delete the branch after the merge.
+
+## Local CI
+
+GitHub Actions cannot run for this repository (Shane, 2026-10-17). `.github/workflows/ci.yml` triggers by `workflow_dispatch` only, and the route below replaces it. Run it from the repository root, under Node 24, on the head you push:
+
+```
+pnpm ci:local
+du -sh node_modules/.pnpm/electron@*/node_modules/electron/dist
+lockf /private/tmp/claude-501/-Users-shanedolley-Development-personal-jira-mgr/7bf42498-7df8-4d47-81dd-d0657b1f4070/scratchpad/e2e.lock pnpm e2e --workers=1
+```
+
+- `pnpm ci:local` runs `pnpm install --frozen-lockfile`, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm docs:reference` with no diff under `docs/reference`. It stops at the first failure. (`pnpm ci` is pnpm's own clean install, so the script has another name.)
+- The Electron dist is about 307 MB with `path.txt` beside it. If it is missing or truncated, run `pnpm --filter @jira-mgr/e2e exec install-electron` first.
+- `lockf` serialises e2e across worktrees on the shared lock file. Run it on one worker and never in parallel with another e2e run.
+- Read the pass, fail and skip counts of `pnpm test` and `pnpm e2e` from the output, not from the exit status of a pipeline.
+- The pull request title uses the commit types and scopes above (the `pr-title` job enforced them).
+- The pull request description records the head SHA and the pass and fail counts of the run. A push makes the record stale: run the route again.
+- A story's builder runs only that story's e2e files (`cd e2e && lockf <lock file> npx playwright test desktop/<file>.test.ts --workers=1`, after `pnpm build`). The full route runs once on the tip of a batch before the pull requests merge.
 
 ## Versioning
 

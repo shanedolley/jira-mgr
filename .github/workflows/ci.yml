@@ -1,9 +1,7 @@
 name: CI
 
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,6 +10,8 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# GitHub Actions cannot run for this repository (Shane, 2026-10-17), so this workflow runs by manual dispatch only.
+# The local route in docs/standards/git-workflow.md replaces it, and `pr-title` never runs (it needs a pull_request event).
 jobs:
   pr-title:
     if: github.event_name == 'pull_request'

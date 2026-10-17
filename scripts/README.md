@@ -1,6 +1,6 @@
 # Scripts
 
-Repository automation that root `package.json` scripts and CI call.
+Repository automation that root `package.json` scripts and the local CI route call.
 
 | Script             | Does                                                                                                  |
 | ------------------ | ----------------------------------------------------------------------------------------------------- |

@@ -25,6 +25,7 @@
 - [ ] Small and self-contained (about 100 lines is good, 1,000 is too big)
 - [ ] Tests added: against the MSW fake for a changed Jira call, with fixtures recorded from PSAPAC as recorded, from response bodies only; a regression test for a bug fix
 - [ ] No test writes to Jira
+- [ ] Local CI route passed on this head (SHA, pass and fail counts in the Test Plan; see [Local CI](../docs/standards/git-workflow.md#local-ci))
 - [ ] Docs updated in this pull request, and an ADR written if the decision needs one
 
 See the [definition of done](../docs/standards/code-review.md#definition-of-done).

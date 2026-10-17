@@ -75,6 +75,6 @@ Stories #126 to #151 came from the [UX review and Linear gap analysis](../discov
 
 ## Working Rules
 
-- One issue, one branch, one pull request with `Refs #n`; merge on green CI.
+- One issue, one branch, one pull request with `Refs #n`; merge when the local CI route passes.
 - A reviewer other than the builder signs off each pull request.
 - Write the design doc for L1, D2 and D4 before their code.

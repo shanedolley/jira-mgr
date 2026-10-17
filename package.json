@@ -18,6 +18,7 @@
     "test": "pnpm -r test",
     "test:live": "JM_LIVE_JIRA=1 pnpm -r test",
     "e2e": "pnpm --filter @jira-mgr/desktop build && pnpm --filter @jira-mgr/e2e e2e",
+    "ci:local": "pnpm install --frozen-lockfile && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm docs:reference && git diff --exit-code -- docs/reference",
     "jm": "node scripts/jm.ts",
     "icon": "pnpm --filter @jira-mgr/desktop exec electron ../../scripts/build-icon.ts",
     "package": "pnpm --filter @jira-mgr/desktop build && node scripts/package.ts",
