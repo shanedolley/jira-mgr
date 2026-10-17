@@ -1854,7 +1854,7 @@ export function Shell({ session }: { session: Session }) {
       )}
       {cellTarget !== null && cellIssue !== undefined && (
         <CellEditor
-          key={`${cellTarget.issue.key}:${cellTarget.property}`}
+          key={cellEditor.opens}
           target={cellTarget}
           issue={cellIssue}
           issues={issues}

@@ -99,6 +99,8 @@ export function useCellEditor(restoreFocus: () => void) {
 
   return {
     target: state.target,
+    /** Changes on each open: the key that mounts each editor afresh. */
+    opens: state.opens,
     open: (target: CellTarget<HTMLElement>, pointer: boolean) => {
       dispatch({ type: 'open', target, pointer })
     },
