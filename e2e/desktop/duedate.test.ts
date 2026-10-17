@@ -48,12 +48,15 @@ async function open() {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   await showEverything(window)
+  const ordering = window.getByRole('group', { name: 'Ordering', exact: true })
   await displayButton().click()
+  await expect(ordering).toBeVisible()
   await window
     .getByRole('group', { name: 'Display properties', exact: true })
     .getByRole('button', { name: 'Due date', exact: true })
     .click()
   await window.keyboard.press('Escape')
+  await expect(ordering).toBeHidden()
   await expect(slot(FILLED)).toHaveAttribute('data-tone', 'overdue')
 }
 
@@ -64,6 +67,15 @@ async function settle(expected: number) {
   await expect.poll(writes).toBe(expected)
   await releaseEdit(app)
   await expect.poll(async () => (await counts(app)).applied).toBe(expected)
+}
+
+/** Clicks a row, then closes the Peek the click opened, which would narrow the Tree under the width the slots need. */
+async function pick(row: RegExp) {
+  await item(row).click()
+  await expect(peek()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
 }
 
 const width = async (row: RegExp) => (await slot(row).boundingBox())?.width
@@ -165,13 +177,25 @@ test('Clear removes the date', async () => {
   expect((await fieldsOf(app, 'PSAPAC-40'))?.duedate).toBeNull()
 })
 
+test('Clear after a typed date sends one write, the clear', async () => {
+  await open()
+  const before = await writes()
+
+  await slot(FILLED).click()
+  await field().fill('2099-05-06')
+  await editor().getByRole('button', { name: 'Clear' }).click()
+
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-40'))?.duedate).toBeNull()
+  expect(await writes()).toBe(before + 1)
+})
+
 test('Shift+D opens the editor on the active row and the keyboard alone saves', async () => {
   await open()
   const before = await writes()
 
-  await item(EMPTY).click()
-  await expect(peek()).toBeVisible()
-  await tree().focus()
+  await pick(EMPTY)
   await window.keyboard.press('Shift+D')
 
   await expect(field()).toBeFocused()

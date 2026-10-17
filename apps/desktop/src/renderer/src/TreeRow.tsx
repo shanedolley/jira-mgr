@@ -9,6 +9,7 @@ import { isCellProperty, type CellProperty } from './cell'
 import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { Icon, PENCIL } from './Icon'
+import { keyOf } from './keymap'
 import { useLogWork } from './logWork'
 import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
@@ -324,18 +325,14 @@ const DUE_TONES = {
 function DueDate({ issue, today, edit }: { issue: Issue; today: string; edit: boolean }) {
   const due = issue.dueDate
   const tone = due === null ? null : dueTone(due, today, issue.status.category === 'done')
+  const key = keyOf('dueDate')
+  const text = due === null ? undefined : `Due ${due}`
   return (
     <span
       data-prop="due"
       data-pick={edit ? 'dueDate' : undefined}
       data-tone={tone ?? undefined}
-      title={
-        edit
-          ? `${due === null ? 'Set due date' : `Due ${due}`} (Shift+D)`
-          : due === null
-            ? undefined
-            : `Due ${due}`
-      }
+      title={edit ? `${text ?? 'Set due date'}${key === undefined ? '' : ` (${key})`}` : text}
       className={`inline-flex w-[6rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted ${edit ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`}
     >
       {due !== null && tone !== null && (
