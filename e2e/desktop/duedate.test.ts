@@ -105,9 +105,12 @@ async function pick(row: RegExp) {
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
   await expect(tree()).toBeFocused()
+  // The Tree refits its columns a render after the Peek closes; until then the slot is 0px wide and
+  // the key would fall back to the Peek.
+  await expect.poll(() => width(row)).toBeGreaterThanOrEqual(16)
 }
 
-const width = async (row: RegExp) => (await slot(row).boundingBox())?.width
+const width = async (row: RegExp) => (await slot(row).boundingBox())?.width ?? 0
 
 test('a click on an empty slot opens the editor beside it, focused, and not the Peek', async () => {
   await open()
@@ -331,7 +334,8 @@ test('a Sprint page slot works by keyboard alone: Enter opens, Enter saves, Esc 
   await expect(due('PSAPAC-11', '2099-03-04')).toBeFocused()
 
   await window.keyboard.press('Enter')
-  await expect(editor()).toBeVisible()
+  // The editor takes focus a task after it shows; an Esc before that reaches the page and leaves it.
+  await expect(field()).toBeFocused()
   await window.keyboard.press('Escape')
   await expect(editor()).toHaveCount(0)
   await expect(due('PSAPAC-11', '2099-03-04')).toBeFocused()

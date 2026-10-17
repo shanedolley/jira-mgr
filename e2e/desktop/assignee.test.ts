@@ -334,6 +334,8 @@ test('a Sprint page assignee button works by keyboard alone: Enter opens, arrows
 
   await slot('PSAPAC-4').focus()
   await window.keyboard.press('Enter')
+  // The search takes focus a task after the list shows, so the arrows wait for it.
+  await expect(search()).toBeFocused()
   await expect(option('Unassigned')).toBeVisible()
   await window.keyboard.press('ArrowDown')
   await window.keyboard.press('Enter')

@@ -180,7 +180,10 @@ test('a refused write shows the old summary again and Retry sends it once more',
 
   await alert.getByRole('button', { name: 'Retry' }).click()
   await expect(row()).toHaveAccessibleName(/Refused summary/)
-  await settle(2)
+  // Two writes arrived, and the fake counts only the Retry as applied: it never applied the refusal.
+  await expect.poll(writes).toBe(2)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(1)
   await expect(row()).toHaveAccessibleName(/Refused summary/)
 })
 

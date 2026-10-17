@@ -3,10 +3,11 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
 import {
   counts,
+  expectBeside,
   fieldsOf,
   joinSprint,
   launch,
@@ -42,22 +43,6 @@ const option = (name: string) => listbox().getByRole('option', { name, exact: tr
 /** The open list, drawn by the cell editor against the clicked slot. */
 const popover = () => window.locator('.menu:popover-open')
 const sidebar = () => window.getByRole('navigation', { name: 'Main' })
-
-/**
- * The open list sits below `cell`, aligned to its left edge or, where the slot is near the window's
- * right edge and the list flips (`flip-inline`), to its right edge, and stays inside the window.
- */
-async function expectBeside(cell: Locator) {
-  const slotBox = await cell.boundingBox()
-  const list = await popover().boundingBox()
-  if (slotBox === null || list === null) throw new Error('the slot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(slotBox.y + slotBox.height - 1)
-  const leftAligned = Math.abs(list.x - slotBox.x) <= 4
-  const rightAligned = Math.abs(list.x + list.width - (slotBox.x + slotBox.width)) <= 4
-  expect(leftAligned || rightAligned).toBe(true)
-  const width = await window.evaluate(() => globalThis.innerWidth)
-  expect(list.x + list.width).toBeLessThanOrEqual(width)
-}
 
 /** PSAPAC-3 has no label. PSAPAC-11 has `docs`, the only label in the project. */
 const EMPTY = /PSAPAC-3,/
@@ -121,7 +106,7 @@ test('a click on a filled slot opens the list beside the slot and not the Peek',
   await expect(peek()).toHaveCount(0)
   await expect(item(FILLED)).toHaveAttribute('data-active', 'true')
   await expect(option('docs')).toHaveAttribute('aria-selected', 'true')
-  await expectBeside(slot(FILLED))
+  await expectBeside(window, slot(FILLED), popover())
 })
 
 test('a click on an empty slot opens the same list', async () => {
@@ -224,13 +209,18 @@ test('L opens the list on the active row, and the keyboard alone toggles a label
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
+  // The Tree refits its columns a render after the Peek closes; until then the slot is 0px wide and
+  // L would open the Peek picker.
+  await expect
+    .poll(async () => (await slot(EMPTY).boundingBox())?.width ?? 0)
+    .toBeGreaterThanOrEqual(16)
   const before = await writes()
 
   await window.keyboard.press('l')
   await expect(listbox()).toBeVisible()
   await expect(search()).toBeFocused()
   await expect(peek()).toHaveCount(0)
-  await expectBeside(slot(EMPTY))
+  await expectBeside(window, slot(EMPTY), popover())
 
   await window.keyboard.press('Enter')
   await expect(slot(EMPTY)).toHaveText('docs')
@@ -391,7 +381,7 @@ test('a click on a Sprint page labels slot, filled or empty, opens the list besi
   await expect(search()).toBeFocused()
   await expect(issuePage()).toHaveCount(0)
   await expect(option('docs')).toHaveAttribute('aria-selected', 'true')
-  await expectBeside(sprintSlot('PSAPAC-11', 'docs'))
+  await expectBeside(window, sprintSlot('PSAPAC-11', 'docs'), popover())
   await window.keyboard.press('Escape')
   await expect(listbox()).toHaveCount(0)
 

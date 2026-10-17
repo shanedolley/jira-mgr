@@ -21,7 +21,7 @@ interface Sent {
 
 /**
  * The original estimate slot of an issue row, editable in place (#276). A click, `Shift+E` from the
- * Tree (the Shell clicks `[data-edit]`) or a press of the Sprint page's slot button turns it into
+ * Tree (the Shell clicks `[data-edit="estimate"]`) or a press of the Sprint page's slot button turns it into
  * a text field with its text selected. Enter saves and Escape cancels, each handing focus back to
  * the Tree, or to the slot on the Sprint page. Leaving the field saves a valid draft and drops an invalid one. A refused draft stays
  * open under a hint. The save is the issue page's: an optimistic `originalEstimateSeconds`, a

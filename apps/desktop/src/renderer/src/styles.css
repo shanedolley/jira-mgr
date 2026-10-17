@@ -291,16 +291,19 @@ input {
 }
 
 /*
- * A Hold row whose estimate is being edited (#276): the field and its hint must not draw at 30%, and
- * an ancestor's opacity cannot be undone from inside. So that row's fade moves from the content to
- * each part of it but the open field, which makes every other field 30% as before. 0.3 is
- * HOLD_OPACITY.
+ * A Hold row with a part that must draw in full (#276, #279): the open estimate field and its hint,
+ * or the Slot button the keyboard reached, whose focus ring would draw at 30%. An ancestor's
+ * opacity cannot be undone from inside, so that row's fade moves from the content to each part of
+ * it but that one, which makes every other part 30% as before. 0.3 is HOLD_OPACITY. The Tree's
+ * Hold rows and the Epics table hold no Slot button, so they keep the row's own fade.
  */
-[data-hold]:has([data-editing]) {
+[data-hold]:has([data-editing], button:focus-visible) {
   opacity: 1 !important;
 }
-[data-hold]:has([data-editing]) > :not([data-props]),
-[data-hold]:has([data-editing]) [data-props] > :not([data-editing]) {
+[data-hold]:has([data-editing], button:focus-visible) > :not([data-props]):not(:focus-visible),
+[data-hold]:has([data-editing], button:focus-visible)
+  [data-props]
+  > :not([data-editing]):not(:focus-visible) {
   opacity: 0.3;
 }
 

@@ -38,11 +38,14 @@ export interface CellTarget<E> {
 
 /**
  * What the cell editor holds. `pressed` is the cell the pointer went down on while its own list
- * was open: the press closes the list, and the click that follows must not open it again.
+ * was open: the press closes the list, and the click that follows must not open it again. `opens`
+ * counts the editors opened, so each mounts afresh: a cell opened again before its last list's
+ * close arrives gets a list of its own, which that late close cannot take down.
  */
 export interface CellState<E> {
   target: CellTarget<E> | null
   pressed: E | null
+  opens: number
 }
 
 export type CellEvent<E> =
@@ -53,7 +56,7 @@ export type CellEvent<E> =
   /** The list closed, by a choice, Esc or a click outside. */
   | { type: 'close' }
 
-export const CLOSED: CellState<never> = { target: null, pressed: null }
+export const CLOSED: CellState<never> = { target: null, pressed: null, opens: 0 }
 
 export function cellReducer<E>(state: CellState<E>, event: CellEvent<E>): CellState<E> {
   switch (event.type) {
@@ -62,7 +65,7 @@ export function cellReducer<E>(state: CellState<E>, event: CellEvent<E>): CellSt
     case 'open':
       // The press on this cell's own ring closed its list, so the click is the second half of a toggle.
       if (event.pointer && state.pressed === event.target.cell) return { ...state, pressed: null }
-      return { target: event.target, pressed: null }
+      return { target: event.target, pressed: null, opens: state.opens + 1 }
     case 'close':
       return { ...state, target: null }
   }

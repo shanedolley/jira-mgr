@@ -323,13 +323,20 @@ test('a click on the dot of a row clipped at the Tree foot scrolls it into view 
   const moved = await dot(row).boundingBox()
   const list = await popover().boundingBox()
   if (moved === null || list === null) throw new Error('the dot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(moved.y + moved.height - 1)
+  // The row sits at the foot of a 520px window with no room below, so the list flips above the dot.
+  const below = list.y >= moved.y + moved.height - 1
+  const above = list.y + list.height <= moved.y + 1
+  expect(below || above).toBe(true)
+  // Anchored to the dot, not fallen to a corner of the window.
+  expect(Math.abs(list.x - moved.x)).toBeLessThanOrEqual(4)
   await expect(item(row)).toHaveAttribute('data-active', 'true')
   await expect(peek()).toHaveCount(0)
 })
 
 test('S on an active row scrolled partly out at the Tree top brings its dot into view before the list opens', async () => {
   await open()
+  // A short window, so the Tree scrolls.
+  await shortWindow()
   await item(/PSAPAC-3,/).click()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -387,12 +394,15 @@ test('a Sprint page ring works by keyboard alone: Enter opens, arrows and Enter 
 
   await ring('PSAPAC-4', 'In Progress').focus()
   await window.keyboard.press('Enter')
+  // The list takes focus a task after it shows, so the arrows wait for it.
+  await expect(listbox()).toBeFocused()
   await expect(option('Done')).toBeVisible()
   await window.keyboard.press('ArrowDown')
   await window.keyboard.press('Enter')
   await settle(before + 1)
   await expect(sprintPage()).toBeVisible()
-  expect(await focusWithin(sprintPage())).toBe(true)
+  // The row moves to Done, which remounts its ring; the page takes focus two frames after the list closes.
+  await expect.poll(() => focusWithin(sprintPage())).toBe(true)
 })
 
 test('a refused transition on the Sprint page puts the row back in its group', async () => {

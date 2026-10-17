@@ -181,20 +181,29 @@ export function IssueTree({
     if (document.activeElement === document.body) treeRef.current?.focus()
   }, [treeRef])
 
+  const measure = useCallback(() => {
+    const tree = treeRef.current
+    if (tree === null) return
+    setHeight(tree.clientHeight)
+    setWidth(tree.clientWidth)
+    // The rows stop short of the scrollbar, so the header must too.
+    setScrollbar(tree.offsetWidth - tree.clientWidth)
+  }, [treeRef])
+
   useLayoutEffect(() => {
     const tree = treeRef.current
     if (tree === null) return
-    const observer = new ResizeObserver(() => {
-      setHeight(tree.clientHeight)
-      setWidth(tree.clientWidth)
-      // The rows stop short of the scrollbar, so the header must too.
-      setScrollbar(tree.offsetWidth - tree.clientWidth)
-    })
+    const observer = new ResizeObserver(measure)
     observer.observe(tree)
     return () => {
       observer.disconnect()
     }
-  }, [treeRef])
+  }, [treeRef, measure])
+
+  // A commit elsewhere can resize the Tree (the Peek opening or closing). The observer reports it a
+  // frame later, and the columns would sit at their old fit until then, so read it after every
+  // commit: a changed width renders again before the browser paints. Unchanged values bail out.
+  useLayoutEffect(measure)
 
   // Scroll anchoring: a rebuild above the viewport (chips arriving, a Story moving under its
   // Epic) must not shift the rows in view, so the first visible row keeps its offset.

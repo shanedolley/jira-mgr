@@ -223,6 +223,8 @@ test('drags a separator to resize its column, repaints without saving, and saves
 
 test('caps a drag so every title keeps 5rem, and keeps a 1px column', async () => {
   await open()
+  // Wide enough that the five columns at their defaults leave the drag room to grow.
+  await resize(1400, 800)
   await toggle('Labels', 'Sprint', 'Due date', 'Created')
   await dragBy('Labels', -3000)
   const cap = Number(await separator('Labels').getAttribute('aria-valuenow'))
@@ -409,12 +411,23 @@ test('the Sprint page shows one header row at the widths the Tree set', async ()
   await expect(row.locator('[data-prop=labels]')).toHaveAttribute('data-pick', 'labels')
 })
 
+/** Makes the row active and closes the Peek the click opened, which leaves the Tree too narrow to draw its slots. */
+async function select(row: RegExp) {
+  await item(row).click()
+  await expect(peek()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+}
+
 test('a key on a column cut to a sliver opens no editor in it', async () => {
   await open()
   await toggle('Original estimate')
   const slot = prop(/PSAPAC-4,/, 'estimate')
   // At its width the slot takes Shift+E in place.
-  await item(/PSAPAC-4,/).click()
+  await select(/PSAPAC-4,/)
+  // The Tree refits its columns a render after the Peek closes; until then the slot is 0px wide.
+  await expect.poll(() => widthOf(slot)).toBe(64)
   await window.keyboard.press('Shift+E')
   await expect(slot.locator('input')).toBeVisible()
   await window.keyboard.press('Escape')
@@ -426,8 +439,9 @@ test('a key on a column cut to a sliver opens no editor in it', async () => {
   await window.keyboard.press('Shift+ArrowRight')
   await window.keyboard.press('Shift+ArrowRight')
   await expect(estimate).toHaveAttribute('aria-valuenow', '1')
-  await item(/PSAPAC-4,/).click()
+  await select(/PSAPAC-4,/)
   await window.keyboard.press('Shift+E')
+  await expect(window.getByRole('menu')).toBeVisible()
   await expect(slot.locator('input')).toHaveCount(0)
 })
 

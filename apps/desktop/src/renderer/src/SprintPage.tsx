@@ -204,8 +204,8 @@ const AFTER_STRIP = 73
 /**
  * The names of the properties above the first status section, at the widths the rows use, each
  * column's separator on its left edge as the Tree's header draws it. The widths are set in the Tree,
- * so this header only names them, at least `MIN_CELL` wide as the cells are. A row that wraps its properties onto a second line (a narrow
- * page) no longer lines up with it. It is drawn only: the rows name each value themselves.
+ * so this header only names them, at least `MIN_CELL` wide as the cells are. A row whose properties
+ * wrap onto a line of their own still ends them under it; one whose properties wrap among themselves (a narrow page) no longer lines up. It is drawn only: the rows name each value themselves.
  */
 function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
   return (
@@ -312,9 +312,10 @@ function Issues({
                     >
                       <StatusDot status={issue.status} />
                     </Slot>
+                    {/* `pr-8` holds the avatar's 20px and the 12px gap before it: the avatar sits on the key's line however the rest wraps. */}
                     <span
                       {...holdFade(status)}
-                      className="flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1"
+                      className="relative flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 pr-8"
                     >
                       <span className="w-20 shrink-0 font-mono text-xs text-muted">
                         {issue.key}
@@ -352,7 +353,7 @@ function Issues({
                         onClick={(event) => {
                           onEditCell(issue, 'assignee', event.currentTarget)
                         }}
-                        className="-m-0.5 inline-flex shrink-0 rounded-full p-0.5 hover:bg-line"
+                        className="absolute right-0 top-0.5 -m-0.5 flex rounded-full p-0.5 hover:bg-line"
                       >
                         <Avatar person={issue.assignee} />
                       </Slot>

@@ -68,6 +68,12 @@ describe('cellReducer', () => {
     ).toBe(other)
   })
 
+  it('counts a second open of the same cell, so its editor mounts afresh', () => {
+    const first = opened(ring)
+    const again = cellReducer(first, { type: 'open', target: target(ring), pointer: false })
+    expect(again.opens).toBe(first.opens + 1)
+  })
+
   it('forgets a press that was on no cell', () => {
     const pressed = cellReducer(opened(ring), { type: 'press', cell: ring })
     const away = cellReducer(pressed, { type: 'press', cell: null })

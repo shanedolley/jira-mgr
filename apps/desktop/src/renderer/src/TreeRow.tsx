@@ -506,12 +506,11 @@ export function TimeCell({
       {...shared}
       role="button"
       aria-label={label}
-      onClick={(event) => {
-        event.stopPropagation()
+      // The row reads the click as it reads the estimate field's (`data-edit`): it activates the
+      // row, clears a pending summary edit and opens no Peek, and a double-click arms no page.
+      data-edit="logged"
+      onClick={() => {
         target(issue)
-      }}
-      onDoubleClick={(event) => {
-        event.stopPropagation()
       }}
     >
       {text}
@@ -545,16 +544,18 @@ function DateCell({
  * `colVars`), which fit the room the title leaves. A strip squeezed past that clips its leading
  * slots rather than the title or the avatar.
  */
-const TREE_PROPS =
-  'hidden h-5 min-w-0 justify-end overflow-hidden @tree:flex [&>*]:h-5 [&>*]:leading-5'
+const TREE_PROPS = 'hidden h-5 min-w-0 justify-end overflow-hidden @tree:flex'
 
-/** Each slot clips what its width cannot hold, so a narrow column shows less and never spills into the next. */
-const CLIP_SLOTS = '[&>[data-prop]]:overflow-hidden'
+/**
+ * Each slot is one 20px line, so an empty one still has a box to click and anchor an editor to,
+ * and clips what its width cannot hold, so a narrow column shows less and never spills into the next.
+ */
+const SLOTS = '[&>*]:h-5 [&>*]:leading-5 [&>[data-prop]]:overflow-hidden'
 
 /**
  * The properties the Display menu chose, in the menu's order. Each keeps a fixed slot, so the
  * columns line up down the list. The Tree shows them only while it is wide, as the title needs the
- * room; `always` is for the Sprint page's list: it shows them at any width, and they wrap onto their own line when the title would have no room.
+ * room; `always` is for the Sprint page's list: it shows them at any width, and they wrap onto their own line, pushed right (`ml-auto`) under the header, when the title would have no room.
  */
 export function Properties({
   issue,
@@ -586,7 +587,7 @@ export function Properties({
     <span
       id={id}
       data-props
-      className={`items-center gap-x-2 ${CLIP_SLOTS} ${always ? 'flex max-w-full flex-wrap justify-end gap-y-1' : TREE_PROPS}`}
+      className={`items-center gap-x-2 ${SLOTS} ${always ? 'ml-auto flex max-w-full flex-wrap justify-end gap-y-1' : TREE_PROPS}`}
     >
       {properties.map((property) => {
         switch (property) {

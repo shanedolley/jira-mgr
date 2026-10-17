@@ -234,7 +234,7 @@ test('Shift+E from the Tree focuses the field in the active row', async () => {
 
 test('an Epic offers no field', async () => {
   await open()
-  await expect(item(/PSAPAC-10,/).locator('[data-edit]')).toHaveCount(0)
+  await expect(item(/PSAPAC-10,/).locator('[data-edit="estimate"]')).toHaveCount(0)
   await item(/PSAPAC-10,/)
     .locator('[data-prop=estimate]')
     .click({ force: true })
