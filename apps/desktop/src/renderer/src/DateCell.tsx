@@ -26,7 +26,7 @@ interface DateCellProps {
 export function DateCell({ issue, field, label, cell }: DateCellProps) {
   const change = useIssueChange(issue)
   const date = issue[field] ?? ''
-  // Set once Clear has spoken, so the draft left in the field is not sent as the editor goes.
+  // Set by Clear, or by Esc on it, so the draft left in the field is not sent as the editor goes.
   const cleared = useRef(false)
   const send = (draft: string) => {
     if (cleared.current) return
@@ -37,6 +37,11 @@ export function DateCell({ issue, field, label, cell }: DateCellProps) {
     <CellPopover cell={cell} label={label}>
       <div
         className="flex flex-col gap-1"
+        // Esc on Clear closes the editor while the field still holds its draft; the field's own Esc drops it.
+        onKeyDownCapture={(event) => {
+          if (event.key === 'Escape' && event.target instanceof HTMLButtonElement)
+            cleared.current = true
+        }}
         // Tab to Clear leaves the field with its draft, which Clear then replaces: no write between.
         onBlurCapture={(event) => {
           if (event.relatedTarget instanceof Element && event.relatedTarget.matches('[data-clear]'))

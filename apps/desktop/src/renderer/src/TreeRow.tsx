@@ -318,41 +318,66 @@ const DUE_TONES = {
 } as const
 
 /**
- * The due date in a fixed slot. On the Tree the whole slot, filled or empty, is a click target for
- * the date editor (`data-pick`, as `Pick` marks a cell), and `Shift+D` is the keyboard's way to it.
- * The Sprint page's slot (`always`) stays drawn only until #279 gives its rows slot controls.
+ * The due date in a fixed slot. The whole slot, filled or empty, is a click target for the date
+ * editor (`data-pick`, as `Pick` marks a cell). On the Tree `Shift+D` is the keyboard's way to it;
+ * on the Sprint page (`always`) the slot is a `Slot` button, which takes Enter and Space natively.
+ * Without `onEditCell` the Sprint page's slot is drawn only.
  */
-function DueDate({ issue, today, edit }: { issue: Issue; today: string; edit: boolean }) {
+function DueDate({
+  issue,
+  today,
+  always,
+  onEditCell,
+}: {
+  issue: Issue
+  today: string
+  always: boolean
+  onEditCell?: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
+}) {
   const due = issue.dueDate
   const tone = due === null ? null : dueTone(due, today, issue.status.category === 'done')
   const key = keyOf('dueDate')
   const text = due === null ? undefined : `Due ${due}`
-  return (
-    <span
-      data-prop="due"
-      data-pick={edit ? 'dueDate' : undefined}
-      data-tone={tone ?? undefined}
-      title={edit ? `${text ?? 'Set due date'}${key === undefined ? '' : ` (${key})`}` : text}
-      className={`inline-flex w-[6rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted ${edit ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`}
+  const editable = !always || onEditCell !== undefined
+  const shared = {
+    'data-prop': 'due',
+    'data-pick': editable ? 'dueDate' : undefined,
+    'data-tone': tone ?? undefined,
+    title: always
+      ? (text ?? (editable ? 'Set due date' : undefined))
+      : `${text ?? 'Set due date'}${key === undefined ? '' : ` (${key})`}`,
+    className: `inline-flex w-[6rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
+  }
+  const content = due !== null && tone !== null && (
+    <>
+      <svg
+        aria-hidden
+        viewBox="0 0 16 16"
+        className={`size-3.5 shrink-0 ${DUE_TONES[tone]}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M2.5 3.5h11v10h-11ZM2.5 6.5h11M5.5 2v3M10.5 2v3" />
+      </svg>
+      {shortDate(due, today)}
+    </>
+  )
+  return always && onEditCell !== undefined ? (
+    <Slot
+      {...shared}
+      aria-label={`Due date of ${issue.key}: ${due ?? 'none'}`}
+      aria-haspopup="dialog"
+      onClick={(event) => {
+        onEditCell(issue, 'dueDate', event.currentTarget)
+      }}
     >
-      {due !== null && tone !== null && (
-        <>
-          <svg
-            aria-hidden
-            viewBox="0 0 16 16"
-            className={`size-3.5 shrink-0 ${DUE_TONES[tone]}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2.5 3.5h11v10h-11ZM2.5 6.5h11M5.5 2v3M10.5 2v3" />
-          </svg>
-          {shortDate(due, today)}
-        </>
-      )}
-    </span>
+      {content}
+    </Slot>
+  ) : (
+    <span {...shared}>{content}</span>
   )
 }
 
@@ -459,11 +484,14 @@ export function Properties({
   today,
   always = false,
   id,
+  onEditCell,
 }: {
   issue: Issue
   properties: readonly RowProperty[]
   today: string
   always?: boolean
+  /** Opens the cell editor on a Sprint page cell; the cells that have an editor are slots only when it is set. */
+  onEditCell?: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** Lets the Sprint page's row button describe itself by these values. */
   id?: string
 }) {
@@ -514,7 +542,15 @@ export function Properties({
           case 'remainingPercent':
             return <TimeCell key={property} issue={issue} property={property} always={always} />
           case 'due':
-            return <DueDate key={property} issue={issue} today={today} edit={!always} />
+            return (
+              <DueDate
+                key={property}
+                issue={issue}
+                today={today}
+                always={always}
+                onEditCell={onEditCell}
+              />
+            )
           case 'created':
             return <DateCell key={property} property={property} at={issue.created} today={today} />
           case 'updated':

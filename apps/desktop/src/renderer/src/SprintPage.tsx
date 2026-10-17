@@ -281,6 +281,7 @@ function Issues({
                         properties={properties}
                         today={today}
                         always
+                        onEditCell={onEditCell}
                       />
                       <Slot
                         data-pick="assignee"
