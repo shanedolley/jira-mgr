@@ -12,7 +12,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `T` | Start or stop the timer on the active issue |
 | `W` | Open the Log work modal for the active issue. An Epic has no worklog, so `W` does nothing there. A click on a row's Logged slot, the menu's Log work and the palette's Log work open the same modal |
 | `S` | Open Status. From the Tree it opens the list beside the active row's status dot, and `Esc` or a choice returns focus to the Tree; with a page open it opens the page's Status |
-| `A` | Open Assignee |
+| `A` | Open Assignee. From the Tree it opens the list beside the active row's avatar, and `Esc` or a choice returns focus to the Tree; with a page open it opens the page's Assignee |
 | `L` | Open Labels |
 | `P` | Open Priority |
 | `E` | Edit the summary: in a modal from the Tree, in place in the Peek and on the issue page |
@@ -47,6 +47,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Enter` | Open the issue page; toggle a header |
 | Double-click | On an issue row, open its page as `Enter` does, the issue the first click hit. The checkbox, the status dot, the avatar, the chevron and a Shift+double-click ignore it, and a header or chip does only what its two clicks do |
 | Click on a status dot | Open the Status list beside the dot, without opening the Peek. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
+| Click on an avatar | Open the Assignee list beside the avatar, without opening the Peek, also on an unassigned row. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
 | `Space` | Toggle the Peek |
 | `X` | Check or uncheck the active issue; the checkbox in a row's left gutter does the same |
 | `Shift+Down`, `Shift+Up` | Move to the next or previous row and check the issue rows it crosses |

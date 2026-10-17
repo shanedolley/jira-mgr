@@ -277,6 +277,13 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - The Sprint page's rows gain a status button over the row button's left edge, so the row still opens the issue. It is in the tab order and named "Status of PSAPAC-4: In Progress". The Epics page stays read-only.
 - The Tree still holds no buttons: the dot is a click target, and its keyboard path is `S`.
 
+*Amended 2026-10-18, build of #268.* Shane wants to select the avatar on the canvas and pick a new user there. The orchestrator decided these, pending Shane's confirmation:
+
+- A click on a row's avatar opens the Assignee list as a cell editor popover anchored to the avatar, as the status dot does, and opens no Peek. The row's old route, a click that opened the Peek and clicked its `A` control, is gone. `A` on the Tree opens the same list on the active row's avatar; with a page open it still opens the page's picker.
+- The list is the Peek's `AssigneePicker`, with the search field first. A choice applies at once and reverts with a Retry toast on refusal; `Esc` closes it with no write.
+- An unassigned row's dotted person is a click target too. A Hold row stays editable. `Shift+click` still checks a range.
+- The Sprint page's rows get the same target as a `Slot` around the avatar, named "Assignee of PSAPAC-4: Test User" or "Assignee of PSAPAC-3: Unassigned" (#279's pattern), so the row button still opens the issue and no control nests in another.
+
 ### Peek
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.

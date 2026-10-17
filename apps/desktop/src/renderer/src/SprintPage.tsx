@@ -282,7 +282,18 @@ function Issues({
                         today={today}
                         always
                       />
-                      <Avatar person={issue.assignee} />
+                      <Slot
+                        data-pick="assignee"
+                        title="Change assignee"
+                        aria-label={`Assignee of ${issue.key}: ${issue.assignee?.displayName ?? 'Unassigned'}`}
+                        aria-haspopup="listbox"
+                        onClick={(event) => {
+                          onEditCell(issue, 'assignee', event.currentTarget)
+                        }}
+                        className="-m-0.5 inline-flex shrink-0 rounded-full p-0.5 hover:bg-line"
+                      >
+                        <Avatar person={issue.assignee} />
+                      </Slot>
                     </span>
                     <Slot
                       aria-label={`Edit summary of ${issue.key}`}

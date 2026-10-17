@@ -1,7 +1,7 @@
 import type { Issue } from '@jira-mgr/core'
 
 /** The properties a row's cell can edit in place. Each later story adds its own name here. */
-export const CELL_PROPERTIES = ['status'] as const
+export const CELL_PROPERTIES = ['status', 'assignee'] as const
 
 export type CellProperty = (typeof CELL_PROPERTIES)[number]
 

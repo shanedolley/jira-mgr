@@ -17,7 +17,7 @@ import {
   type CellProperty,
   type CellTarget,
 } from './cell'
-import { StatusPicker } from './PropertyPickers'
+import { AssigneePicker, StatusPicker } from './PropertyPickers'
 
 /** The anchor name the cell being edited carries. One editor is open at a time. */
 const CELL_ANCHOR = '--cell-editor'
@@ -116,6 +116,9 @@ export interface CellContext {
  */
 const EDITORS: Record<CellProperty, (context: CellContext) => ReactNode> = {
   status: ({ issue, cell }) => <StatusPicker issue={issue} cell={cell} />,
+  assignee: ({ issue, issues, me, cell }) => (
+    <AssigneePicker issue={issue} issues={issues} me={me} cell={cell} />
+  ),
 }
 
 interface CellEditorProps {

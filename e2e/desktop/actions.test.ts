@@ -302,27 +302,6 @@ test('a click on a status dot opens its Status list beside the dot, not the Peek
   await expect(tree()).toBeFocused()
 })
 
-test('a click on an avatar opens that issue in the Peek with its Assignee picker, and picks one', async () => {
-  await open()
-  const before = await writes()
-
-  await item(/PSAPAC-3,/)
-    .getByTitle('Change assignee')
-    .click()
-  await expect(peek()).toBeVisible()
-  await expect(window.getByRole('combobox', { name: 'Search Assignee' })).toBeFocused()
-  await option(/Test User/).click()
-  await settle(before + 1)
-  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/Test User/)
-
-  // Another row's dot moves the Peek to that issue.
-  await item(/PSAPAC-11,/)
-    .getByTitle('Change status')
-    .click()
-  await expect(peek()).toContainText('PSAPAC-11')
-  await expect(window.getByRole('listbox', { name: 'Status' })).toBeVisible()
-})
-
 test('the + on a Customer header opens create with that Customer, without toggling the group', async () => {
   await open()
   const header = item(/^Beta Ltd, 5 issues$/)
