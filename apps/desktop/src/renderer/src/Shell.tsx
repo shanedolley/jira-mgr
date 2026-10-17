@@ -834,18 +834,23 @@ export function Shell({ session }: { session: Session }) {
 
   /**
    * Opens the cell editor for the command's property on the active Tree row, as a click on its
-   * cell does. False when the command names no property with an editor, a page is open or the cell
-   * is not drawn, and the caller falls back to the Peek's picker or the menu.
+   * cell does. False when the command names no property with an editor, the key came from outside
+   * the Tree (the Peek's own picker answers it), a page is open or the cell is not drawn, and the
+   * caller falls back to the Peek's picker or the menu.
    */
-  function openCell(command: string, key: string): boolean {
+  function openCell(command: string, key: string, target: Element | null): boolean {
     if (!isCellProperty(command) || pageKey !== null || activeRow === undefined) return false
+    if (target?.closest('[role="tree"]') == null) return false
     const issue = issues.find((i) => i.key === key)
     // The row may be clipped or scrolled away; its editor must open against a cell in view.
     treeControl.current?.reveal(activeRow.id)
     const cell = document
       .getElementById(rowDomId(activeRow.id))
       ?.querySelector<HTMLElement>(`[data-pick="${command}"]`)
-    if (issue === undefined || cell === undefined || cell === null) return false
+    // A slot the narrow Tree hides has no box to anchor to; the key then opens the Peek's picker.
+    if (issue === undefined || cell?.checkVisibility() !== true) {
+      return false
+    }
     cellEditor.open({ issue, property: command, cell }, false)
     return true
   }
@@ -1277,7 +1282,7 @@ export function Shell({ session }: { session: Session }) {
             return
           }
           // A property with a cell editor opens it on the row's cell; the rest open the menu.
-          if (openCell(command, key)) return
+          if (openCell(command, key, target)) return
           const row = document.getElementById(rowDomId(activeRow?.id ?? ''))
           if (row !== null) openMenuFor(key, row, null, command)
           return
@@ -1296,7 +1301,7 @@ export function Shell({ session }: { session: Session }) {
         if (command === 'assignMe') assignToMe(key)
         else if (command === 'copyKey') copyIssue(key, 'key')
         else if (command === 'copyLink') copyIssue(key, 'link')
-        else if (openCell(command, key)) return
+        else if (openCell(command, key, target)) return
         else openProperty(command, key)
       }
     }

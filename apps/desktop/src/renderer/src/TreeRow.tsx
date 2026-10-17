@@ -505,7 +505,10 @@ export function Properties({
   properties: readonly RowProperty[]
   today: string
   always?: boolean
-  /** Opens the cell editor on a Sprint page cell; the cells that have an editor are slots only when it is set. */
+  /**
+   * Opens the cell editor on a Sprint page cell; the cells that have an editor are slots only when
+   * it is set. The Tree's cells are read by the row's click.
+   */
   onEditCell?: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** Lets the Sprint page's row button describe itself by these values. */
   id?: string
@@ -521,25 +524,43 @@ export function Properties({
     >
       {properties.map((property) => {
         switch (property) {
-          case 'labels':
-            return (
-              <span
+          case 'labels': {
+            const chips = firstLabel !== undefined && (
+              <>
+                <span className="inline-flex min-w-0 items-center gap-1 rounded-md border border-line px-1.5 leading-4 text-ink">
+                  <LabelDot />
+                  <span className="truncate">{firstLabel}</span>
+                </span>
+                {moreLabels.length > 0 && <span>+{moreLabels.length}</span>}
+              </>
+            )
+            // The whole slot is the cell editor's target, filled or empty. The Tree's row reads the
+            // click; the Sprint page's slot is a button beside the row's own (Slot).
+            const shared = {
+              'data-prop': 'labels',
+              'data-pick': 'labels',
+              title: issue.labels.join(', ') || 'Add labels',
+              className:
+                'flex w-24 shrink-0 cursor-pointer select-none items-center justify-end gap-1 rounded-md text-xs text-muted hover:bg-line',
+            }
+            return always ? (
+              <Slot
                 key={property}
-                data-prop="labels"
-                title={issue.labels.join(', ') || undefined}
-                className="flex w-24 shrink-0 items-center justify-end gap-1 text-xs text-muted"
+                {...shared}
+                aria-label={`Labels of ${issue.key}: ${issue.labels.join(', ') || 'none'}`}
+                aria-haspopup="listbox"
+                onClick={(event) => {
+                  onEditCell?.(issue, 'labels', event.currentTarget)
+                }}
               >
-                {firstLabel !== undefined && (
-                  <>
-                    <span className="inline-flex min-w-0 items-center gap-1 rounded-md border border-line px-1.5 leading-4 text-ink">
-                      <LabelDot />
-                      <span className="truncate">{firstLabel}</span>
-                    </span>
-                    {moreLabels.length > 0 && <span>+{moreLabels.length}</span>}
-                  </>
-                )}
+                {chips}
+              </Slot>
+            ) : (
+              <span key={property} {...shared}>
+                {chips}
               </span>
             )
+          }
           case 'sprint':
             return (
               <span

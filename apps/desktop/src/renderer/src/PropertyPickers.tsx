@@ -287,7 +287,12 @@ export function PriorityPicker({ issue, menu, cell }: PickerProps) {
 }
 
 /** The labels on the loaded issues, which are the project's own (Q35); a new one can be typed. Opened by `L`. */
-export function LabelsPicker({ issue, issues, menu }: PickerProps & { issues: readonly Issue[] }) {
+export function LabelsPicker({
+  issue,
+  issues,
+  menu,
+  cell,
+}: PickerProps & { issues: readonly Issue[] }) {
   const change = useIssueChange(issue)
   const options: PickerOption[] = [...new Set([...issue.labels, ...projectLabels(issues)])].map(
     (label) => ({ id: label, label, leading: <LabelDot /> }),
@@ -305,6 +310,7 @@ export function LabelsPicker({ issue, issues, menu }: PickerProps & { issues: re
   return (
     <Picker
       {...menuProps(menu)}
+      cell={cell}
       label="Labels"
       shortcut="L"
       valueText={issue.labels.length === 0 ? 'None' : issue.labels.join(', ')}

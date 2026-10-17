@@ -10,7 +10,7 @@ import {
   type CellState,
   type CellTarget,
 } from './cell'
-import { keyOf, letterCommand } from './keymap'
+import { keyOf, letterCommand, PROPERTY_KEYS } from './keymap'
 
 interface Cell {
   name: string
@@ -105,6 +105,11 @@ describe('isCellProperty', () => {
     // An unregistered name and a missing attribute are no property.
     expect(isCellProperty('nonsense')).toBe(false)
     expect(isCellProperty(undefined)).toBe(false)
+  })
+
+  it('names a keymap command for each property, so its key opens the editor', () => {
+    for (const property of CELL_PROPERTIES) expect(property in PROPERTY_KEYS).toBe(true)
+    expect(isCellProperty('labels')).toBe(true)
   })
 })
 
