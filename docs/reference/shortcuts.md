@@ -16,10 +16,11 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `L` | Open Labels |
 | `P` | Open Priority. From the Tree it opens the list beside the active row's priority slot, and `Esc` or a choice returns focus to the Tree; with a page open it opens the page's Priority |
 | `E` | Edit the summary: in a modal from the Tree, in place in the Peek and on the issue page |
-| `Shift+D` | Open Due date. On the issue page it focuses the page's Due date field; from the Tree it opens the issue menu with the Due date field focused |
-| `Shift+P` | Open Parent, the same way |
-| `Shift+E` | Open Original estimate, the same way. From the Tree it focuses the estimate field in the active row when the row shows that slot |
-| `Shift+C` | Open Sprint, the same way; on the Tree it opens the Sprint list beside the row's Sprint slot (#273), and falls back to the issue menu's when the slot is hidden. These four never fall through to `C`, `P` or `E`, and do nothing where the issue's type has no such field (an Epic has no sprint, parent or estimate) |
+| `Shift+S` | Open Start date. On the issue page it focuses the page's Start date field; from the Tree it opens the date editor on the active row's Start date slot when the row shows it, else the issue menu with the Start date field focused |
+| `Shift+D` | Open Due date. On the issue page it focuses the page's Due date field; from the Tree it opens the date editor on the active row's Due date slot when the row shows it, else the issue menu with the Due date field focused |
+| `Shift+P` | Open Parent. On the issue page it focuses the page's Parent field; from the Tree it opens the issue menu with the Parent field focused |
+| `Shift+E` | Open Original estimate. On the issue page it focuses the page's field; from the Tree it opens the issue menu with the field focused, except that when the row shows the estimate slot it focuses the estimate field in the active row |
+| `Shift+C` | Open Sprint. On the issue page it opens the page's Sprint list; from the Tree it opens the Sprint list beside the row's Sprint slot (#273), and falls back to the issue menu's when the slot is hidden. These five never fall through to `S`, `C`, `P` or `E`, and do nothing where the issue's type has no such field (an Epic has no sprint, parent or estimate) |
 | `I` | Assign the issue to me |
 | `Y` | Copy the issue key |
 | `U` | Copy the link to the issue on the Jira site |
@@ -81,7 +82,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Issue menu | `Up`, `Down`, `Home`, `End` | Move between items; `Up` from the first item goes to the last |
 | Issue menu | `Right`, `Enter` | Open the item's submenu, or run an item that has none |
 | Issue menu | `Left` | Close an open list of options and return to its item; in a search field only while it is empty. The date, estimate and Rename fields keep `Left` for the caret, and only `Esc` closes them |
-| Issue menu | `S`, `A`, `L`, `P`, `E`, `Shift+D`, `Shift+P`, `Shift+E`, `Shift+C` | Run the item that shows the key |
+| Issue menu | `S`, `A`, `L`, `P`, `E`, `Shift+S`, `Shift+D`, `Shift+P`, `Shift+E`, `Shift+C` | Run the item that shows the key |
 | Issue menu | `Esc` | Close the open submenu, then the menu, and return focus to the row. `Tab` closes the menu too |
 | Pickers | `Up`, `Down` | Move the highlight |
 | Pickers without a search field | `Home`, `End` | First or last option; in a searchable picker they move the caret |

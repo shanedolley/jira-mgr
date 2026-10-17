@@ -87,6 +87,9 @@ export function rowName(
         ...(blocks.blockedBy > 0 ? [blockedTitle(blocks.blockedBy).toLowerCase()] : []),
         ...(blocks.blocking > 0 ? [blockingTitle(blocks.blocking).toLowerCase()] : []),
         ...(hasPriorityGlyph(issue.priority) ? [`priority ${issue.priority.name}`] : []),
+        ...(properties.includes('start') && issue.startDate !== null
+          ? [`start ${issue.startDate}`]
+          : []),
         ...(properties.includes('due') && issue.dueDate !== null ? [`due ${issue.dueDate}`] : []),
         ...(sprint === undefined ? [] : [`sprint ${sprintTitle(sprint)}`]),
         ...properties.filter(isTime).flatMap((property) => {
@@ -397,6 +400,51 @@ function DueDate({
 }
 
 /**
+ * The start date in a fixed slot, as `DueDate` draws the due date without its tone icon: the
+ * whole slot, filled or empty, is a click target for the date editor, `Shift+S` is the keyboard's
+ * way to it on the Tree, and on the Sprint page (`always`) the slot is a `Slot` button.
+ */
+function StartDate({
+  issue,
+  today,
+  always,
+  onEditCell,
+}: {
+  issue: Issue
+  today: string
+  always: boolean
+  onEditCell?: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
+}) {
+  const start = issue.startDate
+  const key = keyOf('startDate')
+  const text = start === null ? undefined : `Start ${start}`
+  const editable = !always || onEditCell !== undefined
+  const shared = {
+    'data-prop': 'start',
+    'data-pick': editable ? 'startDate' : undefined,
+    title: always
+      ? (text ?? (editable ? 'Set start date' : undefined))
+      : `${text ?? 'Set start date'}${key === undefined ? '' : ` (${key})`}`,
+    className: `inline-flex w-[6rem] shrink-0 items-center justify-end whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
+  }
+  const content = start !== null && shortDate(start, today)
+  return always && onEditCell !== undefined ? (
+    <Slot
+      {...shared}
+      aria-label={`Start date of ${issue.key}: ${start ?? 'none'}`}
+      aria-haspopup="dialog"
+      onClick={(event) => {
+        onEditCell(issue, 'startDate', event.currentTarget)
+      }}
+    >
+      {content}
+    </Slot>
+  ) : (
+    <span {...shared}>{content}</span>
+  )
+}
+
+/**
  * A time property in a fixed slot: empty without a value, so the columns line up. The Tree row's
  * name already says what each value is; the label is for the Sprint page's rows, which have none.
  */
@@ -601,6 +649,16 @@ export function Properties({
           case 'remaining':
           case 'remainingPercent':
             return <TimeCell key={property} issue={issue} property={property} always={always} />
+          case 'start':
+            return (
+              <StartDate
+                key={property}
+                issue={issue}
+                today={today}
+                always={always}
+                onEditCell={onEditCell}
+              />
+            )
           case 'due':
             return (
               <DueDate

@@ -15,6 +15,7 @@ function row(over: Partial<Issue>): TreeRow {
     status: { id: '1', name: 'To Do', category: 'new' },
     assignee: null,
     priority: null,
+    startDate: null,
     dueDate: null,
     ...over,
   } as Issue
@@ -47,6 +48,17 @@ describe('rowName', () => {
       'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, due 2026-10-14',
     )
     expect(rowName(row({}), ['due'])).not.toContain('due')
+  })
+
+  it('names the start date only while the Start property is on, before the due date', () => {
+    const dated = row({ startDate: '2026-10-01', dueDate: '2026-10-14' })
+    expect(rowName(dated)).not.toContain('start')
+    expect(rowName(dated, ['due'])).not.toContain('start')
+    expect(rowName(dated, ['start'])).toBe(
+      'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, start 2026-10-01',
+    )
+    expect(rowName(dated, ['start', 'due'])).toMatch(/, start 2026-10-01, due 2026-10-14$/)
+    expect(rowName(row({}), ['start'])).not.toContain('start')
   })
 
   it('names the time values the chosen properties show, after the due date', () => {

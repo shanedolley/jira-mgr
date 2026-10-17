@@ -70,6 +70,7 @@ const PROPERTY_LABELS: Record<RowProperty, string> = {
   logged: 'Logged',
   remaining: 'Remaining',
   remainingPercent: 'Remaining %',
+  start: 'Start date',
   due: 'Due date',
   created: 'Created',
   updated: 'Updated',

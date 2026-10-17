@@ -5,7 +5,7 @@ import { keyOf } from './keymap'
 
 /**
  * What the right-click menu can do to an issue, in the order it lists them. An id that is also a
- * command in `keymap.ts` (`status`, `assignee`, `dueDate`, `sprint`, `edit`, `parent`, `labels`,
+ * command in `keymap.ts` (`status`, `assignee`, `startDate`, `dueDate`, `sprint`, `edit`, `parent`, `labels`,
  * `priority`, `estimate`) shows that command's key.
  */
 export type MenuItemId =

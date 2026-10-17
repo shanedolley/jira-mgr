@@ -81,7 +81,7 @@ const ALL = [
   'View full screen|↵',
   'Status|S',
   'Assignee|A',
-  'Start date|',
+  'Start date|⇧S',
   'Due date|⇧D',
   'Sprint|⇧C',
   'Rename|E',
@@ -329,9 +329,17 @@ test('Enter on an item opens its submenu', async () => {
   await expect(entry('Start date')).toBeFocused()
 })
 
-test('Shift+D, Shift+P, Shift+E and Shift+C open due date, parent, estimate and sprint, not P, E or C', async () => {
+test('Shift+S, Shift+D, Shift+P, Shift+E and Shift+C open start date, due date, parent, estimate and sprint, not S, P, E or C', async () => {
   await open()
   await select(/PSAPAC-4,/)
+
+  await window.keyboard.press('Shift+S')
+  await expect(menu()).toBeVisible()
+  await expect(menu().getByRole('textbox', { name: 'Start date' })).toBeFocused()
+  await window.keyboard.press('Escape')
+  await window.keyboard.press('Escape')
+  await expect(menu()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
 
   await window.keyboard.press('Shift+D')
   await expect(menu()).toBeVisible()
@@ -397,6 +405,16 @@ test('Shift+D on the issue page focuses the Due date field there', async () => {
   await expect(issuePage()).toBeVisible()
   await window.keyboard.press('Shift+D')
   await expect(issuePage().getByLabel('Due date')).toBeFocused()
+  await expect(menu()).toHaveCount(0)
+})
+
+test('Shift+S on the issue page focuses the Start date field there', async () => {
+  await open()
+  await select(/PSAPAC-4,/)
+  await window.keyboard.press('Enter')
+  await expect(issuePage()).toBeVisible()
+  await window.keyboard.press('Shift+S')
+  await expect(issuePage().getByLabel('Start date')).toBeFocused()
   await expect(menu()).toHaveCount(0)
 })
 

@@ -1257,6 +1257,7 @@ export function Shell({ session }: { session: Session }) {
           return
         }
         if (
+          command === 'startDate' ||
           command === 'dueDate' ||
           command === 'parent' ||
           command === 'estimate' ||

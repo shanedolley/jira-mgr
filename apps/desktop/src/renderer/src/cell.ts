@@ -8,6 +8,7 @@ export const CELL_PROPERTIES = [
   'priority',
   'labels',
   'sprint',
+  'startDate',
 ] as const
 
 export type CellProperty = (typeof CELL_PROPERTIES)[number]

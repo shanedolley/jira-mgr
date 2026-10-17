@@ -24,7 +24,7 @@ const SCOPE = '[data-key-scope]'
 const scoped = inside(SCOPE)
 
 describe('the letter shortcuts', () => {
-  it('map C, T, W, S, A, L, P, E, I, Y, U and F, and with Shift S, T, W, A, L, I, Y, U and F alike', () => {
+  it('map C, T, W, S, A, L, P, E, I, Y, U and F, and with Shift T, W, A, L, I, Y, U and F alike', () => {
     const expected = {
       c: 'create',
       t: 'timer',
@@ -43,13 +43,13 @@ describe('the letter shortcuts', () => {
       expect(resolveKey(key(letter), scoped)).toBe(command)
       // A Caps Lock letter arrives uppercase with no Shift.
       expect(resolveKey(key(letter.toUpperCase()), scoped)).toBe(command)
-      if ('cpe'.includes(letter)) continue
+      if ('cpes'.includes(letter)) continue
       expect(resolveKey(key(letter.toUpperCase(), { shiftKey: true }), scoped)).toBe(command)
     }
   })
 
-  it('map Shift+D, Shift+P, Shift+E and Shift+C to due date, parent, estimate and sprint, never to D, P, E or C', () => {
-    const expected = { d: 'dueDate', p: 'parent', e: 'estimate', c: 'sprint' }
+  it('map Shift+S, Shift+D, Shift+P, Shift+E and Shift+C to start date, due date, parent, estimate and sprint, never to S, D, P, E or C', () => {
+    const expected = { s: 'startDate', d: 'dueDate', p: 'parent', e: 'estimate', c: 'sprint' }
     for (const [letter, command] of Object.entries(expected)) {
       expect(resolveKey(key(letter.toUpperCase(), { shiftKey: true }), scoped)).toBe(command)
       expect(resolveKey(key(letter.toLowerCase(), { shiftKey: true }), scoped)).toBe(command)
@@ -58,8 +58,8 @@ describe('the letter shortcuts', () => {
     expect(resolveKey(key('d'), scoped)).toBeNull()
   })
 
-  it('give Shift+D, Shift+P, Shift+E and Shift+C the same guards as the letters', () => {
-    for (const letter of ['D', 'P', 'E', 'C']) {
+  it('give Shift+S, Shift+D, Shift+P, Shift+E and Shift+C the same guards as the letters', () => {
+    for (const letter of ['S', 'D', 'P', 'E', 'C']) {
       const shifted = (extra: Partial<KeyEvent> = {}) => key(letter, { shiftKey: true, ...extra })
       expect(resolveKey(shifted(), nowhere)).toBeNull()
       expect(resolveKey(shifted(), inside(SCOPE, 'input'))).toBeNull()
@@ -302,6 +302,7 @@ describe('keyOf', () => {
     expect(keyOf('copyLink')).toBe('U')
     expect(keyOf('filterMenu')).toBe('F')
     expect(keyOf('logWork')).toBe('W')
+    expect(keyOf('startDate')).toBe('Shift+S')
     expect(keyOf('dueDate')).toBe('Shift+D')
     expect(keyOf('parent')).toBe('Shift+P')
     expect(keyOf('estimate')).toBe('Shift+E')

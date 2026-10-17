@@ -529,6 +529,17 @@ describe('display', () => {
     expect((await readSettings()).display.properties).toEqual(['due'])
   })
 
+  it('reads the start date in row order before the due date, and a file without it as before', async () => {
+    const raw = { display: { properties: ['due', 'updated', 'start', 'labels'] } }
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
+    expect((await readSettings()).display.properties).toEqual(['labels', 'start', 'due', 'updated'])
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({ display: { properties: ['labels', 'due'] } }),
+    )
+    expect((await readSettings()).display.properties).toEqual(['labels', 'due'])
+  })
+
   it('reads an unknown order as key and never fails the file', async () => {
     const raw = { display: { properties: ['due'], order: 'rank' } }
     await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
@@ -591,6 +602,23 @@ describe('display', () => {
     )
     const [read] = await readViews()
     expect(read?.display?.properties).toEqual(['logged', 'remainingPercent'])
+  })
+
+  it('reads a view display with and without the start date', async () => {
+    const view = (properties: string[]) => ({
+      id: 'v',
+      name: 'V',
+      filters: {},
+      toggles,
+      display: { properties, order: 'key' },
+    })
+    await writeFile(
+      join(dir, 'views.json'),
+      JSON.stringify([view(['due', 'start', 'labels']), { ...view(['due']), id: 'w' }]),
+    )
+    const [withStart, without] = await readViews()
+    expect(withStart?.display?.properties).toEqual(['labels', 'start', 'due'])
+    expect(without?.display?.properties).toEqual(['due'])
   })
 
   it.each([

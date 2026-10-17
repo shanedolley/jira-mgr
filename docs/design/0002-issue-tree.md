@@ -313,6 +313,13 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - A Hold row stays editable. Moving a done issue into a sprint is allowed; Jira decides.
 - On the Sprint page the slot is a `Slot` button (#279's pattern), named "Sprint of PSAPAC-13: Sprint 5" and titled with the full name and end day, that opens the same list. Moving the issue to another sprint or to Backlog takes its row off the page at once, a refusal puts it back with the Retry toast, and focus falls to the Sprint page when the row it was on is gone.
 
+*Amended 2026-10-18, build of #271.* Shane wants to select the start date on the canvas and edit it there. The orchestrator decided these, pending Shane's confirmation:
+
+- The Display properties gain Start date (`start`), placed after Remaining % and before Due date. It is a short date in a 6rem slot, as Due date without the tone icon, and joins the row's accessible name as `start 2026-10-01` while shown. A file written without it still loads, and an older build drops the name.
+- A click on the slot, filled or empty, opens the same date editor as the due date (`DateCell.tsx`), the fourth cell editor, with Save, Clear, Esc, an optimistic write and a Retry toast on refusal. `Shift+S` opens it on the active row when the property is shown and the issue menu's field otherwise; it never falls through to `S`, which opens Status. The key is the orchestrator's pick.
+- The Sprint page's start slot is a `Slot` button named "Start date of PSAPAC-4: none", as the due slot is.
+- A start date after the due date is allowed, as Jira allows it and the issue page does not warn.
+
 ### Peek
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.
