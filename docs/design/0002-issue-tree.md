@@ -304,7 +304,7 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - `L` on the Tree opens the same list on the active row's slot. When the Display menu leaves Labels off, or the Tree is too narrow to draw the slot, `L` opens the Peek's picker as before.
 - The list is the Peek's `LabelsPicker`, a multi-select: each toggle writes at once through `editIssue` with `addLabels` or `removeLabels` and updates the slot before Jira answers, and the list stays open. A refusal reverts that one label and offers Retry. The type-ahead creates a new label from text without a space. `Esc` or a click outside closes the list, and focus returns to the Tree with the row still active. Enter chooses the active option and never closes the list; `Esc` does.
 - A Hold row stays editable, as with the status dot.
-- The Sprint page's Display slots offer the same picker once #279's slot controls land; its labels slot is not a target yet.
+- The Sprint page's labels slot offers the same picker. It is a `Slot` button beside the row's own, named "Labels of PSAPAC-4: docs" ("none" when empty), in the tab order, so Enter or Space opens the list and the row button still opens the issue.
 
 ### Peek
 

@@ -8,6 +8,7 @@ import { expect, test, type ElectronApplication, type Page } from '@playwright/t
 import {
   counts,
   fieldsOf,
+  joinSprint,
   launch,
   logIn,
   moveIssue,
@@ -339,4 +340,123 @@ test('holds its layout with a wide font: the slot keeps its width and the list f
     }
   })
   expect(fits).toEqual({ left: true, right: true, bottom: true, clipped: 0 })
+})
+
+const sprintPage = () => window.getByRole('region', { name: 'Sprint page' })
+const issuePage = () => window.getByRole('region', { name: 'Issue page' })
+/** The Sprint page's labels slot, a button beside the row's own, named for its labels. */
+const sprintSlot = (key: string, labels: string) =>
+  sprintPage().getByRole('button', { name: `Labels of ${key}: ${labels}` })
+
+/** PSAPAC-4 and PSAPAC-13 start in the active sprint; these join them, as in the cell tests. */
+const MEMBERS = [
+  'PSAPAC-1',
+  'PSAPAC-2',
+  'PSAPAC-4',
+  'PSAPAC-11',
+  'PSAPAC-13',
+  'PSAPAC-14',
+  'PSAPAC-22',
+]
+
+async function openSprint() {
+  await joinSprint(app, MEMBERS, 5)
+  await open()
+  await sidebar()
+    .getByRole('region', { name: 'Sprints' })
+    .getByRole('button', { name: /^Current/ })
+    .click()
+  await expect(sprintPage()).toBeVisible()
+  await expect(sprintPage().getByRole('status')).toHaveText('7 issues')
+}
+
+/** Whether focus is on `page` or inside it. */
+const focusWithin = (page: ReturnType<typeof sprintPage>) =>
+  page.evaluate((el) => el.contains(document.activeElement))
+
+test('a click on a Sprint page labels slot, filled or empty, opens the list beside it and not the issue', async () => {
+  await openSprint()
+  await expect(sprintSlot('PSAPAC-4', 'none')).toBeVisible()
+  await sprintSlot('PSAPAC-11', 'docs').click()
+
+  await expect(listbox()).toBeVisible()
+  await expect(search()).toBeFocused()
+  await expect(issuePage()).toHaveCount(0)
+  await expect(option('docs')).toHaveAttribute('aria-selected', 'true')
+  // Below the slot, starting at its left edge.
+  const cell = await sprintSlot('PSAPAC-11', 'docs').boundingBox()
+  const list = await popover().boundingBox()
+  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
+  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
+  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+  await window.keyboard.press('Escape')
+  await expect(listbox()).toHaveCount(0)
+
+  await sprintSlot('PSAPAC-4', 'none').click()
+  await expect(listbox()).toBeVisible()
+  await expect(option('docs')).toHaveAttribute('aria-selected', 'false')
+})
+
+test('the Sprint page list stays open across toggles, renames the slot at once and returns focus to the page', async () => {
+  await openSprint()
+  const before = await writes()
+
+  await sprintSlot('PSAPAC-4', 'none').click()
+  await option('docs').click()
+  await expect(sprintSlot('PSAPAC-4', 'docs')).toBeVisible()
+  await expect(listbox()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(listbox()).toHaveCount(0)
+
+  await settle(before, 1)
+  expect(await labelsOf('PSAPAC-4')).toEqual(['docs'])
+  await expect.poll(() => focusWithin(sprintPage())).toBe(true)
+  await expect(issuePage()).toHaveCount(0)
+})
+
+test('the Sprint page slot is in the tab order and Enter opens the list', async () => {
+  await openSprint()
+  await sprintSlot('PSAPAC-4', 'none').focus()
+  await window.keyboard.press('Enter')
+  await expect(listbox()).toBeVisible()
+  await expect(listbox()).toHaveAccessibleName('Labels')
+  await expect(issuePage()).toHaveCount(0)
+})
+
+test('a refused label on the Sprint page puts the slot back and the toast offers Retry', async () => {
+  await openSprint()
+  await refuseKeys(app, ['PSAPAC-4'])
+  const before = await writes()
+
+  await sprintSlot('PSAPAC-4', 'none').click()
+  await option('docs').click()
+  await expect(sprintSlot('PSAPAC-4', 'docs')).toBeVisible()
+  await expect.poll(writes).toBe(before + 1)
+  await releaseEdit(app)
+
+  const alert = notices(window).getByRole('alert')
+  await expect(alert).toContainText('Labels not changed')
+  await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
+  await expect(sprintSlot('PSAPAC-4', 'none')).toBeVisible()
+})
+
+test('a Hold row on the Sprint page keeps its labels slot editable', async () => {
+  await moveIssue(app, 'PSAPAC-4', 'hold')
+  await openSprint()
+  const before = await writes()
+
+  await sprintSlot('PSAPAC-4', 'none').click()
+  await expect(listbox()).toBeVisible()
+  const drawn = await popover().evaluate((el) => {
+    let opacity = 1
+    for (let node: Element | null = el; node !== null; node = node.parentElement) {
+      opacity *= Number(getComputedStyle(node).opacity)
+    }
+    return opacity
+  })
+  expect(drawn).toBe(1)
+  await option('docs').click()
+  await expect(sprintSlot('PSAPAC-4', 'docs')).toBeVisible()
+  await window.keyboard.press('Escape')
+  await settle(before, 1)
 })
