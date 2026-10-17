@@ -21,7 +21,7 @@ export function LogWorkModal({ issue, onClose, returnFocus }: LogWorkModalProps)
   const titleId = useId()
   const add = useAddWorklog(issue.key)
   return (
-    <Modal titleId={titleId} onClose={onClose} returnFocus={returnFocus}>
+    <Modal titleId={titleId} onClose={onClose} closable={!add.isPending} returnFocus={returnFocus}>
       <div className="space-y-3 p-5">
         <h2 id={titleId} className="text-base font-semibold">
           Log work on {issue.key}
@@ -36,6 +36,7 @@ export function LogWorkModal({ issue, onClose, returnFocus }: LogWorkModalProps)
             onClose()
           }}
           onCancel={onClose}
+          holdEscapeWhileSaving
         />
       </div>
     </Modal>

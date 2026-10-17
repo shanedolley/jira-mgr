@@ -125,9 +125,9 @@ test('an Epic offers no target, and W does nothing on it', async () => {
   await expect(window.getByRole('dialog', { name: /^Log work on / })).toHaveCount(0)
 })
 
-test('the Logged slot is a button named for the issue', async () => {
+test('the Logged slot is a button named for the issue and its value', async () => {
   await open()
-  await expect(slot(/PSAPAC-4,/)).toHaveAccessibleName('Log work on PSAPAC-4')
+  await expect(slot(/PSAPAC-4,/)).toHaveAccessibleName('Log work on PSAPAC-4, Logged 30m')
 })
 
 test('Esc and Cancel close the modal with no write and return focus to the Tree', async () => {
@@ -204,6 +204,37 @@ test('the Sprint page offers the same target, without opening the issue', async 
   await expect(modal('PSAPAC-4')).toHaveCount(0)
   await expect(sprintRow('PSAPAC-4').locator('[data-prop=logged]')).toHaveText('Logged 1h')
   await expect.poll(() => holdsFocus(sprintPage)).toBe(true)
+})
+
+test('W on the issue page logs work and returns focus to the page', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await window.keyboard.press('Enter')
+  await expect(issuePage()).toBeVisible()
+
+  await window.keyboard.press('w')
+  await expect(modal('PSAPAC-4')).toBeVisible()
+  await form('PSAPAC-4').getByLabel('Time spent').fill('15m')
+  await form('PSAPAC-4').getByLabel('Time spent').press('Enter')
+  await expect.poll(writes).toBe(1)
+  await releaseEdit(app)
+
+  await expect(modal('PSAPAC-4')).toHaveCount(0)
+  await expect.poll(() => holdsFocus(issuePage)).toBe(true)
+})
+
+test('Esc does not close the modal while the worklog is being saved', async () => {
+  await open()
+  await prop(/PSAPAC-4,/, 'logged').click()
+  await form('PSAPAC-4').getByLabel('Time spent').fill('15m')
+  await form('PSAPAC-4').getByLabel('Time spent').press('Enter')
+  await expect.poll(writes).toBe(1)
+  await expect(form('PSAPAC-4').getByRole('button', { name: 'Saving' })).toBeDisabled()
+
+  await window.keyboard.press('Escape')
+  await expect(modal('PSAPAC-4')).toBeVisible()
+  await releaseEdit(app)
+  await expect(modal('PSAPAC-4')).toHaveCount(0)
 })
 
 test('lays the modal out inside the window in a wide font', async () => {

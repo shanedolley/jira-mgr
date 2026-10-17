@@ -1,7 +1,10 @@
 import type { Issue } from '@jira-mgr/core'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import { rowName, rowProgress } from './TreeRow'
+import { LogWorkContext, loggedIssue } from './logWork'
+import { rowName, rowProgress, TimeCell } from './TreeRow'
 import type { TreeRow } from './tree'
 
 function row(over: Partial<Issue>): TreeRow {
@@ -140,5 +143,52 @@ describe('rowProgress', () => {
     expect(
       rowProgress({ kind: 'chip', doneCount: 2 } as unknown as TreeRow, entries),
     ).toBeUndefined()
+  })
+})
+
+describe('the Logged slot', () => {
+  const slot = (over: Partial<Issue>, provided = true) => {
+    const { issue } = (row(over) as { node: { issue: Issue } }).node
+    const cell = createElement(TimeCell, { issue, property: 'logged' })
+    return renderToStaticMarkup(
+      provided ? createElement(LogWorkContext, { value: () => undefined }, cell) : cell,
+    )
+  }
+  const story = { issueType: { id: '2', name: 'Story', subtask: false, hierarchyLevel: 0 } }
+
+  it('is a Log work target for a Story, filled or empty, and keeps its value in the name', () => {
+    expect(slot({ ...story, timeSpentSeconds: 1800 })).toContain(
+      'aria-label="Log work on PSAPAC-11, Logged 30m"',
+    )
+    expect(slot({ ...story, timeSpentSeconds: null })).toContain(
+      'aria-label="Log work on PSAPAC-11, nothing logged"',
+    )
+  })
+
+  it('is a target on a Hold row, which stays loggable', () => {
+    const hold = { id: '9', name: 'Hold', category: 'indeterminate' } as Issue['status']
+    expect(slot({ ...story, status: hold, timeSpentSeconds: 1800 })).toContain('role="button"')
+  })
+
+  it('is no target on an Epic, or outside the Shell', () => {
+    const epic = { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 }
+    expect(slot({ issueType: epic, timeSpentSeconds: 1800 })).not.toContain('role="button"')
+    expect(slot({ ...story, timeSpentSeconds: 1800 }, false)).not.toContain('role="button"')
+  })
+})
+
+describe('loggedIssue', () => {
+  const issue = (key: string, summary: string) => ({ key, summary }) as Issue
+
+  it('prefers the Shell copy, which has the newest values', () => {
+    const held = issue('PSAPAC-4', 'old')
+    const current = issue('PSAPAC-4', 'new')
+    expect(loggedIssue([issue('PSAPAC-3', 'x'), current], held)).toBe(current)
+  })
+
+  it('falls back to the issue the slot passed when the Shell does not list it', () => {
+    const done = issue('PSAPAC-99', 'a Done sprint issue')
+    expect(loggedIssue([issue('PSAPAC-3', 'x')], done)).toBe(done)
+    expect(loggedIssue([], null)).toBeNull()
   })
 })

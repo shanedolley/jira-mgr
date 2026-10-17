@@ -56,7 +56,7 @@ Run on one worker when hunting a flake or running beside other worktrees: `pnpm 
 
 `desktop/timeprops.test.ts` covers the four time Display properties (Original estimate, Logged, Remaining, Remaining %): their chips, slots and accessible names in the Tree, empty slots for an issue with no value and for an Epic, Remaining % flooring at 0%, the same slots on the Sprint page, and the layout in Verdana. It logs work with `logWork` before login.
 
-`desktop/logwork.test.ts` covers the Log work modal: a click on the Logged slot (filled, empty, never on an Epic) on the Tree and the Sprint page, `W`, the menu and the palette, a save that moves Logged, Remaining and Remaining %, a refused write, Esc and Cancel, focus return and the layout in Verdana. It writes only to the fake Jira.
+`desktop/logwork.test.ts` covers the Log work modal: a click on the Logged slot (filled, empty, never on an Epic) on the Tree and the Sprint page, `W`, the menu and the palette, a save that moves Logged, Remaining and Remaining %, a refused write, Esc and Cancel (Esc is ignored while the save is in flight), `W` on the issue page, focus return and the layout in Verdana. It writes only to the fake Jira.
 
 `desktop/holdfade.test.ts` covers the Hold fade (#217): on the Tree, the Sprint page, the Epics table and the palette, every field of a Hold row (key, summary, priority, label, Original estimate slot, progress pill, avatar, status name, each cell of an Epics row) draws at 30% effective opacity, which it reads as the product of the computed opacity along the ancestor chain, while the row itself stays at 1, the status ring draws at 30% and not 9%, and a row in another status draws at 100%.
 

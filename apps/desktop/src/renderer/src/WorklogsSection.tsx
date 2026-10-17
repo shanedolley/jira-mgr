@@ -39,6 +39,8 @@ interface WorklogFormRowProps {
   /** Sends the request. A rejection keeps the form open with the message. */
   onSubmit: (request: WorklogInput) => Promise<unknown>
   onCancel: () => void
+  /** A modal sets this: Esc does nothing while the request is in flight. The Peek's form still cancels. */
+  holdEscapeWhileSaving?: boolean
 }
 
 /**
@@ -53,6 +55,7 @@ export function WorklogFormRow({
   hadComment,
   onSubmit,
   onCancel,
+  holdEscapeWhileSaving = false,
 }: WorklogFormRowProps) {
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
@@ -89,6 +92,7 @@ export function WorklogFormRow({
     if (event.key !== 'Escape') return
     event.preventDefault()
     event.stopPropagation()
+    if (saving && holdEscapeWhileSaving) return
     onCancel()
   }
 

@@ -8,7 +8,6 @@ import { Avatar } from './Avatar'
 import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { useLogWork } from './logWork'
-import { allows } from './menuItems'
 import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
 import { holdFade, StatusDot } from './StatusDot'
@@ -329,7 +328,7 @@ function DueDate({ issue, today }: { issue: Issue; today: string }) {
  * A time property in a fixed slot: empty without a value, so the columns line up. The Tree row's
  * name already says what each value is; the label is for the Sprint page's rows, which have none.
  */
-function TimeCell({
+export function TimeCell({
   issue,
   property,
   always,
@@ -345,7 +344,8 @@ function TimeCell({
   }
   const value = timeValue(issue, property)
   // The Logged slot, filled or empty, opens the Log work modal. An Epic has no time tracking, so no target.
-  const target = property === 'logged' && log !== null && allows(issue, 'logWork') ? log : null
+  const target =
+    property === 'logged' && log !== null && propertyRules(issue.issueType).estimates ? log : null
   return (
     <span
       data-prop={property}
@@ -359,11 +359,12 @@ function TimeCell({
       className={`shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${property === 'remainingPercent' ? 'w-12' : 'w-16'} ${target === null ? '' : 'cursor-pointer rounded hover:bg-line'}`}
       {...(target !== null && {
         role: 'button',
-        'aria-label': `Log work on ${issue.key}`,
+        // The label replaces the text as the name, so it keeps the value.
+        'aria-label': `Log work on ${issue.key}, ${value === null ? 'nothing logged' : `${TIME_NAMES[property]} ${value}`}`,
         // The row's click would open the Peek, and its double-click the issue.
         onClick: (event: MouseEvent) => {
           event.stopPropagation()
-          target(issue.key)
+          target(issue)
         },
         onDoubleClick: (event: MouseEvent) => {
           event.stopPropagation()
