@@ -55,7 +55,7 @@ describe('rowName', () => {
     })
     expect(rowName(timed)).not.toContain('logged')
     expect(rowName(timed, ['due', 'estimate', 'logged', 'remaining', 'remainingPercent'])).toBe(
-      'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, due 2026-10-14, original estimate 10h, logged 2h 30m, remaining 7h 30m, remaining 75%',
+      'PSAPAC-11, Story, To Do, Draft the runbook, unassigned, due 2026-10-14, original estimate 10h, logged 2h 30m, remaining 7h 30m, remaining percent 75%',
     )
     expect(rowName(timed, ['logged'])).toMatch(/, logged 2h 30m$/)
   })

@@ -76,16 +76,16 @@ test('lists the four chips, shows their slots in the Tree and hides them again',
   await expect.poll(savedProperties).toEqual([...TIME, 'updated'])
 
   // 2h estimate, 30m logged; the fake leaves the remaining estimate at the estimate.
-  await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('2h')
-  await expect(prop(/PSAPAC-4,/, 'logged')).toHaveText('30m')
-  await expect(prop(/PSAPAC-4,/, 'remaining')).toHaveText('2h')
-  await expect(prop(/PSAPAC-4,/, 'remainingPercent')).toHaveText('75%')
+  await expect(prop(/PSAPAC-4,/, 'estimate')).toContainText('2h')
+  await expect(prop(/PSAPAC-4,/, 'logged')).toContainText('30m')
+  await expect(prop(/PSAPAC-4,/, 'remaining')).toContainText('2h')
+  await expect(prop(/PSAPAC-4,/, 'remainingPercent')).toContainText('75%')
   await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(
-    /, original estimate 2h, logged 30m, remaining 2h, remaining 75%$/,
+    /, original estimate 2h, logged 30m, remaining 2h, remaining percent 75%$/,
   )
 
   // No estimate: the slots keep their place, empty where Jira holds nothing.
-  await expect(prop(/PSAPAC-3,/, 'logged')).toHaveText('1h')
+  await expect(prop(/PSAPAC-3,/, 'logged')).toContainText('1h')
   for (const name of ['estimate', 'remaining', 'remainingPercent']) {
     await expect(prop(/PSAPAC-3,/, name)).toHaveText('')
   }
@@ -108,8 +108,8 @@ test('floors Remaining % at 0% once more is logged than estimated', async () => 
   await logWork(app, 'PSAPAC-4', daysAgo(2), 2 * HOUR)
   await open()
   await toggle('Logged', 'Remaining %')
-  await expect(prop(/PSAPAC-4,/, 'logged')).toHaveText('2h 30m')
-  await expect(prop(/PSAPAC-4,/, 'remainingPercent')).toHaveText('0%')
+  await expect(prop(/PSAPAC-4,/, 'logged')).toContainText('2h 30m')
+  await expect(prop(/PSAPAC-4,/, 'remainingPercent')).toContainText('0%')
 })
 
 test('shows the chosen slots on the Sprint page and follows the Display menu', async () => {
@@ -122,13 +122,14 @@ test('shows the chosen slots on the Sprint page and follows the Display menu', a
     .click()
   await expect(sprintPage()).toBeVisible()
   const row = sprintRow('PSAPAC-4')
-  await expect(row.locator('[data-prop=estimate]')).toHaveText('2h')
-  await expect(row.locator('[data-prop=logged]')).toHaveText('30m')
-  await expect(row.locator('[data-prop=remainingPercent]')).toHaveText('75%')
+  await expect(row.locator('[data-prop=estimate]')).toHaveText('Original estimate 2h')
+  await expect(row.locator('[data-prop=remainingPercent]')).toHaveText('Remaining percent 75%')
+  await expect(row.locator('[data-prop=logged]')).toContainText('30m')
+  await expect(row.locator('[data-prop=remainingPercent]')).toContainText('75%')
   await expect(row.locator('[data-prop=remaining]')).toHaveCount(0)
   // No estimate: empty slots, so the columns line up.
   await expect(sprintRow('PSAPAC-3').locator('[data-prop=estimate]')).toHaveText('')
-  await expect(sprintRow('PSAPAC-3').locator('[data-prop=logged]')).toHaveText('1h')
+  await expect(sprintRow('PSAPAC-3').locator('[data-prop=logged]')).toContainText('1h')
 
   await sprintPage().getByRole('button', { name: 'Back to issues' }).click()
   await expect(sprintPage()).toHaveCount(0)
@@ -145,7 +146,7 @@ test('shows the chosen slots on the Sprint page and follows the Display menu', a
 test('fits the four slots beside Due date and Updated in a wide font, in the Tree and on the Sprint page', async () => {
   await open()
   await toggle('Due date', ...CHIPS)
-  await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('2h')
+  await expect(prop(/PSAPAC-4,/, 'estimate')).toContainText('2h')
   const style = await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
@@ -183,4 +184,38 @@ test('fits the four slots beside Due date and Updated in a wide font, in the Tre
     node.parentNode?.removeChild(node)
   })
   await expect(sprintRow('PSAPAC-4').locator(slots)).toHaveCount(4)
+})
+
+test('keeps the title and the avatar with all nine properties on, dropping the trailing slots', async () => {
+  await open()
+  await toggle('Labels', 'Sprint', 'Created', 'Due date', ...CHIPS)
+  await expect(prop(/PSAPAC-4,/, 'estimate')).toContainText('2h')
+  const style = await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  const rows = await tree()
+    .getByRole('treeitem')
+    .evaluateAll((all) =>
+      all
+        .filter((row) => row.querySelector('.tree-key') !== null)
+        .map((row) => {
+          const box = row.getBoundingClientRect()
+          const avatar = row.querySelector('[data-pick=assignee]')?.getBoundingClientRect()
+          return {
+            title:
+              row.querySelector('.tree-key')?.nextElementSibling?.getBoundingClientRect().width ??
+              0,
+            overflowing: row.scrollWidth > row.clientWidth,
+            avatarShown:
+              avatar !== undefined && avatar.right <= box.right && avatar.left >= box.left,
+          }
+        }),
+    )
+  await style.evaluate((node) => {
+    node.parentNode?.removeChild(node)
+  })
+  expect(rows.length).toBeGreaterThan(5)
+  expect(rows.filter((r) => r.title < 80)).toEqual([])
+  expect(rows.filter((r) => r.overflowing)).toEqual([])
+  expect(rows.filter((r) => !r.avatarShown)).toEqual([])
 })

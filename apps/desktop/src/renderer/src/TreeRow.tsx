@@ -36,12 +36,12 @@ const NO_BLOCKS: BlockCounts = { blockedBy: 0, blocking: 0 }
 const blockedTitle = (n: number) => `Blocked by ${plural(n, 'issue')}`
 const blockingTitle = (n: number) => `Blocking ${plural(n, 'issue')}`
 
-/** What each time property is called, in a row's accessible name (lower-cased) and a slot's title. */
+/** What each time property is called: lower-cased in a row's name, as is in a slot's title and label. */
 const TIME_NAMES: Record<TimeProperty, string> = {
   estimate: 'Original estimate',
   logged: 'Logged',
   remaining: 'Remaining',
-  remainingPercent: 'Remaining',
+  remainingPercent: 'Remaining percent',
 }
 
 const isTime = (property: RowProperty): property is TimeProperty => property in TIME_NAMES
@@ -49,8 +49,8 @@ const isTime = (property: RowProperty): property is TimeProperty => property in 
 /**
  * The accessible name of a row, in one format per kind. An issue's name ends with what the row
  * shows only as a glyph, a pill or a column: its open blockers, its priority when not Medium, its
- * due date and time values when their properties are on, and its children's progress. The rest of the contents are
- * presentation only.
+ * due date and time values when their properties are on, and its children's progress. The rest of
+ * the contents are presentation only.
  */
 export function rowName(
   row: Row,
@@ -321,7 +321,10 @@ function DueDate({ issue, today }: { issue: Issue; today: string }) {
   )
 }
 
-/** A time property in a fixed slot: empty without a value, so the columns line up. */
+/**
+ * A time property in a fixed slot: empty without a value, so the columns line up. The Tree row's
+ * name already says what each value is; the label is for the Sprint page's rows, which have none.
+ */
 function TimeCell({ issue, property }: { issue: Issue; property: TimeProperty }) {
   const value = timeValue(issue, property)
   return (
@@ -330,6 +333,7 @@ function TimeCell({ issue, property }: { issue: Issue; property: TimeProperty })
       title={value === null ? undefined : `${TIME_NAMES[property]} ${value}`}
       className={`shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${property === 'remainingPercent' ? 'w-12' : 'w-16'}`}
     >
+      {value !== null && <span className="sr-only">{TIME_NAMES[property]} </span>}
       {value}
     </span>
   )
@@ -346,6 +350,15 @@ function DateCell({ property, at, today }: { property: string; at: string; today
     </span>
   )
 }
+
+/**
+ * The Tree's property strip shrinks to what the row has left once the title has its minimum, and a
+ * slot that no longer fits wraps to a second line, below the strip's one-line height and clipped.
+ * The trailing slots drop first and the title is never squeezed out. `gap-y-5` and `h-5` keep a
+ * wrapped slot clear of the strip.
+ */
+const TREE_PROPS =
+  'hidden h-5 min-w-0 flex-wrap content-start justify-end gap-y-5 overflow-hidden @tree:flex [&>*]:h-5 [&>*]:leading-5'
 
 /**
  * The properties the Display menu chose, in the menu's order. Each keeps a fixed slot, so the
@@ -369,7 +382,7 @@ export function Properties({
   return (
     <span
       data-props
-      className={`items-center gap-2 ${always ? 'flex max-w-full flex-wrap justify-end' : 'hidden shrink-0 @tree:flex'}`}
+      className={`items-center gap-x-2 ${always ? 'flex max-w-full flex-wrap justify-end gap-y-1' : TREE_PROPS}`}
     >
       {properties.map((property) => {
         switch (property) {
@@ -478,7 +491,7 @@ function Content({
             {issue.key}
           </span>
           <span
-            className={`min-w-0 flex-1 truncate font-medium ${tone}`}
+            className={`min-w-0 flex-1 truncate font-medium @tree:min-w-20 ${tone}`}
             style={summaryFade(issue.status)}
           >
             {issue.summary}

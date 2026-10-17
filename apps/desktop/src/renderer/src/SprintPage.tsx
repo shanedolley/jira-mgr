@@ -205,8 +205,8 @@ function Issues({
   const groups = groupByStatus(issues)
   return (
     <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px] max-stack:min-h-auto max-stack:overflow-y-visible max-stack:px-4">
-      <div className={`space-y-6 ${properties.length === 0 ? 'max-w-[40rem]' : ''}`}>
-        <div className="space-y-1">
+      <div className="space-y-6">
+        <div className="max-w-[40rem] space-y-1">
           <h1 className="text-xl font-semibold leading-7">{sprint.name}</h1>
           <p role="status" className="text-muted">
             {issues.length === 1 ? '1 issue' : `${String(issues.length)} issues`}
@@ -215,12 +215,14 @@ function Issues({
         {groups.length === 0 && <p className="text-muted">No issues in this sprint.</p>}
         {groups.map(({ status, issues: inGroup }) => (
           <section key={status.id} aria-label={status.name} className="space-y-1">
-            <h2 className={`${SECTION_HEADING} flex items-center gap-2`}>
+            <h2 className={`${SECTION_HEADING} flex max-w-[40rem] items-center gap-2`}>
               <StatusDot status={status} />
               {status.name}
               <span className="font-normal text-muted">{inGroup.length}</span>
             </h2>
-            <ul className="divide-y divide-line rounded-md border border-line">
+            <ul
+              className={`divide-y divide-line rounded-md border border-line ${properties.length === 0 ? 'max-w-[40rem]' : 'max-w-[64rem]'}`}
+            >
               {inGroup.map((issue) => (
                 <li key={issue.key}>
                   <button
