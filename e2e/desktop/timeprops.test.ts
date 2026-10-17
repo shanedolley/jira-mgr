@@ -241,7 +241,7 @@ async function problems() {
   ]
 }
 
-test('keeps the title, the avatar and the same slots in every row with seven and nine properties on, narrowing the trailing columns in a narrower window', async () => {
+test('keeps the title, the avatar and the same slots in every row with seven and ten properties on, narrowing the trailing columns in a narrower window', async () => {
   await open()
   await toggle('Labels', 'Sprint', ...CHIPS.slice(0, 3))
   await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('Original estimate 2h')
@@ -249,10 +249,10 @@ test('keeps the title, the avatar and the same slots in every row with seven and
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
   const strips: number[] = []
-  // Seven on (the three time chips, Labels, Sprint, Updated and Remaining %), then nine.
+  // Seven on (the three time chips, Labels, Sprint, Updated and Remaining %), then ten.
   for (const [extra, count] of [
     [[CHIPS[3] ?? ''], 7],
-    [['Due date', 'Created'], 9],
+    [['Start date', 'Due date', 'Created'], 10],
   ] as const) {
     await toggle(...extra)
     for (const width of [1200, 1000]) {
@@ -267,9 +267,9 @@ test('keeps the title, the avatar and the same slots in every row with seven and
   await style.evaluate((node) => {
     node.parentNode?.removeChild(node)
   })
-  // The strip narrows with the window, and nine columns at their defaults (744px) do not fit at 1000px.
+  // The strip narrows with the window, and ten columns at their defaults (848px) do not fit at 1000px.
   expect(strips[1]).toBeLessThanOrEqual(strips[0] ?? 0)
   expect(strips[3]).toBeLessThan(strips[2] ?? 0)
-  expect(strips[3]).toBeLessThan(744)
+  expect(strips[3]).toBeLessThan(848)
   expect(strips[3]).toBeGreaterThan(0)
 })

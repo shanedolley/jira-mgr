@@ -150,14 +150,14 @@ async function misaligned(properties: string[]) {
 
 test('names each Display property above the list, with a separator, lined up with the row slots', async () => {
   await open()
-  await toggle('Labels', 'Sprint', 'Due date', 'Created')
+  await toggle('Labels', 'Sprint', 'Start date', 'Due date', 'Created')
   await expect(prop(ROW, 'labels')).toBeVisible()
-  const names = ['Labels', 'Sprint', 'Due date', 'Created', 'Updated']
+  const names = ['Labels', 'Sprint', 'Start date', 'Due date', 'Created', 'Updated']
   await expect(header()).toBeVisible()
   await expect(header()).toHaveText(names.join(''))
   for (const name of names) await expect(separator(name)).toHaveAttribute('role', 'separator')
   await expect(window.getByRole('separator')).toHaveCount(names.length)
-  const props = ['labels', 'sprint', 'due', 'created', 'updated']
+  const props = ['labels', 'sprint', 'start', 'due', 'created', 'updated']
   expect(await misaligned(props)).toEqual([])
 
   // The key, status, priority and avatar keep their anatomy and get no header.
@@ -166,10 +166,10 @@ test('names each Display property above the list, with a separator, lined up wit
 
 test('lines the header up with the rows in a wide font, with a scrollbar, and at a narrower window', async () => {
   await open()
-  await toggle('Labels', 'Sprint', 'Due date', 'Created')
+  await toggle('Labels', 'Sprint', 'Start date', 'Due date', 'Created')
   await expect(prop(ROW, 'labels')).toBeVisible()
   const style = await window.addStyleTag({ content: WIDE_FONT })
-  const props = ['labels', 'sprint', 'due', 'created', 'updated']
+  const props = ['labels', 'sprint', 'start', 'due', 'created', 'updated']
   // A short window makes the list scroll, so its scrollbar takes room on Linux (15px) and none on macOS.
   for (const [width, height] of [
     [1200, 700],

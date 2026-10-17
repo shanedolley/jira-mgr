@@ -427,7 +427,8 @@ function StartDate({
     title: always
       ? (text ?? (editable ? 'Set start date' : undefined))
       : `${text ?? 'Set start date'}${key === undefined ? '' : ` (${key})`}`,
-    className: `inline-flex w-[6rem] shrink-0 items-center justify-end whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
+    style: colWidth('start'),
+    className: `inline-flex shrink-0 items-center justify-end whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
   }
   const content = start !== null && shortDate(start, today)
   return always && onEditCell !== undefined ? (
