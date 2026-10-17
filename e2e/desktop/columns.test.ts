@@ -422,12 +422,12 @@ async function select(row: RegExp) {
 
 test('a key on a column cut to a sliver opens no editor in it', async () => {
   await open()
-  // At 1200 the strip has no room left for the estimate column to anchor an editor.
-  await resize(1400, 800)
   await toggle('Original estimate')
   const slot = prop(/PSAPAC-4,/, 'estimate')
   // At its width the slot takes Shift+E in place.
   await select(/PSAPAC-4,/)
+  // The Tree refits its columns a render after the Peek closes; until then the slot is 0px wide.
+  await expect.poll(() => widthOf(slot)).toBe(64)
   await window.keyboard.press('Shift+E')
   await expect(slot.locator('input')).toBeVisible()
   await window.keyboard.press('Escape')
