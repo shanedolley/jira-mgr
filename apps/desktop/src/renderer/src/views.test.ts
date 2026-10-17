@@ -112,6 +112,15 @@ describe('viewDisplayMatches', () => {
     expect(viewDisplayMatches(sprint, { ...display, direction: 'asc' })).toBe(false)
   })
 
+  it('stops matching when a column width differs, and treats a missing width as the default', () => {
+    const wide = { ...display, widths: { updated: 120 } }
+    const held = { ...sprint, display: wide }
+    expect(viewDisplayMatches(held, wide)).toBe(true)
+    expect(viewDisplayMatches(held, display)).toBe(false)
+    expect(viewDisplayMatches(saved, wide)).toBe(false)
+    expect(viewDisplayMatches(saved, { ...display, widths: { updated: 72 } })).toBe(true)
+  })
+
   it('stops matching when the manual order differs, and only under Manual', () => {
     const manual = { ...display, order: 'manual' as const, direction: 'asc' as const }
     const held = { ...sprint, display: { ...manual, manual: ['P-2', 'P-1'] } }

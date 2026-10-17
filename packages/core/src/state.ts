@@ -15,6 +15,7 @@ import {
   ORDER_DIRECTIONS,
   TREE_LEVELS,
   keepKnownProperties,
+  keepKnownWidths,
 } from './display.js'
 import { JiraMgrError } from './errors.js'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from './view-filter.js'
@@ -55,8 +56,8 @@ const toggles = z
  * Row properties and issue order. Every Jira request reads `settings.json`, so a value this build
  * does not know must never fail the file: unknown properties drop, an unknown order reads as `key`,
  * a missing or unknown direction as the order's default, a `manual` list that is not a list of at
- * most `MANUAL_ORDER_LIMIT` strings as none, and a `display` that is not an object reads as the
- * defaults.
+ * most `MANUAL_ORDER_LIMIT` strings as none, `widths` entries that are not whole pixel widths of a
+ * listed property as none, and a `display` that is not an object reads as the defaults.
  */
 const displayFields = z
   .object({
@@ -69,12 +70,18 @@ const displayFields = z
     direction: z.enum(ORDER_DIRECTIONS).optional().catch(undefined),
     /** The issue keys the Manual order follows. Absent until the user drags a row. */
     manual: z.array(z.string()).max(MANUAL_ORDER_LIMIT).optional().catch(undefined),
+    /** Column widths in pixels by property. Read as `unknown` so one bad entry never fails the rest. */
+    widths: z.unknown().optional(),
   })
-  .transform(({ manual, ...d }) => ({
-    ...d,
-    direction: d.direction ?? ORDER_DEFAULT_DIRECTION[d.order],
-    ...(manual === undefined ? {} : { manual }),
-  }))
+  .transform(({ manual, widths, ...d }) => {
+    const kept = keepKnownWidths(widths, d.properties)
+    return {
+      ...d,
+      direction: d.direction ?? ORDER_DEFAULT_DIRECTION[d.order],
+      ...(manual === undefined ? {} : { manual }),
+      ...(kept === undefined ? {} : { widths: kept }),
+    }
+  })
 
 const settingsDisplay = displayFields.prefault({}).catch(() => displayFields.parse({}))
 

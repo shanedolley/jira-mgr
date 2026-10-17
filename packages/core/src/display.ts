@@ -47,6 +47,33 @@ export const DEFAULT_PROPERTIES: readonly RowProperty[] = ['updated']
 export const DEFAULT_ORDER: IssueOrder = 'key'
 export const DEFAULT_TREE_LEVEL: TreeLevel = 'stories'
 
+/** The widest a column can be saved, in pixels. A drag is capped well below it by the Tree's width. */
+export const WIDTH_MAX = 1000
+
+/** A column's saved width in pixels, by property. A property with no entry takes its default width. */
+export type PropertyWidths = Partial<Record<RowProperty, number>>
+
+/**
+ * The widths a file holds for `properties`, read leniently: an entry is kept only for a listed
+ * property and only as a whole number of pixels from 1 to `WIDTH_MAX` (0 removes a column, so it is
+ * never saved). Anything else drops, and a value that is not an object, or keeps nothing, reads as
+ * none.
+ */
+export function keepKnownWidths(
+  value: unknown,
+  properties: readonly RowProperty[],
+): PropertyWidths | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
+  const kept: PropertyWidths = {}
+  for (const property of properties) {
+    const width: unknown = (value as Record<string, unknown>)[property]
+    if (typeof width === 'number' && Number.isInteger(width) && width >= 1 && width <= WIDTH_MAX) {
+      kept[property] = width
+    }
+  }
+  return Object.keys(kept).length === 0 ? undefined : kept
+}
+
 /** The names in `ROW_PROPERTIES` out of a list, each once, in row order. Unknown names drop. */
 export function keepKnownProperties(names: readonly string[]): RowProperty[] {
   return ROW_PROPERTIES.filter((p) => names.includes(p))

@@ -12,6 +12,7 @@ import { Icon, PENCIL } from './Icon'
 import { keyOf } from './keymap'
 import { useLogWork } from './logWork'
 import { ProgressPill, progressText } from './Progress'
+import { colWidth } from './propertyFit'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
 import { Slot } from './Slot'
 import { holdFade, StatusDot } from './StatusDot'
@@ -364,7 +365,8 @@ function DueDate({
     title: always
       ? (text ?? (editable ? 'Set due date' : undefined))
       : `${text ?? 'Set due date'}${key === undefined ? '' : ` (${key})`}`,
-    className: `inline-flex w-[6rem] shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
+    style: colWidth('due'),
+    className: `inline-flex shrink-0 items-center justify-end gap-1 whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
   }
   const content = due !== null && tone !== null && (
     <>
@@ -425,7 +427,8 @@ function StartDate({
     title: always
       ? (text ?? (editable ? 'Set start date' : undefined))
       : `${text ?? 'Set start date'}${key === undefined ? '' : ` (${key})`}`,
-    className: `inline-flex w-[6rem] shrink-0 items-center justify-end whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
+    style: colWidth('start'),
+    className: `inline-flex shrink-0 items-center justify-end whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
   }
   const content = start !== null && shortDate(start, today)
   return always && onEditCell !== undefined ? (
@@ -474,7 +477,8 @@ export function TimeCell({
           ? undefined
           : 'Log work'
         : `${TIME_NAMES[property]} ${value}`,
-    className: `shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${property === 'remainingPercent' ? 'w-12' : 'w-16'} ${target === null ? '' : 'cursor-pointer rounded hover:bg-line'}`,
+    style: colWidth(property),
+    className: `shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${target === null ? '' : 'cursor-pointer rounded hover:bg-line'}`,
   }
   const text = (
     <>
@@ -515,12 +519,21 @@ export function TimeCell({
   )
 }
 
-function DateCell({ property, at, today }: { property: string; at: string; today: string }) {
+function DateCell({
+  property,
+  at,
+  today,
+}: {
+  property: 'created' | 'updated'
+  at: string
+  today: string
+}) {
   return (
     <span
       data-prop={property}
       title={`${property === 'created' ? 'Created' : 'Updated'} ${localDay(at)}`}
-      className="w-[4.5rem] shrink-0 whitespace-nowrap text-right text-xs text-muted"
+      style={colWidth(property)}
+      className="shrink-0 whitespace-nowrap text-right text-xs text-muted"
     >
       {shortDate(at, today)}
     </span>
@@ -528,13 +541,15 @@ function DateCell({ property, at, today }: { property: string; at: string; today
 }
 
 /**
- * The Tree's property strip shrinks to what the row has left once the title has its minimum, and a
- * slot that no longer fits wraps to a second line, below the strip's one-line height and clipped.
- * The trailing slots drop first and the title is never squeezed out. `gap-y-5` and `h-5` keep a
- * wrapped slot clear of the strip.
+ * The Tree's property strip: one line of slots at the widths the Tree set (`--col-*`, see
+ * `colVars`), which fit the room the title leaves. A strip squeezed past that clips its leading
+ * slots rather than the title or the avatar.
  */
 const TREE_PROPS =
-  'hidden h-5 min-w-0 flex-wrap content-start justify-end gap-y-5 overflow-hidden @tree:flex [&>*]:h-5 [&>*]:leading-5'
+  'hidden h-5 min-w-0 justify-end overflow-hidden @tree:flex [&>*]:h-5 [&>*]:leading-5'
+
+/** Each slot clips what its width cannot hold, so a narrow column shows less and never spills into the next. */
+const CLIP_SLOTS = '[&>[data-prop]]:overflow-hidden'
 
 /**
  * The properties the Display menu chose, in the menu's order. Each keeps a fixed slot, so the
@@ -571,7 +586,7 @@ export function Properties({
     <span
       id={id}
       data-props
-      className={`items-center gap-x-2 ${always ? 'flex max-w-full flex-wrap justify-end gap-y-1' : TREE_PROPS}`}
+      className={`items-center gap-x-2 ${CLIP_SLOTS} ${always ? 'flex max-w-full flex-wrap justify-end gap-y-1' : TREE_PROPS}`}
     >
       {properties.map((property) => {
         switch (property) {
@@ -591,8 +606,9 @@ export function Properties({
               'data-prop': 'labels',
               'data-pick': 'labels',
               title: issue.labels.join(', ') || 'Add labels',
+              style: colWidth('labels'),
               className:
-                'flex w-24 shrink-0 cursor-pointer select-none items-center justify-end gap-1 rounded-md text-xs text-muted hover:bg-line',
+                'flex shrink-0 cursor-pointer select-none items-center justify-end gap-1 rounded-md text-xs text-muted hover:bg-line',
             }
             return always ? (
               <Slot
@@ -622,7 +638,8 @@ export function Properties({
                     ? 'Set sprint'
                     : undefined
                   : sprintTitle(sprint),
-              className: `w-[6.5rem] shrink-0 truncate text-right text-xs text-muted ${sprintCell ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
+              style: colWidth('sprint'),
+              className: `shrink-0 truncate text-right text-xs text-muted ${sprintCell ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
             }
             const text = sprint === undefined ? undefined : sprintLabel(sprint, today)
             // On the Sprint page the slot is a button beside the row's own, named by its value.
@@ -683,7 +700,6 @@ function Content({
   row,
   timing,
   properties,
-  shown,
   today,
   blocks,
   progress,
@@ -692,7 +708,6 @@ function Content({
   row: Row
   timing: boolean
   properties: readonly RowProperty[]
-  shown: number
   today: string
   blocks: BlockCounts
   progress: Progress | undefined
@@ -756,7 +771,7 @@ function Content({
           {timing && <TimerClock issueKey={issue.key} className="shrink-0" />}
           {progress !== undefined && <ProgressPill progress={progress} />}
           <PriorityCell priority={issue.priority} />
-          <Properties issue={issue} properties={properties.slice(0, shown)} today={today} />
+          <Properties issue={issue} properties={properties} today={today} />
           <Pick property="assignee" title="Change assignee">
             <Avatar person={issue.assignee} />
           </Pick>
@@ -785,8 +800,6 @@ interface TreeRowProps {
   dropEdge: 'above' | 'below' | undefined
   /** The row properties the Display menu chose, shown on issue rows while the Tree is wide. */
   properties: readonly RowProperty[]
-  /** How many of `properties`, from the first, fit in every row, which the Tree works out. */
-  shown: number
   /** Today's local date, which the due date's colour and the short dates read. */
   today: string
   /** The open issues holding this row's issue up, and held up by it, as counts so the memo holds. */
@@ -836,7 +849,6 @@ export const TreeRow = memo(function TreeRow({
   dragging,
   dropEdge,
   properties,
-  shown,
   today,
   blockedBy,
   blocking,
@@ -932,7 +944,6 @@ export const TreeRow = memo(function TreeRow({
         row={row}
         timing={timing}
         properties={properties}
-        shown={shown}
         today={today}
         blocks={blocks}
         progress={progress}

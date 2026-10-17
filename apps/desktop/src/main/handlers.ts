@@ -6,6 +6,7 @@ import {
   ORDER_DIRECTIONS,
   ROW_PROPERTIES,
   TREE_LEVELS,
+  WIDTH_MAX,
 } from '@jira-mgr/core/display'
 import { DURATION_PATTERN, SWAPPABLE_TYPES } from '@jira-mgr/core/issue'
 import { TEXT_QUERY_MAX } from '@jira-mgr/core/search'
@@ -347,6 +348,9 @@ const displayArgs: z.ZodType<Display> = z.strictObject({
   order: z.enum(ISSUE_ORDERS),
   direction: z.enum(ORDER_DIRECTIONS),
   manual: z.array(z.string().min(1).max(MAX_ISSUE_KEY)).max(MANUAL_ORDER_LIMIT).optional(),
+  widths: z
+    .partialRecord(z.enum(ROW_PROPERTIES), z.number().int().min(1).max(WIDTH_MAX))
+    .optional(),
 })
 
 const filterValues = z.array(z.string().max(MAX_FILTER_VALUE)).max(MAX_FILTER_VALUES).optional()

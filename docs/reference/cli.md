@@ -2045,7 +2045,7 @@ jm view list
 
 #### Output
 
-An array of saved views. A view the app saved with a display also holds `display`, its row properties, issue order and direction: `{ "properties": ["updated"], "order": "key", "direction": "desc" }`. `direction` is the default for the order when the file holds none. Under `"order": "manual"`, `manual` lists the issue keys in the order the user placed them (`"manual": ["PSAPAC-3", "PSAPAC-1"]`); it is absent until a row is moved. The key is absent from a view with none.
+An array of saved views. A view the app saved with a display also holds `display`, its row properties, issue order and direction: `{ "properties": ["updated"], "order": "key", "direction": "desc" }`. `direction` is the default for the order when the file holds none. `widths`, when the user resized a column, maps a property name to its width in pixels (`"widths": { "labels": 120 }`) and is absent otherwise. Under `"order": "manual"`, `manual` lists the issue keys in the order the user placed them (`"manual": ["PSAPAC-3", "PSAPAC-1"]`); it is absent until a row is moved. The key is absent from a view with none.
 
 ```json
 {

@@ -1,5 +1,10 @@
 import type { Issue } from '@jira-mgr/core'
-import { DEFAULT_TREE_LEVEL, ORDER_DEFAULT_DIRECTION } from '@jira-mgr/core/display'
+import {
+  DEFAULT_TREE_LEVEL,
+  ORDER_DEFAULT_DIRECTION,
+  type PropertyWidths,
+  type RowProperty,
+} from '@jira-mgr/core/display'
 import {
   buildHierarchy,
   childProgress,
@@ -100,6 +105,7 @@ import { allows, type MenuAction, type MenuItemId } from './menuItems'
 import type { ActionId } from './paletteActions'
 import { assignMeOutcome, assigneePatch } from './properties'
 import { attemptWith } from './PropertyPickers'
+import { cellUsable, releasedAt } from './propertyFit'
 import { call } from './ipc'
 import {
   useBatch,
@@ -271,6 +277,9 @@ function flashRows(key: string, fields: readonly string[]) {
     for (const property of document.querySelectorAll(selector)) flash(property)
   }
 }
+
+/** The widths of a display that sets none, one object so the Tree's memos hold. */
+const NO_WIDTHS: PropertyWidths = {}
 
 /** The Tree's moving keys, which end a hover's claim on `C` until the pointer moves again. */
 const NAVIGATION_KEYS = new Set([
@@ -635,6 +644,19 @@ export function Shell({ session }: { session: Session }) {
   }
 
   /**
+   * A column released at `width` pixels, or a key on its separator. Width 0 removes the property,
+   * saved as turning its chip off is: the display changes and the view stays lit. It reads the
+   * display from the cache, since a held arrow key can arrive before the render of the last.
+   */
+  function resizeColumn(property: RowProperty, width: number) {
+    const live = client.getQueryData<Display>(displayKey) ?? display
+    if (live === undefined) return
+    const next = releasedAt(live, property, width)
+    client.setQueryData<Display>(displayKey, next)
+    setDisplay.mutate(next)
+  }
+
+  /**
    * Enter or Down in the filter: the first issue row becomes active, skipping group headers, and
    * takes focus. With no issue row the first row does. The query stays. The rows follow the
    * filters a render late (`useDeferredValue`), so the choice waits until they match the query.
@@ -847,8 +869,8 @@ export function Shell({ session }: { session: Session }) {
     const cell = document
       .getElementById(rowDomId(activeRow.id))
       ?.querySelector<HTMLElement>(`[data-pick="${command}"]`)
-    // A slot the narrow Tree hides has no box to anchor to; the key then opens the Peek's picker.
-    if (issue === undefined || cell?.checkVisibility() !== true) {
+    // A slot the narrow Tree hides, or a column cut to a sliver, has no box to anchor to; the key then opens the Peek's picker.
+    if (issue === undefined || !cellUsable(cell)) {
       return false
     }
     cellEditor.open({ issue, property: command, cell }, false)
@@ -1278,7 +1300,7 @@ export function Shell({ session }: { session: Session }) {
                   .getElementById(rowDomId(activeRow?.id ?? ''))
                   ?.querySelector<HTMLElement>('[data-edit="estimate"]')
               : undefined
-          if (slot?.checkVisibility() === true) {
+          if (cellUsable(slot)) {
             slot.click()
             return
           }
@@ -1484,6 +1506,8 @@ export function Shell({ session }: { session: Session }) {
         peekedKey={peekOpen ? peekedKey : null}
         timerKey={timerQuery.data?.timer?.issueKey ?? null}
         properties={display.properties}
+        widths={display.widths ?? NO_WIDTHS}
+        onResize={resizeColumn}
         today={today}
         blocks={blocks}
         onChange={apply}
@@ -1736,6 +1760,7 @@ export function Shell({ session }: { session: Session }) {
           <SprintPage
             sprintId={sprintId}
             properties={display?.properties ?? []}
+            widths={display?.widths ?? NO_WIDTHS}
             today={today}
             pageRef={sprintRef}
             onBack={() => {

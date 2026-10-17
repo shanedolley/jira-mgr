@@ -195,7 +195,10 @@ async function resize(width: number) {
   await expect.poll(() => window.evaluate(() => globalThis.innerWidth)).toBe(width)
 }
 
-/** For each issue row: its title's width, whether it overflows or clips its avatar, and the left edge of each slot it shows. */
+/**
+ * For each issue row: its title's width, whether it overflows or clips its avatar, the left edge
+ * and width of each slot it shows, and the width of its whole strip.
+ */
 const layout = () =>
   tree()
     .getByRole('treeitem')
@@ -205,12 +208,14 @@ const layout = () =>
         .map((row) => {
           const box = row.getBoundingClientRect()
           const avatar = row.querySelector('[data-pick=assignee]')?.getBoundingClientRect()
-          const slots = [...row.querySelectorAll<HTMLElement>('[data-props] > [data-prop]')]
-            .map((cell) => [cell.dataset.prop ?? '', cell.getBoundingClientRect()] as const)
-            // A slot that does not fit wraps below the row and is clipped.
-            .filter(([, r]) => r.top >= box.top && r.bottom <= box.bottom)
-            .map(([name, r]) => `${name}@${String(Math.round(r.left))}`)
+          const cells = [...row.querySelectorAll<HTMLElement>('[data-props] > [data-prop]')].map(
+            (cell) => [cell.dataset.prop ?? '', cell.getBoundingClientRect()] as const,
+          )
+          const slots = cells.map(
+            ([name, r]) => `${name}@${String(Math.round(r.left))}+${String(Math.round(r.width))}`,
+          )
           return {
+            strip: (cells.at(-1)?.[1].right ?? 0) - (cells[0]?.[1].left ?? 0),
             title:
               row.querySelector('.tree-key')?.nextElementSibling?.getBoundingClientRect().width ??
               0,
@@ -222,7 +227,7 @@ const layout = () =>
         }),
     )
 
-/** What is wrong with the rows now: a short title, an overflow, a clipped avatar, or slots that differ from the first row's. */
+/** What is wrong with the rows now: a short title, an overflow, a clipped avatar, or slots that differ from the first row's in place or width. */
 async function problems() {
   const rows = await layout()
   const first = rows[0]?.slots
@@ -236,33 +241,35 @@ async function problems() {
   ]
 }
 
-test('keeps the title, the avatar and the same slots in every row with seven and nine properties on', async () => {
+test('keeps the title, the avatar and the same slots in every row with seven and ten properties on, narrowing the trailing columns in a narrower window', async () => {
   await open()
   await toggle('Labels', 'Sprint', ...CHIPS.slice(0, 3))
   await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('Original estimate 2h')
   const style = await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
-  const shown: number[] = []
-  // Seven on (the three time chips, Labels, Sprint, Updated and Remaining %), then nine.
+  const strips: number[] = []
+  // Seven on (the three time chips, Labels, Sprint, Updated and Remaining %), then ten.
   for (const [extra, count] of [
     [[CHIPS[3] ?? ''], 7],
-    [['Due date', 'Created'], 9],
+    [['Start date', 'Due date', 'Created'], 10],
   ] as const) {
     await toggle(...extra)
     for (const width of [1200, 1000]) {
       await resize(width)
       await expect.poll(problems).toEqual([])
-      const slots = (await layout())[0]?.slots.split(' ').length ?? 0
-      expect(slots).toBeLessThanOrEqual(count)
-      shown.push(slots)
+      const first = (await layout())[0]
+      // Every property stays on: the user, not the window, removes a column.
+      expect(first?.slots.split(' ')).toHaveLength(count)
+      strips.push(first?.strip ?? 0)
     }
   }
   await style.evaluate((node) => {
     node.parentNode?.removeChild(node)
   })
-  // Fewer slots in a narrower window, and fewer than all nine at 1000px.
-  expect(shown[1]).toBeLessThan(shown[0] ?? 0)
-  expect(shown[3]).toBeLessThan(9)
-  expect(shown[3]).toBeGreaterThan(1)
+  // The strip narrows with the window, and ten columns at their defaults (848px) do not fit at 1000px.
+  expect(strips[1]).toBeLessThanOrEqual(strips[0] ?? 0)
+  expect(strips[3]).toBeLessThan(strips[2] ?? 0)
+  expect(strips[3]).toBeLessThan(848)
+  expect(strips[3]).toBeGreaterThan(0)
 })
