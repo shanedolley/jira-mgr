@@ -7,6 +7,6 @@
 5. Commit in Conventional Commits form, ending with `Refs #<number>`.
 6. Open a pull request and fill in the template. A pull request stands on its own: summarise any Jira or chat context rather than only linking it.
 7. Meet the [definition of done](docs/standards/code-review.md#definition-of-done). Comments marked `Nit:` are optional.
-8. Squash-merge once CI passes and a reviewer other than the builder approves.
+8. Squash-merge once the local CI route passes and a reviewer other than the builder approves.
 
 Agents start from [AGENTS.md](AGENTS.md).

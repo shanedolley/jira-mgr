@@ -16,7 +16,7 @@ The command builds the desktop app, then launches `apps/desktop/out/main/e2e.js`
 
 Run on one worker when hunting a flake or running beside other worktrees: `pnpm e2e --workers=1`. Do not write `pnpm e2e -- --workers 1`, which passes the `--` literally and leaves Playwright on its default of 5 workers. Check the worker count in the output. Several worktrees running e2e at once starve Electron and time out `beforeEach`.
 
-`pnpm install` leaves Electron without its binary, which Electron downloads on first use. Parallel workers that each start that download break each other's launch, so CI runs `pnpm --filter @jira-mgr/e2e exec install-electron` before `pnpm e2e`. After `pnpm install` in a new worktree, see the Electron check in [AGENTS.md](../AGENTS.md).
+`pnpm install` leaves Electron without its binary, which Electron downloads on first use. Parallel workers that each start that download break each other's launch, so run `pnpm --filter @jira-mgr/e2e exec install-electron` before `pnpm e2e` when the dist is missing. After `pnpm install` in a new worktree, see the Electron check in [AGENTS.md](../AGENTS.md).
 
 `desktop/blocked.test.ts` covers the blocked and blocking pills on Tree rows, the Peek's Blocked by list and the pills clearing when the blocker reaches Done, on the fake Jira's Blocks link from PSAPAC-1 to PSAPAC-2.
 

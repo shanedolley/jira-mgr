@@ -40,7 +40,7 @@ A command is a spec in the schema, a handler and a test. The schema is the one s
    pnpm docs:reference
    ```
 
-   This builds the CLI and rewrites `docs/reference/cli.md` and `errors.md`. Commit both. CI fails when they differ from the schema.
+   This builds the CLI and rewrites `docs/reference/cli.md` and `errors.md`. Commit both. The local CI route fails when they differ from the schema.
 
 7. **Check.** Run `pnpm test`, `pnpm typecheck`, `pnpm lint` and `pnpm format:check`. `apps/cli/src/schema.test.ts` also checks that names are kebab-case, that every example parses and that every exit names a known code.
 

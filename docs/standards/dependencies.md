@@ -10,13 +10,13 @@
 
 ## Supply Chain
 
-- `pnpm-lock.yaml` is committed, and CI installs with `--frozen-lockfile`.
+- `pnpm-lock.yaml` is committed, and the local CI route installs with `--frozen-lockfile`.
 - pnpm refuses versions published less than seven days ago (`minimumReleaseAge`). Dependabot waits the same seven days.
-- pnpm blocks install scripts by default. Allow one package at a time in `onlyBuiltDependencies`, with the reason in the pull request. esbuild has an entry for its binary. Electron has no install script and downloads its binary on first use, so CI runs `pnpm --filter @jira-mgr/e2e exec install-electron` before e2e.
+- pnpm blocks install scripts by default. Allow one package at a time in `onlyBuiltDependencies`, with the reason in the pull request. esbuild has an entry for its binary. Electron has no install script and downloads its binary on first use, so run `pnpm --filter @jira-mgr/e2e exec install-electron` before e2e when the dist is missing.
 
 ## Updates
 
-Dependabot opens grouped pull requests weekly. A security update merges as soon as CI passes. A major update gets its own pull request and reads the changelog first.
+Dependabot opens grouped pull requests weekly. A security update merges as soon as the local CI route passes. A major update gets its own pull request and reads the changelog first.
 
 Remove a dependency in the same pull request that stops using it.
 

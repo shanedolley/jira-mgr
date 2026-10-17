@@ -12,7 +12,7 @@ Run every suite with Node 24 (`.nvmrc`). Install first with `pnpm install --froz
 
 `pnpm test` runs `pnpm -r test`. The CLI package builds its bundle with `tsup` first, because a few tests spawn the built binary (`apps/cli/package.json`). `pnpm e2e` builds the desktop app first. On Linux, install Xvfb: each e2e worker starts its own display.
 
-CI also runs `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm build` and `pnpm docs:reference`, and fails when `docs/reference` differs from the committed files (`.github/workflows/ci.yml`). Run the same before you push.
+`pnpm ci:local` runs every check CI ran, then the Electron check and `pnpm e2e --workers=1` complete the route (see [Local CI](../standards/git-workflow.md#local-ci)). It fails when `docs/reference` differs from the committed files. Run it before you push.
 
 ## One Package or File
 
