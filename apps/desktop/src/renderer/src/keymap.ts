@@ -12,6 +12,7 @@ export const PROPERTY_KEYS = {
   labels: 'L',
   priority: 'P',
   edit: 'E',
+  startDate: 'Shift+S',
   dueDate: 'Shift+D',
   parent: 'Shift+P',
   estimate: 'Shift+E',
@@ -77,10 +78,11 @@ export function keepsLetters(target: KeyTarget | null): boolean {
 }
 
 /**
- * The letters that mean something else with Shift: due date, parent, original estimate and
- * sprint, as in Linear's menu. With Shift these four never fall through to `C`, `P` and `E`.
+ * The letters that mean something else with Shift: start date, due date, parent, original
+ * estimate and sprint. With Shift these five never fall through to `S`, `C`, `P` and `E`.
  */
 const SHIFT_LETTERS = new Map<string, Command>([
+  ['s', 'startDate'],
   ['d', 'dueDate'],
   ['p', 'parent'],
   ['e', 'estimate'],

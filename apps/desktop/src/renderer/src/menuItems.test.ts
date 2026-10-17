@@ -55,7 +55,7 @@ describe('the right-click menu items', () => {
       open: 'Enter',
       status: 'S',
       assignee: 'A',
-      startDate: undefined,
+      startDate: 'Shift+S',
       dueDate: 'Shift+D',
       sprint: 'Shift+C',
       edit: 'E',

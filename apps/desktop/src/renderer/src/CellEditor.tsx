@@ -132,6 +132,9 @@ const EDITORS: Record<CellProperty, (context: CellContext) => ReactNode> = {
   priority: ({ issue, cell }) => <PriorityPicker issue={issue} cell={cell} />,
   labels: ({ issue, issues, cell }) => <LabelsPicker issue={issue} issues={issues} cell={cell} />,
   sprint: ({ issue, cell }) => <SprintPicker issue={issue} cell={cell} />,
+  startDate: ({ issue, cell }) => (
+    <DateCell issue={issue} field="startDate" label="Start date" cell={cell} />
+  ),
 }
 
 interface CellEditorProps {

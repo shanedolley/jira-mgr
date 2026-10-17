@@ -6,6 +6,7 @@ export const ROW_PROPERTIES = [
   'logged',
   'remaining',
   'remainingPercent',
+  'start',
   'due',
   'created',
   'updated',

@@ -353,6 +353,7 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
           <TextField
             key={issue.startDate ?? ''}
             label="Start date"
+            shortcut="Shift+S"
             type="date"
             placeholder="Set start date"
             value={issue.startDate ?? ''}
