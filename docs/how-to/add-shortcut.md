@@ -12,7 +12,7 @@ For a key that opens one more property picker of the active issue:
 
 3. **Advertise it on the control.** Give the picker the same letter: `shortcut="X"` on a `Picker` (see `PropertyPickers.tsx`), or `aria-keyshortcuts="X"` on a button. `Shell.tsx` finds the control by that attribute and clicks it, so the shortcut opens the picker the mouse opens and no code is duplicated. The `Picker` also shows the letter as a keycap on hover and focus.
 
-The `default` branch of the `switch` in `Shell.tsx` runs the command, so it needs no change. From the Tree it opens the active issue's Peek first; from the issue page it uses the page's sidebar. The Peek holds only Status, Assignee, Priority and Labels, so a field the Peek lacks (the `Shift` keys) opens the issue menu on that item from the Tree instead, through an item in `menuItems.ts` named as the command.
+The `default` branch of the `switch` in `Shell.tsx` runs the command, so it needs no change. From the Tree it opens the active issue's Peek first, unless the property has a cell editor (`CELL_PROPERTIES` in `cell.ts`), which opens on the active row's cell; from the issue page it uses the page's sidebar. The Peek holds only Status, Assignee, Priority and Labels, so a field the Peek lacks (the `Shift` keys) opens the issue menu on that item from the Tree instead, through an item in `menuItems.ts` named as the command.
 
 ## Run Another Action
 
@@ -36,5 +36,5 @@ Add a row to the matching table in `docs/reference/shortcuts.md`. The `?` overla
 
 ## Test
 
-- Add the letter to the table in `keymap.test.ts` (`map C, T, W, S, A, L, P, E, I, Y, U and F, and with Shift S, T, W, A, L, I, Y, U and F alike`) and to the Cmd and Ctrl loop beside it.
+- Add the letter to the table in `keymap.test.ts` (`map C, T, W, S, A, L, P, E, I, Y, U and F, and with Shift T, W, A, L, I, Y, U and F alike`) and to the Cmd and Ctrl loop beside it.
 - Add an end-to-end case in `e2e/desktop/keyboard.test.ts`, which presses real keys against the fake Jira ([run the tests](run-tests.md)).
