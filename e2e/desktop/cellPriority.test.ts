@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, moveIssue, notices, releaseEdit } from './harness.js'
+import { counts, joinSprint, launch, logIn, moveIssue, notices, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -26,6 +26,11 @@ const item = (name: RegExp) => tree().getByRole('treeitem', { name })
 /** The priority slot's click target on a row: drawn or empty, it is always there. */
 const slot = (row: RegExp) => item(row).locator('[data-pick=priority]')
 const peek = () => window.getByRole('complementary', { name: 'Peek' })
+const sprintPage = () => window.getByRole('region', { name: 'Sprint page' })
+const issuePage = () => window.getByRole('region', { name: 'Issue page' })
+/** A Sprint page row's priority control, a button named with the priority it holds. */
+const sprintSlot = (key: string) =>
+  sprintPage().getByRole('button', { name: new RegExp(`^Priority of ${key}:`) })
 const sidebar = () => window.getByRole('navigation', { name: 'Main' })
 const listbox = () => window.getByRole('listbox', { name: 'Priority' })
 /** `High` and not `Highest`. */
@@ -255,6 +260,138 @@ test('holds its layout with a wide font: the slot keeps 16px, bars or none, and 
   await settle(before + 1)
 
   await slot(/PSAPAC-3,/).click()
+  await expect(highest()).toBeVisible()
+  const fits = await popover().evaluate((list) => {
+    const box = list.getBoundingClientRect()
+    const clipped = [...list.querySelectorAll('[role=option]')].filter(
+      (o) => o.scrollWidth > o.clientWidth + 0.5,
+    ).length
+    return {
+      inside:
+        box.left >= 0 &&
+        box.top >= 0 &&
+        box.right <= globalThis.innerWidth &&
+        box.bottom <= globalThis.innerHeight,
+      clipped,
+    }
+  })
+  expect(fits).toEqual({ inside: true, clipped: 0 })
+})
+
+/** PSAPAC-4 and PSAPAC-13 start in the active sprint; these join them, as in the Sprint page tests. */
+const MEMBERS = [
+  'PSAPAC-1',
+  'PSAPAC-2',
+  'PSAPAC-4',
+  'PSAPAC-11',
+  'PSAPAC-13',
+  'PSAPAC-14',
+  'PSAPAC-22',
+]
+
+async function openSprint() {
+  await joinSprint(app, MEMBERS, 5)
+  await open()
+  await sidebar()
+    .getByRole('region', { name: 'Sprints' })
+    .getByRole('button', { name: /^Current/ })
+    .click()
+  await expect(sprintPage()).toBeVisible()
+  await expect(sprintPage().getByRole('status')).toHaveText('7 issues')
+}
+
+test('a Sprint page row draws a priority slot, empty for Medium, that opens the list and not the issue', async () => {
+  await openSprint()
+  const before = await writes()
+  // PSAPAC-4 is Medium, so the slot is there with no bars.
+  await expect(sprintSlot('PSAPAC-4')).toHaveAccessibleName('Priority of PSAPAC-4: Medium')
+  await expect(sprintSlot('PSAPAC-4').locator('[data-glyph=priority]')).toHaveCount(0)
+
+  await sprintSlot('PSAPAC-4').click()
+  await expect(listbox()).toBeFocused()
+  await expect(issuePage()).toHaveCount(0)
+  // Below the slot, starting at its left edge.
+  const cell = await sprintSlot('PSAPAC-4').boundingBox()
+  const list = await popover().boundingBox()
+  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
+  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
+  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+
+  await high().click()
+  // The slot shows the new priority before Jira answers.
+  await expect(sprintSlot('PSAPAC-4')).toHaveAccessibleName('Priority of PSAPAC-4: High')
+  await expect(sprintSlot('PSAPAC-4').locator('[data-glyph=priority]')).toHaveAttribute(
+    'data-level',
+    '3',
+  )
+  await settle(before + 1)
+  await expect(issuePage()).toHaveCount(0)
+
+  // The row button still opens the issue.
+  await sprintPage()
+    .getByRole('button', { name: /^PSAPAC-13 / })
+    .click()
+  await expect(issuePage()).toBeVisible()
+})
+
+test('a Sprint page priority slot works by keyboard alone: Enter opens, arrows and Enter choose, Esc leaves', async () => {
+  await openSprint()
+  const before = await writes()
+
+  await sprintSlot('PSAPAC-4').focus()
+  await window.keyboard.press('Enter')
+  await expect(listbox()).toBeFocused()
+  await window.keyboard.press('Escape')
+  await expect(listbox()).toHaveCount(0)
+  await expect(sprintSlot('PSAPAC-4')).toBeFocused()
+  expect(await writes()).toBe(before)
+
+  await window.keyboard.press('Enter')
+  await expect(high()).toBeVisible()
+  await window.keyboard.press('ArrowUp')
+  await window.keyboard.press('Enter')
+  await settle(before + 1)
+  await expect(sprintSlot('PSAPAC-4')).toHaveAccessibleName('Priority of PSAPAC-4: High')
+})
+
+test('a refused priority on the Sprint page takes the bars back and the toast offers Retry', async () => {
+  await openSprint()
+  const before = await writes()
+
+  await sprintSlot('PSAPAC-4').click()
+  // The fake refuses Highest.
+  await highest().click()
+  await expect(sprintSlot('PSAPAC-4')).toHaveAccessibleName('Priority of PSAPAC-4: Highest')
+  await expect.poll(writes).toBe(before + 1)
+  await releaseEdit(app)
+
+  const alert = notices(window).getByRole('alert')
+  await expect(alert).toContainText('Priority not changed')
+  await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
+  await expect(sprintSlot('PSAPAC-4')).toHaveAccessibleName('Priority of PSAPAC-4: Medium')
+})
+
+test('holds its layout with a wide font: the Sprint page slot keeps 16px, clears the key and the list fits', async () => {
+  await openSprint()
+  await window.addStyleTag({ content: '* { font-family: Verdana, sans-serif !important }' })
+
+  const rows = await sprintPage().evaluate((page) =>
+    [...page.querySelectorAll('li[data-issue-key]')].map((row) => {
+      const slot = row.querySelector('[data-slot=priority]')?.getBoundingClientRect()
+      const button = row.querySelector('[data-pick=priority]')?.getBoundingClientRect()
+      const key = row.querySelector('span.font-mono')?.getBoundingClientRect()
+      return {
+        key: row.getAttribute('data-issue-key'),
+        width: slot?.width,
+        // The slot is a control of its own, clear of the key before it.
+        clear: button !== undefined && key !== undefined && button.left >= key.right - 0.5,
+      }
+    }),
+  )
+  expect(rows.length).toBe(7)
+  expect(rows.filter((r) => r.width !== 16 || !r.clear)).toEqual([])
+
+  await sprintSlot('PSAPAC-4').click()
   await expect(highest()).toBeVisible()
   const fits = await popover().evaluate((list) => {
     const box = list.getBoundingClientRect()

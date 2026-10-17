@@ -305,9 +305,10 @@ function BlockPills({ blockedBy, blocking }: BlockCounts) {
 
 /**
  * The priority bars in a fixed slot, drawn only above or below the default (Medium), so the column
- * lines up. The row wraps the slot in a `Pick`, so an empty slot is still a click target.
+ * lines up. The Tree row wraps the slot in a `Pick` and the Sprint page row in a `Slot`, so an empty
+ * slot is still a click target.
  */
-function PrioritySlot({ priority }: { priority: Issue['priority'] }) {
+export function PrioritySlot({ priority }: { priority: Issue['priority'] }) {
   const shown = hasPriorityGlyph(priority)
   return (
     <span data-slot="priority" className="inline-flex size-4 shrink-0 items-center justify-center">
