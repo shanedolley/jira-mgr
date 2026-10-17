@@ -331,7 +331,8 @@ test('a Sprint page slot works by keyboard alone: Enter opens, Enter saves, Esc 
   await expect(due('PSAPAC-11', '2099-03-04')).toBeFocused()
 
   await window.keyboard.press('Enter')
-  await expect(editor()).toBeVisible()
+  // The editor takes focus a task after it shows; an Esc before that reaches the page and leaves it.
+  await expect(field()).toBeFocused()
   await window.keyboard.press('Escape')
   await expect(editor()).toHaveCount(0)
   await expect(due('PSAPAC-11', '2099-03-04')).toBeFocused()

@@ -84,7 +84,8 @@ test('a row button is described by the property values its name leaves out', asy
   const row = overlay('PSAPAC-4')
   await expect(row).toHaveAccessibleName(/^PSAPAC-4 \S/)
   await expect(row).toHaveAccessibleDescription(/Original estimate 2h/)
-  await expect(row).toHaveAccessibleDescription(/Logged/)
+  // PSAPAC-4 has no work logged, and the Logged slot's name says so.
+  await expect(row).toHaveAccessibleDescription(/nothing logged/)
 })
 
 test('a row tabs through its controls in order, each with a name', async () => {
@@ -109,7 +110,8 @@ test('a click outside a slot opens the issue and a click on a slot runs only its
   const row = sprintRow('PSAPAC-4')
 
   await row.getByRole('button', { name: /^Status of PSAPAC-4:/ }).click()
-  await expect(window.getByRole('listbox', { name: 'Status' })).toBeVisible()
+  // The list takes focus a task after it shows; an Esc before that reaches the page and leaves it.
+  await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
   await expect(issuePage()).toHaveCount(0)
   await window.keyboard.press('Escape')
   await expect(window.getByRole('listbox', { name: 'Status' })).toHaveCount(0)

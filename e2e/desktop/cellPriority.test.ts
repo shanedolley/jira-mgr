@@ -385,6 +385,8 @@ test('a Sprint page priority slot works by keyboard alone: Enter opens, arrows a
   expect(await writes()).toBe(before)
 
   await window.keyboard.press('Enter')
+  // The list takes focus a task after it shows, so the arrows wait for it.
+  await expect(listbox()).toBeFocused()
   await expect(high()).toBeVisible()
   await window.keyboard.press('ArrowUp')
   await window.keyboard.press('Enter')
@@ -454,7 +456,8 @@ const rowFit = () =>
     [...page.querySelectorAll('li[data-issue-key]')].map((row) => {
       const summary = row.querySelector('span.truncate')?.getBoundingClientRect()
       const key = row.querySelector('span.font-mono')?.getBoundingClientRect()
-      const avatar = row.querySelector('[data-avatar]')?.getBoundingClientRect()
+      // The assignee slot, which holds an unassigned row's dotted circle too: only a person's avatar carries `data-avatar`.
+      const avatar = row.querySelector('[data-pick=assignee]')?.getBoundingClientRect()
       return {
         key: row.getAttribute('data-issue-key'),
         summary: summary?.width ?? 0,

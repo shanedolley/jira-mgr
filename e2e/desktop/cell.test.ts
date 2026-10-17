@@ -387,12 +387,15 @@ test('a Sprint page ring works by keyboard alone: Enter opens, arrows and Enter 
 
   await ring('PSAPAC-4', 'In Progress').focus()
   await window.keyboard.press('Enter')
+  // The list takes focus a task after it shows, so the arrows wait for it.
+  await expect(listbox()).toBeFocused()
   await expect(option('Done')).toBeVisible()
   await window.keyboard.press('ArrowDown')
   await window.keyboard.press('Enter')
   await settle(before + 1)
   await expect(sprintPage()).toBeVisible()
-  expect(await focusWithin(sprintPage())).toBe(true)
+  // The row moves to Done, which remounts its ring; the page takes focus two frames after the list closes.
+  await expect.poll(() => focusWithin(sprintPage())).toBe(true)
 })
 
 test('a refused transition on the Sprint page puts the row back in its group', async () => {
