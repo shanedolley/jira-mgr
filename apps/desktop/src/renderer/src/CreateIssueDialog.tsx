@@ -56,7 +56,6 @@ import {
 } from './create'
 import {
   NONE,
-  STATE_LABELS,
   assigneeChoices,
   assigneeOptions,
   isLabel,
@@ -65,6 +64,7 @@ import {
   projectLabels,
   recentAssignees,
   shownSprints,
+  sprintDetail,
   type ParentMatch,
   type Person,
 } from './properties'
@@ -78,6 +78,7 @@ import {
   useSprints,
   useUsers,
 } from './queries'
+import { useToday } from './today'
 import { commitUpload, getUpload, removeUploadsOf, STAGED_KEY } from './uploads'
 import { useDebounced } from './useDebounced'
 import { TypeIcon } from './TypeIcon'
@@ -502,13 +503,14 @@ export function CreateIssueDialog({
   }
 
   // Sprint
+  const today = useToday()
   const sprintList = shownSprints(sprints.data ?? [], allSprints)
   const sprintOptions: PickerOption[] = [
     { id: NONE, label: 'Backlog' },
     ...sprintList.map((s) => ({
       id: String(s.id),
       label: s.name,
-      detail: STATE_LABELS[s.state],
+      detail: sprintDetail(s, today),
       // Jira refuses a move into a closed sprint.
       disabled: s.state === 'closed',
     })),

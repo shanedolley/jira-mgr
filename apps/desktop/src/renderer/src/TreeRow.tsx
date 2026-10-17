@@ -515,6 +515,9 @@ export function Properties({
 }) {
   if (properties.length === 0) return null
   const sprint = rowSprint(issue)
+  // The Sprint slot is a click target, on the Sprint page a button once it can open the editor.
+  // An Epic or a Subtask has no sprint, so its slot is not.
+  const sprintCell = propertyRules(issue.issueType).sprint && (!always || onEditCell !== undefined)
   const [firstLabel, ...moreLabels] = issue.labels
   return (
     <span
@@ -561,17 +564,38 @@ export function Properties({
               </span>
             )
           }
-          case 'sprint':
-            return (
-              <span
+          case 'sprint': {
+            const shared = {
+              'data-prop': 'sprint',
+              'data-pick': sprintCell ? 'sprint' : undefined,
+              title:
+                sprint === undefined
+                  ? sprintCell
+                    ? 'Set sprint'
+                    : undefined
+                  : sprintTitle(sprint),
+              className: `w-[6.5rem] shrink-0 truncate text-right text-xs text-muted ${sprintCell ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
+            }
+            const text = sprint === undefined ? undefined : sprintLabel(sprint, today)
+            // On the Sprint page the slot is a button beside the row's own, named by its value.
+            return always && onEditCell !== undefined && sprintCell ? (
+              <Slot
                 key={property}
-                data-prop="sprint"
-                title={sprint === undefined ? undefined : sprintTitle(sprint)}
-                className="w-[6.5rem] shrink-0 truncate text-right text-xs text-muted"
+                {...shared}
+                aria-label={`Sprint of ${issue.key}: ${sprint?.name ?? 'Backlog'}`}
+                aria-haspopup="listbox"
+                onClick={(event) => {
+                  onEditCell(issue, 'sprint', event.currentTarget)
+                }}
               >
-                {sprint === undefined ? undefined : sprintLabel(sprint, today)}
+                {text}
+              </Slot>
+            ) : (
+              <span key={property} {...shared}>
+                {text}
               </span>
             )
+          }
           case 'estimate':
           case 'logged':
           case 'remaining':

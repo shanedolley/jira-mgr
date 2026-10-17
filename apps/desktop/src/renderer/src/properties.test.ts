@@ -19,6 +19,7 @@ import {
   recentAssignees,
   refusedNotice,
   shownSprints,
+  sprintDetail,
   sprintPatch,
   statusPatch,
   typePatch,
@@ -114,6 +115,39 @@ describe('shownSprints', () => {
 
   it('keeps closed and undated sprints behind Show all, closed newest first', () => {
     expect(shownSprints(all, true).map((s) => s.id)).toEqual([4, 6, 3, 2, 5, 1])
+  })
+})
+
+describe('sprintDetail', () => {
+  const today = '2026-10-10'
+
+  it('reads the date part of the end timestamp, not the local day', () => {
+    expect(
+      sprintDetail({ name: 'S', state: 'active', endDate: '2026-10-18T14:00:00.000Z' }, today),
+    ).toBe('18 Oct')
+    expect(
+      sprintDetail({ name: 'S', state: 'future', endDate: '2026-01-05T23:59:00Z' }, today),
+    ).toBe('5 Jan')
+  })
+
+  it('adds the year when it is not this one, as the slot does', () => {
+    expect(
+      sprintDetail({ name: 'S', state: 'active', endDate: '2025-12-02T00:00:00Z' }, today),
+    ).toBe("2 Dec '25")
+  })
+
+  it('says Closed for a closed sprint, whatever its end', () => {
+    expect(
+      sprintDetail({ name: 'S', state: 'closed', endDate: '2026-09-14T00:00:00Z' }, today),
+    ).toBe('Closed')
+  })
+
+  it('falls back to the state without a usable end date', () => {
+    expect(sprintDetail({ name: 'S', state: 'future', endDate: null }, today)).toBe('Future')
+    expect(
+      sprintDetail({ name: 'S', state: 'active', endDate: '2026-13-40T00:00:00Z' }, today),
+    ).toBe('Active')
+    expect(sprintDetail({ name: 'S', state: 'active', endDate: 'soon' }, today)).toBe('Active')
   })
 })
 

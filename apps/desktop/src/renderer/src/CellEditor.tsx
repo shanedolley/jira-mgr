@@ -18,7 +18,13 @@ import {
   type CellTarget,
 } from './cell'
 import { DateCell } from './DateCell'
-import { AssigneePicker, LabelsPicker, PriorityPicker, StatusPicker } from './PropertyPickers'
+import {
+  AssigneePicker,
+  LabelsPicker,
+  PriorityPicker,
+  SprintPicker,
+  StatusPicker,
+} from './PropertyPickers'
 
 /** The anchor name the cell being edited carries. One editor is open at a time. */
 const CELL_ANCHOR = '--cell-editor'
@@ -125,6 +131,7 @@ const EDITORS: Record<CellProperty, (context: CellContext) => ReactNode> = {
   ),
   priority: ({ issue, cell }) => <PriorityPicker issue={issue} cell={cell} />,
   labels: ({ issue, issues, cell }) => <LabelsPicker issue={issue} issues={issues} cell={cell} />,
+  sprint: ({ issue, cell }) => <SprintPicker issue={issue} cell={cell} />,
 }
 
 interface CellEditorProps {

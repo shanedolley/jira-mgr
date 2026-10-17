@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
-import { sprintLabel, sprintTitle } from './display.js'
+import { sprintEnd, sprintLabel, sprintTitle } from './display.js'
 
 const today = '2026-10-17'
+
+describe('sprintEnd', () => {
+  it('shows the end day, with the year when it differs from today', () => {
+    expect(sprintEnd({ name: 'Sprint 36', endDate: '2026-10-14T14:00:00Z' }, today)).toBe('14 Oct')
+    expect(sprintEnd({ name: 'Sprint 36', endDate: '2025-12-02' }, today)).toBe("2 Dec '25")
+  })
+
+  it('is null without a usable end date', () => {
+    expect(sprintEnd({ name: 'Sprint 36' }, today)).toBeNull()
+    expect(sprintEnd({ name: 'Sprint 36', endDate: '2026-13-01' }, today)).toBeNull()
+  })
+})
 
 describe('sprintLabel', () => {
   it('shows the number and the end day', () => {

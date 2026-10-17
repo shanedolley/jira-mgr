@@ -68,6 +68,13 @@ interface Rollback {
   patch: Partial<IssueDetail>
   /** The same fields as they were before. */
   previous: Partial<IssueDetail>
+  /** The Sprint page reads the edit took the issue off, as they held it, for a refusal to put back. */
+  left?: Left[]
+}
+
+interface Left {
+  queryKey: readonly unknown[]
+  issue: Issue
 }
 
 /** Fields only the page's own read holds. The listed issues have neither, so an edit never adds them. */
@@ -99,6 +106,27 @@ function editEverywhere(
         }
       : report,
   )
+}
+
+/**
+ * Takes the issue off each Sprint page read whose sprint a `sprints` patch no longer lists, as a
+ * move to another sprint or to Backlog does, so the row leaves at once. Returns the copies taken.
+ */
+function leaveSprints(client: QueryClient, key: string, patch: Partial<IssueDetail>): Left[] {
+  const { sprints } = patch
+  if (sprints === undefined) return []
+  const left: Left[] = []
+  for (const [queryKey, report] of client.getQueriesData<SprintReport>({ queryKey: sprintKey })) {
+    const held = report?.issues.find((i) => i.key === key)
+    if (report === undefined || held === undefined) continue
+    if (sprints.some((s) => s.id === report.sprint.id)) continue
+    left.push({ queryKey, issue: held })
+    client.setQueryData<SprintReport>(queryKey, {
+      ...report,
+      issues: report.issues.filter((i) => i.key !== key),
+    })
+  }
+  return left
 }
 
 /** The fields of `patch` that a listed issue has. */
@@ -250,6 +278,13 @@ async function leaveLine(
 
 /** Puts back the fields a refused edit changed, and only those that still show its value. */
 function rollBack(client: QueryClient, rollback: Rollback): void {
+  for (const { queryKey, issue } of rollback.left ?? []) {
+    client.setQueryData<SprintReport>(queryKey, (report) =>
+      report === undefined || report.issues.some((i) => i.key === issue.key)
+        ? report
+        : { ...report, issues: [...report.issues, issue] },
+    )
+  }
   editEverywhere(client, rollback.key, (issue, detail) => {
     const back: Partial<IssueDetail> = {}
     const fields = Object.keys(detail ? rollback.patch : listFields(rollback.patch))
@@ -309,12 +344,13 @@ export function issueMutation<A extends { key: string }>(
           ],
         ]),
       ) as Partial<IssueDetail>
+      const left = leaveSprints(client, key, patch)
       editEverywhere(client, key, (issue, detail) => ({
         ...issue,
         ...(detail ? patch : listFields(patch)),
       }))
       await turn
-      return { key, patch, previous }
+      return { key, patch, previous, left }
     },
     onSuccess(_data, args, rollback) {
       if (rollback !== undefined)

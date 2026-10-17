@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { sprintEnd } from '@jira-mgr/core/display'
 import { formatEstimate, parentCandidates, parseEstimate } from '@jira-mgr/core/issue'
 
 import type { FieldChoice, SprintOption, StatusOption, UserOption } from '../../shared/ipc'
@@ -40,6 +41,18 @@ export const STATE_LABELS: Record<SprintOption['state'], string> = {
   active: 'Active',
   future: 'Future',
   closed: 'Closed',
+}
+
+/**
+ * What a list shows beside a sprint's full name, so one sprint reads the same in every picker: the
+ * end day as the Tree's slot shows it (`18 Oct`), `Closed` for a closed sprint, else the state.
+ */
+export function sprintDetail(
+  sprint: Pick<SprintOption, 'name' | 'state' | 'endDate'>,
+  today: string,
+): string {
+  if (sprint.state === 'closed') return STATE_LABELS.closed
+  return sprintEnd(sprint, today) ?? STATE_LABELS[sprint.state]
 }
 
 /** An assignee, as the pickers list one. */

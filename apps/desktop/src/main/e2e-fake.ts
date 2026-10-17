@@ -1179,6 +1179,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     if (method === 'POST' && (sprintMove !== null || path === '/rest/agile/1.0/backlog/issue')) {
       const moved = body() as { issues: string[] }
       await hold(moved)
+      const refusedKey = moved.issues.find((key) => refusedKeys.has(key))
+      if (refusedKey !== undefined) {
+        return json({ errorMessages: [`The fake refuses ${refusedKey}.`] }, 400)
+      }
       const sprint = SPRINTS.find((s) => String(s.id) === sprintMove?.[1])
       for (const key of moved.issues) {
         const target = find(key)

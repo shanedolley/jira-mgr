@@ -305,6 +305,13 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - The list is the Peek's `LabelsPicker`, a multi-select: each toggle writes at once through `editIssue` with `addLabels` or `removeLabels` and updates the slot before Jira answers, and the list stays open. A refusal reverts that one label and offers Retry. The type-ahead creates a new label from text without a space. `Esc` or a click outside closes the list, and focus returns to the Tree with the row still active. Enter chooses the active option and never closes the list; `Esc` does.
 - A Hold row stays editable, as with the status dot.
 - The Sprint page's labels slot offers the same picker. It is a `Slot` button beside the row's own, named "Labels of PSAPAC-4: docs" ("none" when empty), in the tab order, so Enter or Space opens the list and the row button still opens the issue.
+*Amended 2026-10-18, build of #273.* Shane wants to select the sprint on the canvas and edit it there. The Sprint slot is the sixth cell editor cell. The orchestrator decided these, pending Shane's confirmation:
+
+- A click on a Tree row's Sprint slot opens the Sprint list as a popover anchored to the slot, through the cell editor. The click makes the row active and does not open the Peek. `Shift+C` opens the same list on the active row's slot; when the Sprint Display property is off, or the Tree is too narrow to draw its slots (an open Peek), there is no visible slot, and `Shift+C` falls back to the issue menu's Sprint picker.
+- The list is the issue page's `SprintPicker`: Backlog first, then the board's sprints, closed ones disabled, with Show all sprints. It names each sprint in full though the slot is abbreviated, and shows the sprint's end day as detail (`18 Oct`, with `'25` in another year, as the slot does), `Closed` for a closed sprint and the state when the sprint has no end day. The issue page, menu, create dialog and bulk bar pickers all use `sprintDetail`, so one sprint reads the same everywhere. The choice is optimistic through `sprintPatch` and `useSetSprint`, and a refusal reverts the slot and offers Retry.
+- The empty slot of a Story, Task or Bug (Backlog) is a click target titled "Set sprint". An Epic or a Subtask has no sprint (`propertyRules`), so its slot is not a target.
+- A Hold row stays editable. Moving a done issue into a sprint is allowed; Jira decides.
+- On the Sprint page the slot is a `Slot` button (#279's pattern), named "Sprint of PSAPAC-13: Sprint 5" and titled with the full name and end day, that opens the same list. Moving the issue to another sprint or to Backlog takes its row off the page at once, a refusal puts it back with the Retry toast, and focus falls to the Sprint page when the row it was on is gone.
 
 ### Peek
 
