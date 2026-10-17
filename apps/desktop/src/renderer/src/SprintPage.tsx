@@ -20,7 +20,7 @@ import {
   type BreakdownId,
 } from './sprintView'
 import { useSprintReport } from './sprintQueries'
-import { Properties } from './TreeRow'
+import { PrioritySlot, Properties } from './TreeRow'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -275,6 +275,18 @@ function Issues({
                       >
                         {issue.summary}
                       </span>
+                      <Slot
+                        data-pick="priority"
+                        title="Change priority"
+                        aria-label={`Priority of ${issue.key}: ${issue.priority?.name ?? 'none'}`}
+                        aria-haspopup="listbox"
+                        onClick={(event) => {
+                          onEditCell(issue, 'priority', event.currentTarget)
+                        }}
+                        className="-m-0.5 inline-flex shrink-0 rounded p-0.5 hover:outline hover:outline-1 hover:outline-line"
+                      >
+                        <PrioritySlot priority={issue.priority} />
+                      </Slot>
                       <Properties
                         id={`props-${issue.key}`}
                         issue={issue}

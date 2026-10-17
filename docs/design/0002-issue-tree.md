@@ -291,6 +291,13 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - The slot keeps its width, with a hover fill as the only change, and its title names the key.
 - The Sprint page's due slot is a `Slot` button named "Due date of PSAPAC-4: none" that opens the same editor, with the focus returning to it, beside the row button and not inside it (#279).
 
+*Amended 2026-10-18, build of #269.* Shane wants to select the priority on the canvas and edit it there. The orchestrator decided these, pending Shane's confirmation:
+
+- A click on a row's priority slot opens the Priority list as a popover anchored to the slot, the same cell editor as the status dot. The slot is a click target whether it draws bars or is empty, since Medium and an unset priority draw nothing: an empty slot shows a faint outline on hover, and the rounded dot and avatar fill instead. The slot keeps its 16px, so columns do not shift. The tooltip reads "Change priority"; the row's accessible name still carries `priority <name>` when the bars show.
+- `P` on the Tree opens the same list on the active row's slot. It is the Peek's Priority picker (`PriorityPicker`) with its options, optimistic patch and refusal toast, so a refused priority removes the bars again and offers Retry. `Esc`, a choice or a click outside closes it, and focus returns to the Tree. The Peek's and the page's Priority pickers and the palette's "Change priority" are unchanged.
+- A Hold row stays editable, and its slot keeps the row's fade.
+- The Sprint page rows drew no priority, so each gains the same slot, after the summary and before the row properties: a `Slot` button named "Priority of PSAPAC-4: Medium" around the Tree's glyph slot, drawn or empty, that opens the same list. It is in the tab order after Status, sits inside the row's Hold fade, and the row button still opens the issue. It shows even when the Display menu has no properties on, since it is a cell and not a Display property.
+
 ### Peek
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.

@@ -157,7 +157,7 @@ test('the palette takes letters as text, and Esc closes it and returns focus', a
   await expect(filter).toBeFocused()
 })
 
-test('S and A open their lists beside the row; P and L open the Peek pickers; a pick returns focus to the Tree', async () => {
+test('S, A and P open their lists beside the row; L opens the Peek picker; a pick returns focus to the Tree', async () => {
   await open()
   await select(/PSAPAC-4,/)
   const before = await writes()
@@ -188,13 +188,14 @@ test('S and A open their lists beside the row; P and L open the Peek pickers; a 
   await expect(window.getByRole('combobox', { name: 'Search Assignee' })).toHaveCount(0)
   await expect(tree()).toBeFocused()
 
-  // P: a priority from the list.
+  // P: a priority from the list beside the row's slot, with no Peek.
   await window.keyboard.press('p')
   await expect(window.getByRole('listbox', { name: 'Priority' })).toBeFocused()
   await expect(option('Low')).toBeVisible()
   await window.keyboard.press('ArrowDown')
   await window.keyboard.press('Enter')
-  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Low')
+  await expect(peek()).toHaveCount(0)
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/priority Low/)
   await expect(tree()).toBeFocused()
   await settle(before + 2)
 
@@ -281,6 +282,9 @@ test('Esc closes a picker, then the Peek, from wherever focus is', async () => {
   await open()
   await select(/PSAPAC-4,/)
 
+  // The Peek is open under the list, which P draws beside the row.
+  await window.keyboard.press(' ')
+  await expect(peek()).toBeVisible()
   await window.keyboard.press('p')
   await expect(window.getByRole('listbox', { name: 'Priority' })).toBeFocused()
   // The first Esc closes only the picker.
@@ -371,8 +375,8 @@ test('Cmd+Z undoes the status, newest edit first, and the toast offers Undo', as
 
   // The priority goes first.
   await window.keyboard.press('Meta+z')
-  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Medium')
-  await expect(peekPicker('Status')).toHaveAccessibleName('Status: To Do')
+  await expect(item(/PSAPAC-4,/)).not.toHaveAccessibleName(/priority/)
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/, To Do,/)
   await settle(before + 3)
   expect(await lastBody()).toEqual({ fields: { priority: { id: '3' } } })
   await expect(notice('Undid PSAPAC-4: priority back to Medium')).toBeVisible()
@@ -386,7 +390,7 @@ test('Cmd+Z undoes the status, newest edit first, and the toast offers Undo', as
 
   // Then the status, moved back by the old status's transition.
   await window.keyboard.press('Meta+z')
-  await expect(peekPicker('Status')).toHaveAccessibleName('Status: In Progress')
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/, In Progress,/)
   await settle(before + 4)
   expect(await lastBody()).toEqual({ transition: { id: 't2' } })
   await expect(notice('Undid PSAPAC-4: status back to In Progress')).toBeVisible()
@@ -432,18 +436,17 @@ test('Cmd+Z leaves native undo to a text field, and a refused edit leaves nothin
   const filter = window.getByLabel('Filter by key or summary')
   await filter.fill('abc')
   await filter.press('Meta+z')
-  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Low')
   await expect(notice(/^Undid/)).toHaveCount(0)
   expect(await writes()).toBe(before + 1)
 
   // From the Tree it undoes. Now an edit Jira refuses: Highest is refused by the fake.
   await filter.fill('')
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/priority Low/)
   await item(/PSAPAC-4,/).click()
   await window.keyboard.press('Escape')
   await window.keyboard.press('Meta+z')
   await settle(before + 2)
-  await window.keyboard.press(' ')
-  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Medium')
+  await expect(item(/PSAPAC-4,/)).not.toHaveAccessibleName(/priority/)
 
   await window.keyboard.press('p')
   await expect(window.getByRole('listbox', { name: 'Priority' })).toBeFocused()
@@ -498,7 +501,7 @@ test('a refused undo shows the value as it was, says why, and is not retried', a
   await window.keyboard.press('ArrowDown')
   await window.keyboard.press('Enter')
   await settle(before + 1)
-  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Low')
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/priority Low/)
 
   await refuseNextEdit(app)
   await window.keyboard.press('Meta+z')
@@ -507,7 +510,7 @@ test('a refused undo shows the value as it was, says why, and is not retried', a
   await releaseEdit(app)
   await expect(window.getByRole('alert')).toContainText('Could not undo the priority of PSAPAC-4')
   await expect(window.getByRole('alert')).toContainText('The fake refuses this edit.')
-  await expect(peekPicker('Priority')).toHaveAccessibleName('Priority: Low')
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/priority Low/)
 
   // The refused entry is gone, so another Cmd+Z has nothing to retry and sends nothing.
   await window.keyboard.press('Meta+z')

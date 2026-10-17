@@ -249,7 +249,7 @@ export function AssigneePicker({ issue, issues, me, menu, cell }: AssigneeProps)
 }
 
 /** The project's priorities from the create metadata. Opened by `P`. */
-export function PriorityPicker({ issue, menu }: PickerProps) {
+export function PriorityPicker({ issue, menu, cell }: PickerProps) {
   const change = useIssueChange(issue)
   const [open, setOpen] = useState(false)
   const priorities = useFieldOptions('priority', open)
@@ -263,6 +263,7 @@ export function PriorityPicker({ issue, menu }: PickerProps) {
   return (
     <Picker
       {...menuProps(menu)}
+      cell={cell}
       label="Priority"
       shortcut="P"
       valueText={issue.priority?.name ?? 'None'}

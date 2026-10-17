@@ -92,6 +92,7 @@ test('a row tabs through its controls in order, each with a name', async () => {
   await overlay('PSAPAC-4').focus()
   const names = [
     /^Status of PSAPAC-4:/,
+    /^Priority of PSAPAC-4:/,
     'Original estimate 2h',
     /^Log work on PSAPAC-4,/,
     /^Assignee of PSAPAC-4:/,

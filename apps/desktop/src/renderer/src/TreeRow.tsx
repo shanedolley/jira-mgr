@@ -132,16 +132,18 @@ function Chevron({ row }: { row: Row }) {
 }
 
 /**
- * Wraps a row's status dot or avatar, which open that property's picker on a click, in a popover
- * anchored to the cell (the cell editor). The Tree owns every key, so this is a click target
- * only: `S` and `A` are the keyboard's way to the same pickers. It selects no text.
+ * Wraps a row's status dot, priority slot or avatar, which open that property's picker on a click in
+ * a popover anchored to the cell (the cell editor). The Tree owns every key, so this is a click
+ * target only: `S`, `P` and `A` are the keyboard's way to the same pickers. It selects no text. The
+ * priority slot is often empty, so it shows its target as a faint outline on hover, where the round
+ * dot and avatar fill.
  */
 function Pick({
   property,
   title,
   children,
 }: {
-  property: 'status' | 'assignee'
+  property: 'status' | 'priority' | 'assignee'
   title: string
   children: ReactNode
 }) {
@@ -149,7 +151,11 @@ function Pick({
     <span
       data-pick={property}
       title={title}
-      className="inline-flex shrink-0 cursor-pointer select-none rounded-full p-0.5 -m-0.5 hover:bg-line"
+      className={`inline-flex shrink-0 cursor-pointer select-none p-0.5 -m-0.5 ${
+        property === 'priority'
+          ? 'rounded hover:outline hover:outline-1 hover:outline-line'
+          : 'rounded-full hover:bg-line'
+      }`}
     >
       {children}
     </span>
@@ -297,17 +303,26 @@ function BlockPills({ blockedBy, blocking }: BlockCounts) {
   )
 }
 
-/** The priority bars in a fixed slot, drawn only above or below the default (Medium), so the column lines up. */
-function PrioritySlot({ priority }: { priority: Issue['priority'] }) {
+/**
+ * The priority bars in a fixed slot, drawn only above or below the default (Medium), so the column
+ * lines up. The Tree row wraps the slot in a `Pick` and the Sprint page row in a `Slot`, so an empty
+ * slot is still a click target.
+ */
+export function PrioritySlot({ priority }: { priority: Issue['priority'] }) {
   const shown = hasPriorityGlyph(priority)
   return (
-    <span
-      data-slot="priority"
-      title={shown ? `Priority: ${priority.name}` : undefined}
-      className="inline-flex size-4 shrink-0 items-center justify-center"
-    >
+    <span data-slot="priority" className="inline-flex size-4 shrink-0 items-center justify-center">
       {shown && <PriorityBars name={priority.name} />}
     </span>
+  )
+}
+
+/** The priority slot as a click target for the cell editor: drawn or empty, it keeps its 16px. */
+export function PriorityCell({ priority }: { priority: Issue['priority'] }) {
+  return (
+    <Pick property="priority" title="Change priority">
+      <PrioritySlot priority={priority} />
+    </Pick>
   )
 }
 
@@ -637,7 +652,7 @@ function Content({
           )}
           {timing && <TimerClock issueKey={issue.key} className="shrink-0" />}
           {progress !== undefined && <ProgressPill progress={progress} />}
-          <PrioritySlot priority={issue.priority} />
+          <PriorityCell priority={issue.priority} />
           <Properties issue={issue} properties={properties.slice(0, shown)} today={today} />
           <Pick property="assignee" title="Change assignee">
             <Avatar person={issue.assignee} />

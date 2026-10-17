@@ -109,6 +109,7 @@ test('fades every field of a Hold row on the Sprint page to 30% and no other row
     0.3,
     row.getByText('PSAPAC-11', { exact: true }),
     row.getByText('Draft the runbook'),
+    row.locator('[data-slot="priority"]'),
     row.locator('[data-prop="labels"]'),
     row.locator('[data-prop="estimate"]'),
     row.locator('[data-avatar]'),
