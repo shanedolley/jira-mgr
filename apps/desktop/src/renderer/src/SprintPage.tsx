@@ -242,7 +242,7 @@ function Issues({
                         {issue.key}
                       </span>
                       <span
-                        className={`flex-1 truncate ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
+                        className={`flex-1 truncate text-muted ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
                       >
                         {issue.summary}
                       </span>

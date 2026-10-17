@@ -105,6 +105,20 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
     }
   })
 
+  it('keeps row text (muted: the key and the summary) at 4.5:1 on every row background', () => {
+    // The two selected fills remap --muted to --row-muted (styles.css).
+    const selected = new Set(['row-selected', 'row-selected-focus'])
+    for (const surface of ROW_SURFACES) {
+      expect(
+        contrast(
+          token(selected.has(surface) ? 'row-muted' : 'muted', theme),
+          token(surface, theme),
+        ),
+        surface,
+      ).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
   it('keeps the Required text (--danger) at 4.5:1 on the tinted chip (--selected)', () => {
     expect(contrast(token('danger', theme), token('selected', theme))).toBeGreaterThanOrEqual(4.5)
   })

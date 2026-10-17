@@ -970,6 +970,17 @@ test('marks the active and the open row by distinct fills, with no ring, edge or
   }
 })
 
+test('draws the summary of a resting row in the key colour, at medium weight', async () => {
+  await open()
+  const row = item(/PSAPAC-3,/)
+  const colour = (field: Locator) => field.evaluate((el) => getComputedStyle(el).color)
+  const key = await colour(row.locator('.tree-key'))
+  const summary = row.locator('span.truncate.font-medium')
+  expect(await colour(summary)).toBe(key)
+  expect(key).toBe(await painted('var(--muted)'))
+  await expect(summary).toHaveCSS('font-weight', '500')
+})
+
 test('keeps the bold key inside its box in a wide font', async () => {
   await open()
   await window.keyboard.press('j')

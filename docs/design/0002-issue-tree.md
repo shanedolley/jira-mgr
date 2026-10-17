@@ -144,7 +144,7 @@ The Shell derives everything during render, with `useMemo`:
 | Kind | Id | Level | Shows | Expandable |
 |---|---|---|---|---|
 | Customer header | `c:<option id>`, `c:none` | 1 | The Customer's name, or "No Customer", and its issue count. An empty group shows "No issues" | When it has rows |
-| Issue | `i:<key>` | 2 for an Epic, 3 for a child, 4 for a Subtask; one more under a chip | Status, key, type, summary, mismatch badge, assignee; an Epic adds its issue count. Dimmed when `contextOnly` | When it has children or Done children |
+| Issue | `i:<key>` | 2 for an Epic, 3 for a child, 4 for a Subtask; one more under a chip | Status, key, type, summary, mismatch badge, assignee; an Epic adds its issue count. The summary draws in `--muted`, the key's colour, on every row (#266), so a `contextOnly` row no longer reads dimmer; it differs by its "context" accessible name and its missing checkbox | When it has children or Done children |
 | No Epic header | `n:<option id>`, `n:none` | 2 | "No Epic" and its issue count | Yes |
 | Done chip | `d:<parent key>` | The parent's level plus one | "N done" | Yes: revealing lists the Done children |
 
@@ -259,7 +259,7 @@ Closing the Peek by `Esc`, `Space` or its Close button returns focus to the Tree
 | No Epic header | `No Epic, 3 issues` |
 | Done chip | `4 done` |
 
-Rows contain no buttons, since a `treeitem` holds no focusable children: the Tree's keys and a row click are its controls. The active row carries a focus ring of at least 3:1 contrast, distinct from the hover background and from dimmed context rows, in both themes. Context rows keep WCAG 2.2 AA text contrast. Expanding animates nothing, so `prefers-reduced-motion` needs no case.
+Rows contain no buttons, since a `treeitem` holds no focusable children: the Tree's keys and a row click are its controls. The active row carries a focus ring of at least 3:1 contrast, distinct from the hover background and from context rows, in both themes. Context rows keep WCAG 2.2 AA text contrast. Expanding animates nothing, so `prefers-reduced-motion` needs no case.
 
 **Boundary with D7.** The handler sits on the Tree element, so it never sees a keystroke typed into the text filter or the Peek's summary field, which the React standard requires. It ignores any event with `metaKey`, `ctrlKey` or `altKey`, so `Cmd+K` and `Cmd+Z` pass through. D7's global shortcuts (`C`, `S`, `A`, `L`, `P`, `E`, and `T` in D9) share no key with it. D2 lifts the active issue key to the Shell, where D7 reads it as the target of `S`, `A` and the rest. When D7 adds its global `Esc`, it skips events already handled (`defaultPrevented`).
 

@@ -480,9 +480,7 @@ function Content({
         </span>
       )
     case 'issue': {
-      const { issue, contextOnly, customerMismatch } = row.node
-      // Context rows read as muted text, which keeps AA contrast, rather than as faded ink.
-      const tone = contextOnly ? 'text-muted' : ''
+      const { issue, customerMismatch } = row.node
       return (
         <span {...holdFade(issue.status)} className="flex min-w-0 flex-1 items-center gap-2">
           <TypeIcon type={issue.issueType} />
@@ -492,7 +490,7 @@ function Content({
           <span className="tree-key w-[5.5rem] min-w-fit shrink-0 text-xs font-[450] tabular-nums text-muted">
             {issue.key}
           </span>
-          <span className={`min-w-0 flex-1 truncate font-medium @tree:min-w-20 ${tone}`}>
+          <span className="min-w-0 flex-1 truncate font-medium text-muted @tree:min-w-20">
             {issue.summary}
           </span>
           <BlockPills {...blocks} />

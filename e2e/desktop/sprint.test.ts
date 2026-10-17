@@ -58,6 +58,15 @@ async function open() {
 const count = (name: string) =>
   panel().getByText(name, { exact: true }).locator('xpath=following-sibling::dd').innerText()
 
+test('draws a Sprint page row summary in the key colour', async () => {
+  await open()
+  await entry('Current').click()
+  const row = sprintPage().locator('[data-issue-key=PSAPAC-2]')
+  const colour = (field: Locator) => field.evaluate((el) => getComputedStyle(el).color)
+  const key = await colour(row.getByText('PSAPAC-2', { exact: true }))
+  expect(await colour(row.getByText('Review the data model'))).toBe(key)
+})
+
 test('opens the active sprint from the sidebar with counts that equal its issues', async () => {
   await open()
   await expect(entry('Current')).toContainText('Sprint 5')
