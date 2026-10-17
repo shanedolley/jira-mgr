@@ -110,7 +110,7 @@ async function pick(row: RegExp) {
   await expect.poll(() => width(row)).toBeGreaterThanOrEqual(16)
 }
 
-const width = async (row: RegExp) => (await slot(row).boundingBox())?.width
+const width = async (row: RegExp) => (await slot(row).boundingBox())?.width ?? 0
 
 test('a click on an empty slot opens the editor beside it, focused, and not the Peek', async () => {
   await open()

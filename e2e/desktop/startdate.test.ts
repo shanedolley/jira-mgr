@@ -122,7 +122,7 @@ async function pick(row: RegExp) {
   await expect.poll(() => width(row)).toBeGreaterThanOrEqual(16)
 }
 
-const width = async (row: RegExp) => (await slot(row).boundingBox())?.width
+const width = async (row: RegExp) => (await slot(row).boundingBox())?.width ?? 0
 
 test('the Display chip shows and hides the slot, and the slot is empty without a date', async () => {
   await logIn(window)
