@@ -24,10 +24,11 @@ const SCOPE = '[data-key-scope]'
 const scoped = inside(SCOPE)
 
 describe('the letter shortcuts', () => {
-  it('map C, T, S, A, L, P, E, I, Y, U and F, and with Shift S, T, A, L, I, Y, U and F alike', () => {
+  it('map C, T, W, S, A, L, P, E, I, Y, U and F, and with Shift S, T, W, A, L, I, Y, U and F alike', () => {
     const expected = {
       c: 'create',
       t: 'timer',
+      w: 'logWork',
       s: 'status',
       a: 'assignee',
       l: 'labels',
@@ -300,6 +301,7 @@ describe('keyOf', () => {
     expect(keyOf('copyKey')).toBe('Y')
     expect(keyOf('copyLink')).toBe('U')
     expect(keyOf('filterMenu')).toBe('F')
+    expect(keyOf('logWork')).toBe('W')
     expect(keyOf('dueDate')).toBe('Shift+D')
     expect(keyOf('parent')).toBe('Shift+P')
     expect(keyOf('estimate')).toBe('Shift+E')

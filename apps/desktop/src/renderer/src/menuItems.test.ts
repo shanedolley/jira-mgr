@@ -64,7 +64,7 @@ describe('the right-click menu items', () => {
       labels: 'L',
       priority: 'P',
       estimate: 'Shift+E',
-      logWork: undefined,
+      logWork: 'W',
       related: undefined,
       copy: undefined,
       openInJira: undefined,
