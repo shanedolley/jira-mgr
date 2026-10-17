@@ -44,6 +44,12 @@ describe('fittingCount', () => {
     ).toBe(true)
   })
 
+  it('keeps room for the summary pencil: 22px more than a row without one needs', () => {
+    // Chrome 280, the 4px level indent, eight 8px gaps and the 72px slot of `updated`.
+    expect(fittingCount(['updated'], 419, 1, 0)).toBe(0)
+    expect(fittingCount(['updated'], 420, 1, 0)).toBe(1)
+  })
+
   it('counts from the first property, so a short list is never cut for a long one', () => {
     expect(fittingCount(['updated'], 700, 4, extrasWidth({ ...none, blocked: true }))).toBe(1)
   })

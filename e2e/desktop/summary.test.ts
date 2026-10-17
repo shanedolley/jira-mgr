@@ -106,7 +106,7 @@ test('a double-click on the active row still opens its page and no editor', asyn
   await text().dblclick({ position: ON_TEXT })
   await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
   // Long enough for a second-click editor to have opened.
-  await window.waitForTimeout(600)
+  await window.waitForTimeout(900)
   await expect(dialog()).toHaveCount(0)
 })
 
@@ -116,7 +116,7 @@ test('a click on a row that is not active only selects it', async () => {
     .getByText('Fix the export timeout')
     .click({ position: ON_TEXT })
   await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
-  await window.waitForTimeout(600)
+  await window.waitForTimeout(900)
   await expect(dialog()).toHaveCount(0)
 })
 
@@ -190,7 +190,7 @@ test('a Customer header offers no target, and E on it opens nothing', async () =
   await expect(header.locator('[data-edit="summary"], [data-summary]')).toHaveCount(0)
   await header.click()
   await window.keyboard.press('e')
-  await window.waitForTimeout(600)
+  await window.waitForTimeout(900)
   await expect(dialog()).toHaveCount(0)
 })
 

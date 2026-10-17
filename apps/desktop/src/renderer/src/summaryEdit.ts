@@ -5,8 +5,9 @@
 /**
  * How long a second click on the summary waits before it opens the editor. A double-click opens
  * the issue page instead, so the modal waits out the second click rather than opening under it.
+ * macOS's default double-click interval is about 500 ms.
  */
-export const DOUBLE_CLICK_MS = 300
+export const DOUBLE_CLICK_MS = 500
 
 export interface SummaryClick {
   /** The row was active before this click, so the click did not select it. */

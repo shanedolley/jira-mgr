@@ -110,6 +110,14 @@ export function IssueTree({
   treeRef,
   empty,
 }: IssueTreeProps) {
+  // A second click on a summary opens the editor once no double-click, other click or key follows it.
+  const editTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(
+    () => () => {
+      clearTimeout(editTimer.current)
+    },
+    [],
+  )
   const [scrollTop, setScrollTop] = useState(0)
   const [height, setHeight] = useState(0)
   const [width, setWidth] = useState(0)
@@ -213,6 +221,7 @@ export function IssueTree({
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     // A field in a row (the estimate) keeps its keys: Arrows, Enter and Space are its own.
     if (event.target instanceof Element && keepsLetters(event.target)) return
+    clearTimeout(editTimer.current)
     const input = {
       key: event.key,
       shiftKey: event.shiftKey,
@@ -291,14 +300,6 @@ export function IssueTree({
   const indicator = drag?.over == null ? null : dropIndicator(rows, drag.id, drag.over)
 
   const armed = useRef<string | null>(null)
-  // A second click on a summary opens the editor once no double-click follows it.
-  const editTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  useEffect(
-    () => () => {
-      clearTimeout(editTimer.current)
-    },
-    [],
-  )
   const onRowClick = useCallback(
     (
       id: string,
@@ -308,7 +309,7 @@ export function IssueTree({
     ) => {
       // The second click of a double-click on an issue is inert: the Peek may have moved a header or
       // another row under it, and the double-click opens the first click's issue.
-      if (detail > 1) clearTimeout(editTimer.current)
+      clearTimeout(editTimer.current)
       if (detail > 1 && armed.current !== null) return
       // The click also focuses the Tree, the nearest focusable ancestor of the row.
       onChange({ ...clickRow(rows, state, id, onChevron, select), openPage: false })

@@ -121,7 +121,14 @@ export function current(client: QueryClient, key: string): Issue | undefined {
     const found = client.getQueryData<Issue[]>(phaseKey(phase))?.find((issue) => issue.key === key)
     if (found !== undefined) return found
   }
-  return client.getQueryData<IssueDetail>(issueDetailKey(key))
+  const detail = client.getQueryData<IssueDetail>(issueDetailKey(key))
+  if (detail !== undefined) return detail
+  // An issue only an open Sprint page holds, such as a Done one before its phase loads.
+  for (const [, report] of client.getQueriesData<SprintReport>({ queryKey: sprintKey })) {
+    const found = report?.issues.find((issue) => issue.key === key)
+    if (found !== undefined) return found
+  }
+  return undefined
 }
 
 /** True while an edit to the issue is in flight, so its optimistic value is not Jira's yet. */

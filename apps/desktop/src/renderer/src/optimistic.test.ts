@@ -104,6 +104,32 @@ describe('summaryMutation', () => {
     expect(names()).toEqual(['One', 'Two'])
   })
 
+  it('edits and records an issue that only an open Sprint page holds', async () => {
+    const client = new QueryClient()
+    client.setQueryData(['sprint', 7], {
+      sprint: { id: 7 },
+      issues: [issue('PSAPAC-9', 'Nine')],
+      stats: {},
+    })
+    const request = deferred<null>()
+    const { read } = reader({ 'PSAPAC-9': detail(issue('PSAPAC-9', 'Nine, edited')) })
+    const record = vi.fn()
+    const observer = new MutationObserver(
+      client,
+      summaryMutation(client, () => request.promise, read, record),
+    )
+    const names = () =>
+      client.getQueryData<{ issues: Issue[] }>(['sprint', 7])?.issues.map((i) => i.summary)
+    const done = observer.mutate({ key: 'PSAPAC-9', summary: 'Nine, edited' })
+    await expect.poll(names).toEqual(['Nine, edited'])
+    request.resolve(null)
+    await done
+    expect(record).toHaveBeenCalledWith(
+      { key: 'PSAPAC-9', summary: 'Nine, edited' },
+      { patch: { summary: 'Nine, edited' }, before: { summary: 'Nine' } },
+    )
+  })
+
   it('reads the edited issue after a save, and no list', async () => {
     const { client, observer, request, read } = setup()
     const done = observer.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })

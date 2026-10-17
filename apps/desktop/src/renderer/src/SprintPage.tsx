@@ -262,7 +262,7 @@ function Issues({
                     onClick={() => {
                       onEditSummary(issue)
                     }}
-                    className="absolute right-2 top-1 inline-flex size-6 items-center justify-center rounded text-muted opacity-0 hover:bg-line focus-visible:opacity-100 group-hover/row:opacity-100"
+                    className="btn btn-ghost btn-icon btn-sm absolute right-2 top-1 opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100"
                   >
                     <Icon path={PENCIL} />
                   </button>

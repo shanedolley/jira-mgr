@@ -671,6 +671,7 @@ export const TreeRow = memo(function TreeRow({
       aria-expanded={row.expandable ? row.expanded : undefined}
       aria-selected={selected ? true : undefined}
       aria-checked={checkable && selecting ? checked : undefined}
+      aria-keyshortcuts={row.kind === 'issue' ? 'E' : undefined}
       data-active={active}
       data-row-id={row.id}
       // An issue row drags to a new place among its siblings; a header and a chip do not.

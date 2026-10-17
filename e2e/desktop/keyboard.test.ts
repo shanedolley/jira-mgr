@@ -212,25 +212,44 @@ test('S, A, P and L open the Peek pickers for the active row, and a pick returns
   await expect(peek()).toBeVisible()
 })
 
-test('E edits the summary in the Peek, and Cmd+Z puts the old one back', async () => {
+test('E from the Tree edits the summary in a modal, and Cmd+Z puts the old one back', async () => {
   await open()
   await select(/PSAPAC-4,/)
   const before = await writes()
 
   await window.keyboard.press('e')
-  const field = peek().getByLabel('Summary')
+  const dialog = window.getByRole('dialog', { name: 'Edit summary' })
+  const field = dialog.getByLabel('Summary of PSAPAC-4')
   await expect(field).toBeFocused()
   await field.fill('Migrate the dashboards, again')
   await field.press('Enter')
-  await expect(peek().getByRole('heading', { name: 'Migrate the dashboards, again' })).toBeVisible()
+  await expect(dialog).toHaveCount(0)
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/Migrate the dashboards, again/)
   await expect(tree()).toBeFocused()
   await settle(before + 1)
   await expect(notice('PSAPAC-4: summary changed to "Migrate the dashboards, again"')).toBeVisible()
 
   await window.keyboard.press('Meta+z')
-  await expect(peek().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/Migrate the dashboards,/)
   await settle(before + 2)
   await expect(notice('Undid PSAPAC-4: summary back to "Migrate the dashboards"')).toBeVisible()
+})
+
+test('E with focus in the Peek edits the summary in place, not in the modal', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await expect(peek()).toBeVisible()
+  // Focus inside the Peek, on its summary button, so the key does not come from the Tree.
+  await peek().getByRole('button', { name: 'Migrate the dashboards' }).focus()
+  await window.keyboard.press('e')
+  const field = peek().getByLabel('Summary')
+  await expect(field).toBeFocused()
+  await expect(window.getByRole('dialog', { name: 'Edit summary' })).toHaveCount(0)
+  await field.fill('Migrate the dashboards in place')
+  await field.press('Enter')
+  await expect(
+    peek().getByRole('heading', { name: 'Migrate the dashboards in place' }),
+  ).toBeVisible()
 })
 
 test('on the page the letters open the sidebar, Esc closes the picker and then leaves the page', async () => {
