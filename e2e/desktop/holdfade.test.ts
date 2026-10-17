@@ -129,6 +129,42 @@ test('fades every field of a Hold row on the Sprint page to 30% and no other row
   )
 })
 
+test('keeps the focus ring of a Slot on a Hold Sprint row in full while the rest stays at 30%', async () => {
+  await moveIssue(app, 'PSAPAC-11', 'hold')
+  await open()
+  await sidebar()
+    .getByRole('region', { name: 'Sprints' })
+    .getByRole('button', { name: /^Current/ })
+    .click()
+  await expect(sprintPage()).toBeVisible()
+
+  const row = sprintPage().locator('[data-issue-key=PSAPAC-11]')
+  const key = row.getByText('PSAPAC-11', { exact: true })
+  const summary = row.getByText('Draft the runbook')
+  // Priority sits beside the properties, the estimate and labels inside them, the assignee after.
+  const slots = ['priority', 'labels', 'estimate', 'assignee'].map((name) =>
+    row.locator(`button[data-pick="${name}"], button[data-prop="${name}"]`),
+  )
+  for (const slot of slots) {
+    await row.getByRole('button', { name: /^PSAPAC-11 / }).focus()
+    for (
+      let step = 0;
+      step < 12 && !(await slot.evaluate((el) => el === document.activeElement));
+      step++
+    ) {
+      await window.keyboard.press('Tab')
+    }
+    await expect(slot).toBeFocused()
+    expect(await slot.evaluate((el) => el.matches(':focus-visible'))).toBe(true)
+    await expectDrawnAt(1, slot)
+    await expectDrawnAt(0.3, key, summary)
+    // Every other slot stays at 30%.
+    for (const other of slots) {
+      if (other !== slot) await expectDrawnAt(0.3, other)
+    }
+  }
+})
+
 test('fades every cell of a Hold Epic on the Epics page to 30% and no other row', async () => {
   await moveIssue(app, 'PSAPAC-10', 'hold')
   await logIn(window)
