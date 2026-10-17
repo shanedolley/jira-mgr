@@ -604,6 +604,23 @@ describe('display', () => {
     expect(read?.display?.properties).toEqual(['logged', 'remainingPercent'])
   })
 
+  it('reads a view display with and without the start date', async () => {
+    const view = (properties: string[]) => ({
+      id: 'v',
+      name: 'V',
+      filters: {},
+      toggles,
+      display: { properties, order: 'key' },
+    })
+    await writeFile(
+      join(dir, 'views.json'),
+      JSON.stringify([view(['due', 'start', 'labels']), { ...view(['due']), id: 'w' }]),
+    )
+    const [withStart, without] = await readViews()
+    expect(withStart?.display?.properties).toEqual(['labels', 'start', 'due'])
+    expect(without?.display?.properties).toEqual(['due'])
+  })
+
   it.each([
     ['a string', 'wide'],
     ['null', null],

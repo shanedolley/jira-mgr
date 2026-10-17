@@ -408,6 +408,16 @@ test('Shift+D on the issue page focuses the Due date field there', async () => {
   await expect(menu()).toHaveCount(0)
 })
 
+test('Shift+S on the issue page focuses the Start date field there', async () => {
+  await open()
+  await select(/PSAPAC-4,/)
+  await window.keyboard.press('Enter')
+  await expect(issuePage()).toBeVisible()
+  await window.keyboard.press('Shift+S')
+  await expect(issuePage().getByLabel('Start date')).toBeFocused()
+  await expect(menu()).toHaveCount(0)
+})
+
 test('Rename saves a new summary through the menu', async () => {
   await open()
   await item(/PSAPAC-4,/).click({ button: 'right' })

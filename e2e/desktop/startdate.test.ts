@@ -219,7 +219,7 @@ test('Shift+S opens the editor on the active row and the keyboard alone saves', 
   expect((await fieldsOf(app, 'PSAPAC-11'))?.[START]).toBe('2099-03-04')
   await expect(tree()).toBeFocused()
   // Shift+S is no S: the status picker stayed shut.
-  await expect(window.getByRole('listbox')).toHaveCount(0)
+  await expect(window.getByRole('listbox', { name: 'Status' })).toHaveCount(0)
 })
 
 test('a refused write puts the date back and the toast offers Retry', async () => {

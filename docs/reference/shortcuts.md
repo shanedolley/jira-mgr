@@ -17,9 +17,9 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `P` | Open Priority. From the Tree it opens the list beside the active row's priority slot, and `Esc` or a choice returns focus to the Tree; with a page open it opens the page's Priority |
 | `E` | Edit the summary: in a modal from the Tree, in place in the Peek and on the issue page |
 | `Shift+S` | Open Start date. On the issue page it focuses the page's Start date field; from the Tree it opens the date editor on the active row's Start date slot when the row shows it, else the issue menu with the Start date field focused |
-| `Shift+D` | Open Due date, the same way |
-| `Shift+P` | Open Parent, the same way |
-| `Shift+E` | Open Original estimate, the same way. From the Tree it focuses the estimate field in the active row when the row shows that slot |
+| `Shift+D` | Open Due date. On the issue page it focuses the page's Due date field; from the Tree it opens the date editor on the active row's Due date slot when the row shows it, else the issue menu with the Due date field focused |
+| `Shift+P` | Open Parent. On the issue page it focuses the page's Parent field; from the Tree it opens the issue menu with the Parent field focused |
+| `Shift+E` | Open Original estimate. On the issue page it focuses the page's field; from the Tree it opens the issue menu with the field focused, except that when the row shows the estimate slot it focuses the estimate field in the active row |
 | `Shift+C` | Open Sprint. On the issue page it opens the page's Sprint list; from the Tree it opens the Sprint list beside the row's Sprint slot (#273), and falls back to the issue menu's when the slot is hidden. These five never fall through to `S`, `C`, `P` or `E`, and do nothing where the issue's type has no such field (an Epic has no sprint, parent or estimate) |
 | `I` | Assign the issue to me |
 | `Y` | Copy the issue key |
