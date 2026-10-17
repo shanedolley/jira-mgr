@@ -312,9 +312,10 @@ function Issues({
                     >
                       <StatusDot status={issue.status} />
                     </Slot>
+                    {/* `pr-8` holds the avatar's 20px and the 12px gap before it: the avatar sits on the key's line however the rest wraps. */}
                     <span
                       {...holdFade(status)}
-                      className="flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1"
+                      className="relative flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 pr-8"
                     >
                       <span className="w-20 shrink-0 font-mono text-xs text-muted">
                         {issue.key}
@@ -352,7 +353,7 @@ function Issues({
                         onClick={(event) => {
                           onEditCell(issue, 'assignee', event.currentTarget)
                         }}
-                        className="-m-0.5 inline-flex shrink-0 rounded-full p-0.5 hover:bg-line"
+                        className="absolute right-0 top-0.5 -m-0.5 flex rounded-full p-0.5 hover:bg-line"
                       >
                         <Avatar person={issue.assignee} />
                       </Slot>
