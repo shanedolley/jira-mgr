@@ -144,7 +144,7 @@ The Shell derives everything during render, with `useMemo`:
 | Kind | Id | Level | Shows | Expandable |
 |---|---|---|---|---|
 | Customer header | `c:<option id>`, `c:none` | 1 | The Customer's name, or "No Customer", and its issue count. An empty group shows "No issues" | When it has rows |
-| Issue | `i:<key>` | 2 for an Epic, 3 for a child, 4 for a Subtask; one more under a chip | Status, key, type, summary, mismatch badge, assignee; an Epic adds its issue count. The summary draws in `--muted`, the key's colour, on every row (#266), so a `contextOnly` row no longer reads dimmer; it differs by its "context" accessible name and its missing checkbox | When it has children or Done children |
+| Issue | `i:<key>` | 2 for an Epic, 3 for a child, 4 for a Subtask; one more under a chip | Status, key, type, summary, mismatch badge, assignee; an Epic adds its issue count. The summary draws in `--muted`, the key's colour, on every row, ink on the open row as the key is (#266), so a `contextOnly` row no longer reads dimmer; it differs by its "context" accessible name and its missing checkbox | When it has children or Done children |
 | No Epic header | `n:<option id>`, `n:none` | 2 | "No Epic" and its issue count | Yes |
 | Done chip | `d:<parent key>` | The parent's level plus one | "N done" | Yes: revealing lists the Done children |
 

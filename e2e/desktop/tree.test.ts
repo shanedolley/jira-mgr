@@ -970,15 +970,27 @@ test('marks the active and the open row by distinct fills, with no ring, edge or
   }
 })
 
-test('draws the summary of a resting row in the key colour, at medium weight', async () => {
+test('draws the summary of a row in the key colour, at medium weight, open or not', async () => {
   await open()
-  const row = item(/PSAPAC-3,/)
   const colour = (field: Locator) => field.evaluate((el) => getComputedStyle(el).color)
-  const key = await colour(row.locator('.tree-key'))
-  const summary = row.locator('span.truncate.font-medium')
-  expect(await colour(summary)).toBe(key)
-  expect(key).toBe(await painted('var(--muted)'))
-  await expect(summary).toHaveCSS('font-weight', '500')
+  const summaryOf = (row: Locator) => row.locator('span.truncate.font-medium')
+
+  const rest = item(/PSAPAC-3,/)
+  const restKey = await colour(rest.locator('.tree-key'))
+  expect(await colour(summaryOf(rest))).toBe(restKey)
+  expect(restKey).toBe(await painted('var(--muted)'))
+  await expect(summaryOf(rest)).toHaveCSS('font-weight', '500')
+
+  // The open row's key turns ink, and its summary follows in colour but not in weight.
+  await window.keyboard.press('j')
+  await window.keyboard.press(' ')
+  await expect(peek()).toBeVisible()
+  const peeked = item(/PSAPAC-10,/)
+  await expect(peeked).toHaveAttribute('aria-selected', 'true')
+  const openKey = await colour(peeked.locator('.tree-key'))
+  expect(openKey).toBe(await painted('var(--ink)'))
+  expect(await colour(summaryOf(peeked))).toBe(openKey)
+  await expect(summaryOf(peeked)).toHaveCSS('font-weight', '500')
 })
 
 test('keeps the bold key inside its box in a wide font', async () => {

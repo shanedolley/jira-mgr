@@ -490,7 +490,7 @@ function Content({
           <span className="tree-key w-[5.5rem] min-w-fit shrink-0 text-xs font-[450] tabular-nums text-muted">
             {issue.key}
           </span>
-          <span className="min-w-0 flex-1 truncate font-medium text-muted @tree:min-w-20">
+          <span className="tree-summary min-w-0 flex-1 truncate font-medium text-muted @tree:min-w-20">
             {issue.summary}
           </span>
           <BlockPills {...blocks} />
