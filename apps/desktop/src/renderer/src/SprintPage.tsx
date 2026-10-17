@@ -6,7 +6,7 @@ import { Avatar } from './Avatar'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
 import { SECTION_HEADING } from './Section'
-import { StatusDot, summaryFade } from './StatusDot'
+import { holdFade, StatusDot } from './StatusDot'
 import {
   BREAKDOWNS,
   formatDay,
@@ -234,15 +234,21 @@ function Issues({
                     }}
                     className="flex min-h-8 w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 text-left hover:bg-hover"
                   >
-                    <span className="w-20 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
                     <span
-                      className={`flex-1 truncate ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
-                      style={summaryFade(status)}
+                      {...holdFade(status)}
+                      className="flex w-full flex-wrap items-center gap-x-3 gap-y-1"
                     >
-                      {issue.summary}
+                      <span className="w-20 shrink-0 font-mono text-xs text-muted">
+                        {issue.key}
+                      </span>
+                      <span
+                        className={`flex-1 truncate ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
+                      >
+                        {issue.summary}
+                      </span>
+                      <Properties issue={issue} properties={properties} today={today} always />
+                      <Avatar person={issue.assignee} />
                     </span>
-                    <Properties issue={issue} properties={properties} today={today} always />
-                    <Avatar person={issue.assignee} />
                   </button>
                 </li>
               ))}

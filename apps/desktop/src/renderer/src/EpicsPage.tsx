@@ -16,7 +16,7 @@ import {
 import { OVERVIEW_ROW, OverviewFrame, TH, keepInView, type OverviewLoad } from './OverviewFrame'
 import { NotLoaded, PercentDone, progressText } from './Progress'
 import { dueTone, shortDate } from './rowProps'
-import { StatusDot, summaryFade } from './StatusDot'
+import { holdFade, StatusDot } from './StatusDot'
 
 const ARROWS = { asc: 'M8 12.5v-9M4.5 7 8 3.5 11.5 7', desc: 'M8 3.5v9M4.5 9 8 12.5 11.5 9' }
 
@@ -76,6 +76,8 @@ function Row({
   onOpen: (key: string) => void
 }) {
   const { issue, progress } = row
+  // A table row cannot hold one fading element, so each cell fades alone; the row keeps its hover.
+  const fade = holdFade(issue.status)
   const due = issue.dueDate
   const overdue =
     due !== null && dueTone(due, today, issue.status.category === 'done') === 'overdue'
@@ -87,7 +89,7 @@ function Row({
       }}
       className="h-10 cursor-default border-t border-line hover:bg-hover"
     >
-      <th scope="row" className="max-w-0 min-w-56 px-3 text-left font-normal">
+      <th scope="row" {...fade} className="max-w-0 min-w-56 px-3 text-left font-normal">
         <button
           type="button"
           {...OVERVIEW_ROW}
@@ -95,21 +97,19 @@ function Row({
           className="flex w-full min-w-0 items-center gap-2 text-left"
         >
           <span className="w-[5.5rem] shrink-0 text-xs tabular-nums text-muted">{issue.key}</span>
-          <span className="min-w-0 truncate font-medium" style={summaryFade(issue.status)}>
-            {issue.summary}
-          </span>
+          <span className="min-w-0 truncate font-medium">{issue.summary}</span>
         </button>
       </th>
-      <td className="max-w-40 truncate px-3" title={issue.customer?.value}>
+      <td {...fade} className="max-w-40 truncate px-3" title={issue.customer?.value}>
         {issue.customer?.value}
       </td>
-      <td className="px-3">
+      <td {...fade} className="px-3">
         <span className="flex items-center gap-2 whitespace-nowrap">
           <StatusDot status={issue.status} />
           {issue.status.name}
         </span>
       </td>
-      <td className="px-3">
+      <td {...fade} className="px-3">
         {issue.priority !== null && (
           <span className="flex items-center gap-2 whitespace-nowrap">
             <PriorityBars name={issue.priority.name} />
@@ -117,25 +117,28 @@ function Row({
           </span>
         )}
       </td>
-      <td className="px-3">
+      <td {...fade} className="px-3">
         <span className="flex items-center gap-2 whitespace-nowrap">
           <Avatar person={issue.assignee} />
           {issue.assignee?.displayName ?? <span className="text-muted">Unassigned</span>}
         </span>
       </td>
       <td
+        {...fade}
         className="px-3 tabular-nums"
         title={progress === undefined ? undefined : progressText(progress)}
       >
         {doneFailed ? <NotLoaded /> : (progress?.total ?? 0)}
       </td>
       <td
+        {...fade}
         className={`px-3 whitespace-nowrap ${overdue ? 'text-danger' : ''}`}
         title={due === null ? undefined : `Due ${due}`}
       >
         {due === null ? null : shortDate(due, today)}
       </td>
       <td
+        {...fade}
         className="px-3 whitespace-nowrap"
         title={progress === undefined ? undefined : progressText(progress)}
       >

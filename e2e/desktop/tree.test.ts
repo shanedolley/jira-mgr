@@ -1027,7 +1027,7 @@ test('prevents the default of the keys it handles and of no other', async () => 
   ])
 })
 
-test('draws a Hold issue with a dashed ring and a summary at 30% opacity, and no other row', async () => {
+test('draws a Hold issue with a dashed ring at 30% opacity, and no other row', async () => {
   await open()
   await moveIssue(app, 'PSAPAC-10', 'hold')
   await app.evaluate(({ BrowserWindow }) => {
@@ -1040,13 +1040,10 @@ test('draws a Hold issue with a dashed ring and a summary at 30% opacity, and no
   await expect(dot).toHaveAttribute('data-shape', 'hold')
   await expect(dot).toHaveAttribute('aria-label', 'Hold')
   await expect(dot.locator('circle')).toHaveAttribute('stroke-dasharray', /\d/)
-  await expect(dot).toHaveCSS('opacity', '0.3')
-  const summary = row.locator('span.truncate.font-medium')
-  await expect(summary).toHaveCSS('opacity', '0.3')
-  await expect(row.locator('.tree-key')).toHaveCSS('opacity', '1')
   await expect(row).toHaveAttribute('aria-label', /Hold/)
 
+  // The row's content fades once, at its container, so the ring itself stays at 100% and draws at
+  // 30%: holdfade.test.ts measures that and the other fields.
   const other = item(/PSAPAC-13,/)
-  await expect(other.locator('span.truncate.font-medium')).toHaveCSS('opacity', '1')
   await expect(other.locator('svg[data-glyph="status"]')).not.toHaveAttribute('data-shape', 'hold')
 })

@@ -37,9 +37,16 @@ export const HOLD_OPACITY = 0.3
 /** Eight dashes round the r=5.5 ring: the 34.56 circumference is 8 periods of 4.32. */
 const HOLD_DASH = '2.6 1.72'
 
-/** The style that fades the summary of a Hold issue to the ring's opacity; none for other statuses. */
-export const summaryFade = (status: { name: string }): { opacity: number } | undefined =>
-  isHold(status) ? { opacity: HOLD_OPACITY } : undefined
+/**
+ * Spread on the one element that holds every field of a Hold issue's row (or on each cell of a
+ * table row), so the whole row fades to the ring's opacity at once; nothing for other statuses.
+ * `data-hold` lets `styles.css` keep the ring at 100% inside it, so the ring ends at 30%, not 9%
+ * (#217). The row's own focus ring, selection and hover background stay outside the element.
+ */
+export const holdFade = (status: {
+  name: string
+}): { style: { opacity: number }; 'data-hold': string } | Record<string, never> =>
+  isHold(status) ? { style: { opacity: HOLD_OPACITY }, 'data-hold': '' } : {}
 
 /**
  * The status category: To Do an empty ring, In Progress a ring with its right half filled, Done a

@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import { HOLD_OPACITY, StatusDot, statusShape, summaryFade } from './StatusDot'
+import { HOLD_OPACITY, StatusDot, holdFade, statusShape } from './StatusDot'
 
 const markup = (name: string, category: 'new' | 'indeterminate' | 'done') =>
   renderToStaticMarkup(createElement(StatusDot, { status: { id: '1', name, category } }))
@@ -55,16 +55,17 @@ describe('StatusDot', () => {
   })
 })
 
-describe('summaryFade', () => {
-  it('fades the summary of a Hold issue to the ring opacity, whatever the case', () => {
-    expect(summaryFade({ name: 'Hold' })).toEqual({ opacity: HOLD_OPACITY })
-    expect(summaryFade({ name: ' HOLD ' })).toEqual({ opacity: 0.3 })
-    expect(summaryFade({ name: 'On Hold' })).toEqual({ opacity: 0.3 })
+describe('holdFade', () => {
+  it('fades a Hold issue to the ring opacity and marks it, whatever the case', () => {
+    const faded = { style: { opacity: HOLD_OPACITY }, 'data-hold': '' }
+    expect(holdFade({ name: 'Hold' })).toEqual(faded)
+    expect(holdFade({ name: ' HOLD ' })).toEqual({ ...faded, style: { opacity: 0.3 } })
+    expect(holdFade({ name: 'On Hold' })).toEqual(faded)
   })
 
-  it('leaves every other status at full opacity', () => {
-    expect(summaryFade({ name: 'To Do' })).toBeUndefined()
-    expect(summaryFade({ name: 'Holding' })).toBeUndefined()
-    expect(summaryFade({ name: 'Hold on' })).toBeUndefined()
+  it('leaves every other status alone', () => {
+    expect(holdFade({ name: 'To Do' })).toEqual({})
+    expect(holdFade({ name: 'Holding' })).toEqual({})
+    expect(holdFade({ name: 'Hold on' })).toEqual({})
   })
 })
