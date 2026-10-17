@@ -88,15 +88,17 @@ export interface SprintLabelInput {
  */
 function endDay(sprint: SprintLabelInput): string | null {
   const day = sprint.endDate?.slice(0, 10)
-  return day !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null
+  if (day === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null
+  const month = Number(day.slice(5, 7))
+  return month >= 1 && month <= 12 ? day : null
 }
 
 /**
  * The sprint as the canvas shows it: `S 36 (..14 Oct)` for "Sprint 36" ending 14 October, with the
  * year (`..14 Oct '25`) when the end falls outside the year of `today`. The number is the last run
  * of digits in the name before any bracket, so the dates PSAPAC puts in a name
- * (`PS Sprint 36 (05 Oct-18 Oct)`) do not count. A sprint with no end date reads `S 36`, and one with no number in its
- * name reads as the full name.
+ * (`PS Sprint 36 (05 Oct-18 Oct)`) do not count. A sprint with no usable end date reads `S 36`,
+ * and one with no number in its name reads as the full name.
  */
 export function sprintLabel(sprint: SprintLabelInput, today: string): string {
   const digits = sprint.name.split('(')[0]?.match(/\d+/g)?.at(-1)

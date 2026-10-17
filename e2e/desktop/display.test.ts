@@ -549,7 +549,7 @@ test('fits the widest abbreviated sprint in a wide font', async () => {
   // The fake's only active sprint is "Sprint 5", so the cell takes the widest labels by hand: the
   // widest months and two-digit numbers. A year ('25) may truncate; the title carries it.
   const truncated = await prop(/PSAPAC-13,/, 'sprint').evaluate((cell) =>
-    ['S 88 (..28 Mar)', 'S 88 (..28 Aug)', 'S 88 (..28 Dec)'].map((label) => {
+    ['S 88 (..28 May)', 'S 88 (..28 Mar)', 'S 88 (..28 Aug)', 'S 88 (..28 Dec)'].map((label) => {
       cell.textContent = label
       return cell.scrollWidth > cell.clientWidth
     }),
@@ -557,7 +557,7 @@ test('fits the widest abbreviated sprint in a wide font', async () => {
   await style.evaluate((node) => {
     node.parentNode?.removeChild(node)
   })
-  expect(truncated).toEqual([false, false, false])
+  expect(truncated).toEqual([false, false, false, false])
 })
 
 test('abbreviates the sprint on the Sprint page too, with the full name in the title', async () => {

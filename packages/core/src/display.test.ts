@@ -27,6 +27,8 @@ describe('sprintLabel', () => {
     expect(sprintLabel({ name: 'Sprint 6' }, today)).toBe('S 6')
     expect(sprintLabel({ name: 'Sprint 6', endDate: null }, today)).toBe('S 6')
     expect(sprintLabel({ name: 'Sprint 6', endDate: 'soon' }, today)).toBe('S 6')
+    expect(sprintLabel({ name: 'Sprint 5', endDate: '2026-13-45' }, today)).toBe('S 5')
+    expect(sprintTitle({ name: 'Sprint 5', endDate: '2026-13-45' })).toBe('Sprint 5')
   })
 
   it('shows the full name without a number', () => {
