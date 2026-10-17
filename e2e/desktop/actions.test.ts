@@ -252,8 +252,10 @@ test('1 to 9 choose the numbered option in the Status and Priority pickers', asy
   await window.keyboard.press('9')
   await expect(window.getByRole('listbox', { name: 'Priority' })).toBeVisible()
   await window.keyboard.press('4')
-  await expect(peek().getByRole('button', { name: /^Priority:/ })).toHaveAccessibleName(
-    `Priority: ${priorities[3] ?? ''}`,
+  // `P` opens the list beside the row's slot, so no Peek is open: the row shows the choice.
+  await expect(peek()).toHaveCount(0)
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(
+    new RegExp(`, priority ${priorities[3] ?? ''}`),
   )
   await settle(before + 2)
   await expect(tree()).toBeFocused()

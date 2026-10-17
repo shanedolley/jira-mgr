@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import { LogWorkContext, loggedIssue } from './logWork'
-import { rowName, rowProgress, TimeCell } from './TreeRow'
+import { PriorityCell, rowName, rowProgress, TimeCell } from './TreeRow'
 import type { TreeRow } from './tree'
 
 function row(over: Partial<Issue>): TreeRow {
@@ -201,5 +201,31 @@ describe('loggedIssue', () => {
     const done = issue('PSAPAC-99', 'a Done sprint issue')
     expect(loggedIssue([issue('PSAPAC-3', 'x')], done)).toBe(done)
     expect(loggedIssue([], null)).toBeNull()
+  })
+})
+
+describe('the priority slot', () => {
+  const cell = (name: string | null) =>
+    renderToStaticMarkup(
+      createElement(PriorityCell, {
+        priority: name === null ? null : { id: '1', name },
+      }),
+    )
+
+  it('is a Pick target for the cell editor whether it draws bars, or is Medium or unset', () => {
+    for (const name of ['High', 'Low', 'Medium', null]) {
+      expect(cell(name)).toContain('data-pick="priority"')
+      expect(cell(name)).toContain('title="Change priority"')
+    }
+  })
+
+  it('draws bars only above or below Medium and keeps its 16px slot either way', () => {
+    expect(cell('High')).toContain('data-glyph="priority"')
+    expect(cell('Medium')).not.toContain('data-glyph="priority"')
+    expect(cell(null)).not.toContain('data-glyph="priority"')
+    for (const name of ['High', 'Medium', null]) {
+      expect(cell(name)).toContain('data-slot="priority"')
+      expect(cell(name)).toContain('size-4')
+    }
   })
 })
