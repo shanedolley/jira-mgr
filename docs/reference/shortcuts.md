@@ -17,7 +17,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `E` | Edit the summary |
 | `Shift+D` | Open Due date. On the issue page it focuses the page's Due date field; from the Tree it opens the issue menu with the Due date field focused |
 | `Shift+P` | Open Parent, the same way |
-| `Shift+E` | Open Original estimate, the same way |
+| `Shift+E` | Open Original estimate, the same way. From the Tree it focuses the estimate field in the active row when the row shows that slot |
 | `Shift+C` | Open Sprint, the same way. These four never fall through to `C`, `P` or `E`, and do nothing where the issue's type has no such field (an Epic has no sprint, parent or estimate) |
 | `I` | Assign the issue to me |
 | `Y` | Copy the issue key |

@@ -829,6 +829,14 @@ describe('clickRow', () => {
     })
   })
 
+  it('a click on an in-row field makes the row active and leaves the Peek and the checks alone', () => {
+    const closed = clickRow(rows, state(null), 'i:P-4', false, 'activate')
+    expect(closed).toMatchObject({ activeId: 'i:P-4', peekOpen: false })
+    expect(closed.checked.size).toBe(0)
+    const open = clickRow(rows, { ...state('i:P-2'), peekOpen: true }, 'i:P-4', false, 'activate')
+    expect(open).toMatchObject({ activeId: 'i:P-4', peekOpen: true })
+  })
+
   it('a checkbox click checks the issue and makes it active and the anchor, without the Peek', () => {
     const on = clickRow(rows, state(null), 'i:P-4', false, 'toggle')
     expect([...on.checked]).toEqual(['P-4'])

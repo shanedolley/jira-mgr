@@ -1187,6 +1187,17 @@ export function Shell({ session }: { session: Session }) {
             openProperty(command, key)
             return
           }
+          // From the Tree, the original estimate opens in its row when the row shows the slot (#276).
+          const slot =
+            command === 'estimate' && target?.closest('[role="tree"]') != null
+              ? document
+                  .getElementById(rowDomId(activeRow?.id ?? ''))
+                  ?.querySelector<HTMLElement>('[data-edit="estimate"]')
+              : undefined
+          if (slot?.checkVisibility() === true) {
+            slot.click()
+            return
+          }
           const row = document.getElementById(rowDomId(activeRow?.id ?? ''))
           if (row !== null) openMenuFor(key, row, null, command)
           return

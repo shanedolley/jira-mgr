@@ -14,6 +14,7 @@ import {
   type RefObject,
 } from 'react'
 
+import { keepsLetters } from './keymap'
 import { extrasWidth, fittingCount } from './propertyFit'
 import { TreeRow, rowDomId, rowProgress } from './TreeRow'
 import {
@@ -205,6 +206,8 @@ export function IssueTree({
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    // A field in a row (the estimate) keeps its keys: Arrows, Enter and Space are its own.
+    if (event.target instanceof Element && keepsLetters(event.target)) return
     const input = {
       key: event.key,
       shiftKey: event.shiftKey,
@@ -284,7 +287,12 @@ export function IssueTree({
 
   const armed = useRef<string | null>(null)
   const onRowClick = useCallback(
-    (id: string, onChevron: boolean, select: 'toggle' | 'range' | undefined, detail: number) => {
+    (
+      id: string,
+      onChevron: boolean,
+      select: 'toggle' | 'range' | 'activate' | undefined,
+      detail: number,
+    ) => {
       // The second click of a double-click on an issue is inert: the Peek may have moved a header or
       // another row under it, and the double-click opens the first click's issue.
       if (detail > 1 && armed.current !== null) return
