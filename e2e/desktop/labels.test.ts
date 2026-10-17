@@ -224,6 +224,11 @@ test('L opens the list on the active row, and the keyboard alone toggles a label
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
+  // The Tree refits its columns a render after the Peek closes; until then the slot is 0px wide and
+  // L would open the Peek picker.
+  await expect
+    .poll(async () => (await slot(EMPTY).boundingBox())?.width ?? 0)
+    .toBeGreaterThanOrEqual(16)
   const before = await writes()
 
   await window.keyboard.press('l')

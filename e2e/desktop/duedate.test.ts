@@ -105,6 +105,9 @@ async function pick(row: RegExp) {
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
   await expect(tree()).toBeFocused()
+  // The Tree refits its columns a render after the Peek closes; until then the slot is 0px wide and
+  // the key would fall back to the Peek.
+  await expect.poll(() => width(row)).toBeGreaterThanOrEqual(16)
 }
 
 const width = async (row: RegExp) => (await slot(row).boundingBox())?.width
