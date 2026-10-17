@@ -17,7 +17,7 @@ import {
   type CellProperty,
   type CellTarget,
 } from './cell'
-import { DateCell } from './DateCell'
+import { DateEditor } from './DateEditor'
 import {
   AssigneePicker,
   LabelsPicker,
@@ -127,13 +127,13 @@ const EDITORS: Record<CellProperty, (context: CellContext) => ReactNode> = {
     <AssigneePicker issue={issue} issues={issues} me={me} cell={cell} />
   ),
   dueDate: ({ issue, cell }) => (
-    <DateCell issue={issue} field="dueDate" label="Due date" cell={cell} />
+    <DateEditor issue={issue} field="dueDate" label="Due date" cell={cell} />
   ),
   priority: ({ issue, cell }) => <PriorityPicker issue={issue} cell={cell} />,
   labels: ({ issue, issues, cell }) => <LabelsPicker issue={issue} issues={issues} cell={cell} />,
   sprint: ({ issue, cell }) => <SprintPicker issue={issue} cell={cell} />,
   startDate: ({ issue, cell }) => (
-    <DateCell issue={issue} field="startDate" label="Start date" cell={cell} />
+    <DateEditor issue={issue} field="startDate" label="Start date" cell={cell} />
   ),
 }
 

@@ -506,12 +506,11 @@ export function TimeCell({
       {...shared}
       role="button"
       aria-label={label}
-      onClick={(event) => {
-        event.stopPropagation()
+      // The row reads the click as it reads the estimate field's (`data-edit`): it activates the
+      // row, clears a pending summary edit and opens no Peek, and a double-click arms no page.
+      data-edit="logged"
+      onClick={() => {
         target(issue)
-      }}
-      onDoubleClick={(event) => {
-        event.stopPropagation()
       }}
     >
       {text}

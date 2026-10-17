@@ -7,9 +7,9 @@ import { TextField } from './IssueProperties'
 import { useIssueChange } from './PropertyPickers'
 import { datePatch } from './properties'
 
-interface DateCellProps {
+interface DateEditorProps {
   issue: Issue
-  /** The date the editor sets: `#271` reuses it for `startDate`. */
+  /** The date the editor sets: the due date or the start date. */
   field: 'startDate' | 'dueDate'
   /** Names the popover and the field, and the property in a refusal toast: "Due date". */
   label: string
@@ -23,7 +23,7 @@ interface DateCellProps {
  * reports a valid date after every digit of the year. Esc drops the draft and closes. A popover
  * that closes some other way, such as a scroll, sends a changed draft as it goes.
  */
-export function DateCell({ issue, field, label, cell }: DateCellProps) {
+export function DateEditor({ issue, field, label, cell }: DateEditorProps) {
   const change = useIssueChange(issue)
   const date = issue[field] ?? ''
   // Set by Clear, or by Esc on it, so the draft left in the field is not sent as the editor goes.
