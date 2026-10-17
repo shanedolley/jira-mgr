@@ -2,11 +2,12 @@ import type { Issue } from '@jira-mgr/core'
 import type { RowProperty } from '@jira-mgr/core/display'
 import type { Progress } from '@jira-mgr/core/hierarchy'
 import { propertyRules } from '@jira-mgr/core/issue'
-import { memo, type ReactNode } from 'react'
+import { memo, type MouseEvent, type ReactNode } from 'react'
 
 import { Avatar } from './Avatar'
 import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
+import { useLogWork } from './logWork'
 import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
 import { holdFade, StatusDot } from './StatusDot'
@@ -327,7 +328,7 @@ function DueDate({ issue, today }: { issue: Issue; today: string }) {
  * A time property in a fixed slot: empty without a value, so the columns line up. The Tree row's
  * name already says what each value is; the label is for the Sprint page's rows, which have none.
  */
-function TimeCell({
+export function TimeCell({
   issue,
   property,
   always,
@@ -336,16 +337,39 @@ function TimeCell({
   property: TimeProperty
   always: boolean
 }) {
+  const log = useLogWork()
   // The estimate is edited in place, except on an Epic, which has none.
   if (property === 'estimate' && propertyRules(issue.issueType).estimates) {
     return <EstimateCell issue={issue} always={always} />
   }
   const value = timeValue(issue, property)
+  // The Logged slot, filled or empty, opens the Log work modal. An Epic has no time tracking, so no target.
+  const target =
+    property === 'logged' && log !== null && propertyRules(issue.issueType).estimates ? log : null
   return (
     <span
       data-prop={property}
-      title={value === null ? undefined : `${TIME_NAMES[property]} ${value}`}
-      className={`shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${property === 'remainingPercent' ? 'w-12' : 'w-16'}`}
+      title={
+        value === null
+          ? target === null
+            ? undefined
+            : 'Log work'
+          : `${TIME_NAMES[property]} ${value}`
+      }
+      className={`shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${property === 'remainingPercent' ? 'w-12' : 'w-16'} ${target === null ? '' : 'cursor-pointer rounded hover:bg-line'}`}
+      {...(target !== null && {
+        role: 'button',
+        // The label replaces the text as the name, so it keeps the value.
+        'aria-label': `Log work on ${issue.key}, ${value === null ? 'nothing logged' : `${TIME_NAMES[property]} ${value}`}`,
+        // The row's click would open the Peek, and its double-click the issue.
+        onClick: (event: MouseEvent) => {
+          event.stopPropagation()
+          target(issue)
+        },
+        onDoubleClick: (event: MouseEvent) => {
+          event.stopPropagation()
+        },
+      })}
     >
       {value !== null && <span className="sr-only">{TIME_NAMES[property]} </span>}
       {value}

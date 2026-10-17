@@ -22,6 +22,7 @@ const ALL = [
   'Change priority',
   'Add labels',
   'Set sprint',
+  'Log work',
   'Create sub-issue',
   'Copy key',
   'Copy link',
@@ -43,6 +44,7 @@ describe('matchingActions', () => {
       priority: 'P',
       labels: 'L',
       sprint: 'Shift+C',
+      logWork: 'W',
       subIssue: undefined,
       copyKey: 'Y',
       copyLink: 'U',
@@ -50,9 +52,9 @@ describe('matchingActions', () => {
     })
   })
 
-  it('drops the actions its type cannot take: an Epic has no sprint or sub-issue, a Subtask no sprint', () => {
+  it('drops the actions its type cannot take: an Epic has no sprint, sub-issue or worklog, a Subtask no sprint', () => {
     expect(labels(issue('Epic'))).toEqual(
-      ALL.filter((l) => l !== 'Set sprint' && l !== 'Create sub-issue'),
+      ALL.filter((l) => l !== 'Set sprint' && l !== 'Create sub-issue' && l !== 'Log work'),
     )
     expect(labels(issue('Subtask'))).toEqual(
       ALL.filter((l) => l !== 'Set sprint' && l !== 'Create sub-issue'),

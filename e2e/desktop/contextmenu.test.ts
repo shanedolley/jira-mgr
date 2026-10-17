@@ -90,7 +90,7 @@ const ALL = [
   'Labels|L',
   'Priority|P',
   'Original estimate|⇧E',
-  'Log work|',
+  'Log work|W',
   'Related issues|',
   'Copy|',
   'Open in Jira|',
@@ -413,7 +413,7 @@ test('Rename saves a new summary through the menu', async () => {
   await settle(1)
 })
 
-test('View full screen, Add comment, Log work and Related issues open the issue page at their control', async () => {
+test('View full screen, Add comment and Related issues open the issue page at their control, and Log work opens its modal', async () => {
   await open()
   await item(/PSAPAC-4,/).click({ button: 'right' })
   await entry('View full screen').click()
@@ -428,8 +428,10 @@ test('View full screen, Add comment, Log work and Related issues open the issue 
 
   await item(/PSAPAC-4,/).click({ button: 'right' })
   await entry('Log work').click()
-  await expect(issuePage().getByRole('form', { name: 'Add worklog' })).toBeVisible()
-  await window.getByRole('button', { name: 'Back to issues' }).click()
+  await expect(window.getByRole('dialog', { name: 'Log work on PSAPAC-4' })).toBeVisible()
+  await expect(issuePage()).toHaveCount(0)
+  await window.keyboard.press('Escape')
+  await expect(window.getByRole('dialog', { name: 'Log work on PSAPAC-4' })).toHaveCount(0)
 
   await item(/PSAPAC-4,/).click({ button: 'right' })
   await entry('Related issues').click()

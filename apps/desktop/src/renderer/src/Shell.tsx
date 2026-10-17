@@ -116,6 +116,8 @@ import {
   treeLevelKey,
   useUnresolvedIssues,
 } from './queries'
+import { LogWorkContext, loggedIssue } from './logWork'
+import { LogWorkModal } from './LogWorkModal'
 import { NotifyContext, type Notify } from './notify'
 import { applyUnaskedRead } from './optimistic'
 import { describeEdit, isBatch, isOrder, reversible, undoStack, type StackEntry } from './undo'
@@ -357,6 +359,8 @@ export function Shell({ session }: { session: Session }) {
     snapshot: TimerSnapshot & { timer: RunningTimer }
     to: Issue | null
   } | null>(null)
+  // The issue the Log work modal is open on.
+  const [logging, setLogging] = useState<Issue | null>(null)
   const timerQuery = useTimer()
   const startTimer = useStartTimer()
   const client = useQueryClient()
@@ -984,6 +988,27 @@ export function Shell({ session }: { session: Session }) {
     setCreating({ selected: null, group: null, copy: { source, description } })
   }
 
+  /**
+   * Opens the Log work modal for `issue`. From the Tree the issue's row becomes the active one
+   * first, as a click on it would, so focus comes back to that row; the Peek stays as it was.
+   * Over a page or a covering list the Tree's active row stays where it was.
+   */
+  function openLog(issue: Issue) {
+    const row = listCovered
+      ? undefined
+      : rows.find((r) => r.kind === 'issue' && r.node.issue.key === issue.key)
+    if (row !== undefined) setTrack((held) => ({ ...held, activeId: row.id }))
+    setLogging(issue)
+  }
+  // The Logged slot sits deep in the rows, which are memoised, so it gets a function that never changes.
+  const openLogRef = useRef(openLog)
+  useEffect(() => {
+    openLogRef.current = openLog
+  })
+  const requestLog = useCallback((issue: Issue) => {
+    openLogRef.current(issue)
+  }, [])
+
   /** An item of the right-click menu that is not a submenu. The menu closes first, so a dialog finds the Tree's focus to return to. */
   function runMenuAction(action: MenuAction, issue: Issue) {
     closeMenu()
@@ -993,9 +1018,7 @@ export function Shell({ session }: { session: Session }) {
         openFromPalette(key)
         break
       case 'logWork':
-        onPage(key, '[aria-label="Add worklog"]', (button) => {
-          button.click()
-        })
+        openLog(issue)
         break
       case 'related':
         onPage(key, '[aria-label="Add link"]', (button) => {
@@ -1046,6 +1069,9 @@ export function Shell({ session }: { session: Session }) {
         break
       case 'assignMe':
         assignToMe(key)
+        break
+      case 'logWork':
+        openLog(issue)
         break
       case 'copyKey':
         copyIssue(key, 'key')
@@ -1171,8 +1197,23 @@ export function Shell({ session }: { session: Session }) {
         return
       default: {
         const key = targetKey
-        if (key === null || !treeReady || creating !== null || deleting !== null || timing !== null)
+        if (
+          key === null ||
+          !treeReady ||
+          creating !== null ||
+          deleting !== null ||
+          timing !== null ||
+          // `logging` is set exactly while the modal renders: `loggedIssue` falls back to it.
+          logging !== null
+        )
           return
+        if (command === 'logWork') {
+          const issue = issues.find((i) => i.key === key)
+          if (issue === undefined || !allows(issue, 'logWork')) return
+          event.preventDefault()
+          openLog(issue)
+          return
+        }
         if (
           command === 'dueDate' ||
           command === 'parent' ||
@@ -1426,6 +1467,7 @@ export function Shell({ session }: { session: Session }) {
   }
 
   const treeTop = useTreeTop(listRef, peekOpen)
+  const loggingIssue = loggedIssue(issues, logging)
   const layout = (
     <div
       style={
@@ -1754,6 +1796,15 @@ export function Shell({ session }: { session: Session }) {
           returnFocus={restoreFocus}
         />
       )}
+      {loggingIssue !== null && (
+        <LogWorkModal
+          issue={loggingIssue}
+          onClose={() => {
+            setLogging(null)
+          }}
+          returnFocus={restoreFocus}
+        />
+      )}
       {timing !== null && (
         <TimerDialog
           snapshot={timing.snapshot}
@@ -1843,5 +1894,9 @@ export function Shell({ session }: { session: Session }) {
     </div>
   )
 
-  return <NotifyContext value={notify}>{layout}</NotifyContext>
+  return (
+    <NotifyContext value={notify}>
+      <LogWorkContext value={requestLog}>{layout}</LogWorkContext>
+    </NotifyContext>
+  )
 }

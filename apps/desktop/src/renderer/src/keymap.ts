@@ -26,6 +26,7 @@ export type Command =
   | 'copyKey'
   | 'copyLink'
   | 'create'
+  | 'logWork'
   | 'timer'
   | 'filter'
   | 'filterMenu'
@@ -89,6 +90,7 @@ const SHIFT_LETTERS = new Map<string, Command>([
 const LETTERS = new Map<string, Command>([
   ['c', 'create'],
   ['t', 'timer'],
+  ['w', 'logWork'],
   ['s', 'status'],
   ['a', 'assignee'],
   ['l', 'labels'],

@@ -10,6 +10,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 |---|---|
 | `C` | Create an issue under the issue the pointer rests on, else the active one: a Story under an Epic, a Subtask under a Story, Task or Bug or beside a Subtask |
 | `T` | Start or stop the timer on the active issue |
+| `W` | Open the Log work modal for the active issue. An Epic has no worklog, so `W` does nothing there. A click on a row's Logged slot, the menu's Log work and the palette's Log work open the same modal |
 | `S` | Open Status |
 | `A` | Open Assignee |
 | `L` | Open Labels |
@@ -64,6 +65,8 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Sub-issue form, anywhere in the form | `Esc` | Close the form and stay on the page; ignored while the Subtasks are being created |
 | Text filter | `Enter`, `Down` | Move to the first issue row, skipping group headers, with the query kept |
 | Text filter | `Esc` | Clear the query; when empty, return to the Tree |
+| Log work modal | `Enter` | Save the worklog from the Time spent field |
+| Log work modal | `Esc` | Close the modal with no write and return focus |
 | Summary and property fields | `Enter` | Save |
 | Summary and property fields | `Esc` | Cancel the edit |
 | Saved views list | `Up`, `Down` | Move between views |
