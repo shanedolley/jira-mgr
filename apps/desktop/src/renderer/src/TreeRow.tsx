@@ -521,16 +521,17 @@ export function Properties({
     >
       {properties.map((property) => {
         switch (property) {
-          case 'labels':
+          case 'labels': {
+            const target = !always
             return (
               <span
                 key={property}
                 data-prop="labels"
                 // The whole slot is the cell editor's target, filled or empty. The Sprint page's
                 // slots are not targets yet (#272 waits on #279's slot controls).
-                data-pick={always ? undefined : 'labels'}
-                title={issue.labels.join(', ') || (always ? undefined : 'Add labels')}
-                className={`flex w-24 shrink-0 items-center justify-end gap-1 text-xs text-muted ${always ? '' : 'cursor-pointer select-none rounded-md hover:bg-line'}`}
+                data-pick={target ? 'labels' : undefined}
+                title={issue.labels.join(', ') || (target ? 'Add labels' : undefined)}
+                className={`flex w-24 shrink-0 items-center justify-end gap-1 text-xs text-muted ${target ? 'cursor-pointer select-none rounded-md hover:bg-line' : ''}`}
               >
                 {firstLabel !== undefined && (
                   <>
@@ -543,6 +544,7 @@ export function Properties({
                 )}
               </span>
             )
+          }
           case 'sprint':
             return (
               <span

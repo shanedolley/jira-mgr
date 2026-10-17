@@ -10,6 +10,7 @@ import {
   fieldsOf,
   launch,
   logIn,
+  moveIssue,
   notices,
   refuseKeys,
   releaseEdit,
@@ -56,8 +57,31 @@ async function open() {
     .getByRole('button', { name: 'Labels', exact: true })
     .click()
   await window.keyboard.press('Escape')
+  await expect(window.getByRole('group', { name: 'Ordering', exact: true })).toBeHidden()
   await expect(slot(FILLED)).toHaveText('docs')
 }
+
+/** Resizes the window's content, as `narrow.test.ts` does. Under 700px of Tree the row properties hide. */
+async function resize(width: number, height = 700) {
+  await app.evaluate(
+    ({ BrowserWindow }, [w, h]) => {
+      const win = BrowserWindow.getAllWindows()[0]
+      win?.setMinimumSize(1, 1)
+      win?.setContentSize(w ?? 0, h ?? 0)
+    },
+    [width, height],
+  )
+  await expect.poll(() => window.evaluate(() => globalThis.innerWidth)).toBe(width)
+}
+
+/** Whether any labels slot carries the cell editor's anchor, which an open cell editor gives its cell. */
+const slotAnchored = () =>
+  window.evaluate(
+    () =>
+      [...document.querySelectorAll<HTMLElement>('[data-pick=labels]')].filter(
+        (cell) => cell.style.getPropertyValue('anchor-name') !== '',
+      ).length > 0,
+  )
 
 const writes = async () => (await counts(app)).edits
 const labelsOf = async (key: string) => ((await fieldsOf(app, key)) as { labels: string[] }).labels
@@ -204,6 +228,63 @@ test('L opens the list on the active row, and the keyboard alone toggles a label
   await expect(listbox()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(tree()).toBeFocused()
+  await settle(before, 1)
+  expect(await labelsOf('PSAPAC-3')).toEqual(['docs'])
+})
+
+test('L opens the Peek picker when a narrow Tree hides the slot, and anchors nothing to it', async () => {
+  await open()
+  await item(EMPTY).click()
+  await expect(peek()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+
+  // Under 700px of Tree the row properties are not drawn.
+  await resize(720)
+  await expect(slot(EMPTY)).toBeHidden()
+  await window.keyboard.press('l')
+
+  await expect(peek()).toBeVisible()
+  await expect(peek().getByRole('button', { name: /^Labels:/ })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  )
+  await expect(search()).toBeFocused()
+  expect(await slotAnchored()).toBe(false)
+})
+
+test('L pressed in the Peek opens the Peek picker, not the Tree row cell', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await expect(peek()).toBeVisible()
+  // Focus inside the Peek, on its summary button, so the key does not come from the Tree.
+  await peek().getByRole('button', { name: 'Migrate the dashboards' }).focus()
+  await window.keyboard.press('l')
+
+  await expect(peek().getByRole('listbox', { name: 'Labels' })).toBeVisible()
+  await expect(search()).toBeFocused()
+  expect(await slotAnchored()).toBe(false)
+})
+
+test('a Hold row stays editable', async () => {
+  await moveIssue(app, 'PSAPAC-3', 'hold')
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await expect(listbox()).toBeVisible()
+  // The row fades to 30%, but the list over it is not part of the row.
+  const drawn = await popover().evaluate((el) => {
+    let opacity = 1
+    for (let node: Element | null = el; node !== null; node = node.parentElement) {
+      opacity *= Number(getComputedStyle(node).opacity)
+    }
+    return opacity
+  })
+  expect(drawn).toBe(1)
+  await option('docs').click()
+  await expect(slot(EMPTY)).toHaveText('docs')
+  await window.keyboard.press('Escape')
   await settle(before, 1)
   expect(await labelsOf('PSAPAC-3')).toEqual(['docs'])
 })
