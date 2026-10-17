@@ -47,9 +47,10 @@ GitHub Actions cannot run for this repository (Shane, 2026-10-17). `.github/work
 ```
 pnpm ci:local
 du -sh node_modules/.pnpm/electron@*/node_modules/electron/dist
-lockf /private/tmp/claude-501/-Users-shanedolley-Development-personal-jira-mgr/7bf42498-7df8-4d47-81dd-d0657b1f4070/scratchpad/e2e.lock pnpm e2e --workers=1
+lockf /tmp/jira-mgr-e2e.lock pnpm e2e --workers=1
 ```
 
+- Run the route on a clean, committed tree (`git status --short` prints nothing) under Node 24 (`node -v`): `pnpm ci:local` checks neither.
 - `pnpm ci:local` runs `pnpm install --frozen-lockfile`, `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm docs:reference` with no diff under `docs/reference`. It stops at the first failure. (`pnpm ci` is pnpm's own clean install, so the script has another name.)
 - The Electron dist is about 307 MB with `path.txt` beside it. If it is missing or truncated, run `pnpm --filter @jira-mgr/e2e exec install-electron` first.
 - `lockf` serialises e2e across worktrees on the shared lock file. Run it on one worker and never in parallel with another e2e run.
