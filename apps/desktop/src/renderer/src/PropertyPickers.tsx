@@ -17,7 +17,6 @@ import { Picker, menuProps, type MenuMode, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
 import {
   NONE,
-  STATE_LABELS,
   assigneeChoices,
   assigneeOptions,
   assigneePatch,
@@ -31,6 +30,7 @@ import {
   recentAssignees,
   refusedNotice,
   shownSprints,
+  sprintDetail,
   sprintPatch,
   statusPatch,
   typePatch,
@@ -356,7 +356,7 @@ export function TypePicker({ issue, menu }: PickerProps) {
 }
 
 /** Backlog and the project's sprints, closed ones listed but not chosen. Opened by `Shift+C`. */
-export function SprintPicker({ issue, menu }: PickerProps) {
+export function SprintPicker({ issue, menu, cell }: PickerProps) {
   const setSprint = useSetSprint()
   const attempt = useAttempt(issue.key)
   const [open, setOpen] = useState(false)
@@ -369,7 +369,7 @@ export function SprintPicker({ issue, menu }: PickerProps) {
     ...sprintList.map((s) => ({
       id: String(s.id),
       label: s.name,
-      detail: STATE_LABELS[s.state],
+      detail: sprintDetail(s),
       // Jira refuses a move into a closed sprint.
       disabled: s.state === 'closed',
     })),
@@ -388,6 +388,7 @@ export function SprintPicker({ issue, menu }: PickerProps) {
   return (
     <Picker
       {...menuProps(menu)}
+      cell={cell}
       label="Sprint"
       shortcut="Shift+C"
       valueText={sprint?.name ?? 'Backlog'}

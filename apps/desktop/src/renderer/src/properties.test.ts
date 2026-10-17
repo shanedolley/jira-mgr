@@ -19,6 +19,7 @@ import {
   recentAssignees,
   refusedNotice,
   shownSprints,
+  sprintDetail,
   sprintPatch,
   statusPatch,
   typePatch,
@@ -114,6 +115,19 @@ describe('shownSprints', () => {
 
   it('keeps closed and undated sprints behind Show all, closed newest first', () => {
     expect(shownSprints(all, true).map((s) => s.id)).toEqual([4, 6, 3, 2, 5, 1])
+  })
+})
+
+describe('sprintDetail', () => {
+  it('reads the date part of the end timestamp, not the local day', () => {
+    expect(sprintDetail({ state: 'active', endDate: '2026-10-18T14:00:00.000Z' })).toBe('18 Oct')
+    expect(sprintDetail({ state: 'closed', endDate: '2026-01-05T23:59:00Z' })).toBe('5 Jan')
+  })
+
+  it('falls back to the state without a usable end date', () => {
+    expect(sprintDetail({ state: 'future', endDate: null })).toBe('Future')
+    expect(sprintDetail({ state: 'active', endDate: '2026-13-40T00:00:00Z' })).toBe('Active')
+    expect(sprintDetail({ state: 'active', endDate: 'soon' })).toBe('Active')
   })
 })
 

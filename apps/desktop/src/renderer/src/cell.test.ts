@@ -102,6 +102,7 @@ describe('isCellProperty', () => {
   it('accepts each property with a cell editor and nothing else a cell can carry', () => {
     for (const property of CELL_PROPERTIES) expect(isCellProperty(property)).toBe(true)
     expect(isCellProperty('priority')).toBe(true)
+    expect(CELL_PROPERTIES).toContain('sprint')
     // An unregistered name and a missing attribute are no property.
     expect(isCellProperty('nonsense')).toBe(false)
     expect(isCellProperty(undefined)).toBe(false)

@@ -42,6 +42,20 @@ export const STATE_LABELS: Record<SprintOption['state'], string> = {
   closed: 'Closed',
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/**
+ * What a list shows beside a sprint's full name: its end day (`18 Oct`), else its state. The day
+ * is the date part of Jira's timestamp, as the Tree's slot reads it, not the local day.
+ */
+export function sprintDetail(sprint: Pick<SprintOption, 'state' | 'endDate'>): string {
+  const parts = /^\d{4}-(\d{2})-(\d{2})/.exec(sprint.endDate ?? '')
+  const month = MONTHS[Number(parts?.[1]) - 1]
+  return parts === null || month === undefined
+    ? STATE_LABELS[sprint.state]
+    : `${String(Number(parts[2]))} ${month}`
+}
+
 /** An assignee, as the pickers list one. */
 export type Person = Pick<UserOption, 'accountId' | 'displayName' | 'avatarUrl'>
 

@@ -515,6 +515,8 @@ export function Properties({
 }) {
   if (properties.length === 0) return null
   const sprint = rowSprint(issue)
+  // The Tree's slot is a click target. An Epic or a Subtask has no sprint, so its slot is not.
+  const sprintCell = !always && propertyRules(issue.issueType).sprint
   const [firstLabel, ...moreLabels] = issue.labels
   return (
     <span
@@ -566,8 +568,15 @@ export function Properties({
               <span
                 key={property}
                 data-prop="sprint"
-                title={sprint === undefined ? undefined : sprintTitle(sprint)}
-                className="w-[6.5rem] shrink-0 truncate text-right text-xs text-muted"
+                data-pick={sprintCell ? 'sprint' : undefined}
+                title={
+                  sprint === undefined
+                    ? sprintCell
+                      ? 'Set sprint'
+                      : undefined
+                    : sprintTitle(sprint)
+                }
+                className={`w-[6.5rem] shrink-0 truncate text-right text-xs text-muted ${sprintCell ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`}
               >
                 {sprint === undefined ? undefined : sprintLabel(sprint, today)}
               </span>

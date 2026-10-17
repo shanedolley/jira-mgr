@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
 import { LogWorkContext, loggedIssue } from './logWork'
-import { PriorityCell, rowName, rowProgress, TimeCell } from './TreeRow'
+import { PriorityCell, Properties, rowName, rowProgress, TimeCell } from './TreeRow'
 import type { TreeRow } from './tree'
 
 function row(over: Partial<Issue>): TreeRow {
@@ -227,5 +227,45 @@ describe('the priority slot', () => {
       expect(cell(name)).toContain('data-slot="priority"')
       expect(cell(name)).toContain('size-4')
     }
+  })
+})
+
+describe('the Sprint slot', () => {
+  const slot = (over: Partial<Issue>, always = false) => {
+    const { issue } = (row({ labels: [], ...over }) as { node: { issue: Issue } }).node
+    return renderToStaticMarkup(
+      createElement(Properties, { issue, properties: ['sprint'], today: '2026-10-10', always }),
+    )
+  }
+  const sprints = [{ id: 5, name: 'Sprint 5', state: 'active', endDate: '2026-10-14T14:00:00Z' }]
+
+  it('is a target on a Story, Task or Bug, and keeps the full name and end day in its title', () => {
+    for (const name of ['Story', 'Task', 'Bug']) {
+      const html = slot({
+        issueType: { id: '2', name, subtask: false, hierarchyLevel: 0 },
+        sprints,
+      })
+      expect(html).toContain('data-pick="sprint"')
+      expect(html).toContain('title="Sprint 5, ends 2026-10-14"')
+    }
+  })
+
+  it('is a target when empty, where it offers Set sprint', () => {
+    const html = slot({ sprints: [] })
+    expect(html).toContain('data-pick="sprint"')
+    expect(html).toContain('title="Set sprint"')
+  })
+
+  it('is no target on an Epic or a Subtask, which have no sprint', () => {
+    const epic = { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 }
+    const subtask = { id: '8', name: 'Subtask', subtask: true, hierarchyLevel: -1 }
+    for (const issueType of [epic, subtask]) {
+      expect(slot({ issueType, sprints: [] })).not.toContain('data-pick')
+      expect(slot({ issueType, sprints: [] })).not.toContain('title=')
+    }
+  })
+
+  it('is no target on the Sprint page yet', () => {
+    expect(slot({ sprints }, true)).not.toContain('data-pick')
   })
 })
