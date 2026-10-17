@@ -845,7 +845,10 @@ export function Shell({ session }: { session: Session }) {
     const cell = document
       .getElementById(rowDomId(activeRow.id))
       ?.querySelector<HTMLElement>(`[data-pick="${command}"]`)
-    if (issue === undefined || cell === undefined || cell === null) return false
+    // A slot the narrow Tree hides has no box to anchor to; the key then opens the Peek's picker.
+    if (issue === undefined || cell?.checkVisibility() !== true) {
+      return false
+    }
     cellEditor.open({ issue, property: command, cell }, false)
     return true
   }

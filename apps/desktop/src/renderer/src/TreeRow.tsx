@@ -526,8 +526,11 @@ export function Properties({
               <span
                 key={property}
                 data-prop="labels"
-                title={issue.labels.join(', ') || undefined}
-                className="flex w-24 shrink-0 items-center justify-end gap-1 text-xs text-muted"
+                // The whole slot is the cell editor's target, filled or empty. The Sprint page's
+                // slots are not targets yet (#272 waits on #279's slot controls).
+                data-pick={always ? undefined : 'labels'}
+                title={issue.labels.join(', ') || (always ? undefined : 'Add labels')}
+                className={`flex w-24 shrink-0 items-center justify-end gap-1 text-xs text-muted ${always ? '' : 'cursor-pointer select-none rounded-md hover:bg-line'}`}
               >
                 {firstLabel !== undefined && (
                   <>

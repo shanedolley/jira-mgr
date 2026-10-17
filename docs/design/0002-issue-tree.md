@@ -298,6 +298,14 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 - A Hold row stays editable, and its slot keeps the row's fade.
 - The Sprint page rows drew no priority, so each gains the same slot, after the summary and before the row properties: a `Slot` button named "Priority of PSAPAC-4: Medium" around the Tree's glyph slot, drawn or empty, that opens the same list. It is in the tab order after Status, sits inside the row's Hold fade, and the row button still opens the issue. It shows even when the Display menu has no properties on, since it is a cell and not a Display property.
 
+*Amended 2026-10-18, build of #272.* Shane wants to select the labels on the canvas and edit them there. The orchestrator decided these, pending Shane's confirmation:
+
+- A click on a row's labels slot, filled or empty, opens the Labels picker as a cell editor anchored to the slot. The whole 6rem slot is the target (`data-pick="labels"`), not the chip or the "+N" alone, so an empty slot has a target too. It shows the first label and "+N" as before, and the list shows every label. The click makes the row active and does not open the Peek, arm the double-click, change the checked rows or select text. Its `title` reads "Add labels" while the slot is empty.
+- `L` on the Tree opens the same list on the active row's slot. When the Display menu leaves Labels off, or the Tree is too narrow to draw the slot, `L` opens the Peek's picker as before.
+- The list is the Peek's `LabelsPicker`, a multi-select: each toggle writes at once through `editIssue` with `addLabels` or `removeLabels` and updates the slot before Jira answers, and the list stays open. A refusal reverts that one label and offers Retry. The type-ahead creates a new label from text without a space. `Esc` or a click outside closes the list, and focus returns to the Tree with the row still active. Enter chooses the active option and never closes the list; `Esc` does.
+- A Hold row stays editable, as with the status dot.
+- The Sprint page's Display slots offer the same picker once #279's slot controls land; its labels slot is not a target yet.
+
 ### Peek
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.
