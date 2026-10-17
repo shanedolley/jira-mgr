@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
 import {
   counts,
@@ -42,6 +42,22 @@ const option = (name: string) => listbox().getByRole('option', { name, exact: tr
 /** The open list, drawn by the cell editor against the clicked slot. */
 const popover = () => window.locator('.menu:popover-open')
 const sidebar = () => window.getByRole('navigation', { name: 'Main' })
+
+/**
+ * The open list sits below `cell`, aligned to its left edge or, where the slot is near the window's
+ * right edge and the list flips (`flip-inline`), to its right edge, and stays inside the window.
+ */
+async function expectBeside(cell: Locator) {
+  const slotBox = await cell.boundingBox()
+  const list = await popover().boundingBox()
+  if (slotBox === null || list === null) throw new Error('the slot or the list is not drawn')
+  expect(list.y).toBeGreaterThanOrEqual(slotBox.y + slotBox.height - 1)
+  const leftAligned = Math.abs(list.x - slotBox.x) <= 4
+  const rightAligned = Math.abs(list.x + list.width - (slotBox.x + slotBox.width)) <= 4
+  expect(leftAligned || rightAligned).toBe(true)
+  const width = await window.evaluate(() => globalThis.innerWidth)
+  expect(list.x + list.width).toBeLessThanOrEqual(width)
+}
 
 /** PSAPAC-3 has no label. PSAPAC-11 has `docs`, the only label in the project. */
 const EMPTY = /PSAPAC-3,/
@@ -105,12 +121,7 @@ test('a click on a filled slot opens the list beside the slot and not the Peek',
   await expect(peek()).toHaveCount(0)
   await expect(item(FILLED)).toHaveAttribute('data-active', 'true')
   await expect(option('docs')).toHaveAttribute('aria-selected', 'true')
-  // Below the slot, starting at its left edge.
-  const cell = await slot(FILLED).boundingBox()
-  const list = await popover().boundingBox()
-  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
-  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+  await expectBeside(slot(FILLED))
 })
 
 test('a click on an empty slot opens the same list', async () => {
@@ -219,10 +230,7 @@ test('L opens the list on the active row, and the keyboard alone toggles a label
   await expect(listbox()).toBeVisible()
   await expect(search()).toBeFocused()
   await expect(peek()).toHaveCount(0)
-  const cell = await slot(EMPTY).boundingBox()
-  const list = await popover().boundingBox()
-  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
+  await expectBeside(slot(EMPTY))
 
   await window.keyboard.press('Enter')
   await expect(slot(EMPTY)).toHaveText('docs')
@@ -348,7 +356,7 @@ const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 const sprintSlot = (key: string, labels: string) =>
   sprintPage().getByRole('button', { name: `Labels of ${key}: ${labels}` })
 
-/** PSAPAC-4 and PSAPAC-13 start in the active sprint; these join them, as in the cell tests. */
+/** Only PSAPAC-13 starts in the active sprint; the rest join it, as in the cell tests. */
 const MEMBERS = [
   'PSAPAC-1',
   'PSAPAC-2',
@@ -383,12 +391,7 @@ test('a click on a Sprint page labels slot, filled or empty, opens the list besi
   await expect(search()).toBeFocused()
   await expect(issuePage()).toHaveCount(0)
   await expect(option('docs')).toHaveAttribute('aria-selected', 'true')
-  // Below the slot, starting at its left edge.
-  const cell = await sprintSlot('PSAPAC-11', 'docs').boundingBox()
-  const list = await popover().boundingBox()
-  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
-  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+  await expectBeside(sprintSlot('PSAPAC-11', 'docs'))
   await window.keyboard.press('Escape')
   await expect(listbox()).toHaveCount(0)
 
