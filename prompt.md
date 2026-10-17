@@ -10,7 +10,7 @@ Once Shane says go, take them in this order. It is the orchestrator's suggestion
 
 - **#217 rework.** Shane's comment of 2026-10-17: reduce the opacity of every field a Hold row can show on the canvas, the issue number and the avatar icon included. It blocks nothing; it is his open ask. Confirm with him which fields "ALL" covers if the issue leaves it open.
 - **#254**, the Original estimate, Logged, Remaining and Remaining % Display properties. Read the issue body's Decisions, which Shane has not confirmed. Changing the allowed `display.properties` values is an Ask First item that his request covers.
-- **#255**, the Vite+ spike: a report and an ADR from a throwaway branch that never merges. Adoption work needs his approval of the new dependencies.
+- **#255**, the Vite+ spike: a report and an ADR; the trial runs on a throwaway branch that never merges, and the report and the ADR reach main through their own docs pull request. Adoption work needs his approval of the new dependencies.
 - **The Dependabot majors #235 (@eslint/js 10) and #236 (msw 3)**, not merged alone (see Not Alone and the Open Decisions in the handover). #255 may make #235 moot. #236's e2e failure was the #249 race, and a rebase should clear it (a prediction); its typecheck failure (`onUnhandledRequest`) remains. The minor and patch group landed as #247 (abb3b60) on 2026-10-15.
 
 Do not run `pnpm e2e` for a story. Shane's rules of 2026-10-15: builders run only their story's e2e files; the full local suite runs once, after a batch is developed (one agent, `lockf`, one worker, read the counts); stories stack and merge after that run; a pull request merges without waiting for Shane once CI and the review verdict pass, as he reviews in the morning.
