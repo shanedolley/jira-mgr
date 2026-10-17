@@ -143,6 +143,20 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
     }
   })
 
+  // Exempt from AA by Shane's decision of 2026-10-15 (#217), widened on 2026-10-17: every field of a
+  // Hold row (key, summary, properties, avatar) draws at 30% opacity, so its text falls below 4.5:1
+  // on purpose. The fade is the cue. The floor catches a token change that erases the text.
+  it('keeps faded Hold text (30% opacity, an exemption from 4.5:1) visible on every row', () => {
+    for (const surface of ROW_SURFACES) {
+      for (const text of ['ink', 'muted']) {
+        const fg = token(text, theme)
+        const bg = token(surface, theme)
+        const faded = fg.map((c, i) => HOLD_OPACITY * c + (1 - HOLD_OPACITY) * (bg[i] ?? 0)) as Rgb
+        expect(contrast(faded, bg), `faded ${text} on ${surface}`).toBeGreaterThanOrEqual(1.3)
+      }
+    }
+  })
+
   it('keeps the type colours shown on hover and on Bug at 3:1 on every row background', () => {
     for (const glyph of ['type-epic', 'type-story', 'type-bug', 'type-task']) {
       for (const surface of ROW_SURFACES) {

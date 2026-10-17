@@ -7,7 +7,7 @@ import { Avatar } from './Avatar'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
-import { StatusDot, summaryFade } from './StatusDot'
+import { holdFade, StatusDot } from './StatusDot'
 import { TimerClock } from './TimerClock'
 import { HEADER_GAP, HEADER_HEIGHT, ROW_HEIGHT, type TreeRow as Row } from './tree'
 import { TypeIcon } from './TypeIcon'
@@ -484,7 +484,7 @@ function Content({
       // Context rows read as muted text, which keeps AA contrast, rather than as faded ink.
       const tone = contextOnly ? 'text-muted' : ''
       return (
-        <>
+        <span {...holdFade(issue.status)} className="flex min-w-0 flex-1 items-center gap-2">
           <TypeIcon type={issue.issueType} />
           <Pick property="status" title="Change status">
             <StatusDot status={issue.status} />
@@ -492,10 +492,7 @@ function Content({
           <span className="tree-key w-[5.5rem] min-w-fit shrink-0 text-xs font-[450] tabular-nums text-muted">
             {issue.key}
           </span>
-          <span
-            className={`min-w-0 flex-1 truncate font-medium @tree:min-w-20 ${tone}`}
-            style={summaryFade(issue.status)}
-          >
+          <span className={`min-w-0 flex-1 truncate font-medium @tree:min-w-20 ${tone}`}>
             {issue.summary}
           </span>
           <BlockPills {...blocks} />
@@ -515,7 +512,7 @@ function Content({
           <Pick property="assignee" title="Change assignee">
             <Avatar person={issue.assignee} />
           </Pick>
-        </>
+        </span>
       )
     }
   }

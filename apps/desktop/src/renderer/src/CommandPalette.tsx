@@ -11,7 +11,7 @@ import {
   type ActionId,
   type ActionRow,
 } from './paletteActions'
-import { StatusDot, summaryFade } from './StatusDot'
+import { holdFade, StatusDot } from './StatusDot'
 import { searchIssues, textMatches } from './search'
 import { useTextSearch, type TextSearch } from './textSearch'
 import { TypeIcon } from './TypeIcon'
@@ -188,13 +188,13 @@ export function CommandPalette({
 
   const option = (issue: Issue) => (
     <div key={issue.key} {...rowProps(issueRow(issue))}>
-      <TypeIcon type={issue.issueType} />
-      <StatusDot status={issue.status} />
-      <span className="w-24 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
-      <span className="min-w-0 flex-1 truncate" style={summaryFade(issue.status)}>
-        {issue.summary}
+      <span {...holdFade(issue.status)} className="flex min-w-0 flex-1 items-center gap-3">
+        <TypeIcon type={issue.issueType} />
+        <StatusDot status={issue.status} />
+        <span className="w-24 shrink-0 font-mono text-xs text-muted">{issue.key}</span>
+        <span className="min-w-0 flex-1 truncate">{issue.summary}</span>
+        <span className="shrink-0 text-xs text-muted">{issue.status.name}</span>
       </span>
-      <span className="shrink-0 text-xs text-muted">{issue.status.name}</span>
     </div>
   )
 

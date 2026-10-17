@@ -280,6 +280,11 @@ input {
   }
 }
 
+/* A Hold row's content fades to 30% as a whole (holdFade), and its status ring is already at 30% itself, so it stays at 100% inside. */
+[data-hold] [data-shape='hold'] {
+  opacity: 1;
+}
+
 /* A property whose edit waits on Jira: the value dims to 60%, and a spinner takes the chevron's place. */
 [data-pending] {
   position: relative;
