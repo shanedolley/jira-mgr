@@ -269,9 +269,9 @@ test('holds its layout with a wide font: the list fits the window and no option 
   expect(fits).toEqual({ inside: true, clipped: 0 })
 })
 
-/** PSAPAC-4 and PSAPAC-13 start in the active sprint, PSAPAC-3 (no assignee) joins them. */
+/** Only PSAPAC-13 starts in the active sprint; PSAPAC-3 (no assignee) and PSAPAC-4 join it. */
 async function openSprint() {
-  await joinSprint(app, ['PSAPAC-3'], 5)
+  await joinSprint(app, ['PSAPAC-3', 'PSAPAC-4'], 5)
   await open()
   await sidebar()
     .getByRole('region', { name: 'Sprints' })
@@ -366,7 +366,7 @@ test('a Hold row on the Sprint page keeps its fade and stays editable', async ()
   const before = await writes()
   const faded = (key: string) =>
     sprintPage()
-      .locator(`li[data-issue-key=${key}] [data-avatar]`)
+      .locator(`li[data-issue-key=${key}] [data-pick=assignee] > *`)
       .evaluate((el) => {
         let opacity = 1
         for (let node: Element | null = el; node !== null; node = node.parentElement) {
