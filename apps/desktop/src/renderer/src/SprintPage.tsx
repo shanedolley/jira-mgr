@@ -9,6 +9,7 @@ import { Icon, PENCIL } from './Icon'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
 import { SECTION_HEADING } from './Section'
+import { Slot } from './Slot'
 import { holdFade, StatusDot } from './StatusDot'
 import {
   BREAKDOWNS,
@@ -231,22 +232,39 @@ function Issues({
               className={`divide-y divide-line rounded-md border border-line ${properties.length === 0 ? 'max-w-[40rem]' : 'max-w-[64rem]'}`}
             >
               {inGroup.map((issue) => (
-                <li key={issue.key} className="group/row relative">
+                <li
+                  key={issue.key}
+                  data-issue-key={issue.key}
+                  className="group/row relative hover:bg-hover"
+                >
+                  {/* The row's click target, under the content: a button cannot hold the slots, so they sit beside it. */}
                   <button
                     type="button"
                     data-row
-                    data-issue-key={issue.key}
+                    aria-label={`${issue.key} ${issue.summary}`}
                     onClick={() => {
                       onOpen(issue.key)
                     }}
-                    className="flex min-h-8 w-full flex-wrap items-center gap-x-3 gap-y-1 py-1 pl-3 pr-10 text-left hover:bg-hover"
-                  >
+                    className="absolute inset-0 text-left"
+                  />
+                  {/* Ignores the pointer, so a click outside a slot reaches the button under it. Each slot takes it back (Slot). */}
+                  <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-2.5 pr-10">
+                    <Slot
+                      data-pick="status"
+                      title="Change status"
+                      aria-label={`Status of ${issue.key}: ${issue.status.name}`}
+                      aria-haspopup="listbox"
+                      onClick={(event) => {
+                        onEditCell(issue, 'status', event.currentTarget)
+                      }}
+                      className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-line"
+                    >
+                      <StatusDot status={issue.status} />
+                    </Slot>
                     <span
                       {...holdFade(status)}
-                      className="flex w-full flex-wrap items-center gap-x-3 gap-y-1"
+                      className="flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1"
                     >
-                      {/* Room for the status button, which sits over it: a button cannot hold a button. */}
-                      <span aria-hidden className="size-4 shrink-0" />
                       <span className="w-20 shrink-0 font-mono text-xs text-muted">
                         {issue.key}
                       </span>
@@ -258,32 +276,17 @@ function Issues({
                       <Properties issue={issue} properties={properties} today={today} always />
                       <Avatar person={issue.assignee} />
                     </span>
-                  </button>
-                  <button
-                    type="button"
-                    data-pick="status"
-                    title="Change status"
-                    aria-label={`Status of ${issue.key}: ${issue.status.name}`}
-                    aria-haspopup="listbox"
-                    onClick={(event) => {
-                      onEditCell(issue, 'status', event.currentTarget)
-                    }}
-                    className="absolute left-2.5 top-1.5 flex size-5 items-center justify-center rounded-full hover:bg-line"
-                  >
-                    <StatusDot status={issue.status} />
-                  </button>
-                  {/* A sibling of the row's button, since a button cannot nest in one. */}
-                  <button
-                    type="button"
-                    aria-label={`Edit summary of ${issue.key}`}
-                    title="Edit summary"
-                    onClick={() => {
-                      onEditSummary(issue)
-                    }}
-                    className="btn btn-ghost btn-icon btn-sm absolute right-2 top-1 opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100"
-                  >
-                    <Icon path={PENCIL} />
-                  </button>
+                    <Slot
+                      aria-label={`Edit summary of ${issue.key}`}
+                      title="Edit summary"
+                      onClick={() => {
+                        onEditSummary(issue)
+                      }}
+                      className="btn btn-ghost btn-icon btn-sm absolute right-2 top-1 opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100"
+                    >
+                      <Icon path={PENCIL} />
+                    </Slot>
+                  </div>
                 </li>
               ))}
             </ul>

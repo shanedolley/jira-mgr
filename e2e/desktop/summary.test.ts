@@ -211,7 +211,7 @@ test('the Sprint page edits a summary from its pencil and still opens an issue f
   await field().fill('Migrate the dashboards in the sprint')
   await window.keyboard.press('Enter')
   await expect(dialog()).toHaveCount(0)
-  await expect(listed).toContainText('Migrate the dashboards in the sprint')
+  await expect(listed).toHaveAccessibleName('PSAPAC-4 Migrate the dashboards in the sprint')
   await expect(pencil).toBeFocused()
   await settle(1)
 

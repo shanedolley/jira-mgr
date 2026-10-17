@@ -53,10 +53,11 @@ const openStory = () => openPage(/PSAPAC-1,/, 'Kick off the engagement')
 const openLogged = () => openPage(/PSAPAC-2,/, 'Review the data model')
 
 /**
- * A button that fills a row, opens a property picker or is a bare text link is not button chrome:
- * a picker is a field, as a select is, and the rest take their shape from the row around them.
+ * A button that fills a row, opens a property picker, is a Sprint page row's property slot or is a
+ * bare text link is not button chrome: a picker is a field, as a select is, and the rest take their
+ * shape from the row around them.
  */
-const NOT_CHROME = '[aria-haspopup="listbox"], [data-row]'
+const NOT_CHROME = '[aria-haspopup="listbox"], [data-row], [data-prop]'
 
 const BIN = 'M3.5 4.5h9M6.5 4.5v-1h3v1M5 4.5l.5 8h5l.5-8'
 const CROSS = ['m4 4 8 8M12 4l-8 8', 'm4.5 4.5 7 7m0-7-7 7']

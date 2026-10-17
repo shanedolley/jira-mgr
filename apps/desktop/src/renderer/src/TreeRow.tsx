@@ -2,7 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 import { sprintLabel, sprintTitle, type RowProperty } from '@jira-mgr/core/display'
 import type { Progress } from '@jira-mgr/core/hierarchy'
 import { propertyRules } from '@jira-mgr/core/issue'
-import { memo, type MouseEvent, type ReactNode } from 'react'
+import { memo, type ReactNode } from 'react'
 
 import { Avatar } from './Avatar'
 import { isCellProperty, type CellProperty } from './cell'
@@ -12,6 +12,7 @@ import { Icon, PENCIL } from './Icon'
 import { useLogWork } from './logWork'
 import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
+import { Slot } from './Slot'
 import { holdFade, StatusDot } from './StatusDot'
 import { summaryClick } from './summaryEdit'
 import { TimerClock } from './TimerClock'
@@ -369,33 +370,51 @@ export function TimeCell({
   // The Logged slot, filled or empty, opens the Log work modal. An Epic has no time tracking, so no target.
   const target =
     property === 'logged' && log !== null && propertyRules(issue.issueType).estimates ? log : null
-  return (
-    <span
-      data-prop={property}
-      title={
-        value === null
-          ? target === null
-            ? undefined
-            : 'Log work'
-          : `${TIME_NAMES[property]} ${value}`
-      }
-      className={`shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${property === 'remainingPercent' ? 'w-12' : 'w-16'} ${target === null ? '' : 'cursor-pointer rounded hover:bg-line'}`}
-      {...(target !== null && {
-        role: 'button',
-        // The label replaces the text as the name, so it keeps the value.
-        'aria-label': `Log work on ${issue.key}, ${value === null ? 'nothing logged' : `${TIME_NAMES[property]} ${value}`}`,
-        // The row's click would open the Peek, and its double-click the issue.
-        onClick: (event: MouseEvent) => {
-          event.stopPropagation()
-          target(issue)
-        },
-        onDoubleClick: (event: MouseEvent) => {
-          event.stopPropagation()
-        },
-      })}
-    >
+  const shared = {
+    'data-prop': property,
+    title:
+      value === null
+        ? target === null
+          ? undefined
+          : 'Log work'
+        : `${TIME_NAMES[property]} ${value}`,
+    className: `shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-muted ${property === 'remainingPercent' ? 'w-12' : 'w-16'} ${target === null ? '' : 'cursor-pointer rounded hover:bg-line'}`,
+  }
+  const text = (
+    <>
       {value !== null && <span className="sr-only">{TIME_NAMES[property]} </span>}
       {value}
+    </>
+  )
+  if (target === null) return <span {...shared}>{text}</span>
+  // The label replaces the text as the name, so it keeps the value.
+  const label = `Log work on ${issue.key}, ${value === null ? 'nothing logged' : `${TIME_NAMES[property]} ${value}`}`
+  // On the Sprint page the slot is a button beside the row's own. In the Tree the row's click would
+  // open the Peek, and its double-click the issue.
+  return always ? (
+    <Slot
+      {...shared}
+      aria-label={label}
+      onClick={() => {
+        target(issue)
+      }}
+    >
+      {text}
+    </Slot>
+  ) : (
+    <span
+      {...shared}
+      role="button"
+      aria-label={label}
+      onClick={(event) => {
+        event.stopPropagation()
+        target(issue)
+      }}
+      onDoubleClick={(event) => {
+        event.stopPropagation()
+      }}
+    >
+      {text}
     </span>
   )
 }

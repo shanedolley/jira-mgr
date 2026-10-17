@@ -176,7 +176,7 @@ test('fits the four slots beside Due date and Updated in a wide font, in the Tre
   const onSprint = await sprintRow('PSAPAC-4').evaluate(measure)
   expect(onSprint).toEqual([true, true, true, true])
   const sprintOverflow = await sprintPage()
-    .locator('[data-row]')
+    .locator('li[data-issue-key]')
     .evaluateAll((rows) => rows.filter((row) => row.scrollWidth > row.clientWidth).length)
   expect(sprintOverflow).toBe(0)
   await style.evaluate((node) => {
