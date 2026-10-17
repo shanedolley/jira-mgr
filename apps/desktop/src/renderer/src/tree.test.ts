@@ -837,6 +837,13 @@ describe('clickRow', () => {
     expect(open).toMatchObject({ activeId: 'i:P-4', peekOpen: true })
   })
 
+  it('a click on a cell with its own editor makes the row active and changes nothing else', () => {
+    const held = clickRow(rows, state(null), 'i:P-2', false, 'toggle')
+    const next = clickRow(rows, held, 'i:P-4', false, 'activate')
+    expect(next).toEqual({ ...held, activeId: 'i:P-4' })
+    expect(next.peekOpen).toBe(false)
+  })
+
   it('a checkbox click checks the issue and makes it active and the anchor, without the Peek', () => {
     const on = clickRow(rows, state(null), 'i:P-4', false, 'toggle')
     expect([...on.checked]).toEqual(['P-4'])

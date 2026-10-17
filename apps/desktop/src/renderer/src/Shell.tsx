@@ -44,6 +44,7 @@ import type {
 import { issueUrl } from '../../shared/links'
 import { Banner } from './Banner'
 import { BulkBar } from './BulkBar'
+import { CellEditor, useCellEditor } from './CellEditor'
 import { copyText } from './clipboard'
 import { CommandPalette } from './CommandPalette'
 import { CreateIssueDialog } from './CreateIssueDialog'
@@ -816,6 +817,29 @@ export function Shell({ session }: { session: Session }) {
     else control?.click()
   }
 
+  /** The cell editor: a picker opened against the cell of a Tree or Sprint page row. */
+  const cellEditor = useCellEditor(restoreFocus)
+  const cellTarget = cellEditor.target
+  const cellIssue =
+    cellTarget === null
+      ? undefined
+      : (issues.find((i) => i.key === cellTarget.issue.key) ?? cellTarget.issue)
+
+  /**
+   * Opens the status editor on the dot of the active Tree row, as a click on it does. False when
+   * a page is open or the row is not drawn, and the caller opens the Peek's picker instead.
+   */
+  function openStatusCell(key: string): boolean {
+    if (pageKey !== null || activeRow === undefined) return false
+    const issue = issues.find((i) => i.key === key)
+    const dot = document
+      .getElementById(rowDomId(activeRow.id))
+      ?.querySelector<HTMLElement>('[data-pick="status"]')
+    if (issue === undefined || dot === undefined || dot === null) return false
+    cellEditor.open({ issue, property: 'status', cell: dot }, false)
+    return true
+  }
+
   /**
    * Opens one property of `key`. The shortcut clicks the control that advertises its key with
    * `aria-keyshortcuts`, so it is the picker the mouse opens and no code is duplicated.
@@ -1260,6 +1284,7 @@ export function Shell({ session }: { session: Session }) {
         if (command === 'assignMe') assignToMe(key)
         else if (command === 'copyKey') copyIssue(key, 'key')
         else if (command === 'copyLink') copyIssue(key, 'link')
+        else if (command === 'status' && openStatusCell(key)) return
         else openProperty(command, key)
       }
     }
@@ -1448,6 +1473,9 @@ export function Shell({ session }: { session: Session }) {
           openProperty(property, key)
         }}
         onEditSummary={setRenaming}
+        onCell={(issue, property, cell) => {
+          cellEditor.open({ issue, property, cell }, true)
+        }}
         onAdd={(row) => {
           if (canCreate) setCreating(createContext(row, issues))
         }}
@@ -1701,6 +1729,9 @@ export function Shell({ session }: { session: Session }) {
             }}
             onOpenIssue={setPageKey}
             onEditSummary={setRenaming}
+            onEditStatus={(issue, cell) => {
+              cellEditor.open({ issue, property: 'status', cell }, true)
+            }}
           />
         </div>
       )}
@@ -1782,6 +1813,14 @@ export function Shell({ session }: { session: Session }) {
             }
           }}
           returnFocus={restoreFocus}
+        />
+      )}
+      {cellTarget !== null && cellIssue !== undefined && (
+        <CellEditor
+          key={`${cellTarget.issue.key}:${cellTarget.property}`}
+          target={cellTarget}
+          issue={cellIssue}
+          onClose={cellEditor.close}
         />
       )}
       {menu !== null && menuIssue !== undefined && (

@@ -269,6 +269,14 @@ Rows contain no buttons, since a `treeitem` holds no focusable children: the Tre
 
 Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Close button for `Esc` and `Space`, the chevron and chip for the arrows, and the Groups menu's Customers and Everything for `Shift` with the side arrows.
 
+*Amended 2026-10-17, build of #267.* Shane wants to select the status on the canvas and edit it there, in a popover over the row instead of the Peek. The orchestrator decided these, pending Shane's confirmation:
+
+- A click on a row's status dot opens the Status list as a popover anchored to the dot, the cell editor (`CellEditor.tsx`, documented in the desktop README). The click makes the row active and does not open the Peek, arm the double-click, change the checked rows or select text. `Shift+click` still checks a range.
+- `S` on the Tree opens the same list on the active row's dot. The list is the Peek's Status picker (`StatusPicker`) with its options, transitions, optimistic patch and refusal toast, so a refused transition reverts the dot and offers Retry. `Esc`, a choice or a click outside closes it, and focus returns to the Tree with the row still active. Arrows, `1` to `9` and Enter work as in the Peek.
+- A Hold row stays editable: the fade is a reading aid, not a lock.
+- The Sprint page's rows gain a status button over the row button's left edge, so the row still opens the issue. It is in the tab order and named "Status of PSAPAC-4: In Progress". The Epics page stays read-only.
+- The Tree still holds no buttons: the dot is a click target, and its keyboard path is `S`.
+
 ### Peek
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.

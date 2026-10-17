@@ -15,6 +15,7 @@ import {
   type RefObject,
 } from 'react'
 
+import type { CellProperty } from './cell'
 import { keepsLetters } from './keymap'
 import { extrasWidth, fittingCount } from './propertyFit'
 import { DOUBLE_CLICK_MS } from './summaryEdit'
@@ -66,8 +67,10 @@ interface IssueTreeProps {
   blocks: ReadonlyMap<string, OpenBlocks>
   /** Called with the next state after a key or a click. */
   onChange: (next: MoveResult) => void
-  /** A click on an issue row's status dot or avatar, made after the row became active. */
-  onPick: (key: string, property: 'status' | 'assignee') => void
+  /** A click on an issue row's avatar, made after the row became active. */
+  onPick: (key: string, property: 'assignee') => void
+  /** A click on a cell with its own editor, such as the status dot, made after the row became active. */
+  onCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** A click on an issue row's pencil, or a second click on its summary, which asks for the summary editor. */
   onEditSummary: (issue: Issue) => void
   /** A click on a group header's "+". */
@@ -104,6 +107,7 @@ export function IssueTree({
   onChange,
   onPick,
   onEditSummary,
+  onCell,
   onAdd,
   onMove,
   progress,
@@ -398,6 +402,7 @@ export function IssueTree({
                 onOpen={onRowOpen}
                 onEdit={onRowEdit}
                 onPick={onPick}
+                onCell={onCell}
                 onAdd={onAdd}
                 done={children?.done}
                 total={children?.total}

@@ -198,12 +198,14 @@ function Issues({
   today,
   onOpen,
   onEditSummary,
+  onEditStatus,
 }: {
   report: SprintReport
   properties: readonly RowProperty[]
   today: string
   onOpen: (key: string) => void
   onEditSummary: (issue: Issue) => void
+  onEditStatus: (issue: Issue, cell: HTMLElement) => void
 }) {
   const { sprint, issues } = report
   const groups = groupByStatus(issues)
@@ -242,6 +244,8 @@ function Issues({
                       {...holdFade(status)}
                       className="flex w-full flex-wrap items-center gap-x-3 gap-y-1"
                     >
+                      {/* Room for the status button, which sits over it: a button cannot hold a button. */}
+                      <span aria-hidden className="size-4 shrink-0" />
                       <span className="w-20 shrink-0 font-mono text-xs text-muted">
                         {issue.key}
                       </span>
@@ -253,6 +257,19 @@ function Issues({
                       <Properties issue={issue} properties={properties} today={today} always />
                       <Avatar person={issue.assignee} />
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    data-pick="status"
+                    title="Change status"
+                    aria-label={`Status of ${issue.key}: ${issue.status.name}`}
+                    aria-haspopup="listbox"
+                    onClick={(event) => {
+                      onEditStatus(issue, event.currentTarget)
+                    }}
+                    className="absolute left-2.5 top-1.5 flex size-5 items-center justify-center rounded-full hover:bg-line"
+                  >
+                    <StatusDot status={issue.status} />
                   </button>
                   {/* A sibling of the row's button, since a button cannot nest in one. */}
                   <button
@@ -288,6 +305,8 @@ interface SprintPageProps {
   onOpenIssue: (key: string) => void
   /** Opens the summary editor of one of the sprint's issues. */
   onEditSummary: (issue: Issue) => void
+  /** A click on a row's status button: the cell editor opens its picker against `cell`. */
+  onEditStatus: (issue: Issue, cell: HTMLElement) => void
 }
 
 /**
@@ -303,6 +322,7 @@ export function SprintPage({
   onBack,
   onOpenIssue,
   onEditSummary,
+  onEditStatus,
 }: SprintPageProps) {
   const report = useSprintReport(sprintId)
 
@@ -347,6 +367,7 @@ export function SprintPage({
             today={today}
             onOpen={onOpenIssue}
             onEditSummary={onEditSummary}
+            onEditStatus={onEditStatus}
           />
           <Panel report={report.data} />
         </>

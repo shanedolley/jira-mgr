@@ -90,14 +90,14 @@ function editEverywhere(
     )
   }
   client.setQueryData<IssueDetail>(issueDetailKey(key), (detail) => detail && edit(detail, true))
-  // The Sprint page lists its issues from its own read, so a row there shows the edit at once too.
-  client.setQueriesData<SprintReport>(
-    { queryKey: sprintKey },
-    (report) =>
-      report && {
-        ...report,
-        issues: report.issues.map((issue) => (issue.key === key ? edit(issue, false) : issue)),
-      },
+  // The Sprint page lists its own copies, which an edit made from its rows must show at once too.
+  client.setQueriesData<SprintReport>({ queryKey: sprintKey }, (report) =>
+    report?.issues.some((issue) => issue.key === key)
+      ? {
+          ...report,
+          issues: report.issues.map((issue) => (issue.key === key ? edit(issue, false) : issue)),
+        }
+      : report,
   )
 }
 

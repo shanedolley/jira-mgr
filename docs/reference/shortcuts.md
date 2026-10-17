@@ -11,7 +11,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `C` | Create an issue under the issue the pointer rests on, else the active one: a Story under an Epic, a Subtask under a Story, Task or Bug or beside a Subtask |
 | `T` | Start or stop the timer on the active issue |
 | `W` | Open the Log work modal for the active issue. An Epic has no worklog, so `W` does nothing there. A click on a row's Logged slot, the menu's Log work and the palette's Log work open the same modal |
-| `S` | Open Status |
+| `S` | Open Status. From the Tree it opens the list beside the active row's status dot, and `Esc` or a choice returns focus to the Tree; with a page open it opens the page's Status |
 | `A` | Open Assignee |
 | `L` | Open Labels |
 | `P` | Open Priority |
@@ -46,6 +46,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Shift+Left` | Close to the Customer headers (the Customers level, stored) |
 | `Enter` | Open the issue page; toggle a header |
 | Double-click | On an issue row, open its page as `Enter` does, the issue the first click hit. The checkbox, the status dot, the avatar, the chevron and a Shift+double-click ignore it, and a header or chip does only what its two clicks do |
+| Click on a status dot | Open the Status list beside the dot, without opening the Peek. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
 | `Space` | Toggle the Peek |
 | `X` | Check or uncheck the active issue; the checkbox in a row's left gutter does the same |
 | `Shift+Down`, `Shift+Up` | Move to the next or previous row and check the issue rows it crosses |

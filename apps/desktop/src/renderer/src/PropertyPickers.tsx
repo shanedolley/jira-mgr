@@ -12,7 +12,7 @@ import { LabelDot, PriorityBars } from './Glyphs'
 import { useNotify, type Notify } from './notify'
 import { current } from './optimistic'
 import { ParentPrompt } from './ParentPrompt'
-import { Picker, menuProps, type MenuMode, type PickerOption } from './Picker'
+import { Picker, menuProps, type CellMode, type MenuMode, type PickerOption } from './Picker'
 import { StatusDot } from './StatusDot'
 import {
   NONE,
@@ -118,6 +118,8 @@ interface PickerProps {
   issue: Issue
   /** Set by the context menu, which shows the picker as one of its items. */
   menu?: MenuMode
+  /** Set by the cell editor, which opens the picker against a row's cell. */
+  cell?: CellMode
 }
 
 const fromChoices = (choices: FieldChoice[] | undefined): PickerOption[] =>
@@ -147,7 +149,7 @@ export const statusOptions = (choices: readonly StatusOption[]): PickerOption[] 
   }))
 
 /** The statuses the issue can reach now, in Q21 order. Opened by `S`. */
-export function StatusPicker({ issue, menu }: PickerProps) {
+export function StatusPicker({ issue, menu, cell }: PickerProps) {
   const setStatus = useSetStatus()
   const attempt = useAttempt(issue.key)
   const [open, setOpen] = useState(false)
@@ -165,6 +167,7 @@ export function StatusPicker({ issue, menu }: PickerProps) {
   return (
     <Picker
       {...menuProps(menu)}
+      cell={cell}
       label="Status"
       shortcut="S"
       valueText={issue.status.name}

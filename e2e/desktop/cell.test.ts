@@ -1,0 +1,363 @@
+/// <reference lib="dom" />
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+
+import {
+  counts,
+  joinSprint,
+  launch,
+  logIn,
+  moveIssue,
+  notices,
+  refuseKeys,
+  releaseEdit,
+} from './harness.js'
+
+let app: ElectronApplication
+let window: Page
+let stateDir: string
+
+test.beforeEach(async () => {
+  stateDir = await mkdtemp(join(tmpdir(), 'jm-e2e-'))
+  // UTC, so a sprint date reads the same on every machine.
+  ;({ app, window } = await launch(stateDir, { TZ: 'Etc/UTC' }))
+})
+
+test.afterEach(async () => {
+  await app.close()
+  await rm(stateDir, { recursive: true, force: true })
+})
+
+const tree = () => window.getByRole('tree', { name: 'Issues' })
+const item = (name: RegExp) => tree().getByRole('treeitem', { name })
+const dot = (row: RegExp) => item(row).locator('[data-pick=status]')
+const peek = () => window.getByRole('complementary', { name: 'Peek' })
+const issuePage = () => window.getByRole('region', { name: 'Issue page' })
+const sprintPage = () => window.getByRole('region', { name: 'Sprint page' })
+const sidebar = () => window.getByRole('navigation', { name: 'Main' })
+const listbox = () => window.getByRole('listbox', { name: 'Status' })
+const option = (name: string | RegExp) => window.getByRole('option', { name })
+/** The open list, drawn by the cell editor against the clicked cell. */
+const popover = () => window.locator('.menu:popover-open')
+const ring = (key: string, status: string) =>
+  sprintPage().getByRole('button', { name: `Status of ${key}: ${status}` })
+
+/** PSAPAC-4 and PSAPAC-13 start in the active sprint; these join them, as in the Sprint page tests. */
+const MEMBERS = [
+  'PSAPAC-1',
+  'PSAPAC-2',
+  'PSAPAC-4',
+  'PSAPAC-11',
+  'PSAPAC-13',
+  'PSAPAC-14',
+  'PSAPAC-22',
+]
+
+async function open() {
+  await joinSprint(app, MEMBERS, 5)
+  await logIn(window)
+  await expect(item(/PSAPAC-10,/)).toBeVisible()
+  // The fake holds the first Done page, so the toolbar stops reflowing under a click.
+  await expect(window.getByText('Loading Done issues:')).toBeVisible()
+}
+
+async function openSprint() {
+  await open()
+  await sidebar()
+    .getByRole('region', { name: 'Sprints' })
+    .getByRole('button', { name: /^Current/ })
+    .click()
+  await expect(sprintPage()).toBeVisible()
+  await expect(sprintPage().getByRole('status')).toHaveText('7 issues')
+}
+
+const writes = async () => (await counts(app)).edits
+
+/** Waits for the write to arrive, then lets the fake Jira answer it. */
+async function settle(expected: number) {
+  await expect.poll(writes).toBe(expected)
+  await releaseEdit(app)
+  await expect.poll(async () => (await counts(app)).applied).toBe(expected)
+}
+
+/** Whether focus is on `page` or inside it. */
+const focusWithin = (page: ReturnType<typeof sprintPage>) =>
+  page.evaluate((el) => el.contains(document.activeElement))
+
+test('a click on a status dot opens the list beside the dot and not the Peek', async () => {
+  await open()
+  await dot(/PSAPAC-3,/).click()
+
+  await expect(listbox()).toBeFocused()
+  await expect(peek()).toHaveCount(0)
+  await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
+  // Below the dot, starting at its left edge.
+  const cell = await dot(/PSAPAC-3,/).boundingBox()
+  const list = await popover().boundingBox()
+  if (cell === null || list === null) throw new Error('the dot or the list is not drawn')
+  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
+  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+})
+
+test('choosing a status moves the issue, shows it at once and returns focus to the Tree', async () => {
+  await open()
+  const before = await writes()
+  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/To Do/)
+
+  await dot(/PSAPAC-3,/).click()
+  await option('In Progress').click()
+
+  // The row shows the new status before Jira answers.
+  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/In Progress/)
+  await expect(listbox()).toHaveCount(0)
+  await settle(before + 1)
+  await expect(peek()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
+})
+
+test('Esc closes the list with no write and leaves the row active and the Tree focused', async () => {
+  await open()
+  const before = await writes()
+
+  await dot(/PSAPAC-3,/).click()
+  await expect(listbox()).toBeFocused()
+  await window.keyboard.press('Escape')
+
+  await expect(listbox()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
+  expect(await writes()).toBe(before)
+})
+
+test('a click outside closes the list, and a second click on the dot closes it too', async () => {
+  await open()
+  const before = await writes()
+
+  await dot(/PSAPAC-3,/).click()
+  await expect(listbox()).toBeVisible()
+  await sidebar()
+    .getByRole('link', { name: /^Issues/ })
+    .click()
+  await expect(listbox()).toHaveCount(0)
+
+  await dot(/PSAPAC-3,/).click()
+  await expect(listbox()).toBeVisible()
+  await dot(/PSAPAC-3,/).click()
+  await expect(listbox()).toHaveCount(0)
+  // It stays closed: the click that closed it did not open it again.
+  await window.waitForTimeout(300)
+  await expect(listbox()).toHaveCount(0)
+  expect(await writes()).toBe(before)
+})
+
+test('a click on the dot selects no text, keeps the checked rows and arms no double-click', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await window.keyboard.press('Escape')
+  await window.keyboard.press('x')
+  await expect(item(/PSAPAC-4,/)).toHaveAttribute('aria-checked', 'true')
+
+  await dot(/PSAPAC-3,/).dblclick()
+  await expect(issuePage()).toHaveCount(0)
+  await expect(peek()).toHaveCount(0)
+  expect(await window.evaluate(() => document.getSelection()?.toString())).toBe('')
+  await expect(dot(/PSAPAC-3,/)).toHaveCSS('user-select', 'none')
+  // The checked row stays checked and the clicked one is not.
+  await expect(item(/PSAPAC-4,/)).toHaveAttribute('aria-checked', 'true')
+  await expect(item(/PSAPAC-3,/)).toHaveAttribute('aria-checked', 'false')
+  await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
+})
+
+test('Shift+click on the dot checks a range and opens no list', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  await window.keyboard.press('Escape')
+  await dot(/PSAPAC-3,/).click({ modifiers: ['Shift'] })
+
+  await expect(listbox()).toHaveCount(0)
+  await expect(item(/PSAPAC-3,/)).toHaveAttribute('aria-checked', 'true')
+})
+
+test('S opens the same list on the active row, and arrows and Enter choose', async () => {
+  await open()
+  await item(/PSAPAC-3,/).click()
+  await expect(peek()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+  const before = await writes()
+
+  await window.keyboard.press('s')
+  await expect(listbox()).toBeFocused()
+  await expect(peek()).toHaveCount(0)
+  // Beside the active row's dot, not at the Peek.
+  const cell = await dot(/PSAPAC-3,/).boundingBox()
+  const list = await popover().boundingBox()
+  if (cell === null || list === null) throw new Error('the dot or the list is not drawn')
+  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
+  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+
+  // The statuses load when the list opens.
+  await expect(option('In Progress')).toBeVisible()
+  await window.keyboard.press('ArrowDown')
+  await window.keyboard.press('Enter')
+  await expect(listbox()).toHaveCount(0)
+  await expect(item(/PSAPAC-3,/)).not.toHaveAccessibleName(/To Do/)
+  await settle(before + 1)
+  await expect(tree()).toBeFocused()
+  await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
+})
+
+test('the list is named Status and answers to the keys 1 to 9', async () => {
+  await open()
+  await dot(/PSAPAC-3,/).click()
+  await expect(listbox()).toHaveAccessibleName('Status')
+  await expect(option('In Progress')).toBeVisible()
+  const before = await writes()
+  await window.keyboard.press('2')
+  await settle(before + 1)
+  await expect(item(/PSAPAC-3,/)).not.toHaveAccessibleName(/To Do/)
+})
+
+test('a refused transition puts the status back and the toast offers Retry', async () => {
+  await open()
+  await refuseKeys(app, ['PSAPAC-3'])
+  const before = await writes()
+
+  await dot(/PSAPAC-3,/).click()
+  await option('In Progress').click()
+  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/In Progress/)
+  await expect.poll(writes).toBe(before + 1)
+  await releaseEdit(app)
+
+  const alert = notices(window).getByRole('alert')
+  await expect(alert).toContainText('Status not changed')
+  await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
+  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/To Do/)
+})
+
+test('a Hold row stays editable', async () => {
+  await moveIssue(app, 'PSAPAC-3', 'hold')
+  await open()
+  const before = await writes()
+
+  await dot(/PSAPAC-3,/).click()
+  await expect(listbox()).toBeFocused()
+  await option('In Progress').click()
+  await expect(item(/PSAPAC-3,/)).toHaveAccessibleName(/In Progress/)
+  await settle(before + 1)
+})
+
+test('the Sprint page rows offer the same list and still open their issue', async () => {
+  await openSprint()
+  const before = await writes()
+  const done = sprintPage().getByRole('region', { name: 'Done' }).getByRole('listitem')
+  await expect(done).toHaveCount(2)
+
+  await ring('PSAPAC-4', 'In Progress').click()
+  await expect(listbox()).toBeFocused()
+  await expect(sprintPage()).toBeVisible()
+  await option('Done').click()
+
+  // The row changes group before Jira answers.
+  await expect(done).toHaveCount(3)
+  await settle(before + 1)
+  await expect(issuePage()).toHaveCount(0)
+
+  // The row button still opens the issue.
+  await sprintPage()
+    .getByRole('button', { name: /^PSAPAC-13 / })
+    .click()
+  await expect(issuePage()).toBeVisible()
+})
+
+test('a Sprint page ring works by keyboard alone: Enter opens, arrows and Enter choose, Esc leaves', async () => {
+  await openSprint()
+  const before = await writes()
+
+  await ring('PSAPAC-4', 'In Progress').focus()
+  await window.keyboard.press('Enter')
+  await expect(listbox()).toBeFocused()
+  await window.keyboard.press('Escape')
+  await expect(listbox()).toHaveCount(0)
+  expect(await focusWithin(sprintPage())).toBe(true)
+  expect(await writes()).toBe(before)
+
+  await ring('PSAPAC-4', 'In Progress').focus()
+  await window.keyboard.press('Enter')
+  await expect(option('Done')).toBeVisible()
+  await window.keyboard.press('ArrowDown')
+  await window.keyboard.press('Enter')
+  await settle(before + 1)
+  await expect(sprintPage()).toBeVisible()
+  expect(await focusWithin(sprintPage())).toBe(true)
+})
+
+test('a refused transition on the Sprint page puts the row back in its group', async () => {
+  await openSprint()
+  await refuseKeys(app, ['PSAPAC-4'])
+  const before = await writes()
+  const done = sprintPage().getByRole('region', { name: 'Done' }).getByRole('listitem')
+  const doing = sprintPage().getByRole('region', { name: 'In Progress' }).getByRole('listitem')
+
+  await ring('PSAPAC-4', 'In Progress').click()
+  await option('Done').click()
+  await expect(done).toHaveCount(3)
+  await expect.poll(writes).toBe(before + 1)
+  await releaseEdit(app)
+
+  await expect(notices(window).getByRole('alert')).toContainText('Status not changed')
+  await expect(done).toHaveCount(2)
+  await expect(doing).toHaveCount(3)
+})
+
+test('holds its layout with a wide font: the list fits the window and the Sprint page ring clears the key', async () => {
+  await openSprint()
+  await window.addStyleTag({ content: '* { font-family: Verdana, sans-serif !important }' })
+
+  // The ring sits left of the key in every row, and the key is not covered.
+  const overlaps = await sprintPage().evaluate((page) =>
+    [...page.querySelectorAll('[data-row]')].flatMap((row) => {
+      const button = row.parentElement?.querySelector('[data-pick=status]')
+      const key = row.querySelector('span.font-mono')
+      if (button === null || button === undefined || key === null) return ['row without its parts']
+      return button.getBoundingClientRect().right > key.getBoundingClientRect().left + 0.5
+        ? [row.getAttribute('data-issue-key') ?? '']
+        : []
+    }),
+  )
+  expect(overlaps).toEqual([])
+
+  await ring('PSAPAC-4', 'In Progress').click()
+  await expect(option('Done')).toBeVisible()
+  const fits = await popover().evaluate((list) => {
+    const box = list.getBoundingClientRect()
+    const clipped = [...list.querySelectorAll('[role=option]')].filter(
+      (o) => o.scrollWidth > o.clientWidth + 0.5,
+    ).length
+    return {
+      inside:
+        box.left >= 0 &&
+        box.top >= 0 &&
+        box.right <= globalThis.innerWidth &&
+        box.bottom <= globalThis.innerHeight,
+      clipped,
+    }
+  })
+  expect(fits).toEqual({ inside: true, clipped: 0 })
+  await window.keyboard.press('Escape')
+
+  await sidebar()
+    .getByRole('link', { name: /^Issues/ })
+    .click()
+  await dot(/PSAPAC-4,/).click()
+  await expect(option('Done')).toBeVisible()
+  const treeFits = await popover().evaluate((list) => {
+    const box = list.getBoundingClientRect()
+    return box.right <= globalThis.innerWidth && box.bottom <= globalThis.innerHeight
+  })
+  expect(treeFits).toBe(true)
+})

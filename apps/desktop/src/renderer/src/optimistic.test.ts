@@ -1,5 +1,6 @@
 import { JiraMgrError, type Issue } from '@jira-mgr/core'
 import type { IssueDetail } from '@jira-mgr/core/issue'
+import type { SprintReport } from '@jira-mgr/core/sprints'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -17,6 +18,7 @@ import {
   issueDetailKey,
   issueMutation,
   pendingFields,
+  sprintKey,
   summaryMutation,
   type BatchRequestItem,
   unresolvedKey,
@@ -585,6 +587,34 @@ describe('issueMutation', () => {
       expect(summariesOf(client, unresolvedKey)).toEqual(['One'])
       expect(summariesOf(client, doneKey)).toEqual(['Two', 'One'])
     })
+  })
+})
+
+describe('a Sprint page copy', () => {
+  const report = (...issues: Issue[]): SprintReport =>
+    ({ sprint: { id: 5 }, issues, stats: {} }) as unknown as SprintReport
+  const sprintCopy = (client: QueryClient) =>
+    client.getQueryData<SprintReport>([...sprintKey, 5])?.issues.map((i) => i.summary)
+
+  it('shows an edit at once and takes it back when Jira refuses, even for an issue no list holds', async () => {
+    const client = new QueryClient()
+    client.setQueryData(unresolvedKey, [issue('PSAPAC-2', 'Two')])
+    client.setQueryData(
+      [...sprintKey, 5],
+      report(issue('PSAPAC-1', 'One'), issue('PSAPAC-2', 'Two')),
+    )
+    const request = deferred<null>()
+    const { read } = reader()
+    const observer = new MutationObserver(
+      client,
+      summaryMutation(client, () => request.promise, read),
+    )
+
+    const done = observer.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    await expect.poll(() => sprintCopy(client)).toEqual(['One, edited', 'Two'])
+    request.reject(new JiraMgrError('validation_failed', 'Jira refused the summary.'))
+    await expect(done).rejects.toMatchObject({ code: 'validation_failed' })
+    expect(sprintCopy(client)).toEqual(['One', 'Two'])
   })
 })
 
