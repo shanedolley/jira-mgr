@@ -137,12 +137,34 @@ test('fades every cell of a Hold Epic on the Epics page to 30% and no other row'
   await expect(row).toHaveCSS('opacity', '1')
   const cells = row.locator('th, td')
   expect(await cells.count()).toBe(8)
-  for (let i = 0; i < 8; i++) await expectDrawnAt(0.3, cells.nth(i))
+  // The first cell holds the row's focus control, so its content fades inside the button instead.
+  await expectDrawnAt(1, cells.nth(0))
+  for (let i = 1; i < 8; i++) await expectDrawnAt(0.3, cells.nth(i))
   await expectDrawnAt(
     0.3,
     row.getByText('PSAPAC-10', { exact: true }),
     row.getByText('Customer onboarding'),
     row.locator('[data-glyph="status"]'),
+  )
+
+  // Reached by the keyboard, the button's outline stays at full strength while its text is faded.
+  const button = row.locator('[data-overview-key]')
+  await epicsPage().locator('[data-overview-key="PSAPAC-30"]').focus()
+  for (
+    let step = 0;
+    step < 4 && !(await button.evaluate((el) => el === document.activeElement));
+    step++
+  ) {
+    await window.keyboard.press('ArrowDown')
+  }
+  await expect(button).toBeFocused()
+  expect(await button.evaluate((el) => el.matches(':focus-visible'))).toBe(true)
+  await expect(button).toHaveCSS('outline-style', 'solid')
+  await expectDrawnAt(1, button)
+  await expectDrawnAt(
+    0.3,
+    row.getByText('PSAPAC-10', { exact: true }),
+    row.getByText('Customer onboarding'),
   )
 
   const other = epicsPage().locator('tr', {

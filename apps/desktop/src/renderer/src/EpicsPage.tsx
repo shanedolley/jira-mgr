@@ -77,6 +77,8 @@ function Row({
 }) {
   const { issue, progress } = row
   // A table row cannot hold one fading element, so each cell fades alone; the row keeps its hover.
+  // The first cell fades the key and summary inside its button, not the cell, so the button's focus
+  // outline stays at full strength.
   const fade = holdFade(issue.status)
   const due = issue.dueDate
   const overdue =
@@ -89,15 +91,19 @@ function Row({
       }}
       className="h-10 cursor-default border-t border-line hover:bg-hover"
     >
-      <th scope="row" {...fade} className="max-w-0 min-w-56 px-3 text-left font-normal">
+      <th scope="row" className="max-w-0 min-w-56 px-3 text-left font-normal">
         <button
           type="button"
           {...OVERVIEW_ROW}
           data-overview-key={issue.key}
           className="flex w-full min-w-0 items-center gap-2 text-left"
         >
-          <span className="w-[5.5rem] shrink-0 text-xs tabular-nums text-muted">{issue.key}</span>
-          <span className="min-w-0 truncate font-medium">{issue.summary}</span>
+          <span {...fade} className="w-[5.5rem] shrink-0 text-xs tabular-nums text-muted">
+            {issue.key}
+          </span>
+          <span {...fade} className="min-w-0 truncate font-medium">
+            {issue.summary}
+          </span>
         </button>
       </th>
       <td {...fade} className="max-w-40 truncate px-3" title={issue.customer?.value}>
