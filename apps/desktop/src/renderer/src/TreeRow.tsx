@@ -1,9 +1,11 @@
 import type { Issue } from '@jira-mgr/core'
 import type { RowProperty } from '@jira-mgr/core/display'
 import type { Progress } from '@jira-mgr/core/hierarchy'
+import { propertyRules } from '@jira-mgr/core/issue'
 import { memo, type ReactNode } from 'react'
 
 import { Avatar } from './Avatar'
+import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
@@ -325,7 +327,19 @@ function DueDate({ issue, today }: { issue: Issue; today: string }) {
  * A time property in a fixed slot: empty without a value, so the columns line up. The Tree row's
  * name already says what each value is; the label is for the Sprint page's rows, which have none.
  */
-function TimeCell({ issue, property }: { issue: Issue; property: TimeProperty }) {
+function TimeCell({
+  issue,
+  property,
+  always,
+}: {
+  issue: Issue
+  property: TimeProperty
+  always: boolean
+}) {
+  // The estimate is edited in place, except on an Epic, which has none.
+  if (property === 'estimate' && propertyRules(issue.issueType).estimates) {
+    return <EstimateCell issue={issue} always={always} />
+  }
   const value = timeValue(issue, property)
   return (
     <span
@@ -420,7 +434,7 @@ export function Properties({
           case 'logged':
           case 'remaining':
           case 'remainingPercent':
-            return <TimeCell key={property} issue={issue} property={property} />
+            return <TimeCell key={property} issue={issue} property={property} always={always} />
           case 'due':
             return <DueDate key={property} issue={issue} today={today} />
           case 'created':
@@ -548,7 +562,7 @@ interface TreeRowProps {
   onClick: (
     id: string,
     onChevron: boolean,
-    select: 'toggle' | 'range' | undefined,
+    select: 'toggle' | 'range' | 'activate' | undefined,
     detail: number,
   ) => void
   /**
@@ -623,11 +637,19 @@ export const TreeRow = memo(function TreeRow({
       onClick={(event) => {
         const target = event.target as Element
         if (event.detail === 1) {
-          const own = target.closest('[data-check], [data-pick], [data-chevron]') !== null
+          const own =
+            target.closest('[data-check], [data-pick], [data-chevron], [data-edit]') !== null
           onArm(row.kind === 'issue' && !own && !event.shiftKey ? row.id : null)
         }
+        // An in-row field makes its row active and leaves the Peek as it is.
         const select =
-          target.closest('[data-check]') !== null ? 'toggle' : event.shiftKey ? 'range' : undefined
+          target.closest('[data-check]') !== null
+            ? 'toggle'
+            : target.closest('[data-edit]') !== null
+              ? 'activate'
+              : event.shiftKey
+                ? 'range'
+                : undefined
         onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
         const picked = target.closest<HTMLElement>('[data-pick]')?.dataset.pick
         if (row.kind === 'issue' && (picked === 'status' || picked === 'assignee')) {
