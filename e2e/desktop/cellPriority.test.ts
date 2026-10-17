@@ -7,6 +7,7 @@ import { expect, test, type ElectronApplication, type Page } from '@playwright/t
 
 import {
   counts,
+  expectBeside,
   joinSprint,
   launch,
   logIn,
@@ -79,12 +80,8 @@ test('a click on the empty slot of a Medium issue opens the Priority list beside
   await expect(listbox()).toBeFocused()
   await expect(peek()).toHaveCount(0)
   await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
-  // Below the slot, starting at its left edge.
-  const cell = await slot(/PSAPAC-3,/).boundingBox()
-  const list = await popover().boundingBox()
-  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
-  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+  // Below the slot, at its left edge or, near the window's right edge, at its right.
+  await expectBeside(window, slot(/PSAPAC-3,/), popover())
 })
 
 test('choosing a priority draws the bars at once, writes once and returns focus to the Tree', async () => {
@@ -108,7 +105,8 @@ test('choosing a priority draws the bars at once, writes once and returns focus 
   await expect(listbox()).toBeFocused()
   await window.getByRole('option', { name: /^Medium/ }).click()
   await settle(before + 2)
-  expect(await level(/PSAPAC-3,/)).toBeNull()
+  // The write reaches Jira a few frames before the Tree repaints without the bars.
+  await expect.poll(() => level(/PSAPAC-3,/)).toBeNull()
   await expect(item(/PSAPAC-3,/)).not.toHaveAccessibleName(/priority/)
 })
 
@@ -163,11 +161,7 @@ test('P opens the same list on the active row, and arrows and Enter choose', asy
   await expect(peek()).toHaveCount(0)
   await expect(listbox()).toHaveAccessibleName('Priority')
   // Beside the active row's slot, not at the Peek.
-  const cell = await slot(/PSAPAC-3,/).boundingBox()
-  const list = await popover().boundingBox()
-  if (cell === null || list === null) throw new Error('the slot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(cell.y + cell.height - 1)
-  expect(Math.abs(list.x - cell.x)).toBeLessThanOrEqual(4)
+  await expectBeside(window, slot(/PSAPAC-3,/), popover())
 
   // The priorities load when the list opens.
   await expect(high()).toBeVisible()

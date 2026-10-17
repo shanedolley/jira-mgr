@@ -223,6 +223,8 @@ test('drags a separator to resize its column, repaints without saving, and saves
 
 test('caps a drag so every title keeps 5rem, and keeps a 1px column', async () => {
   await open()
+  // Wide enough that the five columns at their defaults leave the drag room to grow.
+  await resize(1500, 800)
   await toggle('Labels', 'Sprint', 'Due date', 'Created')
   await dragBy('Labels', -3000)
   const cap = Number(await separator('Labels').getAttribute('aria-valuenow'))
@@ -420,6 +422,8 @@ async function select(row: RegExp) {
 
 test('a key on a column cut to a sliver opens no editor in it', async () => {
   await open()
+  // Wide enough that the estimate column keeps its width beside the defaults.
+  await resize(1500, 800)
   await toggle('Original estimate')
   const slot = prop(/PSAPAC-4,/, 'estimate')
   // At its width the slot takes Shift+E in place.

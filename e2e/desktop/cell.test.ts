@@ -323,13 +323,18 @@ test('a click on the dot of a row clipped at the Tree foot scrolls it into view 
   const moved = await dot(row).boundingBox()
   const list = await popover().boundingBox()
   if (moved === null || list === null) throw new Error('the dot or the list is not drawn')
-  expect(list.y).toBeGreaterThanOrEqual(moved.y + moved.height - 1)
+  // The row sits at the foot of a 520px window with no room below, so the list flips above the dot.
+  const below = list.y >= moved.y + moved.height - 1
+  const above = list.y + list.height <= moved.y + 1
+  expect(below || above).toBe(true)
   await expect(item(row)).toHaveAttribute('data-active', 'true')
   await expect(peek()).toHaveCount(0)
 })
 
 test('S on an active row scrolled partly out at the Tree top brings its dot into view before the list opens', async () => {
   await open()
+  // A short window, so the Tree scrolls.
+  await shortWindow()
   await item(/PSAPAC-3,/).click()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)

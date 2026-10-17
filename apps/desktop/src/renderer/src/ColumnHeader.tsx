@@ -59,6 +59,14 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
   const drag = useRef<Drag | null>(null)
   const [dragging, setDragging] = useState(false)
   const [removing, setRemoving] = useState<RowProperty | null>(null)
+  /**
+   * The width the last key set, until the next render draws it. A key can arrive before the render
+   * of the last, and `fitted` is still the old width then.
+   */
+  const keyed = useRef<{ property: RowProperty; width: number } | null>(null)
+  useEffect(() => {
+    keyed.current = null
+  })
 
   /** Ends a drag: saves its width on release, or puts the column back. */
   function end(commit: boolean) {
@@ -132,7 +140,7 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>, property: RowProperty) {
     if (event.altKey || event.ctrlKey || event.metaKey) return
-    const width = fitted[property]
+    const width = keyed.current?.property === property ? keyed.current.width : fitted[property]
     const step = event.shiftKey ? BIG_STEP : STEP
     let next: number
     let remove = false
@@ -151,6 +159,7 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
     // Delete acts on a column that is on, even one the window draws at 0.
     if (next === width && !remove) return
     const tree = next === 0 ? treeOf(event.currentTarget) : null
+    keyed.current = { property, width: next }
     onResize(property, next)
     tree?.focus()
   }

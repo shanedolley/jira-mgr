@@ -3,7 +3,13 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  _electron as electron,
+  expect,
+  type ElectronApplication,
+  type Locator,
+  type Page,
+} from '@playwright/test'
 
 // The e2e entry runs the real app on a fake Jira and a fake Keychain, and needs JM_STATE_DIR.
 const entry = fileURLToPath(new URL('../../apps/desktop/out/main/e2e.js', import.meta.url))
@@ -150,6 +156,22 @@ export async function readState<T>(stateDir: string, file: string): Promise<T | 
 
 /** The toasts on screen, newest last. Each is one list item; a refusal's item holds an alert. */
 export const notices = (window: Page) => window.getByRole('list', { name: 'Notices' })
+
+/**
+ * The open list `popover` sits below `cell`, aligned to its left edge or, where the cell is near the
+ * window's right edge and the list flips (`flip-inline`), to its right edge, and stays inside the window.
+ */
+export async function expectBeside(window: Page, cell: Locator, popover: Locator) {
+  const cellBox = await cell.boundingBox()
+  const list = await popover.boundingBox()
+  if (cellBox === null || list === null) throw new Error('the cell or the list is not drawn')
+  expect(list.y).toBeGreaterThanOrEqual(cellBox.y + cellBox.height - 1)
+  const leftAligned = Math.abs(list.x - cellBox.x) <= 4
+  const rightAligned = Math.abs(list.x + list.width - (cellBox.x + cellBox.width)) <= 4
+  expect(leftAligned || rightAligned).toBe(true)
+  const width = await window.evaluate(() => globalThis.innerWidth)
+  expect(list.x + list.width).toBeLessThanOrEqual(width)
+}
 
 export const counts = (app: ElectronApplication) =>
   app.evaluate(() => (globalThis as unknown as WithFake).__fakeJira.counts)
