@@ -1,3 +1,4 @@
+import type { Issue } from '@jira-mgr/core'
 import type { RowProperty } from '@jira-mgr/core/display'
 import type { OpenBlocks } from '@jira-mgr/core/view-filter'
 import type { Progress } from '@jira-mgr/core/hierarchy'
@@ -16,6 +17,7 @@ import {
 
 import { keepsLetters } from './keymap'
 import { extrasWidth, fittingCount } from './propertyFit'
+import { DOUBLE_CLICK_MS } from './summaryEdit'
 import { TreeRow, rowDomId, rowProgress } from './TreeRow'
 import {
   ROW_HEIGHT,
@@ -66,6 +68,8 @@ interface IssueTreeProps {
   onChange: (next: MoveResult) => void
   /** A click on an issue row's status dot or avatar, made after the row became active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
+  /** A click on an issue row's pencil, or a second click on its summary, which asks for the summary editor. */
+  onEditSummary: (issue: Issue) => void
   /** A click on a group header's "+". */
   onAdd: (row: Row) => void
   /** A drag dropped an issue on a sibling, or Alt+Shift with Up or Down moved the active one. */
@@ -99,6 +103,7 @@ export function IssueTree({
   blocks,
   onChange,
   onPick,
+  onEditSummary,
   onAdd,
   onMove,
   progress,
@@ -286,6 +291,14 @@ export function IssueTree({
   const indicator = drag?.over == null ? null : dropIndicator(rows, drag.id, drag.over)
 
   const armed = useRef<string | null>(null)
+  // A second click on a summary opens the editor once no double-click follows it.
+  const editTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(
+    () => () => {
+      clearTimeout(editTimer.current)
+    },
+    [],
+  )
   const onRowClick = useCallback(
     (
       id: string,
@@ -295,6 +308,7 @@ export function IssueTree({
     ) => {
       // The second click of a double-click on an issue is inert: the Peek may have moved a header or
       // another row under it, and the double-click opens the first click's issue.
+      if (detail > 1) clearTimeout(editTimer.current)
       if (detail > 1 && armed.current !== null) return
       // The click also focuses the Tree, the nearest focusable ancestor of the row.
       onChange({ ...clickRow(rows, state, id, onChevron, select), openPage: false })
@@ -305,7 +319,19 @@ export function IssueTree({
   const onRowArm = useCallback((id: string | null) => {
     armed.current = id
   }, [])
+  const onRowEdit = useCallback(
+    (issue: Issue, wait: boolean) => {
+      clearTimeout(editTimer.current)
+      if (wait)
+        editTimer.current = setTimeout(() => {
+          onEditSummary(issue)
+        }, DOUBLE_CLICK_MS)
+      else onEditSummary(issue)
+    },
+    [onEditSummary],
+  )
   const onRowOpen = useCallback(() => {
+    clearTimeout(editTimer.current)
     const id = armed.current
     // The armed row may have left the Tree since, with a filter or a collapse.
     if (id !== null && rows.some((r) => r.id === id)) {
@@ -369,6 +395,7 @@ export function IssueTree({
                 onClick={onRowClick}
                 onArm={onRowArm}
                 onOpen={onRowOpen}
+                onEdit={onRowEdit}
                 onPick={onPick}
                 onAdd={onAdd}
                 done={children?.done}

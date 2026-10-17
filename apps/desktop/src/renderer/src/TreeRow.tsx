@@ -7,10 +7,12 @@ import { memo, type MouseEvent, type ReactNode } from 'react'
 import { Avatar } from './Avatar'
 import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
+import { Icon, PENCIL } from './Icon'
 import { useLogWork } from './logWork'
 import { ProgressPill, progressText } from './Progress'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
 import { holdFade, StatusDot } from './StatusDot'
+import { summaryClick } from './summaryEdit'
 import { TimerClock } from './TimerClock'
 import { HEADER_GAP, HEADER_HEIGHT, ROW_HEIGHT, type TreeRow as Row } from './tree'
 import { TypeIcon } from './TypeIcon'
@@ -144,6 +146,22 @@ function Pick({
       className="inline-flex shrink-0 cursor-pointer rounded-full p-0.5 -m-0.5 hover:bg-line"
     >
       {children}
+    </span>
+  )
+}
+
+/**
+ * The pencil after a row's summary, which opens the summary editor on a click. It shows under the
+ * pointer and is a click target only, as `Pick` is: `E` is the keyboard's way to the same editor.
+ */
+function EditPencil() {
+  return (
+    <span
+      data-edit="summary"
+      title="Edit summary (E)"
+      className="-ml-1 inline-flex shrink-0 cursor-pointer rounded p-0.5 text-muted opacity-0 hover:bg-line group-hover/row:opacity-100"
+    >
+      <Icon path={PENCIL} />
     </span>
   )
 }
@@ -529,10 +547,12 @@ function Content({
             {issue.key}
           </span>
           <span
+            data-summary
             className={`tree-summary min-w-0 flex-1 truncate text-muted @tree:min-w-20 ${contextOnly ? 'font-normal' : 'font-medium'}`}
           >
             {issue.summary}
           </span>
+          <EditPencil />
           <BlockPills {...blocks} />
           {customerMismatch !== null && (
             <span
@@ -597,6 +617,11 @@ interface TreeRowProps {
   onArm: (id: string | null) => void
   /** A double-click, which opens the armed issue's page as Enter does. */
   onOpen: () => void
+  /**
+   * A click that asks for the summary editor, after `onClick` has made the row active. `wait` is a
+   * second click on the summary, which a double-click may turn into a page open.
+   */
+  onEdit: (issue: Issue, wait: boolean) => void
   /** A click on the row's status dot or avatar, after `onClick` has made the row active. */
   onPick: (key: string, property: 'status' | 'assignee') => void
   /** Done over total of the issue's children, which the row shows beside its title, as numbers so the memo holds. */
@@ -625,6 +650,7 @@ export const TreeRow = memo(function TreeRow({
   onClick,
   onArm,
   onOpen,
+  onEdit,
   onPick,
   done,
   total,
@@ -675,6 +701,18 @@ export const TreeRow = memo(function TreeRow({
                 ? 'range'
                 : undefined
         onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
+        const edit =
+          row.kind === 'issue'
+            ? summaryClick({
+                active,
+                selected,
+                detail: event.detail,
+                shiftKey: event.shiftKey,
+                onSummary: target.closest('[data-summary]') !== null,
+                onPencil: target.closest('[data-edit="summary"]') !== null,
+              })
+            : null
+        if (row.kind === 'issue' && edit !== null) onEdit(row.node.issue, edit === 'later')
         const picked = target.closest<HTMLElement>('[data-pick]')?.dataset.pick
         if (row.kind === 'issue' && (picked === 'status' || picked === 'assignee')) {
           onPick(row.node.issue.key, picked)

@@ -1,8 +1,10 @@
+import type { Issue } from '@jira-mgr/core'
 import type { RowProperty } from '@jira-mgr/core/display'
 import type { SprintReport } from '@jira-mgr/core/sprints'
 import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 
 import { Avatar } from './Avatar'
+import { Icon, PENCIL } from './Icon'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
 import { SECTION_HEADING } from './Section'
@@ -195,11 +197,13 @@ function Issues({
   properties,
   today,
   onOpen,
+  onEditSummary,
 }: {
   report: SprintReport
   properties: readonly RowProperty[]
   today: string
   onOpen: (key: string) => void
+  onEditSummary: (issue: Issue) => void
 }) {
   const { sprint, issues } = report
   const groups = groupByStatus(issues)
@@ -224,7 +228,7 @@ function Issues({
               className={`divide-y divide-line rounded-md border border-line ${properties.length === 0 ? 'max-w-[40rem]' : 'max-w-[64rem]'}`}
             >
               {inGroup.map((issue) => (
-                <li key={issue.key}>
+                <li key={issue.key} className="group/row relative">
                   <button
                     type="button"
                     data-row
@@ -232,7 +236,7 @@ function Issues({
                     onClick={() => {
                       onOpen(issue.key)
                     }}
-                    className="flex min-h-8 w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1 text-left hover:bg-hover"
+                    className="flex min-h-8 w-full flex-wrap items-center gap-x-3 gap-y-1 py-1 pl-3 pr-10 text-left hover:bg-hover"
                   >
                     <span
                       {...holdFade(status)}
@@ -249,6 +253,18 @@ function Issues({
                       <Properties issue={issue} properties={properties} today={today} always />
                       <Avatar person={issue.assignee} />
                     </span>
+                  </button>
+                  {/* A sibling of the row's button, since a button cannot nest in one. */}
+                  <button
+                    type="button"
+                    aria-label={`Edit summary of ${issue.key}`}
+                    title="Edit summary"
+                    onClick={() => {
+                      onEditSummary(issue)
+                    }}
+                    className="absolute right-2 top-1 inline-flex size-6 items-center justify-center rounded text-muted opacity-0 hover:bg-line focus-visible:opacity-100 group-hover/row:opacity-100"
+                  >
+                    <Icon path={PENCIL} />
                   </button>
                 </li>
               ))}
@@ -270,6 +286,8 @@ interface SprintPageProps {
   onBack: () => void
   /** Opens the page of one of the sprint's issues. */
   onOpenIssue: (key: string) => void
+  /** Opens the summary editor of one of the sprint's issues. */
+  onEditSummary: (issue: Issue) => void
 }
 
 /**
@@ -284,6 +302,7 @@ export function SprintPage({
   pageRef,
   onBack,
   onOpenIssue,
+  onEditSummary,
 }: SprintPageProps) {
   const report = useSprintReport(sprintId)
 
@@ -322,7 +341,13 @@ export function SprintPage({
         </div>
       ) : (
         <>
-          <Issues report={report.data} properties={properties} today={today} onOpen={onOpenIssue} />
+          <Issues
+            report={report.data}
+            properties={properties}
+            today={today}
+            onOpen={onOpenIssue}
+            onEditSummary={onEditSummary}
+          />
           <Panel report={report.data} />
         </>
       )}

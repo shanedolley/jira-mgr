@@ -87,6 +87,23 @@ describe('summaryMutation', () => {
     expect(summaries()).toEqual(['One, edited', 'Two'])
   })
 
+  it('shows the new summary on an open Sprint page, and puts the old one back on a refusal', async () => {
+    const { client, observer, request, answers } = setup()
+    answers['PSAPAC-1'] = detail(issue('PSAPAC-1', 'One'))
+    client.setQueryData(['sprint', 7], {
+      sprint: { id: 7 },
+      issues: [issue('PSAPAC-1', 'One'), issue('PSAPAC-2', 'Two')],
+      stats: {},
+    })
+    const names = () =>
+      client.getQueryData<{ issues: Issue[] }>(['sprint', 7])?.issues.map((i) => i.summary)
+    const done = observer.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })
+    await expect.poll(names).toEqual(['One, edited', 'Two'])
+    request.reject(new JiraMgrError('validation_failed', 'Jira refused the summary.'))
+    await expect(done).rejects.toMatchObject({ code: 'validation_failed' })
+    expect(names()).toEqual(['One', 'Two'])
+  })
+
   it('reads the edited issue after a save, and no list', async () => {
     const { client, observer, request, read } = setup()
     const done = observer.mutate({ key: 'PSAPAC-1', summary: 'One, edited' })

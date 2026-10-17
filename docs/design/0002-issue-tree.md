@@ -297,6 +297,16 @@ The Peek shows the issue under `peekKey`, which follows the active row with thes
 - **Left alone.** A running timer on the issue is not touched and logs separately on stop. A Hold-faded row stays loggable. Subtask time does not roll up: the modal logs against the row's own issue.
 - **Key.** `W`, free in `LETTERS` and the palette.
 
+### Summary Modal
+
+*Added 2026-10-17, build of #278.* Shane asked to select an issue's summary on the canvas and edit it in a modal. The choices below are the orchestrator's, for Shane to confirm.
+
+- **Gesture.** A second click on the summary text of the row that is already active and showing in the Peek opens the modal; the first click only selects, so click-to-Peek is unchanged. Because a double-click opens the page, the second-click editor waits 300 ms (`DOUBLE_CLICK_MS`) and a double-click or a page open cancels it. A hover pencil after the summary (`[data-edit="summary"]`, a click target only, as the status dot is) opens it at once. A Shift+click never edits.
+- **Keyboard.** `E` with focus in the Tree opens the modal on the active row; in the Peek and on the page it keeps the in-place field. The Sprint page cannot take a letter key, so each of its rows has a real pencil button beside the row's button (a button cannot nest in a button), named "Edit summary of KEY".
+- **Modal.** `SummaryDialog` on `Modal`, titled "Edit summary", one field (max 255) selected on open, Save and Cancel. Enter saves, Esc, Cancel and a click outside close with no write. An empty summary stays open with "A summary cannot be empty." Focus returns to the control that opened it.
+- **Write.** The context menu's path: `useSetSummary` through `useAttempt('Summary')`, so the row changes at once, an undo entry is kept and a refusal reverts with the Retry toast. `editEverywhere` also patches the Sprint page's own read, which no phase cache holds.
+- **No target.** Customer headers, the No Epic row and chips; a Hold-faded row stays editable.
+
 ### Testing
 
 Pure functions carry the logic and get unit tests. The components are thin, and the e2e suite drives them through the D1 fake Jira. Testing Library is not installed, and these tests reach the same behaviour without it.

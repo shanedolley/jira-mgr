@@ -66,6 +66,7 @@ import { SprintPage } from './SprintPage'
 import { SprintsList } from './SprintsList'
 import { useViews } from './viewQueries'
 import { activeView } from './views'
+import { SummaryDialog } from './SummaryDialog'
 import { TimerDialog } from './TimerDialog'
 import { Toast } from './Toast'
 import { pushToast, spoken, type ToastItem } from './toasts'
@@ -346,6 +347,8 @@ export function Shell({ session }: { session: Session }) {
   // The issue whose delete modal is open, held whole: the lists may not hold it (a Done parent
   // opened from a page before Done loads) or may drop it while the modal is open.
   const [deleting, setDeleting] = useState<Issue | null>(null)
+  // The issue whose summary modal is open, held whole for the same reason: a Sprint page's issue may not be in the lists.
+  const [renaming, setRenaming] = useState<Issue | null>(null)
   // The right-click menu: the issue it acts on, where it opened, an item to open at once, and the
   // row that gets focus back. The ref lets a close that arrives twice act once.
   const [menu, setMenu] = useState<MenuState | null>(null)
@@ -1244,6 +1247,16 @@ export function Shell({ session }: { session: Session }) {
           return
         }
         event.preventDefault()
+        // From the Tree `E` renames in a modal; the Peek and the page keep their own field.
+        if (
+          command === 'edit' &&
+          pageKey === null &&
+          target !== null &&
+          target.closest('[role="tree"]') !== null
+        ) {
+          if (activeRow?.kind === 'issue') setRenaming(activeRow.node.issue)
+          return
+        }
         if (command === 'assignMe') assignToMe(key)
         else if (command === 'copyKey') copyIssue(key, 'key')
         else if (command === 'copyLink') copyIssue(key, 'link')
@@ -1434,6 +1447,7 @@ export function Shell({ session }: { session: Session }) {
         onPick={(key, property) => {
           openProperty(property, key)
         }}
+        onEditSummary={setRenaming}
         onAdd={(row) => {
           if (canCreate) setCreating(createContext(row, issues))
         }}
@@ -1686,6 +1700,7 @@ export function Shell({ session }: { session: Session }) {
               setSprintId(null)
             }}
             onOpenIssue={setPageKey}
+            onEditSummary={setRenaming}
           />
         </div>
       )}
@@ -1801,6 +1816,15 @@ export function Shell({ session }: { session: Session }) {
           issue={loggingIssue}
           onClose={() => {
             setLogging(null)
+          }}
+          returnFocus={restoreFocus}
+        />
+      )}
+      {renaming !== null && (
+        <SummaryDialog
+          issue={renaming}
+          onClose={() => {
+            setRenaming(null)
           }}
           returnFocus={restoreFocus}
         />
