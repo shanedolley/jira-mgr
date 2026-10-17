@@ -344,7 +344,7 @@ test('fits "2h 30m" in the field in a wide font, in the Tree and on the Sprint p
   })
   /** Whether the text fits the field and the field sits inside its row. */
   const fits = (input: HTMLInputElement) => {
-    const row = input.closest('[role=treeitem], [data-row]')
+    const row = input.closest('[role=treeitem], [data-issue-key]')
     const box = input.getBoundingClientRect()
     const rowBox = row?.getBoundingClientRect()
     return {

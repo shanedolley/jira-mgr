@@ -5,11 +5,12 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } f
 import { commitDraft, ESTIMATE_HINT } from './estimate'
 import { useAttempt } from './PropertyPickers'
 import { useEditIssue } from './queries'
+import { Slot, SLOT } from './Slot'
 
 const NAME = 'Original estimate'
 
-/** The element focus returns to once the field closes on a key: the Tree, or the Sprint page's row. */
-const HOME = '[role="tree"], button'
+/** The element focus returns to once the field closes on a key in the Tree. The Sprint page's slot takes it back itself. */
+const HOME = '[role="tree"]'
 
 /** An estimate sent and not yet shown by the issue, and the estimate the issue showed when it was sent. */
 interface Sent {
@@ -19,9 +20,9 @@ interface Sent {
 
 /**
  * The original estimate slot of an issue row, editable in place (#276). A click, `Shift+E` from the
- * Tree (the Shell clicks `[data-edit]`) or Enter on the Sprint page's focusable slot turns it into
+ * Tree (the Shell clicks `[data-edit]`) or a press of the Sprint page's slot button turns it into
  * a text field with its text selected. Enter saves and Escape cancels, each handing focus back to
- * the Tree. Leaving the field saves a valid draft and drops an invalid one. A refused draft stays
+ * the Tree, or to the slot on the Sprint page. Leaving the field saves a valid draft and drops an invalid one. A refused draft stays
  * open under a hint. The save is the issue page's: an optimistic `originalEstimateSeconds`, a
  * re-read of the issue so Remaining and Remaining % follow, and a Retry toast on refusal.
  *
@@ -40,6 +41,9 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
   const [draft, setDraft] = useState<string | null>(null)
   const [hint, setHint] = useState<CSSProperties | null>(null)
   const field = useRef<HTMLInputElement>(null)
+  const slot = useRef<HTMLButtonElement>(null)
+  /** Set when the field closed on a key on the Sprint page, so the slot takes focus once it is drawn again. */
+  const focusSlot = useRef(false)
   /** Set when the field has closed, so the blur that closing causes does not save again. */
   const closed = useRef(true)
 
@@ -50,6 +54,11 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
     field.current?.focus()
     field.current?.select()
   }, [editing])
+  useEffect(() => {
+    if (editing || !focusSlot.current) return
+    focusSlot.current = false
+    slot.current?.focus()
+  }, [editing])
 
   function open() {
     setDraft(value ?? '')
@@ -58,10 +67,12 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
 
   function close(refocus: boolean) {
     closed.current = true
-    const home = field.current?.closest<HTMLElement>(HOME)
+    const home = always ? undefined : field.current?.closest<HTMLElement>(HOME)
     setDraft(null)
     setHint(null)
-    if (refocus) home?.focus()
+    if (!refocus) return
+    if (always) focusSlot.current = true
+    else home?.focus()
   }
 
   /** Saves a valid draft and closes. A draft that is not valid stays open when `keep` and is dropped otherwise. */
@@ -105,32 +116,27 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
   }
 
   if (draft === null) {
-    return (
-      <span
-        data-prop="estimate"
-        data-edit="estimate"
-        title={value === null ? `Set ${NAME.toLowerCase()}` : `${NAME} ${value}`}
-        // The Sprint page's rows are buttons, which also take Enter and Space. This slot takes them first.
-        role={always ? 'button' : undefined}
-        tabIndex={always ? 0 : undefined}
-        onClick={(event) => {
-          if (always) event.stopPropagation()
-          open()
-        }}
-        onKeyDown={(event) => {
-          if (!always || (event.key !== 'Enter' && event.key !== ' ')) return
-          event.preventDefault()
-          event.stopPropagation()
-          open()
-        }}
-        onKeyUp={(event) => {
-          if (event.key === ' ') event.preventDefault()
-        }}
-        className="min-h-5 w-16 shrink-0 cursor-text whitespace-nowrap rounded text-right text-xs tabular-nums text-muted hover:bg-line"
-      >
+    const shared = {
+      'data-prop': 'estimate',
+      'data-edit': 'estimate',
+      title: value === null ? `Set ${NAME.toLowerCase()}` : `${NAME} ${value}`,
+      onClick: open,
+      className:
+        'min-h-5 w-16 shrink-0 cursor-text whitespace-nowrap rounded text-right text-xs tabular-nums text-muted hover:bg-line',
+    }
+    const text = (
+      <>
         {value !== null && <span className="sr-only">{NAME} </span>}
         {value}
-      </span>
+      </>
+    )
+    // On the Sprint page the slot is a button beside the row's own, which takes Enter and Space natively.
+    return always ? (
+      <Slot ref={slot} {...shared}>
+        {text}
+      </Slot>
+    ) : (
+      <span {...shared}>{text}</span>
     )
   }
 
@@ -142,11 +148,7 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
       // fade off the field and its hint, which a fade on the row would draw at 30%.
       data-edit="estimate"
       data-editing=""
-      className="relative inline-block min-h-5 w-16 shrink-0 text-right text-xs tabular-nums"
-      // The field's clicks and keys are its own, whichever row or button holds it.
-      onClick={(event) => {
-        if (always) event.stopPropagation()
-      }}
+      className={`relative inline-block min-h-5 w-16 shrink-0 text-right text-xs tabular-nums ${always ? SLOT : ''}`}
     >
       <input
         ref={field}
@@ -165,10 +167,6 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
           if (!closed.current) leave(false, false)
         }}
         onKeyDown={onKeyDown}
-        onKeyUp={(event) => {
-          // A space typed here must not press the Sprint row's button, which keyup would.
-          if (event.key === ' ') event.preventDefault()
-        }}
         className="h-5 w-full min-w-0 rounded border border-field-border bg-canvas px-1 text-right text-ink aria-invalid:border-danger"
       />
       {hint !== null && (

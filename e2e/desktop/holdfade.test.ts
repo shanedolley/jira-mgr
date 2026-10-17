@@ -113,6 +113,8 @@ test('fades every field of a Hold row on the Sprint page to 30% and no other row
     row.locator('[data-prop="estimate"]'),
     row.locator('[data-avatar]'),
   )
+  // The button that opens the issue is outside the fade, so its focus ring draws in full.
+  await expectDrawnAt(1, row.getByRole('button', { name: /^PSAPAC-11 / }))
   // The group heading's ring is outside the row, at its own 30%.
   await expectDrawnAt(0.3, sprintPage().getByRole('region', { name: 'Hold' }).locator('svg'))
 

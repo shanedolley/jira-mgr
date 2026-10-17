@@ -270,7 +270,7 @@ An editor anchored to a cell of a Tree or Sprint page row, for editing a propert
   1. Its name in `CELL_PROPERTIES` (`cell.ts`). The name is the keymap command's name (`status`, `assignee`, `priority`, `labels`, `dueDate`, `sprint`), so its key routes with no Shell change: the Shell's `openCell(command, key)` opens the editor on the active row's `[data-pick="<name>"]` cell when `isCellProperty(command)`, and otherwise falls back to the Peek's picker or, for `Shift+D`, `Shift+P`, `Shift+E` and `Shift+C`, to the issue menu. A property whose key has no keymap command adds its command in `keymap.ts` first.
   2. An entry in `EDITORS` (`CellEditor.tsx`), which receives a `CellContext`: `{ issue, issues, me, cell }`.
   3. Its Tree cell: a `Pick` with that `property` in `TreeRow.tsx`. The row's click needs no change; `isCellProperty` sends it to `onCell`.
-  4. Its Sprint page cell: a button with `data-pick="<name>"` that calls `onEditCell(issue, '<name>', event.currentTarget)`.
+  4. Its Sprint page cell: a `Slot` (below) with `data-pick="<name>"` that calls `onEditCell(issue, '<name>', event.currentTarget)`.
 
   A property that still opens the Peek's picker from a click (the avatar until #268) keeps its `onPick` route until it is registered.
 
@@ -298,7 +298,42 @@ An editor anchored to a cell of a Tree or Sprint page row, for editing a propert
 - **Reveal.** A click on a cell, and `S`, first scroll the row into view through `IssueTree`'s `reveal` (the step a keyboard move uses), so a row clipped at the Tree's foot or head opens its popover against a cell the user can see. The Shell reaches it through the `control` ref.
 - **Toggle.** A press on the cell whose own popover is open closes it, and the click that follows must not open it again; `cellReducer` remembers that press (`pressed`) and swallows the click. A press released away from its cell is forgotten a frame after the release. A key (`pointer: false`) always opens.
 - **Tree.** A click on the status dot makes the row active and opens the editor. It does not open the Peek, arm the double-click, change the checked rows or select text; `Shift+click` still checks a range. `S` on the Tree opens the editor on the active row's dot. The row keeps its drag.
-- **Sprint page.** Each row is the row button plus a sibling button over its left edge, named "Status of PSAPAC-4: In Progress", since a button cannot hold a button. It is in the tab order, so Enter or Space opens the editor, and the row button still opens the issue. `optimistic.ts` patches, rolls back and cancels reads of the Sprint page's own copies of the issue (`['sprint', id]`) with the lists, so the row changes group at once and a refetch cannot bring the old value back.
+- **Sprint page.** The status cell is a `Slot` at the left of the row's content, named "Status of PSAPAC-4: In Progress". It is in the tab order, so Enter or Space opens the editor, and the row button still opens the issue. `optimistic.ts` patches, rolls back and cancels reads of the Sprint page's own copies of the issue (`['sprint', id]`) with the lists, so the row changes group at once and a refetch cannot bring the old value back.
+- **Slots.** A Sprint page row holds its controls beside the button that opens the issue, never inside it, since a button cannot hold a control (axe's `nested-interactive`; a screen reader treats a button's children as text). `li[data-issue-key]` is `relative` and holds, in this order:
+  1. The open-issue `<button data-row>`, `absolute inset-0` with `aria-label="PSAPAC-4 <summary>"`. It is the first tab stop and takes the row's click, its right-click and `Shift+F10`.
+  2. A `div` of the row's content, `pointer-events-none relative`. A click on text or empty space falls through it to the button below. The Hold fade is one `span` in it (`holdFade`); the status slot and the pencil sit outside that span, so a focus ring is never faded.
+  3. Each control in the content is a `Slot` (`Slot.tsx`): a real `<button type="button">` with `pointer-events-auto`. `SLOT` is the same class, for a control that is not a button, such as the estimate field while it is open.
+
+  A story that adds a Sprint page target makes it a `Slot`, in the place the cell already has:
+  - **Time cells** (`TimeCell`, `EstimateCell`) already take `always` and draw a `Slot` in place of their Tree `<span>`.
+  - **Labels and sprint** are cells of `Properties` (`TreeRow.tsx`), which passes `always` only to the time cells. Pass it to the cell, and draw the `Slot` when it is set. `DueDate` is a cell too and must receive `always` the same way.
+  - **Assignee** is the `Avatar` in `SprintPage.tsx`, outside `Properties`. Wrap it there in a `Slot`.
+  - **Priority** is not a Sprint row cell at all. Add a slot to the row first, then make it a `Slot`.
+
+  `Properties` has no `onEditCell` yet: the first story to need it adds the prop and `SprintPage` passes it. A labels cell then reads:
+
+  ```tsx
+  return always ? (
+    <Slot
+      data-prop="labels"
+      data-pick="labels"
+      aria-label={`Labels of ${issue.key}: ${issue.labels.join(', ') || 'none'}`}
+      onClick={(event) => {
+        onEditCell(issue, 'labels', event.currentTarget)
+      }}
+      className={CLASSES}
+    >
+      {chips}
+    </Slot>
+  ) : (
+    <span data-prop="labels" className={CLASSES}>
+      {chips}
+    </span>
+  )
+  ```
+
+  Give it an accessible name (its text, an `aria-label` or a `title`), keep it a direct control of the content and never put one inside another. A control that opens an editor calls `onEditCell(issue, '<name>', event.currentTarget)` and focus returns to it. The row button is described by the `Properties` values (`aria-describedby`), so a keyboard user hears them on arriving at the row. Tab order follows the visual order: the row button, Status, the property slots in the Display menu's order, then the pencil. `slots.test.ts` fails when a control nests in another.
+
 - **Tests.** `cell.test.ts` covers the reducer's open, close and focus return, and `e2e/desktop/cell.test.ts` the Tree and the Sprint page in the app.
 
 ## Create and Delete
@@ -347,7 +382,7 @@ An editor anchored to a cell of a Tree or Sprint page row, for editing a propert
 - The sidebar's Sprints section lists Current, the active sprint, and Upcoming, the next future sprint that has dates (the picker's Q20 rule, `sidebarSprints`), each with the sprint's name. An entry with no sprint is disabled. Both read `sprints:list` under the Sprint picker's query key, so the sidebar and the picker share one read.
 - A sprint also opens from an issue page: an Open button beside the Sprint value (`Open sprint <name>`) shows while the issue is in a sprint, and replaces the issue page with the sprint page. The Peek has no Sprint row, so it has no link.
 - The page covers the Tree as the Issue page does: the Tree and the Peek stay mounted and inert under it. A sprint's issue opens its page above the sprint page, and Esc or Back returns to the sprint. The sprint page is inert under an open issue page, so Tab and Shift+Tab never reach it, and it takes focus back when the issue page closes. Esc, Back to issues, the Issues link and applying a saved view leave the sprint page, and focus goes to the Tree. It takes no letter shortcuts.
-- The left side lists the sprint's issues by status in the Tree's status order, each row a key, a summary, the row properties the Display menu chose (the same slots as the Tree, shown at any width, each with a visually hidden label; they wrap onto a line of their own when the summary would have under `10rem`) and the assignee. The rows are at most `40rem` wide with no property on and `64rem` otherwise; the heading, the "N issues" count and the group headers stay at `40rem`. An empty sprint says "No issues in this sprint."
+- The left side lists the sprint's issues by status in the Tree's status order, each row a status slot, a key, a summary, the row properties the Display menu chose (the same slots as the Tree, shown at any width, each with a visually hidden label; they wrap onto a line of their own when the summary would have under `10rem`), the assignee and a pencil. A click on the row outside those controls opens the issue. The estimate, Logged, status and pencil are separate buttons beside the row's own, not inside it (see Cell Editor, Slots). The rows are at most `40rem` wide with no property on and `64rem` otherwise; the heading, the "N issues" count and the group headers stay at `40rem`. An empty sprint says "No issues in this sprint."
 - The right panel shows Status, Start and End as local days, the Goal ("No goal set" when empty), and Progress. Scope is every issue in the sprint. Started is the issues whose status category is In Progress, and Completed the issues whose status category is Done, whatever the status is called. Each shows its percent of Scope. The progress bar is Completed in the done colour, then Started in the in-progress colour, on a `--line` track (`role="progressbar"`, value Completed's percent).
 - The tabs are Assignees, Labels, Priority, Customer and Engagement. A row reads "N% of M": M issues share the value, and N percent of them are Completed. Rows sort by M, then name; the issues with no value come last as Unassigned, No label, No priority, No Customer or No Engagement. An issue with several labels counts under each. Arrow keys, Home and End move between the tabs and select as they go.
 - No coloured border marks any of it. The open sprint's sidebar entry is the one lit item, by the `is-current` fill and weight; Issues and the saved views give theirs up while a sprint page is open, and the selected tab takes the same fill.

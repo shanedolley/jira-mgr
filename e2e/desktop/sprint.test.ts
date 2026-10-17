@@ -90,8 +90,10 @@ test('opens the active sprint from the sidebar with counts that equal its issues
 
   // The list holds the seven issues the fake puts in the sprint, and no other.
   const keys = await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-\d+/ })
-    .evaluateAll((buttons) => buttons.map((b) => /^PSAPAC-\d+/.exec(b.textContent)?.[0] ?? ''))
+    .getByRole('button', { name: /^PSAPAC-\d+ / })
+    .evaluateAll((buttons) =>
+      buttons.map((b) => /^PSAPAC-\d+/.exec(b.getAttribute('aria-label') ?? '')?.[0] ?? ''),
+    )
   expect(keys.sort()).toEqual([...MEMBERS].sort())
   // Grouped by status: 2 To Do, 3 In Progress and 2 Done.
   await expect(

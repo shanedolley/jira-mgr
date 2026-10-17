@@ -419,10 +419,10 @@ test('holds its layout with a wide font: the list fits the window and the Sprint
 
   // The ring sits left of the key in every row, and the key is not covered.
   const overlaps = await sprintPage().evaluate((page) =>
-    [...page.querySelectorAll('[data-row]')].flatMap((row) => {
-      const button = row.parentElement?.querySelector('[data-pick=status]')
+    [...page.querySelectorAll('li[data-issue-key]')].flatMap((row) => {
+      const button = row.querySelector('[data-pick=status]')
       const key = row.querySelector('span.font-mono')
-      if (button === null || button === undefined || key === null) return ['row without its parts']
+      if (button === null || key === null) return ['row without its parts']
       return button.getBoundingClientRect().right > key.getBoundingClientRect().left + 0.5
         ? [row.getAttribute('data-issue-key') ?? '']
         : []
