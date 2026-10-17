@@ -157,7 +157,7 @@ test('the palette takes letters as text, and Esc closes it and returns focus', a
   await expect(filter).toBeFocused()
 })
 
-test('S opens the status list beside the row; A, P and L open the Peek pickers; a pick returns focus to the Tree', async () => {
+test('S and A open their lists beside the row; P and L open the Peek pickers; a pick returns focus to the Tree', async () => {
   await open()
   await select(/PSAPAC-4,/)
   const before = await writes()
@@ -180,12 +180,12 @@ test('S opens the status list beside the row; A, P and L open the Peek pickers; 
   await window.keyboard.press('k')
   await expect(item(/PSAPAC-4,/)).toHaveAttribute('data-active', 'true')
 
-  // A: the search field of the assignee picker, closed by Esc.
+  // A: the search field of the assignee list beside the row, with no Peek, closed by Esc.
   await window.keyboard.press('A')
   await expect(window.getByRole('combobox', { name: 'Search Assignee' })).toBeFocused()
+  await expect(peek()).toHaveCount(0)
   await window.keyboard.press('Escape')
   await expect(window.getByRole('combobox', { name: 'Search Assignee' })).toHaveCount(0)
-  await expect(peek()).toBeVisible()
   await expect(tree()).toBeFocused()
 
   // P: a priority from the list.
@@ -405,12 +405,12 @@ test("the toast's Undo button does the same as Cmd+Z", async () => {
   await window.keyboard.press('a')
   await window.getByRole('combobox', { name: 'Search Assignee' }).pressSequentially('cy')
   await option('Cy Young').click()
-  await expect(peekPicker('Assignee')).toHaveAccessibleName('Assignee: Cy Young')
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/Cy Young/)
   await settle(before + 1)
   await expect(notice('PSAPAC-4: assignee changed to Cy Young')).toBeVisible()
 
   await undoButton().click()
-  await expect(peekPicker('Assignee')).toHaveAccessibleName('Assignee: Test User')
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/Test User/)
   await settle(before + 2)
   expect(await lastBody()).toEqual({ fields: { assignee: { accountId: 'u1' } } })
   await expect(notice('Undid PSAPAC-4: assignee back to Test User')).toBeVisible()

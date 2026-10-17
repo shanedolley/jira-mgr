@@ -131,10 +131,9 @@ function Chevron({ row }: { row: Row }) {
 }
 
 /**
- * Wraps a row's status dot or avatar, which open that property's picker on a click: the status
- * dot's in a popover anchored to the dot (the cell editor), the avatar's in the Peek. The Tree
- * owns every key, so this is a click target only: `S` and `A` are the keyboard's way to the same
- * pickers. It selects no text.
+ * Wraps a row's status dot or avatar, which open that property's picker on a click, in a popover
+ * anchored to the cell (the cell editor). The Tree owns every key, so this is a click target
+ * only: `S` and `A` are the keyboard's way to the same pickers. It selects no text.
  */
 function Pick({
   property,
@@ -653,9 +652,7 @@ interface TreeRowProps {
    * second click on the summary, which a double-click may turn into a page open.
    */
   onEdit: (issue: Issue, wait: boolean) => void
-  /** A click on the row's avatar, after `onClick` has made the row active. */
-  onPick: (key: string, property: 'assignee') => void
-  /** A click on the row's status dot, after `onClick` has made the row active: the cell editor opens on `cell`. */
+  /** A click on the row's status dot or avatar, after `onClick` has made the row active: the cell editor opens on `cell`. */
   onCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** Done over total of the issue's children, which the row shows beside its title, as numbers so the memo holds. */
   done: number | undefined
@@ -684,7 +681,6 @@ export const TreeRow = memo(function TreeRow({
   onArm,
   onOpen,
   onEdit,
-  onPick,
   onCell,
   done,
   total,
@@ -729,7 +725,7 @@ export const TreeRow = memo(function TreeRow({
         const pick = target.closest<HTMLElement>('[data-pick]')
         const picked = pick?.dataset.pick
         // An in-row field or a cell with its own editor makes its row active and leaves the Peek as it is.
-        // A Shift+click on the status dot checks a range instead, so it opens no editor.
+        // A Shift+click on the status dot or avatar checks a range instead, so it opens no editor.
         const select =
           target.closest('[data-check]') !== null
             ? 'toggle'
@@ -753,7 +749,7 @@ export const TreeRow = memo(function TreeRow({
         if (edit !== null) onEdit(row.node.issue, edit === 'later')
         if (select === 'activate' && pick !== null && isCellProperty(picked)) {
           onCell(row.node.issue, picked, pick)
-        } else if (picked === 'assignee') onPick(row.node.issue.key, picked)
+        }
       }}
       // A double-click opens the issue its first click hit, not the row under the pointer by then:
       // the Peek opening can move the rows between the two clicks.

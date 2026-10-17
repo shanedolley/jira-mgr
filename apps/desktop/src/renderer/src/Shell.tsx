@@ -1481,9 +1481,6 @@ export function Shell({ session }: { session: Session }) {
         today={today}
         blocks={blocks}
         onChange={apply}
-        onPick={(key, property) => {
-          openProperty(property, key)
-        }}
         onEditSummary={setRenaming}
         onCell={editCell}
         control={treeControl}

@@ -10,6 +10,7 @@ import {
   type CellState,
   type CellTarget,
 } from './cell'
+import { keyOf, letterCommand } from './keymap'
 
 interface Cell {
   name: string
@@ -103,5 +104,29 @@ describe('isCellProperty', () => {
     // An unregistered name and a missing attribute are no property.
     expect(isCellProperty('nonsense')).toBe(false)
     expect(isCellProperty(undefined)).toBe(false)
+  })
+})
+
+describe('assignee cell', () => {
+  it('is registered, so a click on the avatar and the A key route to the cell editor', () => {
+    expect(CELL_PROPERTIES).toContain('assignee')
+    expect(isCellProperty('assignee')).toBe(true)
+    // The key's command is the property's name, which `openCell` in the Shell reads.
+    expect(letterCommand('a', false)).toBe('assignee')
+  })
+
+  it('names a keymap command with a key for every property, so each has a keyboard path', () => {
+    for (const property of CELL_PROPERTIES) expect(keyOf(property)).toBeDefined()
+  })
+
+  it('opens and closes against the avatar like any other cell', () => {
+    const avatar: Cell = { name: 'avatar of P-1' }
+    const open = cellReducer<Cell>(CLOSED, {
+      type: 'open',
+      target: { ...target(avatar), property: 'assignee' },
+      pointer: true,
+    })
+    expect(open.target?.property).toBe('assignee')
+    expect(cellReducer(open, { type: 'close' }).target).toBeNull()
   })
 })

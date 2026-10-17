@@ -74,9 +74,7 @@ interface IssueTreeProps {
   blocks: ReadonlyMap<string, OpenBlocks>
   /** Called with the next state after a key or a click. */
   onChange: (next: MoveResult) => void
-  /** A click on an issue row's avatar, made after the row became active. */
-  onPick: (key: string, property: 'assignee') => void
-  /** A click on a cell with its own editor, such as the status dot, made after the row became active. */
+  /** A click on a cell with its own editor, such as the status dot or avatar, made after the row became active. */
   onCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** A click on an issue row's pencil, or a second click on its summary, which asks for the summary editor. */
   onEditSummary: (issue: Issue) => void
@@ -114,7 +112,6 @@ export function IssueTree({
   today,
   blocks,
   onChange,
-  onPick,
   onEditSummary,
   onCell,
   control,
@@ -442,7 +439,6 @@ export function IssueTree({
                 onArm={onRowArm}
                 onOpen={onRowOpen}
                 onEdit={onRowEdit}
-                onPick={onPick}
                 onCell={onRowCell}
                 onAdd={onAdd}
                 done={children?.done}

@@ -196,7 +196,7 @@ interface AssigneeProps extends PickerProps {
 }
 
 /** Unassigned, Me, recent assignees, then a search of assignable users. Opened by `A`. */
-export function AssigneePicker({ issue, issues, me, menu }: AssigneeProps) {
+export function AssigneePicker({ issue, issues, me, menu, cell }: AssigneeProps) {
   const change = useIssueChange(issue)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -226,6 +226,7 @@ export function AssigneePicker({ issue, issues, me, menu }: AssigneeProps) {
   return (
     <Picker
       {...menuProps(menu)}
+      cell={cell}
       label="Assignee"
       shortcut="A"
       valueText={issue.assignee?.displayName ?? 'Unassigned'}
