@@ -1,5 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
-import type { RowProperty } from '@jira-mgr/core/display'
+import type { PropertyWidths, RowProperty } from '@jira-mgr/core/display'
 import type { SprintReport } from '@jira-mgr/core/sprints'
 import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 
@@ -8,6 +8,7 @@ import type { CellProperty } from './cell'
 import { Icon, PENCIL } from './Icon'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
+import { colVars, colWidth } from './propertyFit'
 import { SECTION_HEADING } from './Section'
 import { Slot } from './Slot'
 import { holdFade, StatusDot } from './StatusDot'
@@ -21,6 +22,7 @@ import {
 } from './sprintView'
 import { useSprintReport } from './sprintQueries'
 import { PrioritySlot, Properties } from './TreeRow'
+import { PROPERTY_LABELS } from './TreeToolbar'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -193,10 +195,48 @@ function Panel({ report }: { report: SprintReport }) {
   )
 }
 
+/**
+ * What a row leaves right of its property strip, in pixels: the row's `pr-10` (40), the avatar (20),
+ * the gap before it (12) and the list's border (1).
+ */
+const AFTER_STRIP = 73
+
+/**
+ * The names of the properties above the first status section, at the widths the rows use, each
+ * column's separator on its left edge as the Tree's header draws it. The widths are set in the Tree,
+ * so this header only names them. A row that wraps its properties onto a second line (a narrow
+ * page) no longer lines up with it. It is drawn only: the rows name each value themselves.
+ */
+function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
+  return (
+    <div
+      aria-hidden
+      data-column-names
+      style={{ paddingRight: AFTER_STRIP }}
+      className="flex max-w-[64rem] select-none justify-end gap-x-2"
+    >
+      {properties.map((property) => (
+        <div
+          key={property}
+          data-col={property}
+          style={colWidth(property)}
+          className="relative shrink-0"
+        >
+          <span className="block truncate text-right text-xs leading-6 text-muted">
+            {PROPERTY_LABELS[property]}
+          </span>
+          <span className="absolute inset-y-0 -left-1 w-px bg-line" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** The sprint's issues, grouped by status, each opening its page. */
 function Issues({
   report,
   properties,
+  widths,
   today,
   onOpen,
   onEditSummary,
@@ -204,6 +244,7 @@ function Issues({
 }: {
   report: SprintReport
   properties: readonly RowProperty[]
+  widths: PropertyWidths
   today: string
   onOpen: (key: string) => void
   onEditSummary: (issue: Issue) => void
@@ -213,7 +254,7 @@ function Issues({
   const groups = groupByStatus(issues)
   return (
     <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px] max-stack:min-h-auto max-stack:overflow-y-visible max-stack:px-4">
-      <div className="space-y-6">
+      <div style={colVars(properties, widths)} className="space-y-6">
         <div className="max-w-[40rem] space-y-1">
           <h1 className="text-xl font-semibold leading-7">{sprint.name}</h1>
           <p role="status" className="text-muted">
@@ -221,6 +262,7 @@ function Issues({
           </p>
         </div>
         {groups.length === 0 && <p className="text-muted">No issues in this sprint.</p>}
+        {groups.length > 0 && properties.length > 0 && <ColumnNames properties={properties} />}
         {groups.map(({ status, issues: inGroup }) => (
           <section key={status.id} aria-label={status.name} className="space-y-1">
             <h2 className={`${SECTION_HEADING} flex max-w-[40rem] items-center gap-2`}>
@@ -333,6 +375,8 @@ interface SprintPageProps {
   sprintId: number
   /** The row properties the Display menu chose, which the Tree shows too. */
   properties: readonly RowProperty[]
+  /** The widths the user set for them in the Tree, which the rows and the header here use. */
+  widths: PropertyWidths
   /** Today's local date, which the short dates and the due date's colour read. */
   today: string
   pageRef: RefObject<HTMLElement | null>
@@ -353,6 +397,7 @@ interface SprintPageProps {
 export function SprintPage({
   sprintId,
   properties,
+  widths,
   today,
   pageRef,
   onBack,
@@ -400,6 +445,7 @@ export function SprintPage({
           <Issues
             report={report.data}
             properties={properties}
+            widths={widths}
             today={today}
             onOpen={onOpenIssue}
             onEditSummary={onEditSummary}

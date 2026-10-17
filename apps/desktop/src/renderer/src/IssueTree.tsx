@@ -1,5 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
-import type { RowProperty } from '@jira-mgr/core/display'
+import type { PropertyWidths, RowProperty } from '@jira-mgr/core/display'
 import type { OpenBlocks } from '@jira-mgr/core/view-filter'
 import type { Progress } from '@jira-mgr/core/hierarchy'
 import {
@@ -17,8 +17,9 @@ import {
 } from 'react'
 
 import type { CellProperty } from './cell'
+import { ColumnHeader } from './ColumnHeader'
 import { keepsLetters } from './keymap'
-import { extrasWidth, fittingCount } from './propertyFit'
+import { colVars, extrasWidth, fitWidths, stripRoom } from './propertyFit'
 import { DOUBLE_CLICK_MS } from './summaryEdit'
 import { TreeRow, rowDomId, rowProgress } from './TreeRow'
 import {
@@ -68,6 +69,10 @@ interface IssueTreeProps {
   timerKey: string | null
   /** The row properties the Display menu chose. */
   properties: readonly RowProperty[]
+  /** The widths the user set for them, in pixels. A property with none takes its default. */
+  widths: PropertyWidths
+  /** A column was resized to `width` pixels, or removed when that is 0. */
+  onResize: (property: RowProperty, width: number) => void
   /** Today's local date, for the dates a row shows. */
   today: string
   /** The open blockers of each loaded issue, by key. */
@@ -109,6 +114,8 @@ export function IssueTree({
   peekedKey,
   timerKey,
   properties,
+  widths,
+  onResize,
   today,
   blocks,
   onChange,
@@ -132,6 +139,7 @@ export function IssueTree({
   const [scrollTop, setScrollTop] = useState(0)
   const [height, setHeight] = useState(0)
   const [width, setWidth] = useState(0)
+  const [scrollbar, setScrollbar] = useState(0)
   const anchor = useRef<Anchor | null>(null)
   const ensured = useRef<string | null>(null)
   /** The issue row being dragged, and the sibling it hovers. */
@@ -140,9 +148,9 @@ export function IssueTree({
   const layout = useMemo(() => layoutRows(rows), [rows])
   const indexById = useMemo(() => new Map(rows.map((r, i) => [r.id, i])), [rows])
   const activeIndex = state.activeId === null ? -1 : (indexById.get(state.activeId) ?? -1)
-  // The deepest row and the widest extras decide how many properties every row shows, so the
-  // columns line up whatever a row holds.
-  const shown = useMemo(() => {
+  // The deepest row and the widest extras decide how much room the strip has, so the columns line
+  // up whatever a row holds.
+  const room = useMemo(() => {
     let level = 1
     let extras = 0
     for (const row of rows) {
@@ -160,8 +168,11 @@ export function IssueTree({
         }),
       )
     }
-    return fittingCount(properties, width - 16, level, extras)
-  }, [rows, blocks, progress, timerKey, properties, width])
+    return stripRoom(width - 16, level, extras)
+  }, [rows, blocks, progress, timerKey, width])
+  // The widths the user set, less what a narrow Tree cannot hold, taken from the trailing column.
+  const fitted = useMemo(() => fitWidths(properties, widths, room), [properties, widths, room])
+  const showHeader = properties.length > 0 && rows.length > 0
   const pageSize = Math.max(1, Math.floor(height / ROW_HEIGHT))
   const selecting = state.checked.size > 0
 
@@ -176,6 +187,8 @@ export function IssueTree({
     const observer = new ResizeObserver(() => {
       setHeight(tree.clientHeight)
       setWidth(tree.clientWidth)
+      // The rows stop short of the scrollbar, so the header must too.
+      setScrollbar(tree.offsetWidth - tree.clientWidth)
     })
     observer.observe(tree)
     return () => {
@@ -388,8 +401,18 @@ export function IssueTree({
   return (
     <div
       data-tree-pane
+      style={colVars(properties, fitted)}
       className={`@container relative min-h-0 flex-1 ${rows.length === 0 ? RING : ''}`}
     >
+      {showHeader && (
+        <ColumnHeader
+          properties={properties}
+          fitted={fitted}
+          room={room}
+          scrollbar={scrollbar}
+          onResize={onResize}
+        />
+      )}
       <div
         ref={treeRef}
         role="tree"
@@ -407,7 +430,7 @@ export function IssueTree({
         onDragEnd={() => {
           setDrag(null)
         }}
-        className="group absolute inset-0 overflow-y-auto overflow-x-hidden focus-visible:outline-none"
+        className={`group absolute inset-0 overflow-y-auto overflow-x-hidden focus-visible:outline-none ${showHeader ? '@tree:top-6' : ''}`}
       >
         <div
           className="relative"
@@ -431,7 +454,6 @@ export function IssueTree({
                 dragging={drag?.id === row.id}
                 dropEdge={indicator?.id === row.id ? indicator.edge : undefined}
                 properties={properties}
-                shown={shown}
                 today={today}
                 blockedBy={held?.blockedBy.length ?? 0}
                 blocking={held?.blocking.length ?? 0}

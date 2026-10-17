@@ -686,6 +686,69 @@ describe('display', () => {
     expect((await findView('two')).display?.manual).toEqual(['P-1', 'P-2'])
   })
 
+  it('keeps column widths through a write, and reads a file with none unchanged', async () => {
+    expect((await readSettings()).display).not.toHaveProperty('widths')
+    const widths = { labels: 120, due: 64 }
+    await writeSettings({
+      ...(await readSettings()),
+      display: { ...display, properties: ['labels', 'due'], widths },
+    })
+    await writeSettings({
+      ...(await readSettings()),
+      toggles: { ...toggles, hideDone: false },
+    })
+    expect((await readSettings()).display.widths).toEqual(widths)
+  })
+
+  it('reads widths it cannot read as none, and keeps the rest of the display', async () => {
+    for (const bad of [
+      'wide',
+      null,
+      [96],
+      3,
+      { labels: 0 },
+      { labels: 1.5 },
+      { labels: '96' },
+      {},
+    ]) {
+      await writeFile(
+        join(dir, 'settings.json'),
+        JSON.stringify({ display: { properties: ['labels'], order: 'key', widths: bad } }),
+      )
+      expect((await readSettings()).display).toEqual({
+        properties: ['labels'],
+        order: 'key',
+        direction: 'desc',
+      })
+    }
+  })
+
+  it('keeps the readable widths of a listed property and drops the rest', async () => {
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({
+        display: {
+          properties: ['labels', 'due'],
+          widths: { labels: 120, due: 0, sprint: 90, wat: 40 },
+        },
+      }),
+    )
+    expect((await readSettings()).display.widths).toEqual({ labels: 120 })
+  })
+
+  it('stores widths per view, apart from the settings', async () => {
+    const one = { ...display, properties: ['labels' as const], widths: { labels: 120 } }
+    const two = { ...one, widths: { labels: 40 } }
+    await createView('One', { filters: {}, toggles, display: one })
+    await createView('Two', { filters: {}, toggles, display: two })
+    expect((await findView('one')).display?.widths).toEqual({ labels: 120 })
+    expect((await findView('two')).display?.widths).toEqual({ labels: 40 })
+    expect((await readSettings()).display).not.toHaveProperty('widths')
+    await updateView('one', { filters: {}, toggles, display: { ...one, widths: { labels: 200 } } })
+    expect((await findView('one')).display?.widths).toEqual({ labels: 200 })
+    expect((await findView('two')).display?.widths).toEqual({ labels: 40 })
+  })
+
   it('reads a views file with no display unchanged, and gives a view none', async () => {
     const old = [{ id: 'bugs', name: 'Bugs', filters: { type: ['Bug'] }, toggles }]
     await writeFile(join(dir, 'views.json'), JSON.stringify(old))

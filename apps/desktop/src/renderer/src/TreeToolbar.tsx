@@ -34,6 +34,7 @@ import {
   type FilterField,
   type Operator,
 } from './filters'
+import { withoutProperty } from './propertyFit'
 
 const TOGGLE_LABELS: Record<keyof Toggles, string> = {
   hideDone: 'Hide done',
@@ -63,7 +64,8 @@ const DIRECTION_LABELS: Record<OrderDirection, string> = {
   desc: 'Descending',
 }
 
-const PROPERTY_LABELS: Record<RowProperty, string> = {
+/** What the Display menu's chips and the Tree's column headers call each property. */
+export const PROPERTY_LABELS: Record<RowProperty, string> = {
   labels: 'Labels',
   sprint: 'Sprint',
   estimate: 'Original estimate',
@@ -546,12 +548,17 @@ export function TreeToolbar({
                       type="button"
                       aria-pressed={on}
                       onClick={() => {
-                        onDisplay({
-                          ...display,
-                          properties: ROW_PROPERTIES.filter((p) =>
-                            p === property ? !on : display.properties.includes(p),
-                          ),
-                        })
+                        // Turning a property off forgets its width, so adding it again starts at the default.
+                        onDisplay(
+                          on
+                            ? withoutProperty(display, property)
+                            : {
+                                ...display,
+                                properties: ROW_PROPERTIES.filter(
+                                  (p) => p === property || display.properties.includes(p),
+                                ),
+                              },
+                        )
                       }}
                       className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
                     >

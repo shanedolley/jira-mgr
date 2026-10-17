@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { sprintEnd, sprintLabel, sprintTitle } from './display.js'
+import { WIDTH_MAX, keepKnownWidths, sprintEnd, sprintLabel, sprintTitle } from './display.js'
 
 const today = '2026-10-17'
 
@@ -63,5 +63,37 @@ describe('sprintTitle', () => {
       'Sprint 5, ends 2026-10-14',
     )
     expect(sprintTitle({ name: 'PS TEMPLATES' })).toBe('PS TEMPLATES')
+  })
+})
+
+describe('keepKnownWidths', () => {
+  const listed = ['labels', 'due'] as const
+
+  it('keeps whole pixel widths of listed properties', () => {
+    expect(keepKnownWidths({ labels: 120, due: 1 }, listed)).toEqual({ labels: 120, due: 1 })
+    expect(keepKnownWidths({ labels: WIDTH_MAX }, listed)).toEqual({ labels: WIDTH_MAX })
+  })
+
+  it('drops an entry it cannot read and keeps the rest', () => {
+    const bad = { labels: 120, due: 0, sprint: 90, wat: 40 }
+    expect(keepKnownWidths(bad, listed)).toEqual({ labels: 120 })
+    for (const value of [0, -1, 1.5, WIDTH_MAX + 1, NaN, Infinity, '96', null, true]) {
+      expect(keepKnownWidths({ labels: value }, listed)).toBeUndefined()
+    }
+  })
+
+  it('drops the widths of a property that is not listed, so a re-added column starts at its default', () => {
+    expect(keepKnownWidths({ labels: 120, due: 90 }, ['labels'])).toEqual({ labels: 120 })
+    expect(keepKnownWidths({ labels: 120 }, [])).toBeUndefined()
+  })
+
+  it.each([
+    ['a string', 'wide'],
+    ['null', null],
+    ['an array', [96]],
+    ['a number', 3],
+    ['nothing', undefined],
+  ])('reads %s as no widths', (_name, value) => {
+    expect(keepKnownWidths(value, listed)).toBeUndefined()
   })
 })

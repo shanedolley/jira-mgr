@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } f
 
 import { commitDraft, ESTIMATE_HINT } from './estimate'
 import { useAttempt } from './PropertyPickers'
+import { colWidth } from './propertyFit'
 import { useEditIssue } from './queries'
 import { Slot, SLOT } from './Slot'
 
@@ -121,8 +122,9 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
       'data-edit': 'estimate',
       title: value === null ? `Set ${NAME.toLowerCase()}` : `${NAME} ${value}`,
       onClick: open,
+      style: colWidth('estimate'),
       className:
-        'min-h-5 w-16 shrink-0 cursor-text whitespace-nowrap rounded text-right text-xs tabular-nums text-muted hover:bg-line',
+        'min-h-5 shrink-0 cursor-text whitespace-nowrap rounded text-right text-xs tabular-nums text-muted hover:bg-line',
     }
     const text = (
       <>
@@ -148,7 +150,8 @@ export function EstimateCell({ issue, always }: { issue: Issue; always: boolean 
       // fade off the field and its hint, which a fade on the row would draw at 30%.
       data-edit="estimate"
       data-editing=""
-      className={`relative inline-block min-h-5 w-16 shrink-0 text-right text-xs tabular-nums ${always ? SLOT : ''}`}
+      style={colWidth('estimate')}
+      className={`relative inline-block min-h-5 shrink-0 text-right text-xs tabular-nums ${always ? SLOT : ''}`}
     >
       <input
         ref={field}

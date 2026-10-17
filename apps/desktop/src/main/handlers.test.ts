@@ -575,6 +575,33 @@ describe('display', () => {
     expect(calls).toHaveLength(1)
   })
 
+  it('settings:setDisplay passes column widths on, and refuses one it cannot hold', async () => {
+    const widths = {
+      properties: ['labels'],
+      order: 'key',
+      direction: 'desc',
+      widths: { labels: 120 },
+    }
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    expect(await handlers['settings:setDisplay'](widths, noProgress)).toMatchObject({ ok: true })
+    expect(calls).toEqual([{ method: 'setDisplay', args: [widths] }])
+    for (const bad of [
+      { labels: 0 },
+      { labels: -4 },
+      { labels: 1.5 },
+      { labels: 1001 },
+      { wat: 5 },
+      'wide',
+      [96],
+    ]) {
+      expect(
+        await handlers['settings:setDisplay']({ ...widths, widths: bad }, noProgress),
+      ).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    }
+    expect(calls).toHaveLength(1)
+  })
+
   it('settings:setDisplay passes the properties and order to the backend', async () => {
     const { backend, calls } = fakeBackend()
     const result = await createHandlers(backend)['settings:setDisplay'](DISPLAY, noProgress)

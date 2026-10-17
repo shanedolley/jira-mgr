@@ -3,6 +3,7 @@ import type { ViewFilters } from '@jira-mgr/core/view-filter'
 
 import type { Display, SavedView, Toggles } from '../../shared/ipc'
 import { FILTER_FIELDS, OPERATORS, valuesOf } from './filters'
+import { sameWidths } from './propertyFit'
 
 const sameSet = (a: readonly string[] = [], b: readonly string[] = []) =>
   a.length === b.length && a.every((value) => b.includes(value))
@@ -44,6 +45,7 @@ export function viewDisplayMatches(view: SavedView, display: Display): boolean {
     saved.order === display.order &&
     saved.direction === display.direction &&
     sameSet(saved.properties, display.properties) &&
+    sameWidths(saved, display) &&
     (saved.order !== 'manual' || sameList(saved.manual, display.manual))
   )
 }
