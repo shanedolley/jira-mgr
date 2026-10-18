@@ -186,7 +186,7 @@ Each option entry carries `flag`, `type`, `valueName`, `required`, `default`, `r
 
 Reading the binary's JSON, not importing `schema.ts`, keeps scripts from importing across packages and lets Node's type stripping run the script, which cannot follow the CLI's `.js` import specifiers. The reference also documents exactly what agents receive.
 
-Root `package.json` gains `"docs:reference": "pnpm --filter @jira-mgr/cli build && node scripts/gen-reference.ts"`. `docs/` is in `.prettierignore`, so generated tables need no formatting pass. CI's `checks` job adds, after `pnpm build`, `pnpm docs:reference && git diff --exit-code -- docs/reference`.
+Root `package.json` gains `"docs:reference": "pnpm --filter @jira-mgr/cli build && node scripts/gen-reference.ts"`. `docs/` is in `.prettierignore`, so generated tables need no formatting pass. `pnpm ci:local` (the route that replaced the `checks` job of GitHub CI) runs, after `pnpm build`, `pnpm docs:reference && git diff --exit-code -- docs/reference`.
 
 `docs/reference/core.md` (TypeDoc) stays out of L1: it needs a new dev dependency and nothing waits on it. Shane dropped it on 2026-10-10, so the package README is the core reference.
 
@@ -464,7 +464,7 @@ The CLI needs four small, additive core changes, each in the story that first us
 | | `the bundle's help --json equals the in-process document` |
 | | `an unknown command exits 2 with the error envelope` |
 
-CI's `git diff --exit-code -- docs/reference` proves the committed reference matches the schema.
+The `git diff --exit-code -- docs/reference` step of `pnpm ci:local` proves the committed reference matches the schema.
 
 **Handler tests, L2 to L6.** Each command gets a success test asserting the requests sent and the envelope, one TTY render test, and a test per row of its `exits`. Beyond those:
 
