@@ -61,7 +61,7 @@ async function open() {
   await chip('Sprint').click()
   await window.keyboard.press('Escape')
   await expect(chip('Sprint')).toBeHidden()
-  await expect(slot(/PSAPAC-13,/)).toHaveText('S 5 (..14 Oct)')
+  await expect(slot(/PSAPAC-13,/)).toHaveText('S 5')
 }
 
 const writes = async () => (await counts(app)).edits
@@ -80,10 +80,10 @@ test('a click on a Sprint slot opens the list below the slot and not the Peek', 
   await expect(listbox()).toBeFocused()
   await expect(peek()).toHaveCount(0)
   await expect(item(/PSAPAC-13,/)).toHaveAttribute('data-active', 'true')
-  // Full names, with the end day beside them, though the slot is abbreviated.
+  // Full names, with the start and end days beside them, though the slot shows only the number.
   await expect(option('Backlog')).toBeVisible()
   await expect(option(/^Sprint 5/)).toHaveAttribute('aria-selected', 'true')
-  await expect(option(/^Sprint 5/)).toContainText('14 Oct')
+  await expect(option(/^Sprint 5/)).toContainText('1 Oct - 14 Oct')
   await expect(option(/^Sprint 6/)).toContainText('Future')
   await expectBeside(window, slot(/PSAPAC-13,/), popover())
 })
@@ -119,7 +119,7 @@ test('Backlog empties the slot, and an empty slot is a target that moves the iss
   await expect(listbox()).toBeFocused()
   await expect(option('Backlog')).toHaveAttribute('aria-selected', 'true')
   await option(/^Sprint 5/).click()
-  await expect(slot(/PSAPAC-3,/)).toHaveText('S 5 (..14 Oct)')
+  await expect(slot(/PSAPAC-3,/)).toHaveText('S 5')
   await settle(before + 2)
   await expect(peek()).toHaveCount(0)
 })
@@ -203,7 +203,7 @@ test('a refused move puts the sprint back and the toast offers Retry', async () 
   const alert = notices(window).getByRole('alert')
   await expect(alert).toContainText('Sprint not changed')
   await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
-  await expect(slot(/PSAPAC-13,/)).toHaveText('S 5 (..14 Oct)')
+  await expect(slot(/PSAPAC-13,/)).toHaveText('S 5')
 })
 
 test('a Hold row stays editable', async () => {
@@ -250,6 +250,10 @@ test('holds its layout with a wide font: the slot stays inside its row and the l
     )
   })
   expect(fits).toBe(true)
+  // The wide list (26rem), so a name and both dates sit on one line.
+  const box = await popover().boundingBox()
+  expect(box?.width).toBeGreaterThanOrEqual(416)
+  await expect(option(/^Sprint 5/)).toContainText('1 Oct - 14 Oct')
 })
 
 async function openSprintPage() {
@@ -270,7 +274,7 @@ test('a Sprint page row offers the same list from its Sprint slot and still open
   await openSprintPage()
   const before = await writes()
   const slotButton = sprintSlot('PSAPAC-13', 'Sprint 5')
-  await expect(slotButton).toHaveText('S 5 (..14 Oct)')
+  await expect(slotButton).toHaveText('S 5')
   // The full name is back as a tooltip, as on the Tree.
   await expect(slotButton).toHaveAttribute('title', 'Sprint 5, ends 2026-10-14')
 
