@@ -235,15 +235,15 @@ export function Picker({
     else sections.push({ group: option.group, items: [{ option, index }] })
   })
 
-  // Set once the open is handled, so the `toggle` that follows a programmatic open does not redo it.
-  const opened = useRef(false)
-  function onOpened() {
-    if (opened.current) return
-    opened.current = true
-    setOpen(true)
-    onOpenChange?.(true)
+  function enter() {
     setActiveId(selected[0] ?? null)
     ;(searchable ? inputRef.current : listRef.current)?.focus()
+  }
+
+  function onOpened() {
+    setOpen(true)
+    onOpenChange?.(true)
+    enter()
   }
 
   /** Shows the list and takes focus into it in the same task, so the next key reaches the list. */
@@ -266,10 +266,14 @@ export function Picker({
   function onToggle(event: ToggleEvent<HTMLDivElement>) {
     if (event.newState === 'open') {
       // The trigger's own press opens it with no code of ours, so this is where that path lands.
-      onOpened()
+      // Focus already inside means `show()` or the cell's mount moved it in the same task (or a
+      // fast caller did), and moving it again would reset the active option. The open state is set
+      // either way: a reopen during a close, or a field focused first, still lands here.
+      setOpen(true)
+      onOpenChange?.(true)
+      if (popoverRef.current?.contains(document.activeElement) !== true) enter()
       return
     }
-    opened.current = false
     setOpen(false)
     onOpenChange?.(false)
     setQuery('')

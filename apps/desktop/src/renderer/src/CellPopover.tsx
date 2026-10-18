@@ -1,4 +1,11 @@
-import { useEffect, useRef, type ReactNode, type RefObject, type ToggleEvent } from 'react'
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  type ReactNode,
+  type RefObject,
+  type ToggleEvent,
+} from 'react'
 
 import type { CellMode } from './cell'
 
@@ -13,17 +20,16 @@ export function useShowOnMount(
   on: boolean,
   onShown?: () => void,
 ): void {
-  // The latest `onShown`, without making it a dependency: a changed one must not show the popover again.
-  const shown = useRef(onShown)
-  useEffect(() => {
-    shown.current = onShown
+  // An effect event, so a changed `onShown` does not make the effect show the popover again.
+  const shown = useEffectEvent(() => {
+    onShown?.()
   })
   useEffect(() => {
     const popover = ref.current
     // Strict mode runs this twice; showing an open popover throws.
     if (on && popover?.matches(':popover-open') === false) {
       popover.showPopover()
-      shown.current?.()
+      shown()
     }
   }, [ref, on])
 }
