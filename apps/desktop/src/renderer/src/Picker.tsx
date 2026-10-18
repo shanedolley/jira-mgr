@@ -199,7 +199,10 @@ export function Picker({
   const optionId = (index: number) => `${uid}-option-${String(index)}`
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [activeId, setActiveId] = useState<string | null>(null)
+  // A cell's list mounts open and a key can land before the render that `onOpened` queues, so it starts on the selection.
+  const [activeId, setActiveId] = useState<string | null>(
+    cell === undefined ? null : (selected[0] ?? null),
+  )
   const popoverRef = useRef<HTMLDivElement>(null)
   const ownTriggerRef = useRef<HTMLButtonElement>(null)
   const triggerRef = givenTriggerRef ?? ownTriggerRef
@@ -232,8 +235,25 @@ export function Picker({
     else sections.push({ group: option.group, items: [{ option, index }] })
   })
 
+  // Set once the open is handled, so the `toggle` that follows a programmatic open does not redo it.
+  const opened = useRef(false)
+  function onOpened() {
+    if (opened.current) return
+    opened.current = true
+    setOpen(true)
+    onOpenChange?.(true)
+    setActiveId(selected[0] ?? null)
+    ;(searchable ? inputRef.current : listRef.current)?.focus()
+  }
+
+  /** Shows the list and takes focus into it in the same task, so the next key reaches the list. */
+  function show() {
+    popoverRef.current?.showPopover()
+    onOpened()
+  }
+
   const inCell = cell !== undefined
-  useShowOnMount(popoverRef, inCell)
+  useShowOnMount(popoverRef, inCell, onOpened)
 
   useEffect(() => {
     if (open && activeIndex >= 0) {
@@ -244,14 +264,14 @@ export function Picker({
   }, [open, activeIndex, uid])
 
   function onToggle(event: ToggleEvent<HTMLDivElement>) {
-    const nowOpen = event.newState === 'open'
-    setOpen(nowOpen)
-    onOpenChange?.(nowOpen)
-    if (nowOpen) {
-      setActiveId(selected[0] ?? null)
-      ;(searchable ? inputRef.current : listRef.current)?.focus()
+    if (event.newState === 'open') {
+      // The trigger's own press opens it with no code of ours, so this is where that path lands.
+      onOpened()
       return
     }
+    opened.current = false
+    setOpen(false)
+    onOpenChange?.(false)
     setQuery('')
     onQuery?.('')
     const focused = document.activeElement
@@ -346,7 +366,7 @@ export function Picker({
           // A menu opens its submenus with Right, and keeps Down for moving between its items.
           if (event.key !== (inMenu ? 'ArrowRight' : 'ArrowDown')) return
           event.preventDefault()
-          popoverRef.current?.showPopover()
+          show()
         }}
         style={{ anchorName: anchorOf(uid), ...(inCell && { display: 'none' }) }}
         className={`group flex items-center text-left disabled:opacity-60 aria-expanded:bg-hover ${TRIGGER[variant]}`}

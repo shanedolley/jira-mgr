@@ -379,13 +379,33 @@ test('a Sprint page priority slot works by keyboard alone: Enter opens, arrows a
   expect(await writes()).toBe(before)
 
   await window.keyboard.press('Enter')
-  // The list takes focus a task after it shows, so the arrows wait for it.
+  // A precondition: the arrows need the list to hold focus.
   await expect(listbox()).toBeFocused()
   await expect(high()).toBeVisible()
   await window.keyboard.press('ArrowUp')
   await window.keyboard.press('Enter')
   await settle(before + 1)
   await expect(sprintSlot('PSAPAC-4')).toHaveAccessibleName('Priority of PSAPAC-4: High')
+})
+
+test('keys pressed in the same task as the open reach the Priority list', async () => {
+  await openSprint()
+  const before = await writes()
+
+  // The first open loads the priorities, so the second finds them cached and the keys need no wait.
+  await sprintSlot('PSAPAC-4').focus()
+  await window.keyboard.press('Enter')
+  await expect(high()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(listbox()).toHaveCount(0)
+  await expect(sprintSlot('PSAPAC-4')).toBeFocused()
+
+  // Back to back, with no wait for focus: Medium is selected, so one step down is Low.
+  await window.keyboard.press('Enter')
+  await window.keyboard.press('ArrowDown')
+  await window.keyboard.press('Enter')
+  await settle(before + 1)
+  await expect(sprintSlot('PSAPAC-4')).toHaveAccessibleName('Priority of PSAPAC-4: Low')
 })
 
 test('a refused priority on the Sprint page takes the bars back and the toast offers Retry', async () => {

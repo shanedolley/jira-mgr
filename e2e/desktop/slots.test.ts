@@ -113,7 +113,7 @@ test('a click outside a slot opens the issue and a click on a slot runs only its
   const row = sprintRow('PSAPAC-4')
 
   await row.getByRole('button', { name: /^Status of PSAPAC-4:/ }).click()
-  // The list takes focus a task after it shows; an Esc before that reaches the page and leaves it.
+  // A precondition: the Esc needs the list to hold focus.
   await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
   await expect(issuePage()).toHaveCount(0)
   await window.keyboard.press('Escape')

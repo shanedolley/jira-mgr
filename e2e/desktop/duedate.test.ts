@@ -334,12 +334,26 @@ test('a Sprint page slot works by keyboard alone: Enter opens, Enter saves, Esc 
   await expect(due('PSAPAC-11', '2099-03-04')).toBeFocused()
 
   await window.keyboard.press('Enter')
-  // The editor takes focus a task after it shows; an Esc before that reaches the page and leaves it.
+  // A precondition: the Esc needs the editor to hold focus.
   await expect(field()).toBeFocused()
   await window.keyboard.press('Escape')
   await expect(editor()).toHaveCount(0)
   await expect(due('PSAPAC-11', '2099-03-04')).toBeFocused()
   expect(await writes()).toBe(before + 1)
+})
+
+test('a key pressed in the same task as the open reaches the Sprint page editor, so Esc closes it and not the page', async () => {
+  await openSprint()
+  const before = await writes()
+
+  await due('PSAPAC-11', 'none').focus()
+  // Back to back, with no wait for focus.
+  await window.keyboard.press('Enter')
+  await window.keyboard.press('Escape')
+  await expect(editor()).toHaveCount(0)
+  await expect(sprintPage()).toBeVisible()
+  await expect(due('PSAPAC-11', 'none')).toBeFocused()
+  expect(await writes()).toBe(before)
 })
 
 test('Esc on Clear writes nothing, even after a date was typed', async () => {

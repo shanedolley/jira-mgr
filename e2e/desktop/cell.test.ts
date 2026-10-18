@@ -394,7 +394,7 @@ test('a Sprint page ring works by keyboard alone: Enter opens, arrows and Enter 
 
   await ring('PSAPAC-4', 'In Progress').focus()
   await window.keyboard.press('Enter')
-  // The list takes focus a task after it shows, so the arrows wait for it.
+  // A precondition: the arrows need the list to hold focus.
   await expect(listbox()).toBeFocused()
   await expect(option('Done')).toBeVisible()
   await window.keyboard.press('ArrowDown')
