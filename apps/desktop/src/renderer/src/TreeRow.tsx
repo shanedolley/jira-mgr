@@ -642,7 +642,7 @@ export function Properties({
               style: colWidth('sprint'),
               className: `shrink-0 truncate text-right text-xs text-muted ${sprintCell ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
             }
-            const text = sprint === undefined ? undefined : sprintLabel(sprint, today)
+            const text = sprint === undefined ? undefined : sprintLabel(sprint)
             // On the Sprint page the slot is a button beside the row's own, named by its value.
             return always && onEditCell !== undefined && sprintCell ? (
               <Slot

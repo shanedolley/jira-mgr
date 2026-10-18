@@ -824,6 +824,7 @@ export function CreateIssueDialog({
                 {rules.sprint && (
                   <Picker
                     label="Sprint"
+                    wide
                     variant="chip"
                     leading={<ChipName>Sprint</ChipName>}
                     valueText={draft.sprint?.name ?? 'Backlog'}

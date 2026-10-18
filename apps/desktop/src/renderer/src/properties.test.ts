@@ -120,34 +120,46 @@ describe('shownSprints', () => {
 
 describe('sprintDetail', () => {
   const today = '2026-10-10'
-
-  it('reads the date part of the end timestamp, not the local day', () => {
-    expect(
-      sprintDetail({ name: 'S', state: 'active', endDate: '2026-10-18T14:00:00.000Z' }, today),
-    ).toBe('18 Oct')
-    expect(
-      sprintDetail({ name: 'S', state: 'future', endDate: '2026-01-05T23:59:00Z' }, today),
-    ).toBe('5 Jan')
+  const sprint = (
+    state: 'active' | 'future' | 'closed',
+    startDate: string | null,
+    endDate: string | null,
+  ) => ({
+    name: 'S',
+    state,
+    startDate,
+    endDate,
   })
 
-  it('adds the year when it is not this one, as the slot does', () => {
+  it('reads the date part of the timestamps, not the local day', () => {
     expect(
-      sprintDetail({ name: 'S', state: 'active', endDate: '2025-12-02T00:00:00Z' }, today),
-    ).toBe("2 Dec '25")
+      sprintDetail(sprint('active', '2026-10-05T14:00:00.000Z', '2026-10-18T14:00:00.000Z'), today),
+    ).toBe('5 Oct - 18 Oct')
+    expect(sprintDetail(sprint('future', '2026-01-02', '2026-01-05T23:59:00Z'), today)).toBe(
+      '2 Jan - 5 Jan',
+    )
   })
 
-  it('says Closed for a closed sprint, whatever its end', () => {
-    expect(
-      sprintDetail({ name: 'S', state: 'closed', endDate: '2026-09-14T00:00:00Z' }, today),
-    ).toBe('Closed')
+  it('adds the year to a date outside this one, as the slot does', () => {
+    expect(sprintDetail(sprint('active', '2025-11-18', '2025-12-02T00:00:00Z'), today)).toBe(
+      "18 Nov '25 - 2 Dec '25",
+    )
+  })
+
+  it('lists the dates of a closed sprint too', () => {
+    expect(sprintDetail(sprint('closed', '2026-09-01', '2026-09-14T00:00:00Z'), today)).toBe(
+      '1 Sep - 14 Sep',
+    )
+  })
+
+  it('shows the end alone without a start date', () => {
+    expect(sprintDetail(sprint('active', null, '2026-10-18'), today)).toBe('18 Oct')
   })
 
   it('falls back to the state without a usable end date', () => {
-    expect(sprintDetail({ name: 'S', state: 'future', endDate: null }, today)).toBe('Future')
-    expect(
-      sprintDetail({ name: 'S', state: 'active', endDate: '2026-13-40T00:00:00Z' }, today),
-    ).toBe('Active')
-    expect(sprintDetail({ name: 'S', state: 'active', endDate: 'soon' }, today)).toBe('Active')
+    expect(sprintDetail(sprint('future', '2026-10-05', null), today)).toBe('Future')
+    expect(sprintDetail(sprint('active', null, '2026-13-40T00:00:00Z'), today)).toBe('Active')
+    expect(sprintDetail(sprint('closed', null, 'soon'), today)).toBe('Closed')
   })
 })
 

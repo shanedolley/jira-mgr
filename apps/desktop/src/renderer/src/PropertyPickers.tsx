@@ -392,6 +392,7 @@ export function SprintPicker({ issue, menu, cell }: PickerProps) {
       {...menuProps(menu)}
       cell={cell}
       label="Sprint"
+      wide
       shortcut="Shift+C"
       valueText={sprint?.name ?? 'Backlog'}
       options={options}

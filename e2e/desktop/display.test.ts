@@ -114,7 +114,7 @@ test('shows Updated by default, and each property appears on the rows and surviv
   await expect(prop(row, 'labels')).toHaveText('docs')
   await expect(prop(row, 'updated')).toHaveCount(0)
   // The cell abbreviates to the number and end day; the title and the row's name keep the full name.
-  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('S 5 (..14 Oct)')
+  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('S 5')
   await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveAttribute('title', 'Sprint 5, ends 2026-10-14')
   await expect(item(/PSAPAC-13,/)).toHaveAccessibleName(/, sprint Sprint 5, ends 2026-10-14/)
   await expect(prop(row, 'created')).toHaveText(SHORT_DATE)
@@ -136,7 +136,7 @@ test('shows Updated by default, and each property appears on the rows and surviv
   ;({ app, window } = await launch(stateDir))
   await open()
   await expect(prop(row, 'labels')).toHaveText('docs')
-  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('S 5 (..14 Oct)')
+  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('S 5')
   await expect(prop(row, 'updated')).toHaveCount(0)
 })
 
@@ -537,29 +537,6 @@ test('keeps a prior-year date inside the Created, Updated and Due slots in a wid
   ])
 })
 
-test('fits the widest abbreviated sprint in a wide font', async () => {
-  await open()
-  await inDisplayMenu(async () => {
-    await choice('Display properties', 'Sprint').click()
-  })
-  await expect(prop(/PSAPAC-13,/, 'sprint')).toHaveText('S 5 (..14 Oct)')
-  const style = await window.addStyleTag({
-    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
-  })
-  // The fake's only active sprint is "Sprint 5", so the cell takes the widest labels by hand: the
-  // widest months and two-digit numbers. A year ('25) may truncate; the title carries it.
-  const truncated = await prop(/PSAPAC-13,/, 'sprint').evaluate((cell) =>
-    ['S 88 (..28 May)', 'S 88 (..28 Mar)', 'S 88 (..28 Aug)', 'S 88 (..28 Dec)'].map((label) => {
-      cell.textContent = label
-      return cell.scrollWidth > cell.clientWidth
-    }),
-  )
-  await style.evaluate((node) => {
-    node.parentNode?.removeChild(node)
-  })
-  expect(truncated).toEqual([false, false, false, false])
-})
-
 test('abbreviates the sprint on the Sprint page too, with the full name in the title', async () => {
   await open()
   await inDisplayMenu(async () => {
@@ -573,6 +550,6 @@ test('abbreviates the sprint on the Sprint page too, with the full name in the t
   const page = window.getByRole('region', { name: 'Sprint page' })
   await expect(page).toBeVisible()
   const cell = page.locator('[data-issue-key=PSAPAC-13] [data-prop=sprint]')
-  await expect(cell).toHaveText('S 5 (..14 Oct)')
+  await expect(cell).toHaveText('S 5')
   await expect(cell).toHaveAttribute('title', 'Sprint 5, ends 2026-10-14')
 })

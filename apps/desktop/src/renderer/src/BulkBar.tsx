@@ -174,6 +174,7 @@ function SprintChoice({ variant, disabled, apply }: ChoiceProps) {
   return (
     <Picker
       {...trigger('Sprint')}
+      wide
       variant={variant}
       disabled={disabled}
       options={[
