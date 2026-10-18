@@ -67,6 +67,7 @@ function FieldItem({
           if (event.key !== 'ArrowRight') return
           event.preventDefault()
           popover.current?.showPopover()
+          popover.current?.querySelector('input')?.focus()
         }}
         style={{ anchorName: anchorOf(uid) }}
         className="menu-item"

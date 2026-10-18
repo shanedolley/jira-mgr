@@ -250,3 +250,32 @@ test('Priority and Labels options carry a glyph, and a check marks the chosen pr
   expect(await labels.count()).toBeGreaterThan(0)
   await expect(labels.locator('[data-glyph=label]')).toHaveCount(await labels.count())
 })
+
+/** The Peek's Priority picker, opened by ArrowDown and focused, so each case closes it with no wait after. */
+async function openPeekPriority() {
+  await open()
+  await item(/PSAPAC-4,/).click()
+  const trigger = peek().getByRole('button', { name: /^Priority:/ })
+  const listbox = window.getByRole('listbox', { name: 'Priority' })
+  await trigger.focus()
+  await window.keyboard.press('ArrowDown')
+  await expect(listbox).toBeFocused()
+  return { trigger, listbox }
+}
+
+test('Esc then Enter on the Peek Priority trigger reopens the list with focus in it', async () => {
+  const { trigger, listbox } = await openPeekPriority()
+  // Back to back: the reopen lands while the close is still pending.
+  await window.keyboard.press('Escape')
+  await window.keyboard.press('Enter')
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(listbox).toBeFocused()
+})
+
+test('Esc then ArrowDown on the Peek Priority trigger reopens the list with focus in it', async () => {
+  const { trigger, listbox } = await openPeekPriority()
+  await window.keyboard.press('Escape')
+  await window.keyboard.press('ArrowDown')
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(listbox).toBeFocused()
+})
