@@ -28,13 +28,13 @@ Merge record (`gh pr view <n> --json mergedAt,mergeCommit`, 2026-10-18 12:00 AES
 
 **Three full runs.** Run 1, on 63644ed: `pnpm ci:local` exit 0, then e2e "Running 794 tests using 1 worker", 761 passed, 32 failed, 1 skipped, 15.9m. Two fix branches repaired the failures. Run 2: 792 passed, 1 failed, 1 skipped, 11.5m; the failure was `desktop/assignee.test.ts:322`, the Sprint page assignee keyboard test, a focus race, and ca00e0e waits for the assignee search's focus. **Run 3, on ca00e0e: `pnpm ci:local` exited 0 under Node 24.16.0** (core 1514 passed and 5 skipped, desktop 1345, CLI 603, read in `ci-local.log`) **and e2e printed "Running 794 tests using 1 worker" and ended 793 passed, 1 skipped, 0 failed, 11.4m** (`e2e.log`, read 2026-10-18 12:00 AEST). The logs sit in the scratchpad of session 385fc452 under `batch-final-e2e-1018/` (run 1), `batch-final-e2e-run2/` and `batch-final-e2e-run3/`, and die with the session. No GitHub run exists for any of it (the workflow is manual dispatch only).
 
-**Issue state.** #266 to #279 were all still `status:in-progress` with no `question` at 2026-10-18 12:00 AEST (`gh issue list --state open --label status:in-progress --limit 300`: 14). They are moving to HIL Review with `question` and a Review after date, run by the project manager in parallel with this update; the Board table records what the labels say when this file was committed. Shane closes only issues in HIL Review, and closing one approves its listed choices.
+**Issue state.** #266 to #279 moved to HIL Review on 2026-10-18. `gh issue list --state open --label status:hil-review --limit 300` lists 16 issues, #217, #254 and #266 to #279, all 16 also carry `question`, and none carries `status:in-progress` (read 2026-10-18 12:08 AEST). The project manager's comment on each of #266 to #279 gives Review after 2026-10-19T09:00+10:00 and names the PASS verdict comment that lists the unconfirmed choices. Shane closes only issues in HIL Review, and closing one approves its listed choices.
 
-**Cleanup done.** `git worktree list` shows only the main tree (on the branch `docs/handover-after-canvas-batch`), and `git branch -a` lists `main` and that branch. Origin holds `main` and the two Dependabot branches (`git ls-remote --heads origin`, 2026-10-18 12:00 AEST). Every batch worktree and branch is removed. An untracked `.playwright-mcp/` sits in the main tree; leave it.
+**Cleanup done.** `git worktree list` shows only the main tree (on the branch `docs/handover-after-canvas-batch`), and `git branch -a` lists `main` and that branch. Origin holds `main`, the two Dependabot branches and, until PR #296 merges, its branch `docs/handover-after-canvas-batch` (`git ls-remote --heads origin`, 2026-10-18 12:00 AEST). Every batch worktree and branch is removed. An untracked `.playwright-mcp/` sits in the main tree; leave it.
 
 **Method that worked for the stacked merge train.** Squash the bottom PR, `git rebase --onto origin/main <old tip of the branch below> --update-refs` for the rest, check tree equality with the tested tip, push with `--force-with-lease`, and post a fresh review verdict only on the PR that is based on main (see Traps).
 
-**Follow-up.** [#295](https://github.com/shanedolley/jira-mgr/issues/295), filed 2026-10-18T01:56Z: focus a cell editor as soon as it opens, not on its toggle event (see Traps). It is the highest issue number, 295; the highest pull request is #294.
+**Follow-up.** [#295](https://github.com/shanedolley/jira-mgr/issues/295), filed 2026-10-18T01:56Z: focus a cell editor as soon as it opens, not on its toggle event (see Traps). It is the highest issue number, 295; the highest pull request is #296, this handover update.
 
 **Commit authors.** The batch's own commits used two emails under one name, Shane Dolley: 42 of 52 used shanevdolley@gmail.com and 10 used shane@koinon.com.au (`git log --format=%ae origin/main..batch-final-fixes`, 2026-10-18 03:02 AEST, before the squash). The 15 squash commits on main carry the GitHub noreply address (`git log --format=%ae 201bfe6..cb73e9c`, 2026-10-18 12:00 AEST), so main no longer shows the split. This is a fact for Shane, not a fix.
 
@@ -53,7 +53,7 @@ The GitHub billing block of 2026-10-13 is resolved: CI runs again (runs 38482752
 
 ## Open Stories
 
-Eighteen (`gh issue list --state open --limit 300`, 2026-10-18 12:00 AEST): the 14 stories #266 to #279, merged and moving to HIL Review; #254 and #217, in HIL Review with `question` (Review after 2026-10-18T09:00+10:00, a time now past; Shane closes them); #255, in To Do and unclaimed; and #295, in To Do and new. An untracked `.playwright-mcp/` sits in the main tree; leave it.
+Eighteen (`gh issue list --state open --limit 300`, 2026-10-18 12:00 AEST): the 14 stories #266 to #279, merged and in HIL Review with `question` (Review after 2026-10-19T09:00+10:00); #254 and #217, in HIL Review with `question` (Review after 2026-10-18T09:00+10:00, a time now past); Shane closes all 16; #255, in To Do and unclaimed; and #295, in To Do and new. An untracked `.playwright-mcp/` sits in the main tree; leave it.
 
 Shane's rules of 2026-10-15, as run: the full local e2e suite runs once after a batch is developed, and builders run only their story's e2e files; stories stack and merge after that run; a pull request merges without waiting for Shane once the local CI route and the review verdict pass, and he reviews in the morning. `prompt.md` Loop carries the commands.
 
@@ -160,10 +160,10 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Open | 18 (#217, #254, #255, #266 to #279, #295) | `gh issue list --state open --limit 300` | 2026-10-18 12:00 AEST |
 | Closed | 90 (108 issues in all, #9 to #295) | `gh issue list --state all --limit 300` | 2026-10-18 12:00 AEST |
-| In progress | 14: #266 to #279, until the project manager's move to HIL Review lands (see Where Work Stands) | `--label status:in-progress --state open` | 2026-10-18 12:00 AEST |
-| In HIL Review | #217, #254 (#266 to #279 once moved) | `--label status:hil-review --state open` | 2026-10-18 12:00 AEST |
-| With `question` | #217, #254 (#266 to #279 once moved) | `--label question --state open` | 2026-10-18 12:00 AEST |
-| Open pull requests | 2: the Dependabot majors #235 and #236; 187 pull requests in all states, 181 merged, 4 closed unmerged (#3, #6, #208, #234), the highest #294 | `gh pr list --state open`, `--state all --limit 400` | 2026-10-18 12:00 AEST |
+| In progress | 0 | `--label status:in-progress --state open` | 2026-10-18 12:08 AEST |
+| In HIL Review | 16: #217, #254 and #266 to #279 | `--label status:hil-review --state open` | 2026-10-18 12:08 AEST |
+| With `question` | 16: the same issues | `--label question --state open` | 2026-10-18 12:08 AEST |
+| Open pull requests | 3: this handover update #296 and the Dependabot majors #235 and #236; 188 pull requests in all states, 181 merged, 4 closed unmerged (#3, #6, #208, #234), the highest #296 | `gh pr list --state open`, `--state all --limit 400` | 2026-10-18 12:08 AEST |
 | Milestones | Core 0 open and 13 closed, CLI 0 and 10, Desktop 1 and 50 (#254 is the open one), so #216 to #249 carry none | `gh api 'repos/shanedolley/jira-mgr/milestones?state=all'` | 2026-10-18 00:54 AEST (unverified since) |
 
 `git worktree list` shows one worktree on 2026-10-18 12:00 AEST: the main tree, on `docs/handover-after-canvas-batch`. Every batch worktree and branch is removed, locally and on origin. Origin holds `main` and the two Dependabot branches (#235, #236) (`git ls-remote --heads origin`, 2026-10-18 12:00 AEST). Reviewers and the docs sweep add scratch worktrees under the scratchpad; remove them when done. Use `gh pr list --state all --limit 400` for history; 30 is the default cap.
