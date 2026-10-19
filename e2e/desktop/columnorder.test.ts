@@ -323,3 +323,67 @@ test('drags a name in a wide font and keeps the header lined up with the rows', 
     })
     .toEqual([true, true, true])
 })
+
+/**
+ * Counts the `settings:setDisplay` calls the main process gets from now on, by wrapping the
+ * handler Electron holds for the channel.
+ */
+async function countSetDisplay() {
+  await app.evaluate(({ ipcMain }) => {
+    const handlers = (
+      ipcMain as unknown as { _invokeHandlers: Map<string, (...a: unknown[]) => unknown> }
+    )._invokeHandlers
+    const original = handlers.get('settings:setDisplay')
+    if (original === undefined) throw new Error('no settings:setDisplay handler')
+    const counter = globalThis as unknown as { setDisplayCalls?: number }
+    counter.setDisplayCalls = 0
+    handlers.set('settings:setDisplay', (...args: unknown[]) => {
+      counter.setDisplayCalls = (counter.setDisplayCalls ?? 0) + 1
+      return original(...args)
+    })
+  })
+  return () =>
+    app.evaluate(() => (globalThis as unknown as { setDisplayCalls?: number }).setDisplayCalls ?? 0)
+}
+
+test('a drag writes the display once, on release', async () => {
+  await setUp()
+  const calls = await countSetDisplay()
+  await dragNameTo('labels', rightOf('updated'))
+  // Held across several pointer moves: nothing has been written.
+  await expect(header().locator('[data-drop-line=after]')).toHaveCount(1)
+  expect(await calls()).toBe(0)
+  await window.mouse.up()
+  await expect.poll(headerOrder).toEqual(['sprint', 'updated', 'labels'])
+  await expect
+    .poll(async () => (await savedDisplay())?.properties)
+    .toEqual(['sprint', 'updated', 'labels'])
+  // Give a stray second write time to arrive before counting.
+  await window.waitForTimeout(500)
+  expect(await calls()).toBe(1)
+})
+
+test('a click on a name leaves it focused, so Alt+Arrow works at once', async () => {
+  await setUp()
+  await name('labels').click()
+  await expect(name('labels')).toBeFocused()
+  await window.keyboard.press('Alt+ArrowRight')
+  await expect.poll(headerOrder).toEqual(['sprint', 'labels', 'updated'])
+  await expect(name('labels')).toBeFocused()
+})
+
+test('a press on a separator while a name moves starts no resize and does not cancel the move', async () => {
+  await setUp()
+  await dragNameTo('labels', rightOf('updated'))
+  await expect(header().locator('[data-drop-line=after]')).toHaveCount(1)
+  // A second press on the same pointer, as a touch or a stray event would send.
+  await window.getByRole('separator', { name: 'Resize Sprint column' }).evaluate((el) => {
+    el.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1, isPrimary: true }),
+    )
+  })
+  await expect(header().locator('[data-drop-line=after]')).toHaveCount(1)
+  await window.mouse.up()
+  await expect.poll(headerOrder).toEqual(['sprint', 'updated', 'labels'])
+  expect((await savedDisplay())?.widths).toBeUndefined()
+})

@@ -165,6 +165,8 @@ export function ColumnHeader({
     const bar = event.currentTarget.closest<HTMLElement>('[data-column-header]')
     if (event.button !== 0 || drag.current !== null || move.current !== null || bar === null) return
     event.preventDefault()
+    // The press stops the browser's own focus, so a click leaves the name focused for Alt+Arrow.
+    event.currentTarget.focus({ preventScroll: true })
     event.currentTarget.setPointerCapture(event.pointerId)
     move.current = {
       property,
@@ -218,7 +220,8 @@ export function ColumnHeader({
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>, property: RowProperty) {
     const pane = event.currentTarget.closest<HTMLElement>('[data-tree-pane]')
-    if (event.button !== 0 || drag.current !== null || pane === null) return
+    if (event.button !== 0 || drag.current !== null || move.current !== null || pane === null)
+      return
     // Stops the text selection and the focus a press would start, so the drag is the pointer's alone.
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)

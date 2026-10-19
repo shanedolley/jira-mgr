@@ -87,12 +87,15 @@ export function rowName(
         ...(blocks.blockedBy > 0 ? [blockedTitle(blocks.blockedBy).toLowerCase()] : []),
         ...(blocks.blocking > 0 ? [blockingTitle(blocks.blocking).toLowerCase()] : []),
         ...(hasPriorityGlyph(issue.priority) ? [`priority ${issue.priority.name}`] : []),
-        ...(properties.includes('start') && issue.startDate !== null
-          ? [`start ${issue.startDate}`]
-          : []),
-        ...(properties.includes('due') && issue.dueDate !== null ? [`due ${issue.dueDate}`] : []),
-        ...(sprint === undefined ? [] : [`sprint ${sprintTitle(sprint)}`]),
-        ...properties.filter(isTime).flatMap((property) => {
+        // In the Column header's order, so a screen reader hears what the eye reads.
+        ...properties.flatMap((property) => {
+          if (property === 'start')
+            return issue.startDate === null ? [] : [`start ${issue.startDate}`]
+          if (property === 'due') return issue.dueDate === null ? [] : [`due ${issue.dueDate}`]
+          if (property === 'sprint') {
+            return sprint === undefined ? [] : [`sprint ${sprintTitle(sprint)}`]
+          }
+          if (!isTime(property)) return []
           const value = timeValue(issue, property)
           return value === null ? [] : [`${TIME_NAMES[property].toLowerCase()} ${value}`]
         }),
