@@ -57,7 +57,7 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 
 ## Review Follow-ups
 
-Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202, #209, #212, #216, #217, #219 and #220 to #224, #237, #238, #254, #266 to #279 and #295 are Shane's later requests. Each is one issue; the tracker holds the status. All are built. #299 to #301 and #304 to #310 (the hovered row as the active row, the checked-only selected look with a master checkbox, dragging the Display columns into a new order, Cmd+click and Shift+click selection, a Filter submenu, a Priority toggle, hover-only column names, theme icons, shortcut search and a comment count) are built and in HIL Review.
+Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202, #209, #212, #216, #217, #219 and #220 to #224, #237, #238, #254, #266 to #279 and #295 are Shane's later requests. Each is one issue; the tracker holds the status. All are built and merged. #299 to #301 and #304 to #310 (the hovered row as the active row, the checked-only selected look with a master checkbox, dragging the Display columns into a new order, Cmd+click and Shift+click selection, a Filter submenu, a Priority toggle, hover-only column names, theme icons, shortcut search and a comment count) merged on 2026-10-19. Shane approved #278, #300, #301 and #305 to #309 the same day. He sent #299, #304 and #310 back with comments (a click on the key opens the Peek; Shift+click checks every issue between the start and the end; only the comment list scrolls), and their reworks are in build with the new stories #325 (a user menu on the sidebar avatar) and #326 (dates as d mmm).
 
 | Issue | Item |
 |---|---|
@@ -71,7 +71,7 @@ Stories #126 to #151 came from the [UX review and Linear gap analysis](../discov
 | #209, #212 | The Tree opens at a level that persists across launches; an app icon of its own |
 | #216, #217, #220, #221, #222 | Logging work from the Time tracking header; the Hold and On Hold status drawn as a dashed To Do ring at 30% opacity, with every field of the row faded to match; Time left shown as a duration; a Parent picker wide enough to read a summary; ascending or descending order per view, with Key ordering by key alone and a Status order |
 | #219, #224, #237 | The create dialog sets Start date and Due date, `C` creates under the hovered or selected issue, and a new issue is assigned to the current user by default |
-| #223, #238 | A Manual order set by dragging rows, saved per view; a right-click menu of 18 issue actions with Shift+D, Shift+P, Shift+E and Shift+C |
+| #223, #238 | A Manual order set by dragging rows, saved per view; a right-click menu of 19 issue actions with Shift+D, Shift+P, Shift+E and Shift+C |
 | #254, #266, #274, #276, #277, #278 | The estimate, Logged and Remaining as Display properties; a muted row summary; the sprint as its number (`S 36`) on the canvas; an original estimate edited in its row; a Log work modal from the Logged slot; a summary edited in a modal |
 | #267 to #273, #275, #279, #295 | Cell editors for the status, assignee, due date, priority, labels, sprint (a wide menu listing each sprint's dates) and start date on the Tree and the Sprint page, each with its key; column headers that resize the Display properties; Sprint page row controls beside the button that opens the issue; a cell editor focused as soon as it opens |
 

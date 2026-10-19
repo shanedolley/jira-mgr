@@ -11,8 +11,8 @@ jira-mgr lints with ESLint and formats with Prettier, both configured in `@jira-
 ## Considered Options
 
 1. **Adopt Vite+ in full** - passes build, typecheck, unit tests and the full e2e (911 passed, 1 skipped), but it aliases `vite` and `vitest` through two pnpm overrides pinned to exact versions, adds 107 lockfile entries and about 100 MB, and gains nothing for the build: electron-vite owns dev and build, and tsup owns the CLI. It buys only what Oxlint and Oxfmt buy alone.
-2. **Adopt Oxlint alone** - chosen. Type-aware lint falls from 29.2 s to 3.1 s (9.4 times), `pnpm ci:local` from 68.0 s to 41.9 s. It matches 165 of 172 enabled rules, React Hooks 7 included, runs the 7 `eslint-disable` comments unchanged, reports 19 findings ESLint does not and misses none, and removes ESLint, its plugins and the TypeScript `~6.0.0` pin. Standalone it adds 48 lockfile entries and about 51 MB.
-3. **Adopt Oxfmt alone** - saves about 3 s (5.0 s to 1.7 s). It is in beta, reformats 5 TypeScript files (union-type layout) that Prettier would then reject, and cannot share a tree with Prettier. Revisit when it leaves beta.
+2. **Adopt Oxlint alone** - chosen. Type-aware lint falls from 29.2 s to 3.1 s (9.4 times; 21.3 s to 1.7 s, 12.8 times, at a load of 5.1 to 5.7), `pnpm ci:local` from 68.0 s to 41.9 s. It matches 165 of 172 enabled rules, React Hooks 7 included, runs the 7 `eslint-disable` comments unchanged, reports 19 findings ESLint does not and misses none, and removes ESLint, its plugins and the TypeScript `~6.0.0` pin. Standalone it adds 48 lockfile entries and about 51 MB.
+3. **Adopt Oxfmt alone** - saves about 3 s (5.0 s to 1.7 s; 4.6 s to 0.37 s at a load of 5.1 to 5.7). It is in beta, reformats 5 TypeScript files (union-type layout) that Prettier would then reject, and cannot share a tree with Prettier. Revisit when it leaves beta.
 4. **Reject** - no new dependencies and no triage, but `pnpm lint` stays about 29 s (43 percent of `pnpm ci:local`), the TypeScript pin split stays, and Dependabot PR #235 stays red until ESLint 10 support arrives.
 
 ## Consequences

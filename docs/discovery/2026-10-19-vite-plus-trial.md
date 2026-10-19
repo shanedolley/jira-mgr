@@ -140,6 +140,16 @@ Median of three runs, in seconds, with the one-minute load average at the end of
 
 Type-aware Oxlint is 9.4 times faster than ESLint in run B, Oxfmt 3.0 times faster than Prettier.
 
+A quieter set, measured by the trial (`255-vite-plus-trial`) after PR #327 merged, on 2026-10-19 (median of three, load average 5.1 to 5.7; [issue comment](https://github.com/shanedolley/jira-mgr/issues/255#issuecomment-6263403629)):
+
+| Command | Seconds | Against |
+|---|---|---|
+| `eslint .` | 21.3 | |
+| `oxlint`, type-aware | 1.7 | 12.8 times faster than ESLint |
+| `oxlint`, without type-aware rules | 0.37 | |
+| `prettier --check .` | 4.6 | |
+| `oxfmt --check` | 0.37 | 12 times faster than Prettier |
+
 Stage times for the rest of `pnpm ci:local`, one run each at load 22 to 30: install 3.2 s, typecheck 5.3 s, test 22.4 s, build 1.7 s, `docs:reference` 1.2 s. Adding the lint and format medians of run B:
 
 | Route | Format | Lint | Rest | Total |
