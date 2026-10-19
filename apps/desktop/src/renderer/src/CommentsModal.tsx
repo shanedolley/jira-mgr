@@ -2,6 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 import { useId, useRef, useState } from 'react'
 
 import type { CurrentUser } from '../../shared/ipc'
+import type { AdfEditorHandle } from './AdfEditor'
 import { CommentsSection } from './CommentsSection'
 import type { Notice } from './create'
 import { Modal } from './Modal'
@@ -22,7 +23,7 @@ interface CommentsModalProps {
 export function CommentsModal({ issue, me, onClose, returnFocus }: CommentsModalProps) {
   const titleId = useId()
   const [notice, setNotice] = useState<Notice | null>(null)
-  const content = useRef<HTMLDivElement>(null)
+  const box = useRef<AdfEditorHandle>(null)
   return (
     <Modal
       titleId={titleId}
@@ -30,7 +31,7 @@ export function CommentsModal({ issue, me, onClose, returnFocus }: CommentsModal
       returnFocus={returnFocus}
       className="w-[min(40rem,calc(100vw-2rem))]"
     >
-      <div ref={content} className="space-y-3 p-5">
+      <div className="space-y-3 p-5">
         <h2 id={titleId} className="text-base font-semibold">
           Comments on {issue.key}: {issue.summary}
         </h2>
@@ -39,10 +40,9 @@ export function CommentsModal({ issue, me, onClose, returnFocus }: CommentsModal
           me={me}
           // A comment edit that ends (saved, cancelled or discarded) leaves its editor, so focus
           // goes to the new-comment box rather than to the body. The box closing the modal is the way out.
+          boxRef={box}
           onLeave={() => {
-            content.current
-              ?.querySelector<HTMLElement>('[role="textbox"][aria-label="New comment"]')
-              ?.focus()
+            box.current?.focus('end')
           }}
           onBoxLeave={onClose}
           onNotice={setNotice}

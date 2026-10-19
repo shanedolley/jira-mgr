@@ -1,6 +1,6 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import type { AdfDoc } from '@jira-mgr/core/adf'
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 
 import type { CommentItem, CurrentUser } from '../../shared/ipc'
 import { failureNotice, formatWhen, safeMarkdown } from './activity'
@@ -27,6 +27,8 @@ interface CommentsSectionProps {
   onNotice: (notice: Notice) => void
   /** Puts focus in the new-comment box when the section mounts. The page leaves it where it was. */
   focusBox?: boolean
+  /** Lets the host focus the new-comment box through the editor's own handle. */
+  boxRef?: RefObject<AdfEditorHandle | null>
   /** Runs when Esc leaves the new-comment box empty, or a discard empties it. Defaults to `onLeave`. */
   onBoxLeave?: () => void
 }
@@ -295,14 +297,16 @@ function CommentBox({
   issueKey,
   onLeave,
   focusBox,
-}: Pick<CommentsSectionProps, 'issueKey' | 'onLeave' | 'focusBox'>) {
+  boxRef,
+}: Pick<CommentsSectionProps, 'issueKey' | 'onLeave' | 'focusBox' | 'boxRef'>) {
   const draftKey = newCommentDraftKey(issueKey)
   const [restored] = useState(() => getDraft(draftKey))
   const [posting, setPosting] = useState(false)
   const [typed, setTyped] = useState(restored !== undefined)
   const [problem, setProblem] = useState<string | null>(null)
   const [discarding, setDiscarding] = useState(false)
-  const editor = useRef<AdfEditorHandle>(null)
+  const ownEditor = useRef<AdfEditorHandle>(null)
+  const editor = boxRef ?? ownEditor
   const busy = useRef(false)
   const add = useAddComment(issueKey)
 
@@ -404,6 +408,7 @@ export function CommentsSection({
   onLeave,
   onNotice,
   focusBox,
+  boxRef,
   onBoxLeave = onLeave,
 }: CommentsSectionProps) {
   const comments = useComments(issueKey)
@@ -434,7 +439,13 @@ export function CommentsSection({
           )
         }
       </QueryBody>
-      <CommentBox key={boxVersion} issueKey={issueKey} onLeave={onBoxLeave} focusBox={focusBox} />
+      <CommentBox
+        key={boxVersion}
+        issueKey={issueKey}
+        onLeave={onBoxLeave}
+        focusBox={focusBox}
+        boxRef={boxRef}
+      />
     </Section>
   )
 }
