@@ -527,7 +527,7 @@ test('the Filter and Groups buttons show a chevron and the Filter fields show an
   await expect(toggle('Hide done').locator('svg:visible')).toHaveCount(1)
 
   await toggle('Filter').click()
-  const fields = window.locator('#filter-menu summary')
+  const fields = window.locator('#filter-menu [data-filter-field]')
   await expect(fields).toHaveCount(15)
   for (const field of await fields.all()) {
     await expect(field.locator('svg')).toHaveCount(2)
@@ -682,6 +682,7 @@ test('filters by status and by text, keeping ancestors as context', async () => 
   await window.getByRole('group', { name: 'Filter' }).getByText('Status', { exact: true }).click()
   await window.getByRole('checkbox', { name: 'In Progress' }).check()
   await window.keyboard.press('Escape')
+  await window.keyboard.press('Escape')
 
   await expect(window.getByRole('list', { name: 'Active filters' })).toContainText(
     'Status: In Progress',
@@ -722,6 +723,7 @@ test('names the text and the chips that match nothing', async () => {
   await window.getByRole('button', { name: 'Filter', exact: true }).click()
   await window.getByRole('group', { name: 'Filter' }).getByText('Status', { exact: true }).click()
   await window.getByRole('checkbox', { name: 'In Progress' }).check()
+  await window.keyboard.press('Escape')
   await window.keyboard.press('Escape')
   await window.getByLabel('Filter by key or summary').fill('zzzzqq')
 

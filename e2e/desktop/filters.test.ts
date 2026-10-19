@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
 import { counts, launch, logIn, releaseDone, showEverything } from './harness.js'
 
@@ -33,25 +33,35 @@ async function open() {
   await showEverything(window)
 }
 
-/** Opens the Filter menu with the button and opens one field's list. */
+/** The row of one field in the main list. A held count follows the name. */
+const row = (name: string) => menu().getByRole('button', { name: new RegExp(`^${name}( \\d+)?$`) })
+
+/** The submenu of one field's values. */
+/** The search box of one submenu, by its accessible name. */
+const search = (label: string) => window.getByLabel(label, { exact: true })
+
+const submenu = (name: string) => menu().getByRole('group', { name, exact: true })
+
+/** Opens the Filter menu with the button and clicks one field, which opens its values. */
 async function openField(name: string) {
   if (!(await menu().evaluate((el) => el.matches(':popover-open')))) {
     await toggle('Filter').click()
   }
-  const summary = menu()
-    .locator('summary')
-    .filter({ has: window.getByText(name, { exact: true }) })
-  if (!(await summary.evaluate((el) => el.parentElement?.hasAttribute('open')))) {
-    await summary.click()
-  }
+  if (!(await submenu(name).isVisible())) await row(name).click()
+  await expect(submenu(name)).toBeVisible()
 }
 
-/** Checks one choice of one field, under "is not" when `not` is set, then closes the menu. */
+/** Closes the submenu with the first Escape and the Filter menu with the second. */
+async function closeMenus() {
+  await window.keyboard.press('Escape')
+  await window.keyboard.press('Escape')
+  await expect(menu()).not.toBeVisible()
+}
+
+/** Checks one choice of one field, under "is not" when `not` is set, then closes both menus. */
 async function choose(field: string, choice: string, options: { not?: boolean } = {}) {
   await openField(field)
-  const list = menu()
-    .locator('details')
-    .filter({ has: window.locator('summary').getByText(field, { exact: true }) })
+  const list = submenu(field)
   const operators = list.getByRole('group', { name: `${field} operator` })
   // The switch keeps its setting between choices, so each choice sets it.
   if ((await operators.count()) > 0) {
@@ -60,8 +70,7 @@ async function choose(field: string, choice: string, options: { not?: boolean } 
       .click()
   }
   await list.getByRole('checkbox', { name: choice, exact: true }).check()
-  await window.keyboard.press('Escape')
-  await expect(menu()).not.toBeVisible()
+  await closeMenus()
 }
 
 test('F opens the Filter menu on its first field, and Esc returns to the Tree', async () => {
@@ -70,8 +79,8 @@ test('F opens the Filter menu on its first field, and Esc returns to the Tree', 
 
   await window.keyboard.press('f')
   await expect(menu()).toBeVisible()
-  await expect(menu().locator('summary').first()).toBeFocused()
-  await expect(menu().locator('summary')).toHaveCount(15)
+  await expect(menu().locator('[data-filter-field]').first()).toBeFocused()
+  await expect(menu().locator('[data-filter-field]')).toHaveCount(15)
 
   await window.keyboard.press('Escape')
   await expect(menu()).not.toBeVisible()
@@ -97,7 +106,7 @@ test('the Customer choices list the Project’s Customers, those with no issue i
   await openField('Customer')
   await expect(menu().getByRole('checkbox', { name: 'Zeta Corp', exact: true })).toBeVisible()
   await expect(menu().getByRole('checkbox', { name: 'Acme', exact: true })).toBeVisible()
-  await window.keyboard.press('Escape')
+  await closeMenus()
 
   await choose('Customer', 'Beta Ltd')
   await expect(chips()).toContainText('Customer: Beta Ltd')
@@ -246,4 +255,240 @@ test('the Created by me starter filters to the issues the signed-in user created
   await expect(item(/PSAPAC-2,/)).toBeVisible()
   await expect(item(/PSAPAC-11,.*context/)).toBeVisible()
   await expect(item(/PSAPAC-32,/)).toHaveCount(0)
+})
+
+interface Box {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+async function box(locator: Locator): Promise<Box> {
+  const found = await locator.boundingBox()
+  if (found === null) throw new Error('The element has no box.')
+  return found
+}
+
+test('the menu lists the fields only, and a field opens its values in a submenu on hover, click and keys', async () => {
+  await open()
+  await toggle('Filter').click()
+  await expect(menu().locator('[data-filter-field]')).toHaveCount(15)
+  await expect(menu().getByRole('checkbox')).toHaveCount(0)
+  await expect(row('Status')).toHaveAttribute('aria-haspopup', 'true')
+  await expect(row('Status')).toHaveAttribute('aria-expanded', 'false')
+  const main = await box(menu())
+
+  // The pointer resting on a field opens its submenu, level with the field and beside the list,
+  // without moving focus into it.
+  await row('Status').hover()
+  await expect(submenu('Status')).toBeVisible()
+  await expect(row('Status')).toHaveAttribute('aria-expanded', 'true')
+  await expect(search('Search Status')).not.toBeFocused()
+  const side = await box(submenu('Status'))
+  const field = await box(row('Status'))
+  expect(side.x).toBeGreaterThanOrEqual(main.x + main.width - 6)
+  expect(Math.abs(side.y - field.y)).toBeLessThanOrEqual(6)
+  expect(await box(menu())).toEqual(main)
+
+  // Another field swaps it in.
+  await row('Priority').hover()
+  await expect(submenu('Priority')).toBeVisible()
+  await expect(submenu('Status')).not.toBeVisible()
+  await expect(row('Status')).toHaveAttribute('aria-expanded', 'false')
+
+  // A click opens it with the search box focused.
+  await row('Type').click()
+  await expect(submenu('Type')).toBeVisible()
+  await expect(search('Search Type')).toBeFocused()
+  expect(await box(menu())).toEqual(main)
+  await expect(submenu('Priority')).not.toBeVisible()
+})
+
+test('the keys move between fields, open a submenu on its search box and come back', async () => {
+  await open()
+  await expect(tree()).toBeFocused()
+  await window.keyboard.press('f')
+  await expect(row('Status')).toBeFocused()
+  await window.keyboard.press('ArrowDown')
+  await expect(row('Status type')).toBeFocused()
+  await window.keyboard.press('ArrowUp')
+  await expect(row('Status')).toBeFocused()
+
+  await window.keyboard.press('ArrowRight')
+  await expect(submenu('Status')).toBeVisible()
+  await expect(search('Search Status')).toBeFocused()
+  await window.keyboard.press('ArrowDown')
+  await expect(submenu('Status').getByRole('checkbox').first()).toBeFocused()
+  await window.keyboard.press('ArrowDown')
+  await expect(submenu('Status').getByRole('checkbox').nth(1)).toBeFocused()
+  await window.keyboard.press('ArrowUp')
+  await window.keyboard.press('ArrowUp')
+  await expect(search('Search Status')).toBeFocused()
+
+  // Left leaves the submenu, but moves the caret while the search box holds text.
+  await window.keyboard.type('prog')
+  await window.keyboard.press('ArrowLeft')
+  await expect(submenu('Status')).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(search('Search Status')).toHaveValue('')
+  await expect(submenu('Status')).toBeVisible()
+  await window.keyboard.press('ArrowLeft')
+  await expect(submenu('Status')).not.toBeVisible()
+  await expect(row('Status')).toBeFocused()
+  await expect(row('Status')).toHaveAttribute('aria-expanded', 'false')
+
+  // Enter opens it again, Escape returns to the field, and a second Escape closes the menu.
+  await window.keyboard.press('Enter')
+  await expect(search('Search Status')).toBeFocused()
+  await window.keyboard.press('Escape')
+  await expect(submenu('Status')).not.toBeVisible()
+  await expect(row('Status')).toBeFocused()
+  await expect(menu()).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(menu()).not.toBeVisible()
+  await expect(tree()).toBeFocused()
+})
+
+test('checking a value applies the filter and leaves both menus open', async () => {
+  await open()
+  await openField('Status')
+  await submenu('Status').getByRole('checkbox', { name: 'In Progress', exact: true }).check()
+
+  await expect(chips()).toContainText('Status: In Progress')
+  await expect(row('Status')).toHaveText(/1/)
+  await expect(menu()).toBeVisible()
+  await expect(submenu('Status')).toBeVisible()
+  await expect(item(/PSAPAC-4,/)).toBeVisible()
+  await expect(item(/PSAPAC-2,/)).toHaveCount(0)
+
+  await submenu('Status').getByRole('checkbox', { name: 'In Progress', exact: true }).uncheck()
+  await expect(chips()).toHaveCount(0)
+  await expect(row('Status')).not.toHaveText(/\d/)
+  await expect(submenu('Status')).toBeVisible()
+
+  // Only the fields with an "is not" side show the switch.
+  await expect(submenu('Status').getByRole('group', { name: 'Status operator' })).toBeVisible()
+  await openField('Due date')
+  await expect(submenu('Due date').getByRole('group', { name: 'Due date operator' })).toHaveCount(0)
+})
+
+test('every submenu searches its values, keeps the checked ones, and clears on Escape and on closing', async () => {
+  await open()
+  await openField('Status')
+  const list = submenu('Status')
+  const input = search('Search Status')
+  await list.getByRole('checkbox', { name: 'To Do', exact: true }).check()
+  await expect(list.getByRole('checkbox')).not.toHaveCount(1)
+
+  await input.fill('PROG')
+  await expect(list.getByRole('checkbox')).toHaveCount(1)
+  await expect(list.getByRole('checkbox', { name: 'In Progress', exact: true })).toBeVisible()
+  // The checked value the search hides stays checked.
+  await expect(chips()).toContainText('Status: To Do')
+  await input.fill('zzz')
+  await expect(list.getByRole('checkbox')).toHaveCount(0)
+  await expect(list.getByText('No matches')).toBeVisible()
+
+  // Escape clears the text and keeps the submenu, the next one closes it.
+  await input.press('Escape')
+  await expect(input).toHaveValue('')
+  await expect(list.getByText('No matches')).toHaveCount(0)
+  await expect(list).toBeVisible()
+  await expect(list.getByRole('checkbox', { name: 'To Do', exact: true })).toBeChecked()
+  await input.fill('done')
+  await input.press('Escape')
+  await input.press('Escape')
+  await expect(list).not.toBeVisible()
+
+  // Closing clears the text, and the date fields search too.
+  await openField('Status')
+  await expect(search('Search Status')).toHaveValue('')
+  await openField('Due date')
+  await search('Search Due date').fill('over')
+  await expect(submenu('Due date').getByRole('checkbox')).toHaveCount(1)
+  await expect(submenu('Due date').getByRole('checkbox', { name: 'Overdue' })).toBeVisible()
+})
+
+test('the pointer crossing other fields toward a submenu does not swap it', async () => {
+  await open()
+  await toggle('Filter').click()
+  await row('Status').hover()
+  await expect(submenu('Status')).toBeVisible()
+
+  // A diagonal path from the Status row, down across the rows below it and into its submenu.
+  const from = await box(row('Status'))
+  const into = await box(submenu('Status'))
+  await window.mouse.move(from.x + 20, from.y + from.height / 2)
+  await window.mouse.move(into.x + 40, into.y + 150, { steps: 12 })
+  await expect(submenu('Status')).toBeVisible()
+  // Long enough for a swap if one were pending.
+  await window.waitForTimeout(400)
+  await expect(submenu('Status')).toBeVisible()
+  await expect(submenu('Status type')).not.toBeVisible()
+  await expect(submenu('Assignee')).not.toBeVisible()
+})
+
+/** Narrows the window to its minimum width and a short height, so the Tree is under 700px. */
+async function narrowWindow(height: number) {
+  await app.evaluate(({ BrowserWindow }, h) => {
+    BrowserWindow.getAllWindows()[0]?.setContentSize(900, h)
+  }, height)
+  await expect.poll(() => window.evaluate(() => globalThis.innerHeight)).toBe(height)
+}
+
+test('a submenu flips to the left at the window edge and stays inside the window', async () => {
+  await open()
+  await narrowWindow(560)
+  const inside = await window.evaluate(() => ({
+    w: globalThis.innerWidth,
+    h: globalThis.innerHeight,
+  }))
+  await toggle('Filter').click()
+  const main = await box(menu())
+
+  // The Tree is under 700px here, so the Filter button shows its icon only.
+  await row('Status').click()
+  const first = await box(submenu('Status'))
+  expect(first.x + first.width).toBeLessThanOrEqual(main.x + 6)
+  expect(first.x).toBeGreaterThanOrEqual(0)
+
+  // The last field sits at the foot of the list, so its submenu moves up to stay in the window.
+  await menu().evaluate((el) => {
+    el.scrollTop = el.scrollHeight
+  })
+  await row('Sprint').click()
+  const last = await box(submenu('Sprint'))
+  expect(last.y).toBeGreaterThanOrEqual(0)
+  expect(last.y + last.height).toBeLessThanOrEqual(inside.h)
+  expect(last.x + last.width).toBeLessThanOrEqual(inside.w)
+  expect(last.x).toBeGreaterThanOrEqual(0)
+})
+
+test('the field list does not wrap in a wide font, and the submenu takes the menu colours', async () => {
+  await open()
+  await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  await toggle('Filter').click()
+  for (const field of await menu().locator('[data-filter-field]').all()) {
+    expect((await field.boundingBox())?.height).toBe(32)
+    const label = field.locator('span').first()
+    expect(await label.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  }
+
+  for (const scheme of ['light', 'dark'] as const) {
+    await window.emulateMedia({ colorScheme: scheme })
+    await row('Status').click()
+    const colours = await window.evaluate(() => {
+      const paint = (el: Element | null) =>
+        el === null ? '' : getComputedStyle(el).backgroundColor
+      return [
+        paint(document.getElementById('filter-menu')),
+        paint(document.querySelector('#filter-menu [popover]')),
+      ]
+    })
+    expect(colours[1], scheme).toBe(colours[0])
+    expect(colours[0], scheme).not.toBe('')
+  }
 })

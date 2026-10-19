@@ -1246,7 +1246,7 @@ export function Shell({ session }: { session: Session }) {
         if (menu === null || listCovered || menu.matches(':popover-open')) return
         event.preventDefault()
         menu.showPopover()
-        menu.querySelector('summary')?.focus()
+        menu.querySelector<HTMLElement>('[data-filter-field]')?.focus()
         return
       }
       case 'menu': {

@@ -57,6 +57,8 @@ async function filterToBugs() {
   await window.getByRole('button', { name: 'Filter', exact: true }).click()
   await window.getByText('Type', { exact: true }).click()
   await window.getByRole('checkbox', { name: 'Bug' }).check()
+  // The first Escape closes the Type submenu, the second the Filter menu.
+  await window.keyboard.press('Escape')
   await window.keyboard.press('Escape')
   await expect(chips()).toContainText('Type: Bug')
 }
