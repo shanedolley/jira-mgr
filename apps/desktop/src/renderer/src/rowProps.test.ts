@@ -1,21 +1,9 @@
 import type { Issue } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
-import { dueTone, rowSprint, shortDate, timeValue } from './rowProps'
+import { dueTone, rowSprint, timeValue } from './rowProps'
 
 const sprints = (...list: Issue['sprints']) => ({ sprints: list }) as Issue
-
-describe('shortDate', () => {
-  it('names the month and day, and adds the year only for another year', () => {
-    expect(shortDate('2026-10-04', '2026-10-11')).toBe('Oct 4')
-    expect(shortDate('2025-12-31', '2026-10-11')).toBe("Dec 31 '25")
-  })
-
-  it('reads a Jira timestamp as the local day', () => {
-    const local = new Date(2026, 2, 9, 23, 30)
-    expect(shortDate(local.toISOString(), '2026-10-11')).toBe('Mar 9')
-  })
-})
 
 describe('dueTone', () => {
   const today = '2026-10-11'

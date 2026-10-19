@@ -1,4 +1,5 @@
 import { adfToMarkdown, type AdfDoc, type AdfNode } from '@jira-mgr/core/adf'
+import { formatDateTime } from '@jira-mgr/core/display'
 import { parseDuration } from '@jira-mgr/core/issue'
 
 import type { LinkItem, LinkTypeItem, WorklogItem } from '../../shared/ipc'
@@ -190,9 +191,8 @@ export function formatSize(bytes: number): string {
   return `${(bytes / 1_000_000_000).toFixed(1)} GB`
 }
 
-/** A date and time as the user's locale writes them. */
-export const formatWhen = (iso: string): string =>
-  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+/** A date and 24-hour time, such as `19 Oct, 15:04`. */
+export const formatWhen = formatDateTime
 
 /** The notice for a write Jira refused: what failed, then Jira's reason. It stays until dismissed. */
 export const failureNotice = (title: string, reason: string): Notice => ({

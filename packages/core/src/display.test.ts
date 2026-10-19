@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   WIDTH_MAX,
+  formatDate,
+  formatDateTime,
   keepKnownProperties,
   keepKnownWidths,
   sprintDates,
@@ -132,5 +134,41 @@ describe('keepKnownProperties', () => {
       'labels',
     ])
     expect(keepKnownProperties([])).toEqual([])
+  })
+})
+
+describe('formatDate', () => {
+  it('names the day and month, and adds the year only for another year', () => {
+    expect(formatDate('2026-10-04', '2026-10-11')).toBe('4 Oct')
+    expect(formatDate('2025-12-31', '2026-10-11')).toBe("31 Dec '25")
+  })
+
+  it('changes the year at the boundary', () => {
+    expect(formatDate('2026-01-01', '2025-12-31')).toBe("1 Jan '26")
+    expect(formatDate('2026-01-01', '2026-12-31')).toBe('1 Jan')
+  })
+
+  it('reads a Jira timestamp as the local day', () => {
+    const local = new Date(2026, 2, 9, 23, 30)
+    expect(formatDate(local.toISOString(), '2026-10-11')).toBe('9 Mar')
+  })
+
+  it('defaults today to the machine day', () => {
+    expect(formatDate(new Date().toISOString())).toMatch(/^\d{1,2} [A-Z][a-z]{2}$/)
+  })
+})
+
+describe('formatDateTime', () => {
+  it('adds the 24-hour local time', () => {
+    const at = new Date(2026, 9, 19, 15, 4).toISOString()
+    expect(formatDateTime(at, '2026-10-19')).toBe('19 Oct, 15:04')
+    expect(formatDateTime(new Date(2026, 9, 19, 0, 5).toISOString(), '2026-10-19')).toBe(
+      '19 Oct, 00:05',
+    )
+  })
+
+  it('adds the year after the month in another year', () => {
+    const at = new Date(2025, 11, 31, 23, 59).toISOString()
+    expect(formatDateTime(at, '2026-01-01')).toBe("31 Dec '25, 23:59")
   })
 })

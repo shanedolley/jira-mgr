@@ -1,4 +1,5 @@
 import type { AdfNode } from '@jira-mgr/core/adf'
+import { formatDate } from '@jira-mgr/core/display'
 
 const BLOCK_LABELS: Record<string, string> = {
   panel: 'Panel',
@@ -45,10 +46,10 @@ function attrText(node: AdfNode): string {
   }
 }
 
-/** A `date` node's day in the user's locale. `timestamp` is milliseconds since the epoch, as a string. */
+/** A `date` node's day, such as `19 Oct`. `timestamp` is milliseconds since the epoch, as a string. */
 export function dateText(node: AdfNode): string {
   const stamp = Number(node.attrs?.timestamp)
-  return Number.isFinite(stamp) ? new Date(stamp).toLocaleDateString() : ''
+  return Number.isFinite(stamp) ? formatDate(new Date(stamp).toISOString()) : ''
 }
 
 /** One line of text for each text block inside `node`, in document order. */

@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { MONTHS } from './display.js'
+
 /**
  * The part of `GET /rest/api/3/configuration` that sets a working day. `null` when the site has
  * time tracking off or sends no configuration, so a client hides its time block instead of
@@ -71,7 +73,6 @@ export interface ChartBar {
   seconds: number
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 /** The first local midnight of the day, Monday-based week or month `date` falls in. */

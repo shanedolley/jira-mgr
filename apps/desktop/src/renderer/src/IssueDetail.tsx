@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { formatDate } from '@jira-mgr/core/display'
 import { propertyRules } from '@jira-mgr/core/issue'
 import { useEffect, useState, type ReactNode, type RefObject } from 'react'
 
@@ -229,7 +230,7 @@ function PeekIssue({
           {issue.engagement?.value ?? 'None'}
         </Property>
         <Property name="Updated" readOnly>
-          {new Date(issue.updated).toLocaleDateString()}
+          {formatDate(issue.updated)}
         </Property>
       </dl>
       <TimeTracking issue={issue} where="peek" load={settled} />

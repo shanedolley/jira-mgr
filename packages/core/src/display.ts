@@ -1,3 +1,5 @@
+import { dayKey } from './view-filter.js'
+
 /** The properties a Tree row can show beyond its fixed anatomy, in the order the row lays them out. */
 export const ROW_PROPERTIES = [
   'labels',
@@ -107,7 +109,20 @@ const LEVELS: Record<string, number> = {
 /** How many of four bars a priority fills, 4 the highest; a name that is not listed fills none. */
 export const priorityLevel = (name: string): number => LEVELS[name.toLowerCase()] ?? 0
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
 
 /** The part of a sprint the row's label, the pickers and the title read. */
 export interface SprintLabelInput {
@@ -128,11 +143,23 @@ function dayOf(timestamp: string | null | undefined): string | null {
   return month >= 1 && month <= 12 ? day : null
 }
 
-/** `14 Oct`, with `'25` after the month when the day falls outside the year of `today`. */
-function shortDay(day: string, today: string): string {
+/**
+ * A date as the app shows it, whatever the system locale: `19 Oct` in the year of `today`, and
+ * `19 Oct '25` in any other. `text` is a day (`YYYY-MM-DD`) or a timestamp, which reads as its
+ * local day. `today` is a local day and defaults to the machine's.
+ */
+export function formatDate(text: string, today: string = dayKey(new Date())): string {
+  const day = text.length === 10 ? text : dayKey(new Date(text))
   const [y = '', m = '', d = ''] = day.split('-')
   const date = `${String(Number(d))} ${MONTHS[Number(m) - 1] ?? ''}`
   return y === today.slice(0, 4) ? date : `${date} '${y.slice(2)}`
+}
+
+/** A timestamp as local date and 24-hour time: `19 Oct, 15:04`, and `19 Oct '25, 15:04` in another year. */
+export function formatDateTime(iso: string, today?: string): string {
+  const at = new Date(iso)
+  const time = [at.getHours(), at.getMinutes()].map((n) => String(n).padStart(2, '0')).join(':')
+  return `${formatDate(iso, today)}, ${time}`
 }
 
 /**
@@ -151,7 +178,7 @@ export function sprintLabel(sprint: SprintLabelInput): string {
  */
 export function sprintEnd(sprint: SprintLabelInput, today: string): string | null {
   const day = dayOf(sprint.endDate)
-  return day === null ? null : shortDay(day, today)
+  return day === null ? null : formatDate(day, today)
 }
 
 /**
@@ -161,7 +188,7 @@ export function sprintEnd(sprint: SprintLabelInput, today: string): string | nul
 export function sprintDates(sprint: SprintLabelInput, today: string): string | null {
   const end = sprintEnd(sprint, today)
   const start = dayOf(sprint.startDate)
-  return end === null || start === null ? end : `${shortDay(start, today)} - ${end}`
+  return end === null || start === null ? end : `${formatDate(start, today)} - ${end}`
 }
 
 /** The full sprint name, with its end day (`Sprint 5, ends 2026-10-14`) when it has one. */

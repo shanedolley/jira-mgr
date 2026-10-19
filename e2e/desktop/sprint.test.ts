@@ -122,8 +122,8 @@ test('opens the active sprint from the sidebar with counts that equal its issues
   await expect(bar).toHaveAttribute('aria-valuenow', '29')
   await expect(bar).toHaveAttribute('aria-valuetext', '29% completed, 43% started')
 
-  await expect(panel().getByText('1 Oct 2026')).toBeVisible()
-  await expect(panel().getByText('14 Oct 2026')).toBeVisible()
+  await expect(panel().getByText('1 Oct', { exact: true })).toBeVisible()
+  await expect(panel().getByText('14 Oct', { exact: true })).toBeVisible()
   await expect(panel().getByText('Ship the onboarding flow')).toBeVisible()
   await expect(panel().getByText('Active', { exact: true })).toBeVisible()
 })
