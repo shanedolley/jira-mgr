@@ -2,7 +2,28 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vitest'
 
-import { SHORTCUT_TABLES, parseShortcuts } from './shortcuts'
+import {
+  SHORTCUT_TABLES,
+  filterShortcuts,
+  parseShortcuts,
+  shortcutCells,
+  splitMarks,
+} from './shortcuts'
+
+/** The sections of the page, in order. A change to them is a change to the dialog's layout. */
+const SECTION_TITLES = [
+  'Move around the Tree',
+  'Select and reorder',
+  'Edit an issue',
+  'Create and track time',
+  'Click on a row',
+  'Find, filter and views',
+  'Menus and pickers',
+  'Dialogs and fields',
+  'App and pages',
+]
+/** Every row of the page. A story that adds or removes a shortcut changes this one number. */
+const SHORTCUT_COUNT = 80
 
 const DOC = new URL('../../../../../docs/reference/shortcuts.md', import.meta.url)
 
@@ -35,17 +56,96 @@ describe('the shortcuts page the overlay lists', () => {
     const headers = lines.filter(
       (line, at) => line.startsWith('|') && !lines[at - 1]?.startsWith('|'),
     )
-    expect(SHORTCUT_TABLES.map((t) => t.title)).toEqual(['Global', 'Tree', 'Fields and Dialogs'])
+    expect(SHORTCUT_TABLES.map((t) => t.title)).toEqual(SECTION_TITLES)
+    expect(new Set(SECTION_TITLES).size).toBe(SECTION_TITLES.length)
     expect(SHORTCUT_TABLES.reduce((n, t) => n + t.rows.length, 0)).toBe(
       rows.length - headers.length,
     )
+    expect(rows.length - headers.length).toBe(SHORTCUT_COUNT)
     for (const table of SHORTCUT_TABLES) {
       for (const row of table.rows) expect(row).toHaveLength(table.columns.length)
     }
   })
 
+  it('lists every row once', () => {
+    const rows = SHORTCUT_TABLES.flatMap((t) => t.rows.map((row) => `${t.title}|${row.join('|')}`))
+    const keyAndAction = SHORTCUT_TABLES.flatMap((t) =>
+      t.rows.map((row) => {
+        const { keys, action, where } = shortcutCells(t, row)
+        return `${where}|${keys}|${action}`
+      }),
+    )
+    expect(new Set(rows).size).toBe(rows.length)
+    expect(new Set(keyAndAction).size).toBe(keyAndAction.length)
+  })
+
   it('lists the ? key that opens it', () => {
-    const global = SHORTCUT_TABLES.find((t) => t.title === 'Global')
-    expect(global?.rows.map((row) => row[0])).toContain('`?`')
+    const app = SHORTCUT_TABLES.find((t) => t.title === 'App and pages')
+    expect(app?.rows.map((row) => shortcutCells(app, row).keys)).toContain('`?`')
+  })
+})
+
+describe('filterShortcuts', () => {
+  const titles = (query: string) => filterShortcuts(SHORTCUT_TABLES, query).map((t) => t.title)
+  const rowsOf = (query: string) => filterShortcuts(SHORTCUT_TABLES, query).flatMap((t) => t.rows)
+
+  it('keeps every section and row for an empty or blank query', () => {
+    expect(titles('')).toEqual(SECTION_TITLES)
+    expect(titles('   ')).toEqual(SECTION_TITLES)
+    expect(rowsOf('')).toHaveLength(SHORTCUT_COUNT)
+  })
+
+  it('needs every word, in any case, and drops the sections left empty', () => {
+    const hits = filterShortcuts(SHORTCUT_TABLES, 'SHIFT')
+    expect(hits.length).toBeLessThan(SECTION_TITLES.length)
+    for (const hit of hits) {
+      expect(hit.total).toBe(SHORTCUT_TABLES.find((t) => t.title === hit.title)?.rows.length)
+      for (const row of hit.rows) expect(row.join(' ').toLowerCase()).toContain('shift')
+    }
+    expect(rowsOf('shift zzz')).toHaveLength(0)
+    expect(rowsOf('log work modal enter')).toHaveLength(1)
+  })
+
+  it('treats cmd, ⌘ and ctrl as one key, and ↵ as enter', () => {
+    expect(rowsOf('cmd').length).toBeGreaterThan(0)
+    expect(rowsOf('⌘')).toEqual(rowsOf('cmd'))
+    expect(rowsOf('ctrl')).toEqual(rowsOf('cmd'))
+    expect(rowsOf('↵')).toEqual(rowsOf('enter'))
+    expect(rowsOf('⇧')).toEqual(rowsOf('shift'))
+  })
+
+  it('reads a key without its backticks', () => {
+    expect(rowsOf('shift+s').length).toBeGreaterThan(0)
+    expect(rowsOf('`')).toHaveLength(0)
+  })
+
+  it('shows the whole section when its title holds the words', () => {
+    const [pickers] = filterShortcuts(SHORTCUT_TABLES, 'pickers')
+    expect(pickers?.title).toBe('Menus and pickers')
+    expect(pickers?.rows).toHaveLength(pickers?.total ?? -1)
+  })
+})
+
+describe('splitMarks', () => {
+  it('flags the runs that hold a word, in any case', () => {
+    expect(splitMarks('Open the Shift menu', 'shift')).toEqual([
+      { text: 'Open the ', hit: false },
+      { text: 'Shift', hit: true },
+      { text: ' menu', hit: false },
+    ])
+    expect(splitMarks('a b a', 'a b').map((r) => r.hit)).toEqual([true, false, true, false, true])
+  })
+
+  it('returns the text whole for no query, and takes regex characters literally', () => {
+    expect(splitMarks('plain', '')).toEqual([{ text: 'plain', hit: false }])
+    expect(splitMarks('a (b) c', '(b')).toEqual([
+      { text: 'a ', hit: false },
+      { text: '(b', hit: true },
+      { text: ') c', hit: false },
+    ])
+  })
+
+  it('marks every spelling of an aliased key', () => {
+    expect(splitMarks('Cmd+Z, Ctrl and ⌘', 'cmd').filter((r) => r.hit)).toHaveLength(3)
   })
 })

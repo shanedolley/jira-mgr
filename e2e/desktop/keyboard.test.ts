@@ -667,12 +667,22 @@ test('? lists every table and row of docs/reference/shortcuts.md, and Esc return
   }
   // Prose sections such as Tab have no table.
   const listed = tables.filter((t) => t.rows > 0)
-  expect(listed.map((t) => t.title)).toEqual(['Global', 'Tree', 'Fields and Dialogs'])
+  expect(listed.map((t) => t.title)).toEqual([
+    'Move around the Tree',
+    'Select and reorder',
+    'Edit an issue',
+    'Create and track time',
+    'Click on a row',
+    'Find, filter and views',
+    'Menus and pickers',
+    'Dialogs and fields',
+    'App and pages',
+  ])
   for (const { title, rows } of listed) {
-    await expect(help().getByRole('region', { name: title }).locator('tbody tr')).toHaveCount(rows)
+    await expect(help().getByRole('table', { name: title }).locator('tbody tr')).toHaveCount(rows)
   }
   await expect(
-    help().getByRole('region', { name: 'Global' }).locator('kbd', { hasText: '?' }),
+    help().getByRole('table', { name: 'App and pages' }).locator('kbd', { hasText: '?' }),
   ).toBeVisible()
 
   await window.keyboard.press('Escape')

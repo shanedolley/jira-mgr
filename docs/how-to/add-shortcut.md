@@ -32,7 +32,7 @@ A key that acts on one issue can also be a palette action. Add a row to `ISSUE_A
 
 ## List It
 
-Add a row to the matching table in `docs/reference/shortcuts.md`. The `?` overlay draws that page, so the row shows in the overlay with no code change.
+Add a row to the section of `docs/reference/shortcuts.md` that names the task the key does: Move around the Tree, Select and reorder, Edit an issue, Create and track time, Click on a row, Find, filter and views, Menus and pickers, Dialogs and fields, or App and pages. A mouse gesture goes in Click on a row, with its text in the Key cell and no backticks. The first four sections have Key and Action columns; the last four add a leading Where column, which may stay empty. The `?` overlay draws that page and its search field filters the same rows by key, action, Where and section title, so the row shows and is found with no code change. Add the row to `SHORTCUT_COUNT` in `shortcuts.test.ts`, which pins the total; a new section also goes in that file's `SECTION_TITLES`.
 
 ## Test
 
