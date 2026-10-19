@@ -57,7 +57,7 @@ The Linear-style app. The renderer reaches Jira only through main-process IPC.
 
 ## Review Follow-ups
 
-Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202, #209, #212, #216, #217, #219 and #220 to #224, #237, #238, #254, #266 to #279 and #295 are Shane's later requests. Each is one issue; the tracker holds the status. All are built. #299 to #301 (the hovered row as the active row, the checked-only selected look with a master checkbox, and dragging the Display columns into a new order) are filed and not built.
+Stories #126 to #151 came from the [UX review and Linear gap analysis](../discovery/2026-10-10-review-decisions.md); #199 to #202, #209, #212, #216, #217, #219 and #220 to #224, #237, #238, #254, #266 to #279 and #295 are Shane's later requests. Each is one issue; the tracker holds the status. All are built. #299 to #301 and #304 to #310 (the hovered row as the active row, the checked-only selected look with a master checkbox, dragging the Display columns into a new order, Cmd+click and Shift+click selection, a Filter submenu, a Priority toggle, hover-only column names, theme icons, shortcut search and a comment count) are in progress on local branches and not on main.
 
 | Issue | Item |
 |---|---|
