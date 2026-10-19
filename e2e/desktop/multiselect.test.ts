@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
 import { counts, joinSprint, launch, logIn, notices } from './harness.js'
 
@@ -37,6 +37,9 @@ const sidebar = () => window.getByRole('navigation', { name: 'Main' })
 /** The row of "Bulk story n", anchored: an Epic's row ends "N of M done". */
 const story = (n: number) => item(new RegExp(`^PSAPAC-${String(999 + n)}, Story, `))
 const keyOf = (n: number) => `PSAPAC-${String(999 + n)}`
+
+/** An x inside a row but past its last slot, which is blank space. */
+const rightEdge = async (row: Locator) => ((await row.boundingBox())?.width ?? 20) - 3
 
 async function openBulk() {
   await logIn(window)
@@ -115,6 +118,102 @@ test.describe('on the Tree', () => {
     await expect(story(2)).toHaveAttribute('aria-checked', 'false')
     await expect(dialog('Edit summary')).toHaveCount(0)
     await expect(peek()).toHaveCount(0)
+  })
+
+  // The checkbox is a click target like any other: with Shift held it extends the range from the
+  // anchor, so the second checkbox of a pair checks every row between them.
+  test('Shift+click on a checkbox checks every row from the anchor, down and up', async () => {
+    await story(2).locator('[data-check]').click()
+    await story(7)
+      .locator('[data-check]')
+      .click({ modifiers: ['Shift'] })
+    expect(await checkedKeys()).toEqual([2, 3, 4, 5, 6, 7].map(keyOf))
+    await window.keyboard.press('Escape')
+    await story(9).locator('[data-check]').click()
+    await story(4)
+      .locator('[data-check]')
+      .click({ modifiers: ['Shift'] })
+    expect(await checkedKeys()).toEqual([4, 5, 6, 7, 8, 9].map(keyOf))
+    await expect(bar()).toContainText('6 selected')
+  })
+
+  test('a Shift+click range across the Customer and Epic headers checks the issues shown', async () => {
+    await window.getByLabel('Filter by key or summary').fill('')
+    const shown = () =>
+      tree()
+        .getByRole('treeitem')
+        .evaluateAll((rows) =>
+          rows
+            .map((r) => r.getAttribute('aria-label') ?? '')
+            .filter((l) => /^PSAPAC-\d+,/.test(l) && !l.endsWith(', context'))
+            .map((l) => /^PSAPAC-\d+/.exec(l)?.[0] ?? ''),
+        )
+    const keysShown = await shown()
+    expect(keysShown.length).toBeGreaterThan(20)
+    const first = item(new RegExp(`^${keysShown[0] ?? ''},`))
+    const last = item(new RegExp(`^${keysShown.at(-1) ?? ''},`))
+    // Down from the first row to the last, then up from the last to the first.
+    await first.locator('[data-check]').click()
+    await last.locator('[data-check]').click({ modifiers: ['Shift'] })
+    await expect(bar()).toContainText(`${String(keysShown.length)} selected`)
+    await window.keyboard.press('Escape')
+    await last.locator('[data-check]').click()
+    await first.locator('[data-check]').click({ modifiers: ['Shift'] })
+    await expect(bar()).toContainText(`${String(keysShown.length)} selected`)
+  })
+
+  test('a Shift+click range skips the issues a collapsed Epic hides', async () => {
+    await window.getByLabel('Filter by key or summary').fill('')
+    await item(/^PSAPAC-900, Epic, /)
+      .locator('[data-chevron]')
+      .click()
+    await expect(story(1)).toHaveCount(0)
+    const shown = await tree()
+      .getByRole('treeitem')
+      .evaluateAll((rows) =>
+        rows
+          .map((r) => r.getAttribute('aria-label') ?? '')
+          .filter((l) => /^PSAPAC-\d+,/.test(l) && !l.endsWith(', context'))
+          .map((l) => /^PSAPAC-\d+/.exec(l)?.[0] ?? ''),
+      )
+    // The Epic's twelve Stories are hidden, so the range holds only the rows left.
+    expect(shown.length).toBeLessThan(20)
+    await item(new RegExp(`^${shown[0] ?? ''},`))
+      .locator('[data-check]')
+      .click()
+    await item(new RegExp(`^${shown.at(-1) ?? ''},`))
+      .locator('[data-check]')
+      .click({ modifiers: ['Shift'] })
+    await expect(bar()).toContainText(`${String(shown.length)} selected`)
+  })
+
+  // A plain click on a row makes it the anchor, since hover has already made the row under the
+  // pointer active and a Shift+click would otherwise start where it ends.
+  test('a plain click on a row, then a Shift+click on another, checks both and the rows between', async () => {
+    await story(3).click({ position: { x: await rightEdge(story(3)), y: 16 } })
+    await story(6)
+      .locator('[data-summary]')
+      .click({ modifiers: ['Shift'] })
+    expect(await checkedKeys()).toEqual([3, 4, 5, 6].map(keyOf))
+    await window.keyboard.press('Escape')
+    // Up, from the summary: the click opens the Edit summary modal, which Escape closes.
+    await story(9).locator('[data-summary]').click()
+    await expect(dialog('Edit summary')).toBeVisible()
+    await window.keyboard.press('Escape')
+    await expect(dialog('Edit summary')).toHaveCount(0)
+    await story(7)
+      .locator('[data-summary]')
+      .click({ modifiers: ['Shift'] })
+    expect(await checkedKeys()).toEqual([7, 8, 9].map(keyOf))
+  })
+
+  test('a checked row stays the anchor over a later plain click', async () => {
+    await story(2).locator('[data-check]').click()
+    await story(8).click({ position: { x: await rightEdge(story(8)), y: 16 } })
+    await story(5)
+      .locator('[data-summary]')
+      .click({ modifiers: ['Shift'] })
+    expect(await checkedKeys()).toEqual([2, 3, 4, 5].map(keyOf))
   })
 
   test('a Shift+click or Cmd+click selects no text', async () => {
@@ -297,6 +396,36 @@ test.describe('on the Sprint page', () => {
       .click({ modifiers: [TOGGLE] })
     await expect(row(b ?? '')).not.toHaveAttribute('data-checked', 'true')
     await expect(window.locator('.menu:popover-open')).toHaveCount(0)
+  })
+
+  test('Shift+click on a checkbox checks the rows between it and the anchor', async () => {
+    const order = await pageOrder()
+    const [a, , , d, e] = order
+    await checkbox(a ?? '').click({ force: true })
+    await checkbox(e ?? '').click({ force: true, modifiers: ['Shift'] })
+    expect(await checkedOnPage()).toEqual(order.slice(0, 5).sort())
+    await window.keyboard.press('Escape')
+    await checkbox(e ?? '').click({ force: true })
+    await checkbox(d ?? '').click({ force: true, modifiers: ['Shift'] })
+    expect(await checkedOnPage()).toEqual([d, e].sort())
+    await checkbox(a ?? '').click({ force: true, modifiers: ['Shift'] })
+    expect(await checkedOnPage()).toEqual(order.slice(0, 5).sort())
+  })
+
+  test('a plain click on a row, then a Shift+click on another, checks the rows between', async () => {
+    const order = await pageOrder()
+    const [a, b, c, d, e] = order
+    await row(b ?? '').click({ position: { x: 60, y: 16 } })
+    await row(e ?? '')
+      .locator('[data-summary]')
+      .click({ modifiers: ['Shift'] })
+    expect(await checkedOnPage()).toEqual([b, c, d, e].sort())
+    await window.keyboard.press('Escape')
+    await row(d ?? '').click({ position: { x: 60, y: 16 } })
+    await row(a ?? '')
+      .locator('[data-summary]')
+      .click({ modifiers: ['Shift'] })
+    expect(await checkedOnPage()).toEqual([a, b, c, d].sort())
   })
 
   test('a bulk action from the page goes to the fake Jira and keeps the page checked', async () => {

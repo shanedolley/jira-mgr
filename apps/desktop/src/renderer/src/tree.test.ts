@@ -916,16 +916,36 @@ describe('master checkbox', () => {
 describe('clickRow', () => {
   const rows = flattenTree(groupsOf(SAMPLE), NONE)
 
-  it('does nothing on blank issue-row space: no Peek, no activation, the same state back', () => {
+  it('opens no Peek and activates nothing on blank issue-row space, and the row becomes the anchor', () => {
     const idle = state('i:P-2')
-    expect(clickRow(rows, idle, 'i:P-4', false)).toBe(idle)
+    expect(clickRow(rows, idle, 'i:P-4', false)).toEqual({ ...idle, anchor: 'P-4' })
     const open = { ...state('i:P-2'), peekOpen: true }
-    expect(clickRow(rows, open, 'i:P-4', false)).toBe(open)
+    expect(clickRow(rows, open, 'i:P-4', false)).toEqual({ ...open, anchor: 'P-4' })
+  })
+
+  it('keeps an anchor that is set, so check A, click C, Shift+click B still runs from A', () => {
+    const held = { ...state('i:P-2'), checked: new Set(['P-1']), anchor: 'P-1' }
+    expect(clickRow(rows, held, 'i:P-4', false)).toBe(held)
+  })
+
+  it('starts a Shift+click at the row last clicked, not the row under the pointer', () => {
+    const clicked = clickRow(rows, state('i:P-1'), 'i:P-1', false)
+    // The pointer moved on to P-4, which hover made active.
+    const hovered = { ...clicked, activeId: 'i:P-4' }
+    const next = clickRow(rows, hovered, 'i:P-4', false, 'range')
+    expect(next.checked.has('P-1') && next.checked.has('P-2') && next.checked.has('P-4')).toBe(true)
+    expect(next.anchor).toBe('P-1')
   })
 
   it('a click on the key activates the issue and opens the Peek on it, as o does', () => {
     const on = clickRow(rows, state('i:P-2'), 'i:P-4', false, undefined, true)
     expect(on).toMatchObject({ activeId: 'i:P-4', peekOpen: true })
+  })
+
+  it('a plain click on the key also sets the anchor, and keeps one that is set', () => {
+    expect(clickRow(rows, state('i:P-2'), 'i:P-4', false, undefined, true).anchor).toBe('P-4')
+    const held = { ...state('i:P-2'), anchor: 'P-1' }
+    expect(clickRow(rows, held, 'i:P-4', false, undefined, true).anchor).toBe('P-1')
   })
 
   it('a Cmd+click or Shift+click on the key checks instead of peeking', () => {
