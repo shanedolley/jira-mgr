@@ -44,7 +44,7 @@ export function viewDisplayMatches(view: SavedView, display: Display): boolean {
   return (
     saved.order === display.order &&
     saved.direction === display.direction &&
-    sameSet(saved.properties, display.properties) &&
+    sameList(saved.properties, display.properties) &&
     sameWidths(saved, display) &&
     (saved.order !== 'manual' || sameList(saved.manual, display.manual))
   )

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   WIDTH_MAX,
+  keepKnownProperties,
   keepKnownWidths,
   sprintDates,
   sprintEnd,
@@ -117,5 +118,19 @@ describe('keepKnownWidths', () => {
     ['nothing', undefined],
   ])('reads %s as no widths', (_name, value) => {
     expect(keepKnownWidths(value, listed)).toBeUndefined()
+  })
+})
+
+describe('keepKnownProperties', () => {
+  it("keeps the list's order, not the order of ROW_PROPERTIES", () => {
+    expect(keepKnownProperties(['updated', 'labels', 'due'])).toEqual(['updated', 'labels', 'due'])
+  })
+
+  it('drops unknown names and repeats, keeping the first of a repeat', () => {
+    expect(keepKnownProperties(['due', 'wat', 'labels', 'due', 'priority'])).toEqual([
+      'due',
+      'labels',
+    ])
+    expect(keepKnownProperties([])).toEqual([])
   })
 })

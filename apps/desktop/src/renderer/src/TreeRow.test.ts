@@ -86,6 +86,18 @@ describe('rowName', () => {
     expect(rowName(row({ sprints: [] }), ['sprint'])).not.toContain('sprint')
   })
 
+  it('names the properties in the order given, which is the Column header order', () => {
+    const full = row({
+      startDate: '2026-10-01',
+      dueDate: '2026-10-14',
+      originalEstimateSeconds: 36000,
+      sprints: [{ id: 5, name: 'Sprint 5', state: 'active', endDate: '2026-10-14T00:00:00.000Z' }],
+    })
+    expect(rowName(full, ['due', 'estimate', 'sprint', 'start'])).toMatch(
+      /, due 2026-10-14, original estimate 10h, sprint Sprint 5, ends 2026-10-14, start 2026-10-01$/,
+    )
+  })
+
   it('names no time value for an issue without one, or for an Epic', () => {
     const empty = row({
       originalEstimateSeconds: null,

@@ -380,7 +380,7 @@ test('a saved view carries its display, which applying copies and Update view sa
   await expect(view('Triage')).toHaveAttribute('aria-current', 'true')
   await expect
     .poll(async () => (await savedViews()).find((v) => v.name === 'Triage')?.display)
-    .toEqual({ properties: ['labels', 'updated'], order: 'due', direction: 'asc' })
+    .toEqual({ properties: ['updated', 'labels'], order: 'due', direction: 'asc' })
 
   // Display is not part of the match: toggling a property keeps the view lit, and Update view wakes.
   await expect(update('Triage')).toBeDisabled()
@@ -403,7 +403,7 @@ test('a saved view carries its display, which applying copies and Update view sa
   await expect(prop(row, 'sprint')).toHaveCount(0)
   await expect
     .poll(savedDisplay)
-    .toEqual({ properties: ['labels', 'updated'], order: 'due', direction: 'asc' })
+    .toEqual({ properties: ['updated', 'labels'], order: 'due', direction: 'asc' })
   await inDisplayMenu(async () => {
     await expect(choice('Ordering', 'Due date')).toHaveAttribute('aria-pressed', 'true')
     await expect(choice('Display properties', 'Sprint')).toHaveAttribute('aria-pressed', 'false')
@@ -420,7 +420,7 @@ test('a saved view carries its display, which applying copies and Update view sa
   await expect(update('Triage')).toBeDisabled()
   await expect
     .poll(async () => (await savedViews()).find((v) => v.name === 'Triage')?.display)
-    .toEqual({ properties: ['created', 'updated'], order: 'priority', direction: 'desc' })
+    .toEqual({ properties: ['updated', 'created'], order: 'priority', direction: 'desc' })
   // The other views were not touched.
   expect((await savedViews()).find((v) => v.id === 'my-issues')?.display).toBeUndefined()
 })

@@ -73,7 +73,8 @@ test('lists the four chips, shows their slots in the Tree and hides them again',
   for (const name of CHIPS) await expect(chip(name)).toHaveAttribute('aria-pressed', 'false')
   await window.keyboard.press('Escape')
   await toggle(...CHIPS)
-  await expect.poll(savedProperties).toEqual([...TIME, 'updated'])
+  // A property turned on goes after the others.
+  await expect.poll(savedProperties).toEqual(['updated', ...TIME])
 
   // 2h estimate, 30m logged; the fake leaves the remaining estimate at the estimate.
   await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('Original estimate 2h')
@@ -144,7 +145,8 @@ test('shows the chosen slots on the Sprint page and follows the Display menu', a
 
 test('fits the four slots beside Due date and Updated in a wide font, in the Tree and on the Sprint page', async () => {
   await open()
-  await toggle('Due date', ...CHIPS)
+  // Updated off and on again goes last, so the four slots sit before Due date and Updated.
+  await toggle('Updated', ...CHIPS, 'Due date', 'Updated')
   await expect(prop(/PSAPAC-4,/, 'estimate')).toHaveText('Original estimate 2h')
   const style = await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',

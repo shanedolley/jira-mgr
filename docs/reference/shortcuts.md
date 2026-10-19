@@ -30,6 +30,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Shift+click` | Check every issue row from the anchor (the issue last checked or unchecked) to the one clicked |
 | `Cmd+A` | Check every issue row shown, skipping headers, chips and context rows; the "Select all rows" checkbox left of "Hide done" does the same, and clears them when all are checked |
 | `Alt+Shift+Up`, `Alt+Shift+Down` | Move the active issue up or down one place among its siblings, which makes the order Manual; a screen reader hears the new position, and `Cmd+Z` puts the move back |
+| `Alt+Left`, `Alt+Right` | With a Column header name focused, move its column one place left or right in the strip; a screen reader hears the new place, and a name at an end does nothing |
 | `Esc` | Clear the checked issues; with none checked, close the Peek |
 
 ## Edit an issue

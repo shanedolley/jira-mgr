@@ -328,6 +328,15 @@ Every shortcut has a visible alternative: a double-click for `Enter`, the Peek's
 - The Sprint page's start slot is a `Slot` button named "Start date of PSAPAC-4: none", as the due slot is.
 - A start date after the due date is allowed, as Jira allows it and the issue page does not warn.
 
+*Amended 2026-10-19, build of #301.* Shane wants to drag the Display columns into a new order, from Priority onward, with the title, the blocking pills and the subtask indicators staying where they are. The orchestrator decided these, with Shane's go on 2026-10-19:
+
+- The order is `display.properties` itself, in `settings.json` and in a view's `display`, so no key is added. `keepKnownProperties` keeps the file's order and drops unknown names and repeats, where it sorted to `ROW_PROPERTIES` order. A file written before this change holds the old order and reads the same. The Tree rows, the Column header and the Sprint page's rows and names all map over `display.properties`, so all three draw it.
+- Only the Display properties reorder. Priority (`PriorityCell`) and the assignee avatar are fixed anatomy with no header, so they do not drag; Priority stays the first slot after the pills.
+- A name in the Column header is a button. A press that travels 4px starts a drag, and the column whose centre is nearest the pointer is the target. A 2px drop line (`data-drop-line`) sits at the edge the column would land beside. The line is state in `ColumnHeader` alone, so no row renders while the pointer moves. Release saves once (`moveColumn` in `Shell`, `movedColumn` in `propertyFit.ts`); Escape cancels. A name drag and a separator drag are separate elements with pointer capture each, and neither starts while the other runs.
+- A focused name takes `Alt+Left` and `Alt+Right` to move its column one place, saved at once; a polite live region says "Labels moved to position 2 of 5", focus returns to the name once the column is drawn in its new place, and a name at an end does nothing.
+- Turning a property on in the Display menu appends it to the end of the order; turning one off keeps the rest. A view that carries a display saves and restores its own order, and Update view wakes when only the order differs.
+- The Sprint page gains no drag: its names are drawn only.
+
 ### Peek
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.

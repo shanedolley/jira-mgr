@@ -152,7 +152,8 @@ test('names each Display property above the list, with a separator, lined up wit
   await open()
   await toggle('Labels', 'Sprint', 'Start date', 'Due date', 'Created')
   await expect(prop(ROW, 'labels')).toBeVisible()
-  const names = ['Labels', 'Sprint', 'Start date', 'Due date', 'Created', 'Updated']
+  // A property turned on goes after the others, so Updated stays first.
+  const names = ['Updated', 'Labels', 'Sprint', 'Start date', 'Due date', 'Created']
   await expect(header()).toBeVisible()
   await expect(header()).toHaveText(names.join(''))
   for (const name of names) await expect(separator(name)).toHaveAttribute('role', 'separator')
@@ -209,7 +210,7 @@ test('drags a separator to resize its column, repaints without saving, and saves
   await window.mouse.up()
 
   await expect.poll(async () => (await savedDisplay())?.widths).toEqual({ labels: 136 })
-  expect((await savedDisplay())?.properties).toEqual(['labels', 'updated'])
+  expect((await savedDisplay())?.properties).toEqual(['updated', 'labels'])
   await expect(prop(ROW, 'labels')).toBeVisible()
   expect(await widthOf(prop(ROW, 'labels'))).toBe(136)
 
@@ -263,7 +264,7 @@ test('releasing at 0 removes the column like its chip and keeps the view lit; Es
   await expect.poll(() => widthOf(prop(ROW, 'labels'))).toBe(96)
   await window.mouse.up()
   await expect(window.getByRole('status').filter({ hasText: 'Release to remove' })).toHaveCount(0)
-  expect((await savedDisplay())?.properties).toEqual(['labels', 'updated'])
+  expect((await savedDisplay())?.properties).toEqual(['updated', 'labels'])
 
   // Released at 0: the property goes, as with the chip, and the view stays lit.
   await dragBy('Labels', 400)
@@ -283,8 +284,8 @@ test('releasing at 0 removes the column like its chip and keeps the view lit; Es
   await window.keyboard.press('Escape')
   // The saved view keeps its own display until Update view.
   expect((await savedViews()).find((v) => v.name === 'Triage')?.display?.properties).toEqual([
-    'labels',
     'updated',
+    'labels',
   ])
 })
 
@@ -334,7 +335,7 @@ test('keeps working under a throttled renderer: the width follows the pointer an
   await expect(prop(ROW, 'due')).toHaveCount(0, { timeout: 20_000 })
   await expect
     .poll(async () => (await savedDisplay())?.properties, { timeout: 20_000 })
-    .toEqual(['labels', 'updated'])
+    .toEqual(['updated', 'labels'])
 })
 
 test('a separator resizes and removes by keyboard, and says what it is', async () => {
@@ -362,7 +363,7 @@ test('a separator resizes and removes by keyboard, and says what it is', async (
   await expect(labels).toHaveAttribute('aria-valuenow', '1')
   await window.keyboard.press('ArrowRight')
   await expect(labels).toHaveAttribute('aria-valuenow', '1')
-  expect((await savedDisplay())?.properties).toEqual(['labels', 'updated'])
+  expect((await savedDisplay())?.properties).toEqual(['updated', 'labels'])
 
   await window.keyboard.press('Delete')
   await expect(prop(ROW, 'labels')).toHaveCount(0)
@@ -450,13 +451,13 @@ test('Delete removes a column the window draws at 0, and its separator is not a 
   await toggle('Labels', 'Sprint', 'Original estimate', 'Logged', 'Remaining', 'Remaining %')
   await toggle('Due date', 'Created')
   await resize(900)
-  const updated = separator('Updated')
-  await expect(updated).toHaveAttribute('aria-valuenow', '0')
-  await expect(updated).toHaveAttribute('tabindex', '-1')
-  await updated.focus()
+  const created = separator('Created')
+  await expect(created).toHaveAttribute('aria-valuenow', '0')
+  await expect(created).toHaveAttribute('tabindex', '-1')
+  await created.focus()
   await window.keyboard.press('Delete')
-  await expect(prop(ROW, 'updated')).toHaveCount(0)
-  await expect.poll(async () => (await savedDisplay())?.properties).not.toContain('updated')
+  await expect(prop(ROW, 'created')).toHaveCount(0)
+  await expect.poll(async () => (await savedDisplay())?.properties).not.toContain('created')
 })
 
 test('the Sprint page draws a 1px column at the least a button can be clicked at', async () => {

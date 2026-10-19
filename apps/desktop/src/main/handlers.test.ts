@@ -609,6 +609,17 @@ describe('display', () => {
     expect(calls).toEqual([{ method: 'setDisplay', args: [DISPLAY] }])
   })
 
+  it('settings:setDisplay and views:update accept the properties in any order', async () => {
+    const { backend, calls } = fakeBackend()
+    const reversed = { ...DISPLAY, properties: ['updated', 'due', 'sprint', 'labels'] }
+    const handlers = createHandlers(backend)
+    expect(await handlers['settings:setDisplay'](reversed, noProgress)).toMatchObject({ ok: true })
+    const view = { id: 'v', filters: {}, toggles: TOGGLES, display: reversed }
+    expect(await handlers['views:update'](view, noProgress)).toMatchObject({ ok: true })
+    expect(calls[0]).toEqual({ method: 'setDisplay', args: [reversed] })
+    expect(calls[1]?.method).toBe('updateView')
+  })
+
   it.each([
     ['an unknown level', 'galaxy'],
     ['a number', 3],

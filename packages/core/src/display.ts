@@ -74,9 +74,10 @@ export function keepKnownWidths(
   return Object.keys(kept).length === 0 ? undefined : kept
 }
 
-/** The names in `ROW_PROPERTIES` out of a list, each once, in row order. Unknown names drop. */
+/** The names in `ROW_PROPERTIES` out of a list, each once, in the list's order. Unknown names and repeats drop. */
 export function keepKnownProperties(names: readonly string[]): RowProperty[] {
-  return ROW_PROPERTIES.filter((p) => names.includes(p))
+  const known: readonly string[] = ROW_PROPERTIES
+  return [...new Set(names)].filter((p): p is RowProperty => known.includes(p))
 }
 
 /** Filled bars out of four for each priority name PSAPAC and a default Jira site use. */

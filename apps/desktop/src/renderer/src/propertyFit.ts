@@ -166,6 +166,26 @@ export function releasedAt(display: Display, property: RowProperty, width: numbe
   return { ...display, widths: { ...display.widths, [property]: width } }
 }
 
+/** Where a column goes: to the index it ends at, or by `step` places from where it is. */
+export type ColumnTarget = { to: number } | { step: number }
+
+/**
+ * The display with `property` moved to `target`, or `undefined` when it would not move: the
+ * property is not shown, or the place is off either end or its own. Widths and the rest keep.
+ */
+export function movedColumn(
+  display: Display,
+  property: RowProperty,
+  target: ColumnTarget,
+): Display | undefined {
+  const from = display.properties.indexOf(property)
+  const to = 'step' in target ? from + target.step : target.to
+  if (from < 0 || to < 0 || to >= display.properties.length || to === from) return undefined
+  const properties = display.properties.filter((p) => p !== property)
+  properties.splice(to, 0, property)
+  return { ...display, properties }
+}
+
 /** True when two displays draw every listed column at the same width. */
 export const sameWidths = (a: Display, b: Display): boolean =>
   a.properties.every((p) => (a.widths?.[p] ?? SLOT_WIDTH[p]) === (b.widths?.[p] ?? SLOT_WIDTH[p]))

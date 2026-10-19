@@ -588,16 +588,11 @@ export function TreeToolbar({
                       type="button"
                       aria-pressed={on}
                       onClick={() => {
-                        // Turning a property off forgets its width, so adding it again starts at the default.
+                        // Turning a property off forgets its width, so adding it again starts at the default. A new property goes last.
                         onDisplay(
                           on
                             ? withoutProperty(display, property)
-                            : {
-                                ...display,
-                                properties: ROW_PROPERTIES.filter(
-                                  (p) => p === property || display.properties.includes(p),
-                                ),
-                              },
+                            : { ...display, properties: [...display.properties, property] },
                         )
                       }}
                       className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"

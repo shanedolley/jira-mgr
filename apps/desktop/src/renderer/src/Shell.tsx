@@ -105,7 +105,7 @@ import { allows, type MenuAction, type MenuItemId } from './menuItems'
 import type { ActionId } from './paletteActions'
 import { assignMeOutcome, assigneePatch } from './properties'
 import { attemptWith } from './PropertyPickers'
-import { cellUsable, releasedAt } from './propertyFit'
+import { cellUsable, movedColumn, releasedAt, type ColumnTarget } from './propertyFit'
 import { call } from './ipc'
 import {
   useBatch,
@@ -663,6 +663,20 @@ export function Shell({ session }: { session: Session }) {
     const next = releasedAt(live, property, width)
     client.setQueryData<Display>(displayKey, next)
     setDisplay.mutate(next)
+  }
+
+  /**
+   * A column dropped at a place, or stepped by a key on its name. Saved as a resize is, from the
+   * cache, since a held key can arrive before the render of the last. Returns the place it took,
+   * or `null` when it did not move.
+   */
+  function moveColumn(property: RowProperty, target: ColumnTarget): number | null {
+    const live = client.getQueryData<Display>(displayKey) ?? display
+    const next = live === undefined ? undefined : movedColumn(live, property, target)
+    if (next === undefined) return null
+    client.setQueryData<Display>(displayKey, next)
+    setDisplay.mutate(next)
+    return next.properties.indexOf(property)
   }
 
   /**
@@ -1496,6 +1510,7 @@ export function Shell({ session }: { session: Session }) {
         properties={display.properties}
         widths={display.widths ?? NO_WIDTHS}
         onResize={resizeColumn}
+        onMoveColumn={moveColumn}
         today={today}
         blocks={blocks}
         onChange={apply}
