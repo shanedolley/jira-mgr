@@ -1146,7 +1146,7 @@ export const COMMANDS = [
     examples: [{ command: 'jm view list', description: 'List the saved views and their ids.' }],
     output: {
       summary:
-        'An array of saved views. A view the app saved with a display also holds `display`, its row properties, issue order and direction: `{ "properties": ["updated"], "order": "key", "direction": "desc" }`. `direction` is the default for the order when the file holds none. `widths`, when the user resized a column, maps a property name to its width in pixels (`"widths": { "labels": 120 }`) and is absent otherwise. Under `"order": "manual"`, `manual` lists the issue keys in the order the user placed them (`"manual": ["PSAPAC-3", "PSAPAC-1"]`); it is absent until a row is moved. The key is absent from a view with none.',
+        'An array of saved views. A view the app saved with a display also holds `display`, its row properties, issue order and direction: `{ "properties": ["updated"], "order": "key", "direction": "desc" }`. `direction` is the default for the order when the file holds none. `priority` is `false` when the user turned the priority slot off, and `true` or absent otherwise (both read as on). `widths`, when the user resized a column, maps a property name to its width in pixels (`"widths": { "labels": 120 }`) and is absent otherwise. Under `"order": "manual"`, `manual` lists the issue keys in the order the user placed them (`"manual": ["PSAPAC-3", "PSAPAC-1"]`); it is absent until a row is moved. The key is absent from a view with none.',
       example: [
         {
           id: 'my-issues',
