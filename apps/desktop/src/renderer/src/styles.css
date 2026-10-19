@@ -286,7 +286,8 @@ input {
  * [data-column-names] hide their names and separators until the pointer is over the strip (a drag
  * or a move keeps it there by pointer capture) or focus is inside it. They stay in the layout and
  * the tab order, so a hidden separator still resizes and Tab still lands on it. Names show at
- * --name-fade (HOLD_OPACITY), the one under the pointer in full; a name being moved dims to half.
+ * --name-fade (HOLD_OPACITY), the one under the pointer in full; a name being moved dims to half
+ * (a drag) even under the pointer.
  */
 [data-col-name],
 [data-col-sep] {
@@ -306,8 +307,22 @@ input {
   opacity: 1;
 }
 
-:is([data-column-header], [data-column-names]) [data-col-name][data-moving] {
+:is([data-column-header], [data-column-names]) [data-col] [data-col-name][data-moving] {
   opacity: 0.5;
+}
+
+/* A key move re-inserts the focused name, which would fade in from 0 and blink; the focused name skips the fade. */
+[data-col-name]:focus {
+  transition: none;
+}
+
+/* Gives a Sprint column the gap on its left, so the pointer crossing it keeps the column lit. The Tree's separators cover theirs. */
+[data-column-names] [data-col]::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: -0.5rem;
+  width: 0.5rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
