@@ -558,6 +558,8 @@ export function Shell({ session }: { session: Session }) {
    * active row would write itself back over the hover.
    */
   function hover(id: string) {
+    // With focus on the page body no letter would reach the Tree, so hovering takes it there.
+    if (document.activeElement === document.body) treeRef.current?.focus({ preventScroll: true })
     flushSync(() => {
       setEnterPending(false)
       setTrack((t) => ({ ...t, activeId: id }))
@@ -1184,9 +1186,16 @@ export function Shell({ session }: { session: Session }) {
     if (command === null) return
     switch (command) {
       case 'peek':
-      case 'openPage':
-        // The Tree and the Sprint page act on these themselves, so one from the Peek or a page means nothing.
+      case 'openPage': {
+        // The Tree and the Sprint page act on these themselves. From the Peek they act on the
+        // active (hovered) Tree row, as from the Tree.
+        if (pageKey !== null || covered) return
+        const next = moveActive(rows, state, event, { pageSize: 1 })
+        if (next === null) return
+        event.preventDefault()
+        apply(next)
         return
+      }
       case 'palette':
         event.preventDefault()
         setSearching(true)
@@ -1245,7 +1254,9 @@ export function Shell({ session }: { session: Session }) {
           setPageKey(null)
         } else if (sprintOpen) {
           event.preventDefault()
-          setSprintId(null)
+          // The Peek opened beside the page closes first, as on the Tree.
+          if (peekOpen) closePeek()
+          else setSprintId(null)
         } else if (overview !== null) {
           event.preventDefault()
           setOverview(null)
@@ -1747,6 +1758,7 @@ export function Shell({ session }: { session: Session }) {
             }}
             onOpenIssue={setPageKey}
             onPeekIssue={peekIssue}
+            peekOpen={peekOpen}
             onEditSummary={setRenaming}
             onEditCell={editCell}
           />

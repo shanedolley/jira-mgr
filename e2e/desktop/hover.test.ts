@@ -196,6 +196,63 @@ test('with the Peek open it stays on its issue while the pointer moves, and o sw
   await expect(four()).not.toHaveAttribute('aria-selected', 'true')
 })
 
+test('hovering a row when focus is on the page body lets o peek it, with no focus move of the test', async () => {
+  await open()
+  await window.evaluate(() => {
+    ;(document.activeElement as HTMLElement | null)?.blur()
+  })
+  await expect(tree()).not.toBeFocused()
+  await window.mouse.move(2, 2)
+  await four().hover()
+  await window.keyboard.press('o')
+  await expect(peeked('Migrate the dashboards')).toBeVisible()
+  await expect(four()).toHaveAttribute('aria-selected', 'true')
+})
+
+test('with focus inside the Peek, o and Shift+O act on the hovered row', async () => {
+  await open()
+  await four().hover()
+  await window.keyboard.press('o')
+  await expect(peeked('Migrate the dashboards')).toBeVisible()
+  await peek().getByRole('button', { name: 'Close' }).focus()
+
+  await three().hover()
+  await window.keyboard.press('o')
+  await expect(peeked('Fix the export timeout')).toBeVisible()
+  await expect(three()).toHaveAttribute('aria-selected', 'true')
+
+  await peek().getByRole('button', { name: 'Close' }).focus()
+  await four().hover()
+  await window.keyboard.press('Shift+O')
+  await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
+})
+
+test('while a cell editor or a menu is open the pointer moves no row, and moves one again once it closes', async () => {
+  await open()
+  await four().locator('[data-pick="status"]').click()
+  await expect(window.getByRole('listbox', { name: 'Status' })).toBeVisible()
+  await expect(four()).toHaveAttribute('data-active', 'true')
+  // A row above the list, which the list does not cover.
+  await item(/PSAPAC-10,/).hover()
+  await window.waitForTimeout(200)
+  await expect(four()).toHaveAttribute('data-active', 'true')
+  await expect(active()).toHaveCount(1)
+  await window.keyboard.press('Escape')
+  await expect(window.getByRole('listbox', { name: 'Status' })).toHaveCount(0)
+
+  await window.mouse.move(2, 2)
+  await item(/PSAPAC-10,/).hover()
+  await expect(item(/PSAPAC-10,/)).toHaveAttribute('data-active', 'true')
+
+  // A context menu holds its row the same way.
+  await four().click({ button: 'right', position: { x: 120, y: 8 } })
+  await expect(window.getByRole('menu')).toBeVisible()
+  await expect(four()).toHaveAttribute('data-active', 'true')
+  await window.mouse.move(700, 80)
+  await window.waitForTimeout(200)
+  await expect(four()).toHaveAttribute('data-active', 'true')
+})
+
 test('o and O do nothing on a header or a chip, or in a text field', async () => {
   await open()
   await item('Acme, 8 issues', true).hover()
@@ -358,6 +415,19 @@ test.describe('the Sprint page', () => {
 
     await listed('PSAPAC-4').dblclick({ position: ON_KEY })
     await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
+  })
+
+  test('Esc closes the Peek beside the page first, and a second Esc closes the page', async () => {
+    await openSprint()
+    await li('PSAPAC-4').hover()
+    await sprintPage().focus()
+    await window.keyboard.press('o')
+    await expect(peek()).toBeVisible()
+    await window.keyboard.press('Escape')
+    await expect(peek()).toHaveCount(0)
+    await expect(sprintPage()).toBeVisible()
+    await window.keyboard.press('Escape')
+    await expect(sprintPage()).toHaveCount(0)
   })
 
   test('Enter on the focused row button still opens the issue, for the keyboard', async () => {

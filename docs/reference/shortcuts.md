@@ -30,7 +30,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Shift+F10` | Open the issue menu of the active Tree row, or of the focused row on the Inbox, Sprint and Epics pages. The context-menu key and a right-click on a row do the same |
 | `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo. A batch from the bulk bar goes back as one, skipping issues that changed since |
-| `Esc` | Close the issue page, then the Sprint page or the Epics or Customers page, then clear the checked issues, then close the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
+| `Esc` | Close the issue page, then the Peek opened beside a Sprint page, then the Sprint page or the Epics or Customers page, then clear the checked issues, then close the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
 | `Tab` | The first stop is a "Skip to issues" link, hidden until it has focus; `Enter` on it moves focus to the Tree |
 
 ## Tree
@@ -47,7 +47,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Shift+Left` | Close to the Customer headers (the Customers level, stored) |
 | `Enter` | Open the issue page; toggle a header |
 | Pointer over a row | Make it the active row: an issue row, a Customer header, a No Epic header or a chip. No click is needed. The last input wins: after `J` or `K` the keyboard row stays active until the pointer moves again, and a scroll under a still pointer changes nothing. When the pointer leaves the list the last row stays active. The Peek stays on its issue while the pointer moves |
-| `o` | Open the Peek on the active issue row; with the Peek open, switch it to the active row. It never closes the Peek: `Space` toggles. A header or chip does nothing. The Sprint page's rows answer too, with the Peek beside the page |
+| `o` | Open the Peek on the active issue row, also with focus in the Peek; with the Peek open, switch it to the active row. It never closes the Peek: `Space` toggles. A header or chip does nothing. The Sprint page's rows answer too, with the Peek beside the page |
 | `Shift+O` | Open the issue page of the active issue row. A header or chip does nothing. The Sprint page's rows answer too |
 | Click on blank row space | Nothing: no Peek, no selection. A header or chip still expands or collapses |
 | Double-click | On an issue row's blank space, open its page as `Enter` does, the issue the first click hit. The checkbox, the summary, the chevron, every slot with an editor or action of its own (status dot, priority, avatar, Labels, Sprint, Due date, Start date, Original estimate and Logged) and a Shift+double-click ignore it, and a header or chip does only what its two clicks do |

@@ -205,10 +205,10 @@ function Panel({ report }: { report: SprintReport }) {
 }
 
 /**
- * What a row leaves right of its property strip, in pixels: the row's `pr-10` (40), the avatar (20),
+ * What a row leaves right of its property strip, in pixels: the row's `pr-2.5` (10), the avatar (20),
  * the gap before it (12) and the list's border (1).
  */
-const AFTER_STRIP = 73
+const AFTER_STRIP = 43
 
 /**
  * The names of the properties above the first status section, at the widths the rows use, each
@@ -315,7 +315,7 @@ function Issues({
                     className="absolute inset-0 text-left"
                   />
                   {/* Ignores the pointer, so a click outside a slot reaches the button under it. Each slot takes it back (Slot). */}
-                  <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-2.5 pr-10">
+                  <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-2.5 pr-2.5">
                     <Slot
                       data-pick="status"
                       title="Change status"
@@ -405,6 +405,8 @@ interface SprintPageProps {
   onOpenIssue: (key: string) => void
   /** Opens the Peek on one of the sprint's issues, beside the page. */
   onPeekIssue: (key: string) => void
+  /** The Peek is open beside the page, so the first Esc closes it. */
+  peekOpen: boolean
   /** Opens the summary editor of one of the sprint's issues. */
   onEditSummary: (issue: Issue) => void
   /** A click on a row's cell button: the cell editor opens the editor of `property` against `cell`. */
@@ -425,6 +427,7 @@ export function SprintPage({
   onBack,
   onOpenIssue,
   onPeekIssue,
+  peekOpen,
   onEditSummary,
   onEditCell,
 }: SprintPageProps) {
@@ -436,6 +439,8 @@ export function SprintPage({
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.defaultPrevented) return
     if (event.key === 'Escape') {
+      // With the Peek open beside the page, the first Esc is the Peek's: the Shell closes it.
+      if (peekOpen) return
       event.preventDefault()
       onBack()
       return
@@ -457,7 +462,7 @@ export function SprintPage({
     const now = { x: event.clientX, y: event.clientY }
     const moved = pointerMoved(pointer.current, now)
     pointer.current = now
-    if (!moved) return
+    if (!moved || document.querySelector(':popover-open') !== null) return
     const row = event.target instanceof Element ? event.target.closest('[data-issue-key]') : null
     const key = row instanceof HTMLElement ? row.dataset.issueKey : undefined
     // Flushed at once, so a key pressed right after the move acts on this row.
