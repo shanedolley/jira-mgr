@@ -160,7 +160,7 @@ A count is the number of issues in the subtree, context rows included and issues
 
 **A filter keeps its matches.** Two rules keep a narrowed Tree from hiding what narrowed it (decided 2026-10-13, approved by Shane 2026-10-14, #209). An issue at Story depth or below shown only as context, an ancestor of a match that does not match itself, is always open, whatever the level and whatever narrows the Tree, "Assignee: me" included, so my Subtask under someone else's Story still shows. A context Epic is not exempt: under "Assignee: me" alone the Epics level closes an Epic that is not mine, so there Epics hides the Stories below it, my Subtask included, behind a row that shows its count, and Stories no longer equals Epics (adopted from the PR #210 review, 2026-10-13). And while the filter bar narrows the Tree (the Shell's `issueMatcher` returns a matcher), the level closes no issue and no No Epic header, so a match nested under a match shows too. "Assignee: me" alone does not count as filtering, because it is on in daily use and would stop the level applying: with it on and no filter, my own Story with my own Subtask is closed at Stories. With neither rule in play the level applies untouched. Both rules live in `levelCollapsed(groups, level, filtering)`, not in the hand overrides, so clearing the filter returns the Tree to the level, and a row closed by hand stays closed for the session. The Customer headers always follow the level. So while the filter bar narrows, only Customers can hide matches, behind a header that shows its count; under "Assignee: me" alone, Epics, No Epic and Customers can hide them, behind an Epic row, the No Epic header or a Customer header that shows its count. The No Epic header is the Epic level's peer and stays open while the filter bar narrows. Putting a row back to the state the level gives it drops its hand toggle (`changeOverrides` takes the level's closed rows), so it follows the level again.
 
-**Active row fallback.** When a rebuild removes the active row, `fallbackRow(previousRows, rows, id)` picks the next surviving sibling, then the nearest ancestor still in the rows, then the row now at the old index.
+**Active row fallback.** When a rebuild removes the active row, `fallbackRow(previousRows, rows, id)` picks the next surviving sibling, then the nearest ancestor still in the rows, then the row now at the old index. While no rows show, as under a filter that matches nothing, the active row is held, and it stays active when the rows come back with it.
 
 ### Virtualisation
 
@@ -473,6 +473,7 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 | | `windowRange covers the visible rows plus overscan, clamped at both ends` |
 | | `windowRange includes an active row outside the window` |
 | | `fallbackRow picks the next surviving sibling, then the nearest surviving ancestor, then the old index` |
+| | `fallbackRow holds the active row while no rows show, and keeps it when they come back` |
 | `renderer/src/optimistic.test.ts` | `patches and cancels every phase that holds the issue` |
 | | `an edit to an unresolved issue leaves the Done load running` |
 | | `refetches only the touched phases once the last edit settles` |
@@ -514,6 +515,7 @@ Pure functions carry the logic and get unit tests. The components are thin, and 
 | `opens at the Stories level on a first launch` |
 | `collapses and expands groups by click, by arrow keys and with the Groups menu's levels` |
 | `moves with J and K and peeks with the space bar` |
+| `keeps the active row through a filter that matches nothing` |
 | `Esc clears the text filter, then returns focus to the Tree` |
 | `turning Hide done off shows the Done Epic with its subtree` |
 | `Assignee: me keeps my issues with their ancestors as context` |

@@ -444,6 +444,20 @@ test('moves with J and K and peeks with the space bar', async () => {
   await expect(tree()).toBeFocused()
 })
 
+test('keeps the active row through a filter that matches nothing', async () => {
+  await open()
+  const active = (id: string) => expect(tree()).toHaveAttribute('aria-activedescendant', id)
+  await window.keyboard.press('j')
+  await active('tree-row-i:PSAPAC-10')
+
+  const filter = window.getByLabel('Filter by key or summary')
+  await filter.fill('zzzz-no-such-issue')
+  await expect(window.getByText('No issues match “zzzz-no-such-issue”')).toBeVisible()
+  await filter.fill('')
+  await expect(item(/PSAPAC-10,/)).toBeVisible()
+  await active('tree-row-i:PSAPAC-10')
+})
+
 test('Esc clears the text filter, then returns focus to the Tree', async () => {
   await open()
   const filter = window.getByLabel('Filter by key or summary')
