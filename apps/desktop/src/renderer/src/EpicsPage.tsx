@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { formatDate } from '@jira-mgr/core/display'
 import type { Progress } from '@jira-mgr/core/hierarchy'
 import { useMemo, useState, type RefObject } from 'react'
 
@@ -15,7 +16,7 @@ import {
 } from './overview'
 import { OVERVIEW_ROW, OverviewFrame, TH, keepInView, type OverviewLoad } from './OverviewFrame'
 import { NotLoaded, PercentDone, progressText } from './Progress'
-import { dueTone, shortDate } from './rowProps'
+import { dueTone } from './rowProps'
 import { holdFade, StatusDot } from './StatusDot'
 
 const ARROWS = { asc: 'M8 12.5v-9M4.5 7 8 3.5 11.5 7', desc: 'M8 3.5v9M4.5 9 8 12.5 11.5 9' }
@@ -141,7 +142,7 @@ function Row({
         className={`px-3 whitespace-nowrap ${overdue ? 'text-danger' : ''}`}
         title={due === null ? undefined : `Due ${due}`}
       >
-        {due === null ? null : shortDate(due, today)}
+        {due === null ? null : formatDate(due, today)}
       </td>
       <td
         {...fade}

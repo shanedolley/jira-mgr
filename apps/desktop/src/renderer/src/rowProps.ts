@@ -3,23 +3,12 @@ import { formatEstimate, propertyRules } from '@jira-mgr/core/issue'
 import { percentRemaining } from '@jira-mgr/core/time-tracking'
 import { dayKey } from '@jira-mgr/core/view-filter'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 /** The local day of a due date (`2026-10-11`) or of a Jira timestamp, as `YYYY-MM-DD`. */
 export const localDay = (text: string) => (text.length === 10 ? text : dayKey(new Date(text)))
 
 const dayNumber = (day: string) => {
   const [y, m, d] = day.split('-').map(Number)
   return Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1) / 86_400_000
-}
-
-/** `Oct 14` in the year of `today`, and `Oct 14 '25` in any other. The full date goes in a title. */
-export function shortDate(text: string, today: string): string {
-  const day = localDay(text)
-  const [y, m, d] = day.split('-')
-  const month = MONTHS[Number(m) - 1] ?? ''
-  const date = `${month} ${String(Number(d))}`
-  return y === today.slice(0, 4) ? date : `${date} '${(y ?? '').slice(2)}`
 }
 
 export type DueTone = 'overdue' | 'soon' | 'later'

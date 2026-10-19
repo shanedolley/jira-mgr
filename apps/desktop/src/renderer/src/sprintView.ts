@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { dayOf, formatDate } from '@jira-mgr/core/display'
 import { STATUS_ORDER } from '@jira-mgr/core/hierarchy'
 import type { SprintGroup, SprintStats } from '@jira-mgr/core/sprints'
 
@@ -17,15 +18,10 @@ export function sidebarSprints(sprints: readonly SprintOption[]): {
   }
 }
 
-/** A sprint date as a short local day, such as `5 Oct 2026`. */
-export function formatDay(iso: string | null, timeZone?: string): string {
-  if (iso === null) return 'Not set'
-  return new Date(iso).toLocaleDateString('en-AU', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    ...(timeZone === undefined ? {} : { timeZone }),
-  })
+/** A sprint date as a short day, such as `5 Oct`, on the same day rule as the sprint labels. */
+export function formatDay(iso: string | null): string {
+  const day = dayOf(iso)
+  return day === null ? 'Not set' : formatDate(day)
 }
 
 /** The issues of one status, in the order the page lists them. */

@@ -40,8 +40,8 @@ const peek = () => window.getByRole('complementary', { name: 'Peek' })
 const displayButton = () => window.getByRole('button', { name: 'Display', exact: true })
 const choice = (group: string, name: string) =>
   window.getByRole('group', { name: group, exact: true }).getByRole('button', { name, exact: true })
-/** `Oct 4`, or `Oct 4 '25` in another year. The fake's day depends on the machine's time zone. */
-const SHORT_DATE = /^[A-Z][a-z]{2} \d{1,2}( '\d{2})?$/
+/** `4 Oct`, or `4 Oct '25` in another year. The fake's day depends on the machine's time zone. */
+const SHORT_DATE = /^\d{1,2} [A-Z][a-z]{2}( '\d{2})?$/
 const prop = (key: RegExp, name: string) => item(key).locator(`[data-prop=${name}]`)
 
 /** `display` in settings.json, which the login writes with the defaults. */
@@ -128,7 +128,7 @@ test('shows Updated by default, and each property appears on the rows and surviv
   await expect(prop(row, 'created')).toHaveText(SHORT_DATE)
   // Far-off, past and missing due dates: grey, red, nothing.
   await expect(prop(/PSAPAC-31,/, 'due')).toHaveAttribute('data-tone', 'later')
-  await expect(prop(/PSAPAC-31,/, 'due')).toContainText('Dec 31')
+  await expect(prop(/PSAPAC-31,/, 'due')).toContainText('31 Dec')
   await expect(prop(/PSAPAC-40,/, 'due')).toHaveAttribute('data-tone', 'overdue')
   // The name carries the due date while the property is on, at its end.
   await expect(item(/PSAPAC-40,/)).toHaveAccessibleName(/, due 2020-01-02$/)
@@ -526,7 +526,7 @@ test('keeps a prior-year date inside the Created, Updated and Due slots in a wid
       const text = cell?.lastChild
       if (!(cell instanceof HTMLElement) || text === null || text === undefined)
         return { name, fits: false }
-      text.textContent = "May 30 '25"
+      text.textContent = "30 May '25"
       const range = document.createRange()
       range.selectNodeContents(cell)
       const inner = range.getBoundingClientRect()

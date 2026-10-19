@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { formatDate } from '@jira-mgr/core/display'
 import { describe, expect, it } from 'vitest'
 
 import type { SprintOption } from '../../shared/ipc'
@@ -31,10 +32,10 @@ describe('sidebarSprints', () => {
 })
 
 describe('formatDay', () => {
-  it('shows a sprint date as a short day in the given zone', () => {
-    expect(formatDay('2026-10-05T23:32:56.296Z', 'UTC')).toBe('5 Oct 2026')
-    // The same instant is the next day in Sydney, as Jira shows it to the team.
-    expect(formatDay('2026-10-05T23:32:56.296Z', 'Australia/Sydney')).toBe('6 Oct 2026')
+  it('shows the date part of the timestamp, as the sprint labels do', () => {
+    // 14:00Z is already the 19th in Sydney, but the sprint ends on the 18th.
+    expect(formatDay('2026-10-18T14:00:00Z')).toBe(formatDate('2026-10-18'))
+    expect(formatDay('2020-10-05T23:32:56.296Z')).toBe("5 Oct '20")
   })
 
   it('says Not set for an undated sprint', () => {

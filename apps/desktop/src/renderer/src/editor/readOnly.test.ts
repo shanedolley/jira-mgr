@@ -1,4 +1,5 @@
 import type { AdfNode } from '@jira-mgr/core/adf'
+import { formatDate } from '@jira-mgr/core/display'
 import { describe, expect, it } from 'vitest'
 
 import { blockLabel, blockText, inlineShape, tableRows } from './readOnly'
@@ -70,6 +71,13 @@ describe('tableRows', () => {
 })
 
 describe('inlineShape', () => {
+  it('reads a date node as its UTC day in any zone', () => {
+    const midnight = String(Date.UTC(2026, 9, 19))
+    expect(inlineShape({ type: 'date', attrs: { timestamp: midnight } }).text).toBe(
+      formatDate('2026-10-19'),
+    )
+  })
+
   it('labels a mention, emoji, date, status and inlineCard', () => {
     expect(inlineShape({ type: 'mention', attrs: { id: 'u1', text: '@Cy Young' } })).toEqual({
       kind: 'mention',
@@ -85,7 +93,7 @@ describe('inlineShape', () => {
     expect(inlineShape({ type: 'emoji', attrs: { shortName: ':tada:' } }).text).toBe(':tada:')
     expect(inlineShape({ type: 'status', attrs: { text: 'IN REVIEW' } }).text).toBe('IN REVIEW')
     expect(inlineShape({ type: 'date', attrs: { timestamp: '1760000000000' } }).text).toBe(
-      new Date(1760000000000).toLocaleDateString(),
+      formatDate(new Date(1760000000000).toISOString()),
     )
     expect(inlineShape({ type: 'inlineCard', attrs: { url: 'https://example.test/x' } })).toEqual({
       kind: 'link',

@@ -1,5 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
-import { sprintLabel, sprintTitle, type RowProperty } from '@jira-mgr/core/display'
+import { formatDate, sprintLabel, sprintTitle, type RowProperty } from '@jira-mgr/core/display'
 import type { Progress } from '@jira-mgr/core/hierarchy'
 import { propertyRules } from '@jira-mgr/core/issue'
 import { memo, type ReactNode } from 'react'
@@ -14,7 +14,7 @@ import { useLogWork } from './logWork'
 import { togglesCheck } from './multiSelect'
 import { ProgressPill, progressText } from './Progress'
 import { colWidth } from './propertyFit'
-import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
+import { dueTone, localDay, rowSprint, timeValue, type TimeProperty } from './rowProps'
 import { Slot } from './Slot'
 import { holdFade, StatusDot } from './StatusDot'
 import { summaryClick } from './summaryEdit'
@@ -380,7 +380,7 @@ function DueDate({
       >
         <path d="M2.5 3.5h11v10h-11ZM2.5 6.5h11M5.5 2v3M10.5 2v3" />
       </svg>
-      {shortDate(due, today)}
+      {formatDate(due, today)}
     </>
   )
   return always && onEditCell !== undefined ? (
@@ -428,7 +428,7 @@ function StartDate({
     style: colWidth('start'),
     className: `inline-flex shrink-0 items-center justify-end whitespace-nowrap text-xs text-muted ${editable ? 'cursor-pointer select-none rounded hover:bg-line' : ''}`,
   }
-  const content = start !== null && shortDate(start, today)
+  const content = start !== null && formatDate(start, today)
   return always && onEditCell !== undefined ? (
     <Slot
       {...shared}
@@ -601,7 +601,7 @@ function DateCell({
       style={colWidth(property)}
       className="shrink-0 whitespace-nowrap text-right text-xs text-muted"
     >
-      {shortDate(at, today)}
+      {formatDate(at, today)}
     </span>
   )
 }

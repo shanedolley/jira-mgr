@@ -308,7 +308,7 @@ test.describe('Epics table', () => {
     await expect(epicsPage()).toBeVisible()
 
     expect((await epicCells('PSAPAC-30'))[3]).toBe('Test User')
-    expect((await epicCells('PSAPAC-30'))[5]).toBe("Mar 4 '30")
+    expect((await epicCells('PSAPAC-30'))[5]).toBe("4 Mar '30")
 
     // Highest priority first.
     await header('Priority').getByRole('button').click()
