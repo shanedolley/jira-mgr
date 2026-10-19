@@ -83,6 +83,10 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | | `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
 | Text filter | `Enter`, `Down` | Move to the first issue row, skipping group headers, with the query kept |
 | Text filter | `Esc` | Clear the query; when empty, return to the Tree |
+| Filter menu, a field | `Down`, `Up` | Move between fields |
+| Filter menu, a field | `Right`, `Enter` | Open its values in the submenu, with focus in its search box |
+| Filter submenu, search box and values | `Down`, `Up` | Move between the search box and the values |
+| Filter submenu | `Left`, `Esc` | Close the submenu and return to its field; `Left` moves the caret and `Esc` clears the text while the search box holds text |
 | Palette | `Up`, `Down` | Move the highlight; it starts on the first loaded issue, and `Up` reaches the actions and views above it; Jira text matches never take it |
 | Palette | `Enter`, `Esc` | Open the highlighted row (an issue's page, or run an action or view), or close; the first loaded issue is highlighted by default |
 | Saved views list | `Up`, `Down` | Move between views |

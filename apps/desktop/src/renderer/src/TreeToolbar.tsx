@@ -10,30 +10,19 @@ import {
   type TreeLevel,
 } from '@jira-mgr/core/display'
 import type { ViewFilters } from '@jira-mgr/core/view-filter'
-import {
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-  type ToggleEvent,
-} from 'react'
+import { type KeyboardEvent, type ReactNode, type RefObject, type ToggleEvent } from 'react'
 
 import type { Display, Toggles } from '../../shared/ipc'
 import { CHECK, Icon } from './Icon'
+import { FIELD_ICONS, FilterMenu } from './FilterMenu'
 import {
   FIELD_LABELS,
-  FILTER_FIELDS,
-  OPERATORS,
   filterChips,
   hasFilters,
-  hasNot,
-  toggleChoice,
-  valuesOf,
   withText,
   clearField,
   type Choice,
   type FilterField,
-  type Operator,
 } from './filters'
 import { withoutProperty } from './propertyFit'
 import type { CheckState } from './tree'
@@ -169,7 +158,7 @@ function Check({ on }: { on: boolean }) {
   )
 }
 
-/** Marks a button as a menu, and a Filter field as a submenu that turns down when open. */
+/** Marks a button as a menu. */
 function Chevron({ className }: { className: string }) {
   return (
     <svg
@@ -185,87 +174,6 @@ function Chevron({ className }: { className: string }) {
       <path d="m6 4 4 4-4 4" />
     </svg>
   )
-}
-
-const CALENDAR = <path d="M2.5 3.5h11v10h-11ZM2.5 6.5h11M5.5 2v3M10.5 2v3" />
-
-/** A 16px icon before each Filter field. */
-const FIELD_ICONS: Record<FilterField, ReactNode> = {
-  assignee: (
-    <>
-      <circle cx="8" cy="5.5" r="2.5" />
-      <path d="M3 13.5c.6-2.6 2.6-4 5-4s4.4 1.4 5 4" />
-    </>
-  ),
-  creator: (
-    <>
-      <circle cx="7" cy="5.5" r="2.5" />
-      <path d="M2.5 13.5c.6-2.6 2.4-4 4.5-4M12 9.5v4M10 11.5h4" />
-    </>
-  ),
-  status: (
-    <>
-      <circle cx="8" cy="8" r="5.5" />
-      <path d="M8 4.5a3.5 3.5 0 0 1 0 7Z" fill="currentColor" />
-    </>
-  ),
-  statusType: <path d="m2.5 6 5.5-3 5.5 3L8 9ZM2.5 9.5l5.5 3 5.5-3" />,
-  priority: <path d="M4 13V9M8 13V6M12 13V3" />,
-  label: (
-    <>
-      <path d="M2.5 2.5h5l6 6-5 5-6-6Z" />
-      <circle cx="5.5" cy="5.5" r="0.9" fill="currentColor" />
-    </>
-  ),
-  type: (
-    <>
-      <rect x="2.5" y="2.5" width="5" height="5" rx="1" />
-      <rect x="8.5" y="8.5" width="5" height="5" rx="1" />
-    </>
-  ),
-  customer: (
-    <>
-      <rect x="3" y="2.5" width="10" height="11" rx="1.5" />
-      <path d="M6 5.5h1M9 5.5h1M6 8.5h1M9 8.5h1" />
-    </>
-  ),
-  engagement: (
-    <>
-      <rect x="2.5" y="5" width="11" height="8" rx="1.5" />
-      <path d="M6 5V3.5h4V5" />
-    </>
-  ),
-  epic: <path d="M9 2 4 9h4l-1 5 5-7H8Z" />,
-  sprint: (
-    <>
-      <path d="M13 8a5 5 0 1 1-1.5-3.5" />
-      <path d="M13 2.5v3h-3" />
-    </>
-  ),
-  relations: (
-    <>
-      <path d="M6.5 9.5a2.5 2.5 0 0 0 3.5 0l2-2a2.5 2.5 0 0 0-3.5-3.5l-.5.5" />
-      <path d="M9.5 6.5a2.5 2.5 0 0 0-3.5 0l-2 2a2.5 2.5 0 0 0 3.5 3.5l.5-.5" />
-    </>
-  ),
-  due: (
-    <>
-      {CALENDAR}
-      <path d="M8 8.5v2M8 11.8v.2" />
-    </>
-  ),
-  created: (
-    <>
-      {CALENDAR}
-      <path d="M8 8.5v3M6.5 10h3" />
-    </>
-  ),
-  updated: (
-    <>
-      {CALENDAR}
-      <circle cx="8" cy="10" r="1" fill="currentColor" />
-    </>
-  ),
 }
 
 /** The 16px icon of a toolbar button in a Tree under 700px wide, where the label is not shown. */
@@ -341,8 +249,6 @@ export function TreeToolbar({
   masterDisabled,
 }: TreeToolbarProps) {
   const chips = filterChips(filters, choices)
-  // The operator each field's list shows. A field that holds only "is not" values still opens on "is".
-  const [operators, setOperators] = useState<Partial<Record<FilterField, Operator>>>({})
 
   function onTextKey(event: KeyboardEvent<HTMLInputElement>) {
     if ((event.key === 'Enter' || event.key === 'ArrowDown') && !event.nativeEvent.isComposing) {
@@ -395,83 +301,15 @@ export function TreeToolbar({
             <span className="@max-tree:sr-only">Filter</span>
             <Chevron className="size-3 rotate-90 @max-tree:hidden" />
           </button>
-          <div
-            id="filter-menu"
-            popover="auto"
-            aria-label="Filter"
-            role="group"
-            className="menu max-h-[min(36rem,calc(100vh-6rem))] w-64 overflow-y-auto"
-            style={{ positionAnchor: '--filter-menu' }}
-            onToggle={(event) => {
-              if (event.newState === 'open') onFilterMenuOpen()
+          <FilterMenu
+            filters={filters}
+            choices={choices}
+            onFilters={onFilters}
+            onOpen={onFilterMenuOpen}
+            onClosed={(event) => {
               onMenuToggle(event, onActed)
             }}
-          >
-            {FILTER_FIELDS.map((field) => {
-              const op = operators[field] ?? 'is'
-              const held = valuesOf(filters, field, op)
-              const total = OPERATORS.reduce((n, o) => n + valuesOf(filters, field, o).length, 0)
-              return (
-                <details key={field} className="group/field">
-                  <summary className="flex h-8 cursor-default items-center gap-2 rounded px-2 hover:bg-hover">
-                    <svg
-                      aria-hidden
-                      viewBox="0 0 16 16"
-                      className="size-4 shrink-0 text-muted"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      {FIELD_ICONS[field]}
-                    </svg>
-                    <span className="flex-1">{FIELD_LABELS[field]}</span>
-                    <span className="text-xs text-muted">{total === 0 ? '' : total}</span>
-                    <Chevron className="size-3 group-open/field:rotate-90" />
-                  </summary>
-                  {hasNot(field) && (
-                    <div
-                      role="group"
-                      aria-label={`${FIELD_LABELS[field]} operator`}
-                      className="flex gap-1 px-2 pb-1"
-                    >
-                      {OPERATORS.map((o) => (
-                        <button
-                          key={o}
-                          type="button"
-                          aria-pressed={op === o}
-                          onClick={() => {
-                            setOperators((held) => ({ ...held, [field]: o }))
-                          }}
-                          className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
-                        >
-                          {o === 'is' ? 'is' : 'is not'}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <ul className="max-h-56 overflow-y-auto pb-1">
-                    {choices[field].map((choice) => (
-                      <li key={choice.value}>
-                        <label className="flex h-7 cursor-default items-center gap-2 rounded px-2 hover:bg-hover">
-                          <input
-                            type="checkbox"
-                            checked={held.includes(choice.value)}
-                            onChange={() => {
-                              onFilters(toggleChoice(filters, field, choice.value, op))
-                            }}
-                            className="accent-accent"
-                          />
-                          <span className="min-w-0 truncate">{choice.label}</span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )
-            })}
-          </div>
+          />
 
           <button
             type="button"

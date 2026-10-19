@@ -540,6 +540,7 @@ test.describe('delete controls', () => {
     await window.getByRole('group', { name: 'Filter' }).getByText('Status', { exact: true }).click()
     await window.getByRole('checkbox', { name: 'In Progress' }).check()
     await window.keyboard.press('Escape')
+    await window.keyboard.press('Escape')
     const chip = window.getByRole('button', { name: 'Remove Status filter' })
     await expect(chip.locator('path')).toHaveAttribute('d', CROSS[1] ?? '')
   })
