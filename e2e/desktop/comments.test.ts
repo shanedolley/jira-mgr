@@ -139,8 +139,9 @@ test('a click on the icon opens the modal on that issue and opens no Peek', asyn
 
 test('Shift+click on the icon checks a range and opens no modal', async () => {
   await open()
-  await item(/PSAPAC-2,/).click()
-  await window.keyboard.press('Escape')
+  await item(/PSAPAC-2,/)
+    .locator('[data-check]')
+    .click()
   await slot(/PSAPAC-4,/).click({ modifiers: ['Shift'] })
 
   await expect(window.getByRole('dialog')).toHaveCount(0)

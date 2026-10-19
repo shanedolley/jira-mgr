@@ -115,7 +115,7 @@ test('matches in the action text are marked, and keycaps are not', async () => {
 test('a mouse gesture draws a pointer pill, not a keycap', async () => {
   await openHelp()
   const clicks = help().getByRole('table', { name: 'Click on a row' })
-  await expect(clicks.locator('tbody tr')).toHaveCount(10)
+  await expect(clicks.locator('tbody tr')).toHaveCount(11)
   // The status dot row holds a pill with a pointer and no keycap of its own.
   const dot = clicks.locator('tbody tr', { hasText: 'status dot' }).first()
   await expect(dot.locator('svg')).toHaveCount(1)
