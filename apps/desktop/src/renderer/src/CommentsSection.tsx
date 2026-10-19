@@ -1,6 +1,13 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import type { AdfDoc } from '@jira-mgr/core/adf'
-import { useCallback, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react'
 
 import type { CommentItem, CurrentUser } from '../../shared/ipc'
 import { failureNotice, formatWhen, safeMarkdown } from './activity'
@@ -300,7 +307,11 @@ function CommentBox({
   onLeave,
   focusBox,
   boxRef,
-}: Pick<CommentsSectionProps, 'issueKey' | 'onLeave' | 'focusBox' | 'boxRef'>) {
+  onPosting,
+}: Pick<CommentsSectionProps, 'issueKey' | 'onLeave' | 'focusBox' | 'boxRef'> & {
+  /** Tells the list a post is in flight, so it follows the new comment to the end. */
+  onPosting: (on: boolean) => void
+}) {
   const draftKey = newCommentDraftKey(issueKey)
   const [restored] = useState(() => getDraft(draftKey))
   const [posting, setPosting] = useState(false)
@@ -322,12 +333,15 @@ function CommentBox({
     busy.current = true
     setPosting(true)
     setProblem(null)
+    onPosting(true)
     try {
       await add.mutateAsync(doc)
       editor.current?.reset(null)
       dropDraft(draftKey)
       setTyped(false)
     } catch (error) {
+      // A posted comment arrives in the list after this, which clears the flag.
+      onPosting(false)
       setProblem(`Could not post the comment. ${reasonOf(error)}`)
     } finally {
       busy.current = false
@@ -415,14 +429,39 @@ export function CommentsSection({
   contained = false,
 }: CommentsSectionProps) {
   const comments = useComments(issueKey)
-  // The list is oldest first, so the newest comment is at its end: show it on open and on a new comment.
+  // The list is oldest first, so the newest comment is at its end. It opens there and then follows
+  // the end only while the reader is near it or is posting, so a refetch or a delete elsewhere
+  // does not pull someone reading older comments away.
+  const listEl = useRef<HTMLUListElement | null>(null)
+  const atEnd = useRef(true)
+  const posting = useRef(false)
   const count = comments.data?.length
-  const showNewest = useCallback(
-    (list: HTMLUListElement | null) => {
-      if (contained && list !== null && count !== undefined) list.scrollTop = list.scrollHeight
+  const showEnd = (el: HTMLUListElement) => {
+    el.scrollTop = el.scrollHeight
+    atEnd.current = true
+  }
+  const mountList = useCallback(
+    (el: HTMLUListElement | null) => {
+      listEl.current = el
+      if (contained && el !== null) showEnd(el)
     },
-    [contained, count],
+    [contained],
   )
+  useLayoutEffect(() => {
+    const el = listEl.current
+    if (!contained || el === null) return
+    const follow = atEnd.current || posting.current
+    posting.current = false
+    if (!follow) return
+    showEnd(el)
+    // A new row's editor sizes itself after this layout, so look again a frame later.
+    const frame = requestAnimationFrame(() => {
+      showEnd(el)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [contained, count])
   // Changing the box's key mounts it again, so it reads the draft a comment row moved into it.
   const [boxVersion, setBoxVersion] = useState(0)
   return (
@@ -433,7 +472,11 @@ export function CommentsSection({
             <p className="text-muted">No comments</p>
           ) : (
             <ul
-              ref={showNewest}
+              ref={mountList}
+              onScroll={(event) => {
+                const el = event.currentTarget
+                atEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 24
+              }}
               className={`space-y-3 ${contained ? 'min-h-0 overflow-y-auto' : ''}`}
             >
               {list.map((comment) => (
@@ -459,6 +502,9 @@ export function CommentsSection({
         onLeave={onBoxLeave}
         focusBox={focusBox}
         boxRef={boxRef}
+        onPosting={(on) => {
+          posting.current = on
+        }}
       />
     </Section>
   )
