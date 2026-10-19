@@ -6,6 +6,8 @@ import {
   ancestorIds,
   canDropOn,
   changeOverrides,
+  checkState,
+  clearSelection,
   clickRow,
   dropIndicator,
   fallbackRow,
@@ -22,6 +24,7 @@ import {
   pointerMoved,
   pruneChecked,
   rowAtOffset,
+  selectAll,
   windowRange,
   withOverrides,
   type KeyInput,
@@ -857,6 +860,55 @@ describe('pruneChecked', () => {
     expect([...pruneChecked(context, held).checked]).toEqual(['P-2'])
     const collapsed = flattenTree(groupsOf(SAMPLE), { ...NONE, collapsed: new Set(['i:P-1']) })
     expect([...pruneChecked(collapsed, held).checked]).toEqual(['P-1'])
+  })
+})
+
+describe('master checkbox', () => {
+  const rows = flattenTree(groupsOf(SAMPLE), NONE)
+  const none = { checked: new Set<string>(), anchor: null }
+  const keys = (checked: ReadonlySet<string>) => [...checked].sort()
+
+  it('selectAll checks every checkable row shown, and a header or chip is not one', () => {
+    expect(keys(selectAll(rows, none).checked)).toEqual(['P-1', 'P-2', 'P-3', 'P-4', 'P-6'])
+  })
+
+  it('selectAll keeps what was checked and the anchor, or anchors on the first row', () => {
+    const held = { checked: new Set(['P-4']), anchor: 'P-4' }
+    expect(selectAll(rows, held).anchor).toBe('P-4')
+    expect(selectAll(rows, none).anchor).toBe('P-1')
+  })
+
+  it('selectAll checks only the rows shown: a filter, a collapse and context rows stay out', () => {
+    const filtered = flattenTree(groupsOf(SAMPLE, { match: (i) => i.key === 'P-2' }), NONE)
+    expect(keys(selectAll(filtered, none).checked)).toEqual(['P-2'])
+    const collapsed = flattenTree(groupsOf(SAMPLE), { ...NONE, collapsed: new Set(['i:P-1']) })
+    const all = selectAll(collapsed, none)
+    expect(keys(all.checked)).toEqual(['P-1', 'P-6'])
+    // A later expand does not add the rows it reveals.
+    expect(keys(pruneChecked(rows, all).checked)).toEqual(['P-1', 'P-6'])
+  })
+
+  it('selectAll on no rows checks nothing and sets no anchor', () => {
+    expect(selectAll([], none)).toEqual(none)
+  })
+
+  it('clearSelection leaves nothing checked and no anchor, and keeps the other fields', () => {
+    const held = { activeId: 'i:P-2', checked: new Set(['P-2', 'P-4']), anchor: 'P-2' }
+    expect(clearSelection(held)).toEqual({ activeId: 'i:P-2', checked: new Set(), anchor: null })
+  })
+
+  it('shows none with nothing checked, some with part, and all with every shown row', () => {
+    expect(checkState(rows, new Set())).toBe('none')
+    expect(checkState(rows, new Set(['P-2']))).toBe('some')
+    expect(checkState(rows, new Set(['P-1', 'P-2', 'P-3', 'P-4']))).toBe('some')
+    expect(checkState(rows, new Set(['P-1', 'P-2', 'P-3', 'P-4', 'P-6']))).toBe('all')
+    expect(checkState(rows, selectAll(rows, none).checked)).toBe('all')
+  })
+
+  it('counts only shown rows: a checked key no row shows does not make it some or all', () => {
+    expect(checkState(rows, new Set(['P-9']))).toBe('none')
+    expect(checkState(rows, new Set(['P-1', 'P-2', 'P-3', 'P-4', 'P-6', 'P-9']))).toBe('all')
+    expect(checkState([], new Set())).toBe('none')
   })
 })
 

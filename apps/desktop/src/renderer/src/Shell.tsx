@@ -143,6 +143,8 @@ import {
   mergeIssues,
   moveActive,
   pruneChecked,
+  selectAll,
+  checkState,
   type ExpansionOverrides,
   type MoveResult,
   type TreeRow,
@@ -1164,6 +1166,8 @@ export function Shell({ session }: { session: Session }) {
     return [...checked].flatMap((key) => byKey.get(key) ?? [])
   }, [issues, checked])
 
+  const masterState = useMemo(() => checkState(rows, checked), [rows, checked])
+
   function clearChecked() {
     setSelection({ checked: new Set(), anchor: null })
     focusTree()
@@ -1670,6 +1674,11 @@ export function Shell({ session }: { session: Session }) {
             inputRef={filterRef}
             doneProgress={doneLoading ? `Loading Done issues: ${String(doneCount)}` : null}
             showClear={!emptyPanel}
+            checkState={masterState}
+            onMaster={() => {
+              if (masterState === 'all') clearChecked()
+              else setSelection(selectAll(rows, selection))
+            }}
           />
         )}
         {setToggles.isError && (

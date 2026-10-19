@@ -162,7 +162,7 @@ test('o opens the Peek on the hovered issue and O opens its page', async () => {
   await window.keyboard.press('o')
   await expect(peek()).toBeVisible()
   await expect(peeked('Migrate the dashboards')).toBeVisible()
-  await expect(four()).toHaveAttribute('aria-selected', 'true')
+  await expect(four()).toHaveAttribute('aria-current', 'true')
   // `o` opens and never closes: a second press leaves the Peek where it is.
   await window.keyboard.press('o')
   await expect(peek()).toBeVisible()
@@ -184,7 +184,7 @@ test('with the Peek open it stays on its issue while the pointer moves, and o sw
   await three().hover()
   await expect(three()).toHaveAttribute('data-active', 'true')
   await expect(peeked('Migrate the dashboards')).toBeVisible()
-  await expect(four()).toHaveAttribute('aria-selected', 'true')
+  await expect(four()).toHaveAttribute('aria-current', 'true')
   // Another key on the hovered row leaves the Peek as it is too.
   await window.keyboard.press('x')
   await expect(peeked('Migrate the dashboards')).toBeVisible()
@@ -192,8 +192,8 @@ test('with the Peek open it stays on its issue while the pointer moves, and o sw
 
   await window.keyboard.press('o')
   await expect(peeked('Fix the export timeout')).toBeVisible()
-  await expect(three()).toHaveAttribute('aria-selected', 'true')
-  await expect(four()).not.toHaveAttribute('aria-selected', 'true')
+  await expect(three()).toHaveAttribute('aria-current', 'true')
+  await expect(four()).not.toHaveAttribute('aria-current', 'true')
 })
 
 test('hovering a row when focus is on the page body lets o peek it, with no focus move of the test', async () => {
@@ -206,7 +206,7 @@ test('hovering a row when focus is on the page body lets o peek it, with no focu
   await four().hover()
   await window.keyboard.press('o')
   await expect(peeked('Migrate the dashboards')).toBeVisible()
-  await expect(four()).toHaveAttribute('aria-selected', 'true')
+  await expect(four()).toHaveAttribute('aria-current', 'true')
 })
 
 test('hovering the same row again after focus left for the page body lets o peek it', async () => {
@@ -235,7 +235,7 @@ test('with focus inside the Peek, o and Shift+O act on the hovered row', async (
   await three().hover()
   await window.keyboard.press('o')
   await expect(peeked('Fix the export timeout')).toBeVisible()
-  await expect(three()).toHaveAttribute('aria-selected', 'true')
+  await expect(three()).toHaveAttribute('aria-current', 'true')
 
   await peek().getByRole('button', { name: 'Close' }).focus()
   await four().hover()
@@ -293,7 +293,7 @@ test('a click on blank row space does nothing, a double-click opens the page, an
   await expect(four()).toHaveAttribute('data-active', 'true')
   await expect(peek()).toHaveCount(0)
   await expect(dialog()).toHaveCount(0)
-  await expect(four()).not.toHaveAttribute('aria-selected', 'true')
+  await expect(four()).not.toHaveAttribute('aria-current', 'true')
 
   // A click on a row the pointer has not reached by moving is not an activation either.
   await window.waitForTimeout(600)
@@ -342,7 +342,7 @@ for (const rate of [1, 20]) {
     // No wait for the hover to render: the key must read the row the pointer is on.
     await window.keyboard.press('o')
     await expect(peeked('Migrate the dashboards')).toBeVisible()
-    await expect(four()).toHaveAttribute('aria-selected', 'true')
+    await expect(four()).toHaveAttribute('aria-current', 'true')
   })
 }
 

@@ -434,7 +434,7 @@ test('moves with J and K and peeks with the space bar', async () => {
   await window.keyboard.press('j')
   await expect(peek().getByRole('heading', { name: 'Book the kickoff' })).toBeVisible()
   await expect(tree()).toBeFocused()
-  await expect(item(/PSAPAC-13,/)).toHaveAttribute('aria-selected', 'true')
+  await expect(item(/PSAPAC-13,/)).toHaveAttribute('aria-current', 'true')
 
   await window.keyboard.press(' ')
   await expect(peek()).toHaveCount(0)
@@ -886,26 +886,40 @@ test('refetches Done issues only when they are stale, not on every focus', async
   expect((await counts(app)).searches.done).toBe(before.searches.done)
 })
 
-test('marks aria-selected on the peeked issue only, whichever row is active', async () => {
+test('marks aria-current on the peeked issue only and aria-selected on checked rows only', async () => {
   await open()
+  const current = tree().locator('[aria-current]')
   const selected = tree().locator('[aria-selected]')
+  await expect(current).toHaveCount(0)
   await expect(selected).toHaveCount(0)
 
   await window.keyboard.press('j')
   await window.keyboard.press(' ')
   await expect(peek()).toBeVisible()
-  await expect(selected).toHaveCount(1)
-  await expect(item(/PSAPAC-10,/)).toHaveAttribute('aria-selected', 'true')
+  await expect(current).toHaveCount(1)
+  await expect(item(/PSAPAC-10,/)).toHaveAttribute('aria-current', 'true')
+  // The Peek alone selects nothing.
+  await expect(selected).toHaveCount(0)
 
   // A header is active now; the Peek keeps its issue, and so does the mark.
   await window.keyboard.press('k')
   await expect(tree()).toHaveAttribute('aria-activedescendant', 'tree-row-c:1')
+  await expect(current).toHaveCount(1)
+  await expect(item(/PSAPAC-10,/)).toHaveAttribute('aria-current', 'true')
+
+  // Checking another row selects that row, not the peeked one.
+  await window.keyboard.press('j')
+  await window.keyboard.press('j')
+  await window.keyboard.press('x')
   await expect(selected).toHaveCount(1)
-  await expect(item(/PSAPAC-10,/)).toHaveAttribute('aria-selected', 'true')
+  await expect(item(/PSAPAC-13,/)).toHaveAttribute('aria-selected', 'true')
+  await expect(item(/PSAPAC-10,/)).not.toHaveAttribute('aria-selected', 'true')
 
   await window.keyboard.press('Escape')
-  await expect(peek()).toHaveCount(0)
   await expect(selected).toHaveCount(0)
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+  await expect(current).toHaveCount(0)
 })
 
 /** What paints a row's state: its fill and weight, and every border, ring or outline that could mark it. */
@@ -930,18 +944,18 @@ const keyPaint = (row: Locator) =>
     return { weight: s.fontWeight, colour: s.color, fits: el.scrollWidth <= el.clientWidth }
   })
 
-test('marks the active and the open row by distinct fills, with no ring, edge or bar', async () => {
+test('marks the active row and a checked row by distinct fills, the Peek row by none, with no ring, edge or bar', async () => {
   await open()
   await window.keyboard.press('j')
   await window.keyboard.press(' ')
   await expect(peek()).toBeVisible()
   const row = item(/PSAPAC-10,/)
 
-  // Active and open at once: the brightest fill, in medium weight.
+  // Active and peeked at once: the Peek adds nothing to the active fill.
   await expect(tree()).toBeFocused()
   const both = await paint(row)
   const bothKey = await keyPaint(row)
-  // Open only: the active row moved to the header above.
+  // Peeked only: the active row moved to the header above.
   await window.keyboard.press('k')
   await expect(tree()).toHaveAttribute('aria-activedescendant', 'tree-row-c:1')
   const peeked = await paint(row)
@@ -955,16 +969,30 @@ test('marks the active and the open row by distinct fills, with no ring, edge or
   const focusKey = await keyPaint(row)
   const rest = await paint(item(/PSAPAC-3,/))
   const restKey = await keyPaint(item(/PSAPAC-3,/))
+  // Checked and active, then checked only.
+  await window.keyboard.press('x')
+  await expect(row).toHaveAttribute('aria-selected', 'true')
+  const checkedFocus = await paint(row)
+  const checkedFocusKey = await keyPaint(row)
+  await window.keyboard.press('k')
+  await expect(tree()).toHaveAttribute('aria-activedescendant', 'tree-row-c:1')
+  const checked = await paint(row)
+  const checkedKey = await keyPaint(row)
 
-  expect(new Set([both.fill, peeked.fill, focus.fill, rest.fill]).size).toBe(4)
-  expect(peeked.weight).toBe('500')
-  expect(both.weight).toBe('500')
-  // The open row's key is bold in ink, whether or not the row is active. No other key is.
+  expect(both.fill).toBe(focus.fill)
+  expect(peeked.fill).toBe(rest.fill)
+  expect(peeked.weight).toBe(rest.weight)
+  expect(new Set([focus.fill, checked.fill, checkedFocus.fill, rest.fill]).size).toBe(4)
+  expect(checked.weight).toBe('500')
+  expect(checkedFocus.weight).toBe('500')
+  // A checked row's key is bold in ink, whether or not the row is active. No other key is.
   const ink = await painted('var(--ink)')
-  for (const key of [bothKey, peekedKey]) expect(key).toMatchObject({ weight: '600', colour: ink })
-  for (const key of [focusKey, restKey]) expect(key.weight).toBe('450')
+  for (const key of [checkedKey, checkedFocusKey]) {
+    expect(key).toMatchObject({ weight: '600', colour: ink })
+  }
+  for (const key of [bothKey, peekedKey, focusKey, restKey]) expect(key.weight).toBe('450')
   expect(restKey.colour).not.toBe(ink)
-  for (const state of [both, peeked, focus, rest]) {
+  for (const state of [both, peeked, focus, rest, checked, checkedFocus]) {
     expect(state.shadow).toBe('none')
     expect(state.outline).toBe('none')
     expect(state.borders).toEqual(['0px', '0px', '0px', '0px'])
@@ -973,7 +1001,22 @@ test('marks the active and the open row by distinct fills, with no ring, edge or
   }
 })
 
-test('draws the summary of a row in the key colour, at medium weight, open or not', async () => {
+test('fills the hovered row under the pointer while the Tree has no focus', async () => {
+  await open()
+  await tree().evaluate((el) => {
+    el.blur()
+  })
+  await expect(tree()).not.toBeFocused()
+  const row = item(/PSAPAC-3,/)
+  const resting = await paint(row)
+  await row.hover()
+  await expect(row).toHaveAttribute('data-active', 'true')
+  await expect.poll(async () => (await paint(row)).fill).not.toBe(resting.fill)
+  const hovered = await paint(row)
+  expect(hovered.weight).toBe(resting.weight)
+})
+
+test('draws the summary of a row in the key colour, at medium weight, checked or not', async () => {
   await open()
   const colour = (field: Locator) => field.evaluate((el) => getComputedStyle(el).color)
   const summaryOf = (row: Locator) => row.locator('.tree-summary')
@@ -984,23 +1027,27 @@ test('draws the summary of a row in the key colour, at medium weight, open or no
   expect(restKey).toBe(await painted('var(--muted)'))
   await expect(summaryOf(rest)).toHaveCSS('font-weight', '500')
 
-  // The open row's key turns ink, and its summary follows in colour but not in weight.
+  // The peeked row stays as the rest. A checked row's key turns ink, and its summary follows in
+  // colour but not in weight.
   await window.keyboard.press('j')
   await window.keyboard.press(' ')
   await expect(peek()).toBeVisible()
-  const peeked = item(/PSAPAC-10,/)
-  await expect(peeked).toHaveAttribute('aria-selected', 'true')
-  const openKey = await colour(peeked.locator('.tree-key'))
-  expect(openKey).toBe(await painted('var(--ink)'))
-  expect(await colour(summaryOf(peeked))).toBe(openKey)
-  await expect(summaryOf(peeked)).toHaveCSS('font-weight', '500')
+  const row = item(/PSAPAC-10,/)
+  await expect(row).toHaveAttribute('aria-current', 'true')
+  expect(await colour(row.locator('.tree-key'))).toBe(restKey)
+  await window.keyboard.press('x')
+  await expect(row).toHaveAttribute('aria-selected', 'true')
+  const checkedKey = await colour(row.locator('.tree-key'))
+  expect(checkedKey).toBe(await painted('var(--ink)'))
+  expect(await colour(summaryOf(row))).toBe(checkedKey)
+  await expect(summaryOf(row)).toHaveCSS('font-weight', '500')
 })
 
 test('keeps the bold key inside its box in a wide font', async () => {
   await open()
   await window.keyboard.press('j')
-  await window.keyboard.press(' ')
-  await expect(peek()).toBeVisible()
+  await window.keyboard.press('x')
+  await expect(item(/PSAPAC-10,/)).toHaveAttribute('aria-selected', 'true')
   const style = await window.addStyleTag({
     content: '* { font-family: Verdana, sans-serif !important }',
   })

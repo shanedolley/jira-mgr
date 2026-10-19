@@ -144,7 +144,7 @@ The Shell derives everything during render, with `useMemo`:
 | Kind | Id | Level | Shows | Expandable |
 |---|---|---|---|---|
 | Customer header | `c:<option id>`, `c:none` | 1 | The Customer's name, or "No Customer", and its issue count. An empty group shows "No issues" | When it has rows |
-| Issue | `i:<key>` | 2 for an Epic, 3 for a child, 4 for a Subtask; one more under a chip | Status, key, type, summary, mismatch badge, assignee; an Epic adds its issue count. The summary draws in `--muted`, the key's colour, on every row, ink on the open row as the key is (#266). It draws at weight 400 on a `contextOnly` row and 500 otherwise | When it has children or Done children |
+| Issue | `i:<key>` | 2 for an Epic, 3 for a child, 4 for a Subtask; one more under a chip | Status, key, type, summary, mismatch badge, assignee; an Epic adds its issue count. The summary draws in `--muted`, the key's colour, on every row, ink on a checked row as the key is (#266, #300). It draws at weight 400 on a `contextOnly` row and 500 otherwise | When it has children or Done children |
 | No Epic header | `n:<option id>`, `n:none` | 2 | "No Epic" and its issue count | Yes |
 | Done chip | `d:<parent key>` | The parent's level plus one | "N done" | Yes: revealing lists the Done children |
 
@@ -184,6 +184,10 @@ That renders about 42 rows at any moment. The window keeps D1's 900-pixel minimu
 The toolbar above the Tree holds three toggle buttons, a Filter menu, a Groups menu, the active filter chips and a text field. It wraps onto a second line when the chips need it.
 
 **Toggles.** "Hide done", "Assignee: me" and "Hide empty Customers", each a `button` with `aria-pressed` equal to the stored boolean and a check mark when pressed, so the state does not rest on colour. A press updates `['toggles']` in the cache at once, so the Tree rebuilds, then writes through `settings:setToggles`. A failed write refetches `['toggles']`, so the toolbar shows what the file holds, and shows the error in a `role="alert"` under the toolbar. First launch reads core's defaults: on, off, on (Q28). The CLI keeps ignoring `settings.toggles`, as design 0001 decided.
+
+**Master checkbox (#300).** A native `<input type="checkbox">` named "Select all rows" sits before the toggles, and only while at least one shown row is checked. It shows a dash when some shown checkable rows are checked and a tick when all are. A click with some checked calls `selectAll` (the function behind `Cmd+A`), which checks every checkable row shown under the current filter, "Hide done" and collapsed groups; a click with all checked calls the `Esc` clear, after which the master goes. A row hidden by a filter, "Hide done" or a collapse is never checked, and expanding it later does not check it. `checkState(rows, checked)` in `tree.ts` gives `none`, `some` or `all`; a checked key no row shows (a running batch) is not counted. Tab reaches the box and Space presses it.
+
+**Selected look (#300).** Only a checked row draws `--row-selected` (`--row-selected-focus` when it is also the focused active row), weight 500, a bold ink key and an ink summary. The Peek's row draws none of it: it carries `aria-current` and the Peek's own panel names its issue. The active row, which hover and the keys move, keeps its `--hover` fill, or `--row-focus` while the Tree has focus. The fills differ by WCAG contrast of 1.06 (light) and 1.29 (dark) between hover and selected, and 1.03 and 1.16 between hover and focus.
 
 **Filters.** The state is one `ViewFilters` object in Shell state, with its values stored exactly as core and the CLI read them:
 
@@ -258,7 +262,7 @@ The Tree is one focusable element, `role="tree"` with `aria-label="Issues"` and 
 
 Closing the Peek by `Esc`, `Space` or its Close button returns focus to the Tree.
 
-**ARIA.** Rows are a flat list of `role="treeitem"` elements, each with an `id`, `aria-level`, `aria-setsize`, `aria-posinset`, and `aria-expanded` on expandable rows only. `aria-selected="true"` marks only the row the Peek shows, not every row `J` and `K` pass. Each row's accessible name follows one format:
+**ARIA.** Rows are a flat list of `role="treeitem"` elements, each with an `id`, `aria-level`, `aria-setsize`, `aria-posinset`, and `aria-expanded` on expandable rows only. `aria-selected="true"` marks only the checked rows, and `aria-current="true"` the row the Peek shows (#300); neither marks every row `J` and `K` pass. Each row's accessible name follows one format:
 
 | Kind | Name |
 |---|---|

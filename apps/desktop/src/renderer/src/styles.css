@@ -74,8 +74,8 @@
 }
 
 /*
- * Row state (#131): the active row, the open row and the current sidebar item show by fill and
- * weight. No ring, edge or side bar draws them, so no state depends on hue.
+ * Row state (#131): the active row, a checked row and the current sidebar item show by fill and
+ * weight (#300: the Peek's row shows none). No ring, edge or side bar draws them, so no state depends on hue.
  */
 :root {
   --row-focus: light-dark(oklch(0.935 0.008 275), oklch(0.28 0.012 275));
@@ -122,7 +122,6 @@
   background: var(--row-focus);
 }
 
-.tree-row[aria-selected='true'],
 .tree-row[aria-checked='true'],
 .is-current {
   background: var(--row-selected);
@@ -130,18 +129,17 @@
   --muted: var(--row-muted);
 }
 
-/* The open row's key reads bold in ink: a cue that holds without hue or contrast between fills. */
-.tree-row[aria-selected='true'] .tree-key {
+/* A checked row's key reads bold in ink: a cue that holds without hue or contrast between fills. */
+.tree-row[aria-checked='true'] .tree-key {
   color: var(--ink);
   font-weight: 600;
 }
 
-/* The summary follows the key's colour on the open row, not its weight (#266). */
-.tree-row[aria-selected='true'] .tree-summary {
+/* The summary follows the key's colour on a checked row, not its weight (#266). */
+.tree-row[aria-checked='true'] .tree-summary {
   color: var(--ink);
 }
 
-[role='tree']:focus .tree-row[data-active='true'][aria-selected='true'],
 [role='tree']:focus .tree-row[data-active='true'][aria-checked='true'] {
   background: var(--row-selected-focus);
 }

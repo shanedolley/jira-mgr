@@ -68,6 +68,19 @@ describe.each<Theme>(['light', 'dark'])('%s row state fills', (theme) => {
     expect(against('row-selected-focus', 'row-selected')).toBeGreaterThanOrEqual(step)
   })
 
+  it('keeps the active row fill apart from the selected and the focus fill', () => {
+    const step = theme === 'light' ? 1.02 : 1.05
+    expect(against('row-selected', 'hover')).toBeGreaterThanOrEqual(step)
+    expect(against('row-focus', 'hover')).toBeGreaterThanOrEqual(step)
+    console.info(
+      `${theme}: hover/canvas ${against('hover', 'canvas').toFixed(3)}, ` +
+        `selected/hover ${against('row-selected', 'hover').toFixed(3)}, ` +
+        `focus/hover ${against('row-focus', 'hover').toFixed(3)}, ` +
+        `selected/focus ${against('row-selected', 'row-focus').toFixed(3)}, ` +
+        `selected+focus/selected ${against('row-selected-focus', 'row-selected').toFixed(3)}`,
+    )
+  })
+
   it('keeps the ink and secondary text at 4.5:1 on every row fill', () => {
     for (const fill of ['row-focus', 'row-selected', 'row-selected-focus']) {
       expect(against('ink', fill), `ink on ${fill}`).toBeGreaterThanOrEqual(4.5)
@@ -114,8 +127,8 @@ describe('no coloured edge marks a row or a sidebar item', () => {
     }
   })
 
-  it('bolds the key of the open row in ink, and only there', () => {
-    const rule = /\.tree-row\[aria-selected='true'\] \.tree-key\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+  it('bolds the key of a checked row in ink, and only there', () => {
+    const rule = /\.tree-row\[aria-checked='true'\] \.tree-key\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
     expect(rule).toMatch(/font-weight:\s*600/)
     expect(rule).toMatch(/color:\s*var\(--ink\)/)
     expect(read('./TreeRow.tsx')).toMatch(/className="tree-key [^"]*"[^>]*>\s*\{issue\.key\}/)
