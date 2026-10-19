@@ -46,8 +46,10 @@ async function pointAt(row: Locator, dx = 120) {
   await window.mouse.move(box.x + dx, box.y + box.height / 2)
 }
 
-/** The key text of an issue row, which is neither the summary nor a control: blank row space. */
-const blank = (row: Locator) => row.locator('.tree-key')
+/** The type icon of an issue row, which is neither the summary nor a control: blank row space. */
+const blank = (row: Locator) => row.getByRole('img').first()
+/** The key text of an issue row: a click on it peeks the issue (#299). */
+const keyOf = (row: Locator) => row.locator('.tree-key')
 
 test('the row under the pointer is the active row, with no click', async () => {
   await open()
@@ -312,6 +314,32 @@ test('a click on blank row space does nothing, a double-click opens the page, an
   await expect(peek()).toHaveCount(0)
 })
 
+test('a click on the key peeks the issue, a double-click on it still opens the page, and Cmd+click checks', async () => {
+  await open()
+  await expect(keyOf(four())).toHaveCSS('cursor', 'pointer')
+  await keyOf(four()).click()
+  await expect(four()).toHaveAttribute('data-active', 'true')
+  await expect(peeked('Migrate the dashboards')).toBeVisible()
+  await expect(dialog()).toHaveCount(0)
+  await expect(issuePage()).toHaveCount(0)
+
+  // Another key switches the Peek.
+  await keyOf(three()).click()
+  await expect(peeked('Fix the export timeout')).toBeVisible()
+
+  await window.waitForTimeout(600)
+  await keyOf(four()).dblclick()
+  await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
+  await window.keyboard.press('Escape')
+
+  // Cmd+click checks the row and leaves the Peek on its issue.
+  await window.keyboard.press('Escape')
+  await expect(peek()).toHaveCount(0)
+  await keyOf(three()).click({ modifiers: ['ControlOrMeta'] })
+  await expect(three()).toHaveAttribute('aria-checked', 'true')
+  await expect(peek()).toHaveCount(0)
+})
+
 test('a single click on a summary opens the editor, and a click on a status dot only its list', async () => {
   await open()
   await four().getByText('Migrate the dashboards').click()
@@ -421,15 +449,12 @@ test.describe('the Sprint page', () => {
     await window.keyboard.press('Escape')
     await expect(dialog()).toHaveCount(0)
 
-    // The issue key is blank row space: the row button under it takes the click.
-    const ON_KEY = { x: 60, y: 16 }
-    await listed('PSAPAC-4').click({ position: ON_KEY })
-    await window.waitForTimeout(600)
-    await expect(issuePage()).toHaveCount(0)
-    await expect(dialog()).toHaveCount(0)
-    await expect(peek()).toHaveCount(0)
-
-    await listed('PSAPAC-4').dblclick({ position: ON_KEY })
+    // A click on the key peeks the issue, and a double-click on it opens the page.
+    const key = li('PSAPAC-4').getByText('PSAPAC-4', { exact: true })
+    await expect(key).toHaveCSS('cursor', 'pointer')
+    await key.click()
+    await expect(peeked('Migrate the dashboards')).toBeVisible()
+    await key.dblclick()
     await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
   })
 

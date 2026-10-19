@@ -820,7 +820,10 @@ function Content({
           <Pick property="status" title="Change status">
             <StatusDot status={issue.status} />
           </Pick>
-          <span className="tree-key w-[5.5rem] min-w-fit shrink-0 text-xs font-[450] tabular-nums text-muted">
+          <span
+            data-key
+            className="tree-key w-[5.5rem] min-w-fit shrink-0 cursor-pointer text-xs font-[450] tabular-nums text-muted"
+          >
             {issue.key}
           </span>
           <span
@@ -887,6 +890,7 @@ interface TreeRowProps {
     onChevron: boolean,
     select: 'toggle' | 'range' | undefined,
     detail: number,
+    peek: boolean,
   ) => void
   /**
    * The issue a double-click opens, set by a first click: the row's issue, or `null` for a header,
@@ -991,7 +995,13 @@ export const TreeRow = memo(function TreeRow({
               : togglesCheck(event)
                 ? 'toggle'
                 : undefined
-        onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
+        onClick(
+          row.id,
+          target.closest('[data-chevron]') !== null,
+          select,
+          event.detail,
+          target.closest('[data-key]') !== null,
+        )
         if (row.kind !== 'issue') return
         if (
           summaryClick({

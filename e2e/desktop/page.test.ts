@@ -116,8 +116,8 @@ test('Enter opens the full page and Esc returns to the Tree, while Space keeps t
 /** Where on a summary the pointer lands: on its text. */
 const ON_TEXT = { x: 20, y: 8 }
 
-/** A row's blank space: its issue key takes no click of its own, so a double-click on it opens the page. */
-const blank = (row: Locator) => row.locator('.tree-key')
+/** A row's blank space: its type icon takes no click of its own, so a double-click on it opens the page. */
+const blank = (row: Locator) => row.getByRole('img').first()
 
 test("a double-click on a row's blank space opens its page, and Esc returns to the Tree with the row active", async () => {
   await open()

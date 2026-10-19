@@ -279,6 +279,7 @@ function Issues({
   today,
   active,
   onOpen,
+  onPeek,
   onEditSummary,
   onEditCell,
 }: {
@@ -294,6 +295,7 @@ function Issues({
   /** The key of the active row, which the pointer made active last. */
   active: string | null
   onOpen: (key: string) => void
+  onPeek: (key: string) => void
   onEditSummary: (issue: Issue) => void
   onEditCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
 }) {
@@ -382,9 +384,21 @@ function Issues({
                           {...holdFade(status)}
                           className="relative flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 pr-8"
                         >
-                          <span className="sprint-key w-20 shrink-0 font-mono text-xs text-muted">
+                          {/* A click on the key peeks the issue (#299). A Shift+click or Cmd+click checks, through `onClickCapture`. */}
+                          <Slot
+                            title="Peek"
+                            aria-label={`Peek ${issue.key}`}
+                            tabIndex={-1}
+                            onClick={() => {
+                              onPeek(issue.key)
+                            }}
+                            onDoubleClick={(event) => {
+                              if (!event.shiftKey && !togglesCheck(event)) onOpen(issue.key)
+                            }}
+                            className="sprint-key w-20 shrink-0 cursor-pointer text-left font-mono text-xs text-muted"
+                          >
                             {issue.key}
-                          </span>
+                          </Slot>
                           <Slot
                             data-summary
                             aria-label={`Edit summary of ${issue.key}`}
@@ -684,6 +698,7 @@ export function SprintPage({
             today={today}
             active={active}
             onOpen={onOpenIssue}
+            onPeek={onPeekIssue}
             onEditSummary={onEditSummary}
             onEditCell={onEditCell}
           />
