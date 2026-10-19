@@ -57,10 +57,11 @@ const TIME_NAMES: Record<TimeProperty, string> = {
 const isTime = (property: RowProperty): property is TimeProperty => property in TIME_NAMES
 
 /**
- * The accessible name of a row, in one format per kind. An issue's name ends with what the row
- * shows only as a glyph, a pill or a column: its open blockers, its priority when not Medium, its
- * due date and time values when their properties are on, and its children's progress. The rest of
- * the contents are presentation only.
+ * The accessible name of a row, in one format per kind. An issue's name lists its key, type,
+ * status, summary and assignee, then what the row shows only as a glyph, a pill or a column: the
+ * Customer mismatch, context, open blockers, its priority when not Medium, the properties that are
+ * on in Column order (start, due, sprint, comments and the time values), and its children's
+ * progress. The rest of the contents are presentation only.
  */
 export function rowName(
   row: Row,
@@ -822,6 +823,7 @@ function Content({
           </Pick>
           <span
             data-key
+            title="Peek"
             className="tree-key w-[5.5rem] min-w-fit shrink-0 cursor-pointer text-xs font-[450] tabular-nums text-muted"
           >
             {issue.key}
