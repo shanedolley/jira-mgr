@@ -43,7 +43,7 @@ export function ParentPrompt({ subject, parent, match, onChoose, onCancel }: Par
         event.preventDefault()
         onCancel()
       }}
-      className="m-auto w-[26rem] rounded-xl border border-line bg-panel p-5 text-ink shadow-[0_16px_48px_var(--dialog-shadow)] backdrop:bg-(--scrim)"
+      className="app-no-drag m-auto w-[26rem] rounded-xl border border-line bg-panel p-5 text-ink shadow-[0_16px_48px_var(--dialog-shadow)] backdrop:bg-(--scrim)"
     >
       <h2 id="parent-prompt-title" className="text-base font-semibold">
         Move {subject} under {parent.key}?

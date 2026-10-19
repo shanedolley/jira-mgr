@@ -35,7 +35,7 @@ export function DiscardDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-(--scrim)">
+    <div className="app-no-drag fixed inset-0 z-50 grid place-items-center bg-(--scrim)">
       <div
         role="alertdialog"
         aria-modal="true"

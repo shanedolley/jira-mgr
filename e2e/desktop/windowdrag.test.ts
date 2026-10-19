@@ -30,6 +30,9 @@ async function open() {
   await expect(item(/PSAPAC-10,/)).toBeVisible()
 }
 
+const regionOf = (el: Locator) =>
+  el.evaluate((node) => getComputedStyle(node).getPropertyValue('-webkit-app-region'))
+
 /**
  * Reads the header's drag state: its own `-webkit-app-region`, that of every control in it, and
  * whether some point along its middle line lands on the header itself (its blank space).
@@ -78,7 +81,11 @@ test('the Issues header moves the window by its blank space and keeps its button
   const list = window.getByRole('region', { name: 'Issue list' })
   await expectDragHeader(list)
   await list.getByRole('button', { name: /^Shortcuts/ }).click()
-  await expect(window.getByRole('dialog')).toBeVisible()
+  const dialog = window.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  // The dialog reaches into the header's strip, so it and its Close button must take clicks.
+  expect(await regionOf(dialog)).toBe('no-drag')
+  expect(await regionOf(dialog.getByRole('button', { name: 'Close' }))).toBe('no-drag')
 })
 
 test('the Issues header stays a drag region under 960px', async () => {
@@ -117,4 +124,25 @@ test('the Sprint page and Issue page headers are drag regions', async () => {
   await peekRow(item(/PSAPAC-10,/))
   await window.keyboard.press('Enter')
   await expectDragHeader(window.getByRole('region', { name: 'Issue page' }))
+})
+
+test('the overlay sidebar scrim takes the click in the header strip', async () => {
+  await open()
+  await app.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0]
+    win?.setMinimumSize(1, 1)
+    win?.setContentSize(720, 700)
+  })
+  await expect.poll(() => window.evaluate(() => globalThis.innerWidth)).toBe(720)
+  const header = window.getByRole('region', { name: 'Issue list' }).locator('header')
+  expect(await regionOf(header)).toBe('drag')
+  await window.getByRole('button', { name: 'Show sidebar' }).click()
+  const scrim = window.locator('[data-scrim]')
+  await expect(scrim).toBeAttached()
+  expect(await regionOf(header)).toBe('no-drag')
+  // The sidebar's own strip, beside the traffic lights, still moves the window.
+  expect(await regionOf(sidebar().locator('.app-drag').first())).toBe('drag')
+  await window.mouse.click(600, 10)
+  await expect(scrim).toHaveCount(0)
+  expect(await regionOf(header)).toBe('drag')
 })
