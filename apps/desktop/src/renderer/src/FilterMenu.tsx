@@ -157,6 +157,13 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
   function show(focus: boolean) {
     const popover = popoverRef.current
     if (popover === null) return
+    // The submenu starts at the menu's edge, past the scrollbar the list may show beside its rows.
+    const menu = buttonRef.current?.closest('[popover]')
+    const row = buttonRef.current
+    if (menu != null && row != null) {
+      const gap = menu.getBoundingClientRect().right - row.getBoundingClientRect().right
+      popover.style.setProperty('--gap', `${String(gap - 1)}px`)
+    }
     if (!popover.matches(':popover-open')) popover.showPopover()
     if (focus) searchRef.current?.focus()
   }
@@ -168,11 +175,12 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
    */
   function dwell(event: PointerEvent<HTMLButtonElement>) {
     if (event.movementX === 0 && event.movementY === 0) return
-    // Typing in a search box keeps its submenu, however the pointer drifts over the list.
+    // Text in a search box means the user is typing there, so the submenu stays however the pointer drifts.
     const focused = document.activeElement
     if (
       focused instanceof HTMLInputElement &&
       focused.type === 'text' &&
+      focused.value !== '' &&
       focused.closest('[popover]') !== buttonRef.current?.closest('[popover]')
     )
       return
@@ -247,7 +255,9 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
     const menuOpen = buttonRef.current?.closest('[popover]')?.matches(':popover-open') === true
     const lost =
       focused === null || focused === document.body || popoverRef.current?.contains(focused)
-    if (menuOpen && lost === true) buttonRef.current?.focus()
+    // Another submenu already open means the pointer swapped this one out: focusing the row would close it.
+    const swapped = buttonRef.current?.closest('[popover]')?.querySelector('[popover]:popover-open')
+    if (menuOpen && lost === true && swapped == null) buttonRef.current?.focus()
   }
 
   return (
@@ -304,7 +314,7 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
           maxHeight: 'calc(50vh - 1rem)',
           ...SUBMENU,
           // No upward offset: a flip would turn it into a downward one, past the window's foot.
-          margin: '0 0 0 4px',
+          margin: '0 0 0 var(--gap, 4px)',
         }}
         className="menu flex-col w-64 [&:popover-open]:flex"
       >

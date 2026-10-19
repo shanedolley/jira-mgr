@@ -468,23 +468,66 @@ test('a submenu flips to the left at the window edge and stays inside the window
   }
 })
 
-test('a submenu closes when another field takes focus, and a search box keeps it against the pointer', async () => {
+test('a submenu closes when another field takes focus', async () => {
   await open()
   await toggle('Filter').click()
   await row('Priority').hover()
   await expect(submenu('Priority')).toBeVisible()
   await row('Status').focus()
   await expect(submenu('Priority')).not.toBeVisible()
+})
 
-  // Typing in the Status search box keeps its submenu while the pointer rests on another field.
+test('a pointer resting on a field swaps the submenu, unless the search box holds text', async () => {
+  await open()
+  await toggle('Filter').click()
+
+  // An empty search box, as after a click, still lets the pointer swap.
   await row('Status').click()
   await expect(search('Search Status')).toBeFocused()
   await row('Type').hover()
+  await expect(submenu('Type')).toBeVisible()
+  await expect(submenu('Status')).not.toBeVisible()
+
+  // Text in it means the user is typing, so the pointer swaps nothing.
+  await row('Status').click()
+  await window.keyboard.type('prog')
+  await row('Priority').hover()
   await window.waitForTimeout(400)
   await expect(submenu('Status')).toBeVisible()
-  await expect(submenu('Type')).not.toBeVisible()
-  await window.keyboard.type('prog')
+  await expect(submenu('Priority')).not.toBeVisible()
   await expect(submenu('Status').getByRole('checkbox')).toHaveCount(1)
+})
+
+test('the first hover after a checkbox or the operator button has focus still swaps', async () => {
+  await open()
+  await toggle('Filter').click()
+
+  await row('Status').click()
+  await submenu('Status').getByRole('checkbox', { name: 'To Do', exact: true }).check()
+  await row('Assignee').hover()
+  await expect(submenu('Assignee')).toBeVisible()
+  await expect(submenu('Status')).not.toBeVisible()
+
+  await submenu('Assignee').getByRole('button', { name: 'is not', exact: true }).click()
+  await row('Creator').hover()
+  await expect(submenu('Creator')).toBeVisible()
+  await expect(submenu('Assignee')).not.toBeVisible()
+})
+
+test('a submenu starts at the menu edge in a wide short window', async () => {
+  await open()
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setContentSize(1300, 520)
+  })
+  await expect.poll(() => window.evaluate(() => globalThis.innerHeight)).toBe(520)
+  await toggle('Filter').click()
+  const main = await box(menu())
+  for (const field of ['Status', 'Epic', 'Sprint']) {
+    await row(field).click()
+    const side = await box(submenu(field))
+    expect(side.x, field).toBeGreaterThanOrEqual(main.x + main.width - 2)
+    expect(side.x, field).toBeLessThanOrEqual(main.x + main.width + 6)
+  }
 })
 
 test('the field list does not wrap in a wide font, and the submenu takes the menu colours', async () => {
