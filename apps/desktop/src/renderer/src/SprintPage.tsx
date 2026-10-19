@@ -594,14 +594,16 @@ export function SprintPage({
   /**
    * A Shift+click checks a range and a Cmd+click (Ctrl off macOS) toggles the issue, wherever on
    * its row they land: the capture phase takes them before a slot opens its editor, so they open
-   * nothing. A click on a row's checkbox toggles it. A key's click (`detail` 0) is left alone, and
-   * so is a click in an open field.
+   * nothing. A click on a row's checkbox toggles it, by key or screen reader too. Any other key's
+   * click (`detail` 0) is left alone, and so is a click in an open field.
    */
   function onClickCapture(event: MouseEvent<HTMLElement>) {
     const key = rowKeyOf(event.target)
-    if (key === undefined || event.detail === 0) return
+    if (key === undefined) return
     const target = event.target as Element
     const check = target.closest('[data-check]') !== null
+    // Enter or Space on a row's button opens the issue, but on the checkbox it toggles.
+    if (event.detail === 0 && !check) return
     if (!check && target.closest(FIELD) !== null) return
     const toggle = check || togglesCheck(event)
     if (!toggle && !event.shiftKey) return

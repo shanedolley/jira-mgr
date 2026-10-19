@@ -197,6 +197,10 @@ async function openSprint() {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
+  await openCurrent()
+}
+
+async function openCurrent() {
   await sidebar()
     .getByRole('region', { name: 'Sprints' })
     .getByRole('button', { name: /^Current/ })
@@ -314,18 +318,52 @@ test.describe('on the Sprint page', () => {
     await expect(bar()).toContainText('2 selected')
   })
 
+  test('a checkbox toggles from the keyboard or a screen reader, which click with no pointer', async () => {
+    await checkbox('PSAPAC-2').evaluate((el: HTMLElement) => {
+      el.click()
+    })
+    await expect(row('PSAPAC-2')).toHaveAttribute('data-checked', 'true')
+    await expect(bar()).toContainText('1 selected')
+    // A keyboard click on the row's own button still opens the issue and checks nothing.
+    await row('PSAPAC-4')
+      .locator('[data-row]')
+      .evaluate((el: HTMLElement) => {
+        el.click()
+      })
+    await expect(window.getByRole('region', { name: 'Issue page' })).toBeVisible()
+    expect(await checkedOnPage()).toEqual(['PSAPAC-2'])
+  })
+
   test('leaving the page clears its set, and the Tree keeps its own', async () => {
+    // Check PSAPAC-2 on the Tree first.
+    await sprintPage().getByRole('button', { name: 'Back to issues' }).click()
+    await expect(sprintPage()).toHaveCount(0)
+    await item(/^PSAPAC-2, /)
+      .locator('[data-check]')
+      .click()
+    await expect(bar()).toContainText('1 selected')
+    await openCurrent()
+
+    // The Tree's set is out of play here: the page starts empty and shows no bar.
+    await expect(bar()).toHaveCount(0)
+    await window.keyboard.press('ControlOrMeta+a')
+    await expect(bar()).toContainText('7 selected')
     await hover('PSAPAC-2')
+    await window.keyboard.press('Shift+ArrowDown')
+    await window.keyboard.press('x')
+    await window.keyboard.press('Escape')
+    await expect(bar()).toHaveCount(0)
+    expect(await checkedOnPage()).toEqual([])
     await window.keyboard.press('x')
     await expect(bar()).toContainText('1 selected')
     await sprintPage().getByRole('button', { name: 'Back to issues' }).click()
     await expect(sprintPage()).toHaveCount(0)
-    await expect(bar()).toHaveCount(0)
 
-    await sidebar()
-      .getByRole('region', { name: 'Sprints' })
-      .getByRole('button', { name: /^Current/ })
-      .click()
+    // The Tree kept PSAPAC-2 and nothing from the page.
+    await expect(bar()).toContainText('1 selected')
+    expect(await checkedKeys()).toEqual(['PSAPAC-2'])
+
+    await openCurrent()
     await expect(row('PSAPAC-2')).toBeVisible()
     expect(await checkedOnPage()).toEqual([])
     await expect(bar()).toHaveCount(0)
