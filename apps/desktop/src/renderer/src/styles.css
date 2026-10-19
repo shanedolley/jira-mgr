@@ -123,6 +123,7 @@
 }
 
 .tree-row[aria-checked='true'],
+.sprint-row[data-checked='true'],
 .is-current {
   background: var(--row-selected);
   font-weight: 500;
@@ -135,8 +136,17 @@
   font-weight: 600;
 }
 
+.sprint-row[data-checked='true'] .sprint-key {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* The summary follows the key's colour on a checked row, not its weight (#266). */
 .tree-row[aria-checked='true'] .tree-summary {
+  color: var(--ink);
+}
+
+.sprint-row[data-checked='true'] [data-summary] {
   color: var(--ink);
 }
 

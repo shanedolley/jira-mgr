@@ -25,13 +25,14 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 
 | Key | Action |
 |---|---|
-| `X` | Check or uncheck the active issue; the checkbox in a row's left gutter does the same |
-| `Shift+Down`, `Shift+Up` | Move to the next or previous row and check the issue rows it crosses |
-| `Shift+click` | Check every issue row from the anchor (the issue last checked or unchecked) to the one clicked |
-| `Cmd+A` | Check every issue row shown, skipping headers, chips and context rows; the "Select all rows" checkbox left of "Hide done" does the same, and clears them when all are checked |
+| `X` | Check or uncheck the active issue; the checkbox in a row's left gutter does the same. The Sprint page's rows answer too |
+| `Shift+Down`, `Shift+Up` | Move to the next or previous row and check the issue rows it crosses. On the Sprint page the rows run in page order, across the status sections |
+| `Shift+click` | Check every issue row from the anchor (the issue last checked or unchecked) to the one clicked, unchecking none. It works anywhere on the row, the summary and every slot included, and opens nothing. With no anchor it starts at the active row. The Sprint page's rows answer too |
+| `Cmd+click` (`Ctrl+click` off macOS) | Check or uncheck the issue clicked and make it the anchor, leaving every other checked issue as it was. It works anywhere on the row, the summary, status dot, avatar, priority and every slot included, and opens no Peek, editor, modal or page. On macOS `Ctrl+click` stays the right-click that opens the issue menu. The Sprint page's rows answer too |
+| `Cmd+A` | Check every issue row shown, skipping headers, chips and context rows; the "Select all rows" checkbox left of "Hide done" does the same, and clears them when all are checked. The Sprint page checks every row of the page and has no master checkbox |
 | `Alt+Shift+Up`, `Alt+Shift+Down` | Move the active issue up or down one place among its siblings, which makes the order Manual; a screen reader hears the new position, and `Cmd+Z` puts the move back |
 | `Alt+Left`, `Alt+Right` | With a Column header name focused, move its column one place left or right in the strip; a screen reader hears the new place, and a name at an end does nothing |
-| `Esc` | Clear the checked issues; with none checked, close the Peek |
+| `Esc` | Clear the checked issues; with none checked, close the Peek. On the Sprint page it clears the page's checked issues first, and returns to the Tree when none are checked |
 
 ## Edit an issue
 
@@ -65,15 +66,15 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 |---|---|
 | Pointer over a row | Make it the active row: an issue row, a Customer header, a No Epic header or a chip. No click is needed. The last input wins: after `J` or `K` the keyboard row stays active until the pointer moves again, and a scroll under a still pointer changes nothing. When the pointer leaves the list the last row stays active. The Peek stays on its issue while the pointer moves |
 | Click on blank row space | Nothing: no Peek, no selection. A header or chip still expands or collapses |
-| Double-click | On an issue row's blank space, open its page as `Enter` does, the issue the first click hit. The checkbox, the summary, the chevron, every slot with an editor or action of its own (status dot, priority, avatar, Labels, Sprint, Due date, Start date, Original estimate and Logged) and a Shift+double-click ignore it, and a header or chip does only what its two clicks do |
-| Click on a status dot | Open the Status list beside the dot, without opening the Peek. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
-| Click on an avatar | Open the Assignee list beside the avatar, without opening the Peek, also on an unassigned row. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
-| Click on a priority slot | Open the Priority list beside the slot, without opening the Peek, whether the slot draws bars or is empty. The Sprint page's rows have the same button. On the Tree `Shift+click` checks a range instead |
-| Click on a Labels, Sprint, Due date or Start date slot | Open the slot's editor beside it, without opening the Peek, whether the slot is filled or empty. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
+| Double-click | On an issue row's blank space, open its page as `Enter` does, the issue the first click hit. The checkbox, the summary, the chevron, every slot with an editor or action of its own (status dot, priority, avatar, Labels, Sprint, Due date, Start date, Original estimate and Logged), a Shift+double-click and a Cmd+double-click ignore it, and a header or chip does only what its two clicks do |
+| Click on a status dot | Open the Status list beside the dot, without opening the Peek. The Sprint page's rows have the same button. `Shift+click` and `Cmd+click` check instead |
+| Click on an avatar | Open the Assignee list beside the avatar, without opening the Peek, also on an unassigned row. The Sprint page's rows have the same button. `Shift+click` and `Cmd+click` check instead |
+| Click on a priority slot | Open the Priority list beside the slot, without opening the Peek, whether the slot draws bars or is empty. The Sprint page's rows have the same button. On the Tree `Shift+click` and `Cmd+click` check instead |
+| Click on a Labels, Sprint, Due date or Start date slot | Open the slot's editor beside it, without opening the Peek, whether the slot is filled or empty. The Sprint page's rows have the same button. `Shift+click` and `Cmd+click` check instead |
 | Click on the Original estimate slot | Turn it into a field in place, without opening the Peek. `Enter` saves and `Esc` cancels. The Sprint page's rows have the same button |
 | Click on the Logged slot | Open the Log work modal, without opening the Peek. The Sprint page's rows have the same button |
-| Click on the Comments slot | Open the Comments modal, without opening the Peek, whatever the count. The Sprint page's rows have the same button, which `Enter` and `Space` press. On the Tree `Shift+click` checks a range instead |
-| Click on a summary | Edit the summary in a modal, with the text selected. `E` opens the same modal on the active row. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
+| Click on the Comments slot | Open the Comments modal, without opening the Peek, whatever the count. The Sprint page's rows have the same button, which `Enter` and `Space` press. `Shift+click` and `Cmd+click` check instead |
+| Click on a summary | Edit the summary in a modal, with the text selected. `E` opens the same modal on the active row. The Sprint page's rows have the same button. `Shift+click` and `Cmd+click` check instead |
 
 ## Find, filter and views
 
@@ -130,7 +131,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 |---|---|---|
 | | `?` | List every shortcut on this page; works from a sidebar or toolbar button too, not in a field or over a dialog |
 | | `Cmd+Z` | Undo; a text field keeps its own undo. A batch from the bulk bar goes back as one, skipping issues that changed since |
-| | `Esc` | Close the issue page, then the Peek opened beside a Sprint page, then the Sprint page or the Epics or Customers page, then clear the checked issues, then close the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
+| | `Esc` | Close the issue page, then the Peek opened beside a Sprint page, then the Sprint page or the Epics or Customers page, then clear the checked issues, then close the Peek. With focus on the Sprint page, its own checked issues clear before the Peek or the page closes. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
 | | `Tab` | The first stop is a "Skip to issues" link, hidden until it has focus; `Enter` on it moves focus to the Tree |
 | Inbox list | `Up`, `Down` | Move between entries |
 | Inbox list | `Enter` | Open the entry's page and mark it read; `Esc` on the page returns to the list |

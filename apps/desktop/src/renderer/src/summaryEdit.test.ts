@@ -4,15 +4,15 @@ import { readSummaryDraft, summaryClick } from './summaryEdit'
 
 describe('summaryClick', () => {
   it('opens the editor on a single click on the summary', () => {
-    expect(summaryClick({ shiftKey: false, onSummary: true })).toBe(true)
+    expect(summaryClick({ checking: false, onSummary: true })).toBe(true)
   })
 
   it('ignores a click off the summary', () => {
-    expect(summaryClick({ shiftKey: false, onSummary: false })).toBe(false)
+    expect(summaryClick({ checking: false, onSummary: false })).toBe(false)
   })
 
-  it('never edits on a Shift+click, which checks a range', () => {
-    expect(summaryClick({ shiftKey: true, onSummary: true })).toBe(false)
+  it('never edits on a Shift+click or a Cmd+click, which check', () => {
+    expect(summaryClick({ checking: true, onSummary: true })).toBe(false)
   })
 })
 

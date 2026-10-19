@@ -212,7 +212,7 @@ function CustomerChoice({ variant, disabled, apply }: ChoiceProps) {
   )
 }
 
-interface BulkBarProps {
+export interface BulkBarProps {
   /** The checked issues, in the order they were checked. */
   checked: readonly Issue[]
   /** Every loaded issue. */

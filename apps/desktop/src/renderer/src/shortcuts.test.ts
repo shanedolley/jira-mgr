@@ -23,7 +23,7 @@ const SECTION_TITLES = [
   'App and pages',
 ]
 /** Every row of the page. A story that adds or removes a shortcut changes this one number. */
-const SHORTCUT_COUNT = 86
+const SHORTCUT_COUNT = 87
 
 const DOC = new URL('../../../../../docs/reference/shortcuts.md', import.meta.url)
 
