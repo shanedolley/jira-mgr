@@ -157,3 +157,29 @@ test('under 960px the rail avatar opens the same menu', async () => {
   await expect(menu()).toBeHidden()
   await expect(avatar()).toBeFocused()
 })
+
+test('a failed Log out shows a toast in the rail, and a second failure shows it again', async () => {
+  await app.evaluate(({ ipcMain }) => {
+    ipcMain.removeHandler('session:logout')
+    ipcMain.handle('session:logout', () => ({
+      ok: false,
+      error: { code: 'unknown', message: 'Keychain said no' },
+    }))
+  })
+  await app.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0]
+    win?.setMinimumSize(1, 1)
+    win?.setContentSize(720, 700)
+  })
+  await expect.poll(() => window.evaluate(() => globalThis.innerWidth)).toBe(720)
+
+  const toast = window.getByText('Could not log out')
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await avatar().click()
+    await menu().getByRole('menuitem', { name: 'Log out' }).click()
+    await expect(toast).toBeVisible()
+    await expect(window.getByText('Keychain said no')).toBeVisible()
+    await window.getByRole('button', { name: 'Dismiss' }).click()
+    await expect(toast).toHaveCount(0)
+  }
+})

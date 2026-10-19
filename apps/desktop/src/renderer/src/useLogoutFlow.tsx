@@ -9,6 +9,8 @@ export interface LogoutFlow {
   request: () => void
   pending: boolean
   error: string | undefined
+  /** When the failed attempt began; it changes with each failure, even one with the same message. */
+  failedAt: number | undefined
   /** The discard prompt, or nothing. */
   dialog: ReactNode
 }
@@ -25,6 +27,7 @@ export function useLogoutFlow(): LogoutFlow {
     },
     pending: logout.isPending,
     error: logout.isError ? logout.error.message : undefined,
+    failedAt: logout.isError ? logout.submittedAt : undefined,
     dialog: confirming && (
       <DiscardDialog
         title={`Log out and discard ${String(unsaved)} unsaved ${unsaved === 1 ? 'draft' : 'drafts'}?`}

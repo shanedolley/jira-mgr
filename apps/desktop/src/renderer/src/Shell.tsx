@@ -394,7 +394,9 @@ export function Shell({ session }: { session: Session }) {
     if (logout.error !== undefined) {
       notify({ title: 'Could not log out', notes: [logout.error], warned: true })
     }
-  }, [logout.error, notify])
+    // Keyed on the attempt, so a second failure with the same message shows again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logout.failedAt, notify])
   // A created issue to make active once its row exists.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const deleteIssue = useDeleteIssue()
@@ -1158,8 +1160,8 @@ export function Shell({ session }: { session: Session }) {
     flushSync(() => {
       setSearching(false)
     })
-    if (command.theme !== undefined) setTheme(command.theme)
-    else logout.request()
+    if (command.id === 'logout') logout.request()
+    else if (command.theme !== undefined) setTheme(command.theme)
   }
 
   /**
