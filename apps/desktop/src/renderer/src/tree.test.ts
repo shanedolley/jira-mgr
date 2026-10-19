@@ -1151,9 +1151,17 @@ describe('fallbackRow', () => {
     expect(fallbackRow(previous, alone, 'i:P-3')).toBe('i:P-6')
   })
 
-  it('starts at the first row when nothing was active, and at none when nothing remains', () => {
+  it('starts at the first row when nothing was active', () => {
     expect(fallbackRow(previous, previous, null)).toBe('c:1')
-    expect(fallbackRow(previous, [], 'i:P-2')).toBeNull()
+    expect(fallbackRow(previous, [], null)).toBeNull()
+  })
+
+  it('holds the active row while no rows show, and keeps it when they come back', () => {
+    // A filter that matches nothing, then cleared: the rows come back from none.
+    expect(fallbackRow(previous, [], 'i:P-2')).toBe('i:P-2')
+    expect(fallbackRow([], previous, 'i:P-2')).toBe('i:P-2')
+    // Came back without it: nothing to fall back from, so the first row.
+    expect(fallbackRow([], without('i:P-2'), 'i:P-2')).toBe('c:1')
   })
 })
 

@@ -8,6 +8,7 @@ import {
   dialog,
   ipcMain,
   Notification,
+  screen,
   session,
   shell,
   type IpcMainInvokeEvent,
@@ -73,8 +74,9 @@ function createWindow(inactive: boolean, hooks: WindowHooks): void {
   const window = new BrowserWindow({
     // A test run shows its window without taking focus, so it never steals the user's keystrokes.
     // macOS keeps 40px of any window on a display, so it cannot sit off-screen. There the window is
-    // invisible and ignores the mouse instead. Playwright drives it over CDP, not the OS. Linux
-    // runs under xvfb, where nobody watches and opacity and click-through change the layout tests.
+    // invisible, ignores the mouse and is parked in the bottom-right corner (below). Playwright
+    // drives it over CDP, not the OS. Linux runs under xvfb, where nobody watches and opacity and
+    // click-through change the layout tests.
     show: !inactive,
     opacity: hideForTest ? 0 : 1,
     width: 1200,
@@ -123,6 +125,14 @@ function createWindow(inactive: boolean, hooks: WindowHooks): void {
   if (inactive) {
     window.once('ready-to-show', () => {
       window.showInactive()
+      if (hideForTest) {
+        // Click-through does not stop Chromium delivering the real cursor's moves as pointermove,
+        // and a pointer move over a row makes it the active row. So park the window in the
+        // bottom-right corner, where the cursor rarely goes. macOS clamps the position so that
+        // about 40x115 px stay on the display, and a window not yet shown is clamped fully onto it.
+        const area = screen.getPrimaryDisplay().bounds
+        window.setPosition(area.x + area.width - 40, area.y + area.height - 40)
+      }
     })
   }
 

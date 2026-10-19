@@ -751,7 +751,8 @@ export function windowRange(
 
 /**
  * The active row after a rebuild removed `id`: the next surviving sibling, then the nearest
- * ancestor still in `rows`, then the row now at the old index. `id` itself when it survived.
+ * ancestor still in `rows`, then the row now at the old index. `id` itself when it survived, and
+ * while no rows show, so a filter that matches nothing hands the row back when it clears.
  */
 export function fallbackRow(
   previousRows: readonly TreeRow[],
@@ -759,7 +760,7 @@ export function fallbackRow(
   id: string | null,
 ): string | null {
   const first = rows[0]
-  if (first === undefined) return null
+  if (first === undefined) return id
   if (id === null) return first.id
   const surviving = new Set(rows.map((r) => r.id))
   if (surviving.has(id)) return id
