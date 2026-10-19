@@ -172,3 +172,21 @@ test('opens its window invisible, so it never shows on the user screen', async (
   )
   expect(opacity).toBe(0)
 })
+
+test('parks its window in the display corner, away from the real cursor', async () => {
+  test.skip(process.platform !== 'darwin', 'macOS keeps a window on a display, so it is parked')
+  // Click-through still lets the real cursor's moves reach the page, so the window sits where the
+  // cursor rarely goes: only the 40px macOS keeps on screen (and the title bar's 115) shows.
+  const shown = await app.evaluate(({ BrowserWindow, screen }) => {
+    const b = BrowserWindow.getAllWindows()[0]?.getBounds()
+    const d = screen.getPrimaryDisplay().bounds
+    if (b === undefined) return null
+    return {
+      w: Math.min(b.x + b.width, d.x + d.width) - Math.max(b.x, d.x),
+      h: Math.min(b.y + b.height, d.y + d.height) - Math.max(b.y, d.y),
+    }
+  })
+  expect(shown).not.toBeNull()
+  expect(shown?.w).toBeLessThanOrEqual(120)
+  expect(shown?.h).toBeLessThanOrEqual(120)
+})
