@@ -19,6 +19,7 @@ Before changing an area, read its standard from [docs/standards](docs/standards/
 - Expect Linux to differ from macOS in layout (GitHub's Linux runs no longer happen, but a Linux checkout or a later CI still meets it): its fonts are wider (the create dialog's chips wrapped under xvfb), its scrollbars take 15px where macOS overlay scrollbars take none (measure `offsetWidth - clientWidth`), and a race such as a Tree row read a render late can fail only there. Add a Verdana variant to layout tests and reproduce races with CDP `Emulation.setCPUThrottlingRate` at 20, as `throttle()` in `e2e/desktop/keyboard.test.ts` does.
 - Shell noclobber is on, so `>` onto an existing file fails silently. Overwrite with `>|` or `tee`, and confirm the file changed before trusting a before-and-after run. It has cost a revert proof four times (2026-10-07, 127-keyboard-review and 133-create-build, 2026-10-11, 301-column-order-review's re-check, 2026-10-19).
 - Run CI locally, because GitHub Actions cannot run (Shane, 2026-10-17). The route is `pnpm ci:local`, the Electron dist check, then `lockf <lock file> pnpm e2e --workers=1`, as in [git workflow](docs/standards/git-workflow.md#local-ci). Run it on the head you push, read the pass and fail counts, and record them in the pull request. A documentation-only change skips the dist check and e2e ([definition](docs/standards/git-workflow.md#local-ci)). Do not wait on `gh run` or `gh pr checks`: the workflow runs by manual dispatch only.
+- Push from the story's worktree with a literal path, `cd /abs/worktree && git push`. The commit guard reads the session's working directory and refuses a push made from the main tree while `main` is checked out (met 2026-10-16 and 2026-10-19).
 - Finish against the [definition of done](docs/standards/code-review.md#definition-of-done). Merge only when the local route passes on the pushed head, with its counts in the pull request, and a reviewer other than the builder approves.
 
 ## Ask First
@@ -34,6 +35,7 @@ Before changing an area, read its standard from [docs/standards](docs/standards/
 - Commit, print or log the Jira API token. It lives only in the app's own macOS Keychain item.
 - Edit an accepted ADR. Supersede it with a new one.
 - Commit secrets, or push to `main`.
+- Delete a file you did not create. Keep temporary files in your own scratch folder (a reviewer deleted `/tmp/x` on 2026-10-19).
 - Import across packages by relative path; import by package name.
 
 ## Generated Files
