@@ -126,6 +126,12 @@ test('a mouse gesture draws a pointer pill, not a keycap', async () => {
     .locator('tbody tr', { hasText: 'Shift click' })
   await expect(shiftClick.locator('td').first().locator('svg')).toHaveCount(1)
   await expect(shiftClick.locator('td').first().locator('kbd')).toHaveText('⇧')
+  // Cmd+click is the same pill with the Command keycap.
+  const cmdClick = help()
+    .getByRole('table', { name: 'Select and reorder' })
+    .locator('tbody tr', { hasText: 'Cmd click' })
+  await expect(cmdClick.locator('td').first().locator('svg')).toHaveCount(1)
+  await expect(cmdClick.locator('td').first().locator('kbd')).toHaveText('⌘')
 })
 
 test('no match says so, offers Clear search and the live region reads the count', async () => {

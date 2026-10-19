@@ -13,8 +13,12 @@ import {
 
 const POINTER = 'M4 2.5v9l2.5-2 1.5 3.5 1.5-.7-1.5-3.3H11z'
 
-/** A mouse gesture: "Double-click", "Click" or "Click on a status dot", or the page's `Shift+click`. */
-const GESTURE = /^(?:(`Shift\+click`)|(Double-click|Click)(?: on (.+))?)$/
+/**
+ * A mouse gesture: "Double-click", "Click" or "Click on a status dot", or the page's `Shift+click`
+ * and `Cmd+click`, which may carry the off-macOS form in a parenthesis.
+ */
+const GESTURE =
+  /^(?:`(Shift|Cmd)\+click`( \(`Ctrl\+click` off macOS\))?|(Double-click|Click)(?: on (.+))?)$/
 
 /** The first sentence of `action`, and the rest. A full stop inside a keycap does not end it. */
 function splitSentence(action: string): [string, string] {
@@ -44,11 +48,14 @@ function KeyGroup({ keys, gesture }: { keys: string; gesture: RegExpExecArray | 
         {gesture === null ? (
           <Keys text={keys} />
         ) : gesture[1] !== undefined ? (
-          <Pointer>
-            <Kbd>⇧</Kbd>click
-          </Pointer>
+          <>
+            <Pointer>
+              <Kbd>{gesture[1] === 'Shift' ? '⇧' : '⌘'}</Kbd>click
+            </Pointer>
+            {gesture[2]?.replaceAll('`', '')}
+          </>
         ) : (
-          <Pointer>{gesture[2]}</Pointer>
+          <Pointer>{gesture[3]}</Pointer>
         )}
       </span>
     </>
@@ -66,7 +73,7 @@ function Row({
 }) {
   const { where, keys, action } = shortcutCells(table, row)
   const gesture = GESTURE.exec(keys)
-  const lead = gesture?.[3] !== undefined ? `On ${gesture[3]}` : where
+  const lead = gesture?.[4] !== undefined ? `On ${gesture[4]}` : where
   const [first, rest] = splitSentence(action)
   const mark = (part: string) =>
     splitMarks(part, query).map((run, at) =>
