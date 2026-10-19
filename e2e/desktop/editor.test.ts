@@ -624,9 +624,12 @@ test('quitting with an unsaved draft raises the quit prompt', async () => {
 test('logging out with an unsaved draft asks first, then removes it', async () => {
   await addDescription()
   await window.keyboard.type('Unsaved words')
-  const logout = window
-    .getByRole('navigation', { name: 'Main' })
-    .getByRole('button', { name: 'Log out' })
+  const logout = {
+    click: async () => {
+      await window.getByRole('button', { name: 'User menu' }).click()
+      await window.getByRole('menuitem', { name: 'Log out' }).click()
+    },
+  }
 
   await logout.click()
   await expect(discardDialog()).toContainText('Log out and discard 1 unsaved draft?')

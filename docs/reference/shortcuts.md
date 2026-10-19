@@ -83,7 +83,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 |---|---|---|
 | | `F` | Open the Filter menu, with focus on its first field; `Esc` closes it and returns to the Tree |
 | | `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open issue, Inbox, Sprint, Epics or Customers page |
-| | `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
+| | `Cmd+K` | Open the palette; once a query is typed it lists the matching commands (Theme: System, Theme: Light, Theme: Dark, Log out) first; with an issue in context it then lists that issue's actions, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
 | Text filter | `Enter`, `Down` | Move to the first issue row, skipping group headers, with the query kept |
 | Text filter | `Esc` | Clear the query; when empty, return to the Tree |
 | Filter menu, a field | `Down`, `Up` | Move between fields |
@@ -91,7 +91,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Filter submenu, search box and values | `Down`, `Up` | Move between the search box and the values |
 | Filter submenu | `Left`, `Esc` | Close the submenu and return to its field; `Left` moves the caret and `Esc` clears the text while the search box holds text |
 | Palette | `Up`, `Down` | Move the highlight; it starts on the first loaded issue, and `Up` reaches the actions and views above it; Jira text matches never take it |
-| Palette | `Enter`, `Esc` | Open the highlighted row (an issue's page, or run an action or view), or close; the first loaded issue is highlighted by default |
+| Palette | `Enter`, `Esc` | Open the highlighted row (an issue's page, or run an action, view or command), or close; the first loaded issue is highlighted by default |
 | Saved views list | `Up`, `Down` | Move between views |
 | Saved views list | `F2` | Rename the focused view |
 | Saved views list | `Alt+Up`, `Alt+Down` | Move the focused view up or down one place |

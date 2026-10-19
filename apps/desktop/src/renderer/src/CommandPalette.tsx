@@ -7,6 +7,8 @@ import { Modal } from './Modal'
 import {
   defaultRow,
   matchingActions,
+  matchingCommands,
+  type CommandId,
   matchingViews,
   type ActionId,
   type ActionRow,
@@ -26,6 +28,8 @@ interface CommandPaletteProps {
   onOpen: (key: string) => void
   /** Runs one action on the context issue, by the code its picker or key runs. */
   onAction: (id: ActionId, issue: Issue) => void
+  /** Runs a theme choice or Log out. */
+  onCommand: (id: CommandId) => void
   /** Applies a saved view, as a click on it in the sidebar does. */
   onView: (view: SavedView) => void
   onClose: () => void
@@ -47,8 +51,13 @@ interface IssueItem {
   rid: string
   issue: Issue
 }
+interface CommandItem {
+  kind: 'command'
+  rid: string
+  command: { id: CommandId; label: string }
+}
 /** A listed row. `rid` names it for the highlight. */
-type Row = ActionItem | ViewItem | IssueItem
+type Row = ActionItem | ViewItem | CommandItem | IssueItem
 
 const issueRow = (issue: Issue): IssueItem => ({ kind: 'issue', rid: issue.key, issue })
 
@@ -64,7 +73,12 @@ function leadRows(context: Issue | null, views: readonly SavedView[], query: str
     rid: `view:${view.id}`,
     view,
   }))
-  return { actions, views: found }
+  const commands = matchingCommands(query).map((command): CommandItem => ({
+    kind: 'command',
+    rid: `command:${command.id}`,
+    command,
+  }))
+  return { actions, views: found, commands }
 }
 
 /**
@@ -82,6 +96,7 @@ export function CommandPalette({
   context,
   onOpen,
   onAction,
+  onCommand,
   onView,
   onClose,
   returnFocus,
@@ -92,6 +107,7 @@ export function CommandPalette({
   const jiraId = `${uid}-jira`
   const actionsId = `${uid}-actions`
   const viewsId = `${uid}-views`
+  const commandsId = `${uid}-commands`
   const issuesId = `${uid}-issues`
   const chipId = `${uid}-chip`
   const optionId = (rid: string) => `${uid}-${rid}`
@@ -104,8 +120,12 @@ export function CommandPalette({
   const found = jira.status === 'done' ? textMatches(shown, jira.issues) : []
   const views = useViews().data ?? []
   // Labels are few, so they follow the field itself rather than the deferred value.
-  const { actions: actionRows, views: viewRows } = leadRows(context, views, query)
-  const lead: Row[] = [...actionRows, ...viewRows]
+  const {
+    actions: actionRows,
+    views: viewRows,
+    commands: commandRows,
+  } = leadRows(context, views, query)
+  const lead: Row[] = [...commandRows, ...actionRows, ...viewRows]
   const loadedRows = shown.map(issueRow)
   const jiraRows = found.map(issueRow)
   const rows: Row[] = [...lead, ...loadedRows, ...jiraRows]
@@ -135,6 +155,9 @@ export function CommandPalette({
         break
       case 'view':
         onView(row.view)
+        break
+      case 'command':
+        onCommand(row.command.id)
         break
       case 'issue':
         onOpen(row.issue.key)
@@ -256,6 +279,16 @@ export function CommandPalette({
         }}
         className="max-h-[min(24rem,60vh)] overflow-y-auto p-1"
       >
+        {commandRows.length > 0 && (
+          <div role="group" aria-labelledby={commandsId}>
+            {heading(commandsId, 'Commands')}
+            {commandRows.map((row) => (
+              <div key={row.rid} {...rowProps(row)}>
+                <span className="min-w-0 flex-1 truncate">{row.command.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {actionRows.length > 0 && (
           <div role="group" aria-labelledby={actionsId}>
             {heading(actionsId, 'Actions')}

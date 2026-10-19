@@ -220,7 +220,7 @@ A conflict result makes the send function throw a `JiraMgrError` with code `vali
 
 **Leaving with unsaved text.** `drafts.ts` is a session map from issue key to a draft and its base. Opening another issue, Back, or switching to the Tree while the editor is dirty, or while its save is failing, puts the draft there, with no prompt. Coming back reopens the editor with it and the note "Unsaved draft restored." Esc or Cancel on a dirty editor opens `DiscardDialog`, an in-page `role="alertdialog"` reading "Discard your changes to the description?" with **Keep editing**, focused, and **Discard**. Esc in the dialog closes it and returns to the editor, without cancelling again. Quitting or reloading while any draft exists or an editor is dirty sets `onbeforeunload`, and main answers Electron's `will-prevent-unload` with a native dialog, Quit or Stay. The e2e entry answers Quit without a dialog and counts the prompt. A draft saved or discarded leaves the map.
 
-**Logout.** Logout with any draft open asks first with the same alertdialog, naming how many issues hold unsaved descriptions. Logging out clears `drafts.ts` and `uploads.ts`, revoking every preview URL, and `clearAccountData` removes the `['attachments']` queries, revoking their URLs.
+**Logout.** Logout (the user menu's Log out or the palette's) with any draft open asks first with the same alertdialog, naming how many issues hold unsaved descriptions. Logging out clears `drafts.ts` and `uploads.ts`, revoking every preview URL, and `clearAccountData` removes the `['attachments']` queries, revoking their URLs.
 
 **Undo.** Inside the editor, `Cmd+Z` is the editor's own history. A saved description joins D7's undo stack (Q38) when D7 builds it, with the base as the previous value; D4 adds no stack.
 

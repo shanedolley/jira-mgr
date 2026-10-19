@@ -2,7 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 import { describe, expect, it } from 'vitest'
 
 import type { SavedView } from '../../shared/ipc'
-import { defaultRow, matchingActions, matchingViews } from './paletteActions'
+import { defaultRow, matchingActions, matchingCommands, matchingViews } from './paletteActions'
 
 const TYPES = {
   Epic: { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 },
@@ -97,5 +97,20 @@ describe('defaultRow', () => {
   it('takes the first Jira match only when nothing else is listed', () => {
     expect(defaultRow<string>([], [], ['jira 1', 'jira 2'])).toBe('jira 1')
     expect(defaultRow<string>([], [], [])).toBeUndefined()
+  })
+})
+
+describe('matchingCommands', () => {
+  const ids = (query: string) => matchingCommands(query).map((c) => c.id)
+
+  it('lists none for an empty query', () => {
+    expect(ids('')).toEqual([])
+    expect(ids('  ')).toEqual([])
+  })
+
+  it('matches the theme choices and Log out by label words', () => {
+    expect(ids('theme')).toEqual(['theme-system', 'theme-light', 'theme-dark'])
+    expect(ids('dark')).toEqual(['theme-dark'])
+    expect(ids('log out')).toEqual(['logout'])
   })
 })

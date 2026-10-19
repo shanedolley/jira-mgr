@@ -2,7 +2,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useSyncExternalStore,
   type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
@@ -10,15 +9,13 @@ import {
 } from 'react'
 
 import type { Session } from '../../shared/ipc'
-import { DiscardDialog } from './DiscardDialog'
-import { Avatar } from './Avatar'
 import { INBOX, Icon, LIST, SIDEBAR } from './Icon'
 import { useRail } from './narrow'
-import { ThemeToggle } from './ThemeToggle'
 import { TimerClock } from './TimerClock'
-import { draftCount, subscribeDrafts } from './drafts'
-import { useLogout, useMe } from './queries'
+import { useMe } from './queries'
 import { useTimer } from './timerQueries'
+import type { LogoutFlow } from './useLogoutFlow'
+import { UserMenu } from './UserMenu'
 
 /** The count that sits beside a sidebar link, and what a screen reader hears after it. */
 function Badge({ count, what }: { count: number; what: string }) {
@@ -57,6 +54,8 @@ export function Sidebar({
   views,
   onOpenIssue,
   onStopTimer,
+  logout,
+  onShortcuts,
 }: {
   session: Session
   count: number | undefined
@@ -78,11 +77,11 @@ export function Sidebar({
   onOpenIssue: (key: string) => void
   /** Opens the stop dialog. */
   onStopTimer: () => void
+  logout: LogoutFlow
+  /** Opens the shortcuts dialog. */
+  onShortcuts: () => void
 }) {
   const timer = useTimer().data?.timer ?? null
-  const logout = useLogout()
-  const unsaved = useSyncExternalStore(subscribeDrafts, draftCount)
-  const [confirming, setConfirming] = useState(false)
   const me = useMe().data
   const site = new URL(session.siteUrl).hostname
   const rail = useRail()
@@ -156,6 +155,20 @@ export function Sidebar({
           <Icon path={LIST} className="size-4" />
           <span className="sr-only">Issues</span>
         </a>
+        <UserMenu
+          site={site}
+          email={session.email}
+          person={me ?? null}
+          compact
+          loggingOut={logout.pending}
+          onShortcuts={onShortcuts}
+          onLogout={logout.request}
+        />
+        {logout.error !== undefined && (
+          <p role="alert" className="sr-only">
+            {logout.error}
+          </p>
+        )}
       </nav>
     )
   }
@@ -286,45 +299,22 @@ export function Sidebar({
             </div>
           </section>
         )}
-        <div className="space-y-2 border-t border-line p-3">
-          <ThemeToggle />
-          <div className="flex items-center gap-2">
-            {me !== undefined && <Avatar person={me} />}
-            <p className="min-w-0 truncate text-xs text-muted" title={session.email}>
-              {session.email}
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={logout.isPending}
-            onClick={() => {
-              if (unsaved > 0) setConfirming(true)
-              else logout.mutate()
-            }}
-            className="btn w-full"
-          >
-            Log out
-          </button>
-          {logout.isError && (
-            <p role="alert" className="text-xs text-danger">
-              {logout.error.message}
+        <div className="space-y-2 border-t border-line p-2">
+          <UserMenu
+            site={site}
+            email={session.email}
+            person={me ?? null}
+            compact={false}
+            loggingOut={logout.pending}
+            onShortcuts={onShortcuts}
+            onLogout={logout.request}
+          />
+          {logout.error !== undefined && (
+            <p role="alert" className="px-2 text-xs text-danger">
+              {logout.error}
             </p>
           )}
         </div>
-        {confirming && (
-          <DiscardDialog
-            title={`Log out and discard ${String(unsaved)} unsaved ${unsaved === 1 ? 'draft' : 'drafts'}?`}
-            keepLabel="Keep editing"
-            discardLabel="Discard and log out"
-            onKeep={() => {
-              setConfirming(false)
-            }}
-            onDiscard={() => {
-              setConfirming(false)
-              logout.mutate()
-            }}
-          />
-        )}
       </nav>
     </>
   )

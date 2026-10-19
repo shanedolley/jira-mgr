@@ -46,6 +46,16 @@ export const ISSUE_ACTIONS: readonly IssueAction[] = [
   { id: 'openInJira', label: 'Open in Jira', allowed: always },
 ]
 
+/** What the palette does to the app itself, whatever issue is in context. */
+export type CommandId = 'theme-system' | 'theme-light' | 'theme-dark' | 'logout'
+
+export const COMMANDS: readonly { id: CommandId; label: string }[] = [
+  { id: 'theme-system', label: 'Theme: System' },
+  { id: 'theme-light', label: 'Theme: Light' },
+  { id: 'theme-dark', label: 'Theme: Dark' },
+  { id: 'logout', label: 'Log out' },
+]
+
 /** One action row: its label and, when a global shortcut runs the same thing, that key. */
 export interface ActionRow {
   id: ActionId
@@ -71,6 +81,11 @@ export function matchingActions(issue: Issue | null, query: string): ActionRow[]
     label: a.label,
     key: keyOf(a.id),
   }))
+}
+
+/** The commands whose label fits `query`. An empty query lists none, so they stay off the opening list. */
+export function matchingCommands(query: string): { id: CommandId; label: string }[] {
+  return query.trim() === '' ? [] : COMMANDS.filter((c) => labelMatches(c.label, query))
 }
 
 /** The saved views whose name fits `query`. The "Go to view" lead-in is not searched. */
