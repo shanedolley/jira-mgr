@@ -988,8 +988,11 @@ export const TreeRow = memo(function TreeRow({
         // opens no editor or modal.
         const check = target.closest('[data-check]') !== null
         const field = target.closest('[data-edit]:not([data-edit="comments"])') !== null
+        // A Shift+click on the checkbox checks a range, as it does anywhere else on the row.
         const select = check
-          ? 'toggle'
+          ? event.shiftKey
+            ? 'range'
+            : 'toggle'
           : field
             ? undefined
             : event.shiftKey

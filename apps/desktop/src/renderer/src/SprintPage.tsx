@@ -619,7 +619,8 @@ export function SprintPage({
     // Enter or Space on a row's button opens the issue, but on the checkbox it toggles.
     if (event.detail === 0 && !check) return
     if (!check && target.closest(FIELD) !== null) return
-    const toggle = check || togglesCheck(event)
+    // A Shift+click on the checkbox is a range too, not a toggle.
+    const toggle = !event.shiftKey && (check || togglesCheck(event))
     if (!toggle && !event.shiftKey) return
     event.stopPropagation()
     activate(key)
