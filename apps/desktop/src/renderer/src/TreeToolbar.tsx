@@ -35,6 +35,7 @@ import {
   type Operator,
 } from './filters'
 import { withoutProperty } from './propertyFit'
+import type { CheckState } from './tree'
 
 const TOGGLE_LABELS: Record<keyof Toggles, string> = {
   hideDone: 'Hide done',
@@ -109,6 +110,41 @@ interface TreeToolbarProps {
   doneProgress: string | null
   /** False while the empty Tree offers its own "Clear filters", so one button clears. */
   showClear: boolean
+  /** How many of the shown rows are checked. The master checkbox shows from one on (#300). */
+  checkState: CheckState
+  /** A press on the master checkbox: check every shown row, or clear them when all are checked. `pointer` is a mouse click, not Space. */
+  onMaster: (pointer: boolean) => void
+  /** A batch runs, so the selection must not change under it. */
+  masterDisabled: boolean
+}
+
+/** Checks or clears every shown row. A dash means some are checked; it does not show with none. */
+function MasterCheck({
+  state,
+  disabled,
+  onChange,
+}: {
+  state: CheckState
+  disabled: boolean
+  onChange: (pointer: boolean) => void
+}) {
+  if (state === 'none') return null
+  return (
+    <input
+      type="checkbox"
+      aria-label="Select all rows"
+      title="Select all rows"
+      checked={state === 'all'}
+      ref={(el) => {
+        if (el !== null) el.indeterminate = state === 'some'
+      }}
+      disabled={disabled}
+      onChange={(event) => {
+        onChange((event.nativeEvent as MouseEvent).detail > 0)
+      }}
+      className="size-4 shrink-0 accent-accent"
+    />
+  )
 }
 
 /**
@@ -299,6 +335,9 @@ export function TreeToolbar({
   inputRef,
   doneProgress,
   showClear,
+  checkState,
+  onMaster,
+  masterDisabled,
 }: TreeToolbarProps) {
   const chips = filterChips(filters, choices)
   // The operator each field's list shows. A field that holds only "is not" values still opens on "is".
@@ -323,6 +362,7 @@ export function TreeToolbar({
     <div className="@container shrink-0">
       <div className="space-y-2 border-b border-line px-4 py-2">
         <div className="flex flex-wrap items-center gap-2">
+          <MasterCheck state={checkState} disabled={masterDisabled} onChange={onMaster} />
           {(Object.keys(TOGGLE_LABELS) as (keyof Toggles)[]).map((name) => (
             <button
               key={name}

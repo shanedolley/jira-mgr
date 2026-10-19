@@ -269,7 +269,8 @@ test('Esc clears the selection first, and a second Esc closes the Peek', async (
   await window.keyboard.press('x')
   await expect(checkedRows()).toHaveCount(1)
   await expect(bar()).toContainText('1 selected')
-  // The open row keeps aria-selected beside its check.
+  // The open row keeps aria-current, and its check selects it.
+  await expect(story(2)).toHaveAttribute('aria-current', 'true')
   await expect(story(2)).toHaveAttribute('aria-selected', 'true')
   await expect(story(2)).toHaveAttribute('aria-checked', 'true')
 
@@ -321,12 +322,19 @@ test('Shift+click checks a range from the anchor, and Cmd+A every issue but the 
   await expect(item(/^PSAPAC-900, Epic, /)).not.toHaveAttribute('aria-checked', /.*/)
 })
 
-test('a checked row takes the selected fill and the open row keeps its own mark', async () => {
+test('a checked row takes the selected fill and the open row takes none', async () => {
   await open()
   const fill = (n: number) => story(n).evaluate((row) => getComputedStyle(row).backgroundColor)
   await story(3).locator('[data-check]').click()
   const checked = await fill(3)
   expect(checked).not.toBe(await fill(5))
+  // The open row has no selected fill: it reads as any row at rest.
+  await peekRow(story(6))
+  await expect(peek()).toBeVisible()
+  await expect(story(6)).toHaveAttribute('aria-current', 'true')
+  await story(8).hover()
+  await expect(story(8)).toHaveAttribute('data-active', 'true')
+  expect(await fill(6)).toBe(await fill(7))
   // Fill only: no border, outline or shadow marks the row.
   const edge = await story(3).evaluate((row) => {
     const style = getComputedStyle(row)

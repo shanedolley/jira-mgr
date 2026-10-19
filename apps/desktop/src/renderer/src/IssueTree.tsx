@@ -66,7 +66,7 @@ interface IssueTreeProps {
   rows: readonly Row[]
   /** Active row, collapsed and revealed sets and the Peek: everything `moveActive` reads. */
   state: TreeState
-  /** The key of the issue the Peek shows, whose row is `aria-selected`. */
+  /** The key of the issue the Peek shows, whose row is `aria-current`. */
   peekedKey: string | null
   /** The key of the issue the shared timer runs on, or `null`. */
   timerKey: string | null
@@ -413,7 +413,7 @@ export function IssueTree({
   }, [rows, state, onChange])
 
   const activeRow = activeIndex < 0 ? undefined : rows[activeIndex]
-  const selectedId = peekedKey === null ? null : `i:${peekedKey}`
+  const peekedId = peekedKey === null ? null : `i:${peekedKey}`
 
   return (
     <div
@@ -435,6 +435,7 @@ export function IssueTree({
         role="tree"
         data-key-scope
         aria-label="Issues"
+        aria-multiselectable="true"
         tabIndex={0}
         aria-activedescendant={activeRow === undefined ? undefined : rowDomId(activeRow.id)}
         onKeyDown={onKeyDown}
@@ -466,7 +467,7 @@ export function IssueTree({
                 row={row}
                 top={layout.tops[index] ?? 0}
                 active={row.id === state.activeId}
-                selected={row.id === selectedId}
+                peeked={row.id === peekedId}
                 checked={row.kind === 'issue' && state.checked.has(row.node.issue.key)}
                 selecting={selecting}
                 timing={row.kind === 'issue' && row.node.issue.key === timerKey}

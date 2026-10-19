@@ -451,6 +451,35 @@ export function pruneChecked<T extends Pick<TreeState, 'checked' | 'anchor'>>(
     : { ...state, checked, anchor }
 }
 
+/** The state with every checkable row shown checked, for `Cmd+A` and the master checkbox (#300). */
+export function selectAll<T extends Pick<TreeState, 'checked' | 'anchor'>>(
+  rows: readonly TreeRow[],
+  state: T,
+): T {
+  const keys = rows.filter(checkable).map((r) => r.node.issue.key)
+  return {
+    ...state,
+    checked: new Set([...state.checked, ...keys]),
+    anchor: state.anchor ?? keys[0] ?? null,
+  }
+}
+
+/** The state with nothing checked and no anchor, for `Esc` and the master checkbox. */
+export function clearSelection<T extends Pick<TreeState, 'checked' | 'anchor'>>(state: T): T {
+  return { ...state, checked: new Set<string>(), anchor: null }
+}
+
+/** How many of the shown checkable rows are checked: none, some or all. */
+export type CheckState = 'none' | 'some' | 'all'
+
+/** The master checkbox's state. A checked issue no row shows, as in a running batch, does not count. */
+export function checkState(rows: readonly TreeRow[], checked: ReadonlySet<string>): CheckState {
+  const shown = rows.filter(checkable)
+  const on = shown.filter((r) => checked.has(r.node.issue.key)).length
+  if (on === 0) return 'none'
+  return on === shown.length ? 'all' : 'some'
+}
+
 const without = (set: ReadonlySet<string>, id: string) => {
   const next = new Set(set)
   next.delete(id)
@@ -500,9 +529,9 @@ export function moveActive(
   input: KeyInput,
   context: MoveContext,
 ): MoveResult | null {
-  const selectAll =
+  const isSelectAll =
     (input.metaKey || input.ctrlKey) && !input.altKey && !input.shiftKey && /^a$/i.test(input.key)
-  if (!selectAll && (input.metaKey || input.ctrlKey || input.altKey)) return null
+  if (!isSelectAll && (input.metaKey || input.ctrlKey || input.altKey)) return null
   // With no row shown the level keys still set the level, since the Groups menu can.
   const levelKey = input.shiftKey && (input.key === 'ArrowLeft' || input.key === 'ArrowRight')
   if (rows.length === 0 && !levelKey) return null
@@ -516,9 +545,8 @@ export function moveActive(
   })
   const stay = (next: TreeState = state): MoveResult => ({ ...next, openPage: false })
 
-  if (selectAll) {
-    const keys = rows.filter(checkable).map((r) => r.node.issue.key)
-    return stay(checkMore(state, keys, keys[0] ?? null))
+  if (isSelectAll) {
+    return stay(selectAll(rows, state))
   }
   // Shift with Up or Down moves as the arrow does and checks the rows it crosses.
   if (
@@ -594,7 +622,7 @@ export function moveActive(
       return checkable(row) ? stay(toggleChecked(state, row.node.issue.key)) : stay()
     case 'Escape':
       // The checked issues go first, and a second Esc closes the Peek.
-      if (state.checked.size > 0) return stay({ ...state, checked: new Set(), anchor: null })
+      if (state.checked.size > 0) return stay(clearSelection(state))
       return state.peekOpen ? stay({ ...state, peekOpen: false }) : null
     default:
       return null

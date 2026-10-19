@@ -769,8 +769,8 @@ interface TreeRowProps {
   /** Where the row's slot starts, in pixels from the top of the list. */
   top: number
   active: boolean
-  /** The row whose issue the Peek shows. */
-  selected: boolean
+  /** The row whose issue the Peek shows: `aria-current`, with no fill (#300). */
+  peeked: boolean
   /** The row's issue is checked, for a bulk action. */
   checked: boolean
   /** Some row is checked, so every issue row shows its checkbox. */
@@ -822,7 +822,7 @@ export const TreeRow = memo(function TreeRow({
   row,
   top,
   active,
-  selected,
+  peeked,
   checked,
   selecting,
   timing,
@@ -854,7 +854,8 @@ export const TreeRow = memo(function TreeRow({
       aria-setsize={row.setSize}
       aria-posinset={row.posInSet}
       aria-expanded={row.expandable ? row.expanded : undefined}
-      aria-selected={selected ? true : undefined}
+      aria-selected={checkable && checked ? true : undefined}
+      aria-current={peeked ? 'true' : undefined}
       aria-checked={checkable && selecting ? checked : undefined}
       aria-keyshortcuts={row.kind === 'issue' ? 'E' : undefined}
       data-active={active}
