@@ -72,6 +72,8 @@ interface IssueTreeProps {
   timerKey: string | null
   /** The row properties the Display menu chose. */
   properties: readonly RowProperty[]
+  /** False when the Display menu turned the priority slot off. */
+  showPriority: boolean
   /** The widths the user set for them, in pixels. A property with none takes its default. */
   widths: PropertyWidths
   /** A column was resized to `width` pixels, or removed when that is 0. */
@@ -121,6 +123,7 @@ export function IssueTree({
   peekedKey,
   timerKey,
   properties,
+  showPriority,
   widths,
   onResize,
   onMoveColumn,
@@ -478,6 +481,7 @@ export function IssueTree({
                 dragging={drag?.id === row.id}
                 dropEdge={indicator?.id === row.id ? indicator.edge : undefined}
                 properties={properties}
+                showPriority={showPriority}
                 today={today}
                 blockedBy={held?.blockedBy.length ?? 0}
                 blocking={held?.blocking.length ?? 0}

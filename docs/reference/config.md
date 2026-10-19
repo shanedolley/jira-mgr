@@ -20,6 +20,7 @@ The state folder is `~/Library/Application Support/jira-mgr/`. `JM_STATE_DIR` re
 | `display.order` | `key`, `priority`, `updated`, `due`, `status` or `manual` | `key` |
 | `display.direction` | `asc` or `desc` | the order's own: `desc` for `key`, `priority` and `updated`, `asc` for `due`, `status` and `manual` |
 | `display.manual` | optional array of at most 20000 issue keys | absent |
+| `display.priority` | optional boolean | absent: reads as on |
 | `display.widths` | optional object of `display.properties` names to whole pixel widths from 1 to 1000 | absent: every column at its default width |
 | `treeLevel` | `customers`, `epics`, `stories` or `all` | `stories` |
 
@@ -30,6 +31,8 @@ The state folder is `~/Library/Application Support/jira-mgr/`. `JM_STATE_DIR` re
 `display.manual` and the `manual` order were added with #223 and are additive. `manual` lists issue keys in the order the user dragged them, and the Tree reads it only while `order` is `manual`: each sibling list (the Epics of a Customer, an Epic's children, No Epic, a Story's Subtasks, the Done children behind a chip) follows the list's order, an issue it does not name sits after the named ones by key number ascending, and a key naming no loaded issue is ignored. `direction` does not apply to `manual`, and a `manual` view carries `asc`. The key is absent until the user first moves a row, so a file without it loads unchanged. A value that is not a list of at most 20000 strings reads as no list, and the rest of the display stays. The list is kept when the order changes to another, so choosing Manual again restores it. It never reaches Jira. An older build reads `order: "manual"` as `key`, ignores `manual`, and its next write of the file loses the list.
 
 `display.properties` is also the order of the columns, left to right after the title. The Column header's drag and Alt+Left or Alt+Right rewrite it, and a property turned on in the Display menu goes last. The Tree, the Column header and the Sprint page all draw this order, and a view keeps its own. An older build reads the same file but sorts the properties into its fixed row order.
+
+`display.priority` was added with #306 and is additive. `false` hides the priority slot on every issue row of the Tree and the Sprint page; the slot keeps its place in the row, after the pills and before the properties, and takes no column or header. A missing key, `true` and any other value read as on, so a file without the key loads unchanged and the rest of the display stays. `P`, `Shift+P` and the issue menu still change the priority with it off, and the Peek and the issue page keep their Priority field. An older build ignores the key and shows the slot, and its next write of the file drops the key.
 
 `display.widths` was added with #275 and is additive. It maps a property name to the width in pixels the user dragged its column to on the Tree; a property with no entry draws at its default (Labels 96, Sprint 104, Original estimate, Logged and Remaining 64, Remaining % 48, Start date 96, Due date 96, Created and Updated 72). An entry is kept only for a property in `display.properties` and only as a whole number from 1 to 1000, so a value the build cannot read drops and that column reads as its default, and a `widths` that is not an object, or keeps nothing, reads as none. A column released at 0 is removed from `display.properties` and its entry is dropped, so adding it back starts at the default. The Tree draws a narrower column when the window cannot hold the saved widths and keeps the saved value. The Tree can draw a column at 1px, but the Sprint page floors every column at 16px, since its cells are buttons, so the two can differ. A file without the key loads unchanged. An older build reads a file with `widths` without error, drops the key, and its next write loses the widths.
 
@@ -49,7 +52,7 @@ An array of saved views. The app writes it; `jm` only reads it. The array order 
 | `filters.not` | optional object holding any of the array keys above (every one but `text` and `dates`), the values to leave out |
 | `filters.text` | optional string |
 | `toggles` | the same three keys and defaults as `settings.json` |
-| `display` | optional, the same `properties`, `order`, `direction`, `manual` and `widths` as `settings.json` and read as leniently, so each view keeps its own manual order and column widths. A view without it applies no display |
+| `display` | optional, the same `properties`, `order`, `direction`, `priority`, `manual` and `widths` as `settings.json` and read as leniently, so each view keeps its own manual order, column widths and Priority setting. A view without it applies no display |
 
 Values within a key are alternatives, and every key that is set must match. The values:
 

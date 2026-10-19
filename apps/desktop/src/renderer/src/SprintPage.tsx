@@ -248,6 +248,7 @@ function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
 function Issues({
   report,
   properties,
+  showPriority,
   widths,
   today,
   active,
@@ -257,6 +258,7 @@ function Issues({
 }: {
   report: SprintReport
   properties: readonly RowProperty[]
+  showPriority: boolean
   widths: PropertyWidths
   today: string
   /** The key of the active row, which the pointer made active last. */
@@ -347,18 +349,20 @@ function Issues({
                       >
                         {issue.summary}
                       </Slot>
-                      <Slot
-                        data-pick="priority"
-                        title="Change priority"
-                        aria-label={`Priority of ${issue.key}: ${issue.priority?.name ?? 'none'}`}
-                        aria-haspopup="listbox"
-                        onClick={(event) => {
-                          onEditCell(issue, 'priority', event.currentTarget)
-                        }}
-                        className="-m-0.5 inline-flex shrink-0 rounded p-0.5 hover:outline hover:outline-1 hover:outline-line"
-                      >
-                        <PrioritySlot priority={issue.priority} />
-                      </Slot>
+                      {showPriority && (
+                        <Slot
+                          data-pick="priority"
+                          title="Change priority"
+                          aria-label={`Priority of ${issue.key}: ${issue.priority?.name ?? 'none'}`}
+                          aria-haspopup="listbox"
+                          onClick={(event) => {
+                            onEditCell(issue, 'priority', event.currentTarget)
+                          }}
+                          className="-m-0.5 inline-flex shrink-0 rounded p-0.5 hover:outline hover:outline-1 hover:outline-line"
+                        >
+                          <PrioritySlot priority={issue.priority} />
+                        </Slot>
+                      )}
                       <Properties
                         id={`props-${issue.key}`}
                         issue={issue}
@@ -395,6 +399,8 @@ interface SprintPageProps {
   sprintId: number
   /** The row properties the Display menu chose, which the Tree shows too. */
   properties: readonly RowProperty[]
+  /** False when the Display menu turned the priority slot off. */
+  showPriority: boolean
   /** The widths the user set for them in the Tree, which the rows and the header here use. */
   widths: PropertyWidths
   /** Today's local date, which the short dates and the due date's colour read. */
@@ -421,6 +427,7 @@ interface SprintPageProps {
 export function SprintPage({
   sprintId,
   properties,
+  showPriority,
   widths,
   today,
   pageRef,
@@ -511,6 +518,7 @@ export function SprintPage({
           <Issues
             report={report.data}
             properties={properties}
+            showPriority={showPriority}
             widths={widths}
             today={today}
             active={active}

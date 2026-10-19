@@ -128,6 +128,15 @@ describe('viewDisplayMatches', () => {
     expect(viewDisplayMatches(held, { ...two, properties: ['due', 'labels'] })).toBe(false)
   })
 
+  it('stops matching when priority differs, and reads a missing priority as on', () => {
+    const off = { ...sprint, display: { ...display, priority: false } }
+    expect(viewDisplayMatches(off, { ...display, priority: false })).toBe(true)
+    expect(viewDisplayMatches(off, display)).toBe(false)
+    expect(viewDisplayMatches(saved, { ...display, priority: false })).toBe(false)
+    expect(viewDisplayMatches(saved, { ...display, priority: true })).toBe(true)
+    expect(viewDisplayMatches(sprint, { ...display, priority: false })).toBe(false)
+  })
+
   it('stops matching when the manual order differs, and only under Manual', () => {
     const manual = { ...display, order: 'manual' as const, direction: 'asc' as const }
     const held = { ...sprint, display: { ...manual, manual: ['P-2', 'P-1'] } }

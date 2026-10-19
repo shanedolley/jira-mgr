@@ -321,6 +321,13 @@ Every shortcut has a visible alternative: a double-click for `Enter`, the Peek's
 - A Hold row stays editable. Moving a done issue into a sprint is allowed; Jira decides.
 - On the Sprint page the slot is a `Slot` button (#279's pattern), named "Sprint of PSAPAC-13: Sprint 5" and titled with the full name and end day, that opens the same list. Moving the issue to another sprint or to Backlog takes its row off the page at once, a refusal puts it back with the Retry toast, and focus falls to the Sprint page when the row it was on is gone.
 
+*Amended 2026-10-19, build of #306.* Shane wants Priority optional on the canvas. The orchestrator decided these:
+
+- The Display menu's Display properties gain a Priority chip, first in the group and on by default. It is not a `display.properties` entry: the setting is the optional boolean `display.priority`, where only `false` hides the slot and a missing key or any other value reads as on. Priority is not draggable (#301), so it stays fixed anatomy and gains no column, header name or resize separator.
+- Off, the Tree omits `PriorityCell` and the Sprint page omits its Priority `Slot`; the title gains the slot's 16px and its gap, and the header, right-aligned over the strip, does not move. On brings the slot back in the same place, after the pills and before the properties.
+- A saved view carries it as part of its `display`: applying a view copies it into `settings.json` (a view without the key applies as on), Update view saves it, and `viewDisplayMatches` compares it, so the view stays lit and Update view wakes when it differs.
+- `P`, `Shift+P` and the issue menu change priority with the slot hidden; the row's accessible name still names the priority; the Peek and the issue page keep their field.
+
 *Amended 2026-10-18, build of #271.* Shane wants to select the start date on the canvas and edit it there. The orchestrator decided these, and Shane approved them by closing #271 on 2026-10-18:
 
 - The Display properties gain Start date (`start`), placed after Remaining % and before Due date. It is a short date in a 96px slot, as Due date without the tone icon, and joins the row's accessible name as `start 2026-10-01` while shown. A file written without it still loads, and an older build drops the name.

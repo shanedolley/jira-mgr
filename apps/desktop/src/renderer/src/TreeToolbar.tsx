@@ -3,6 +3,7 @@ import {
   ORDER_DEFAULT_DIRECTION,
   ORDER_DIRECTIONS,
   ROW_PROPERTIES,
+  showsPriority,
   type IssueOrder,
   type OrderDirection,
   type RowProperty,
@@ -580,6 +581,17 @@ export function TreeToolbar({
             <div role="group" aria-label="Display properties" className="px-2 pb-2 pt-3">
               <p className="mb-1 text-xs text-muted">Display properties</p>
               <div className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  data-display="priority"
+                  aria-pressed={showsPriority(display)}
+                  onClick={() => {
+                    onDisplay({ ...display, priority: !showsPriority(display) })
+                  }}
+                  className="btn btn-sm aria-pressed:border-accent/40 aria-pressed:bg-selected"
+                >
+                  Priority
+                </button>
                 {ROW_PROPERTIES.map((property) => {
                   const on = display.properties.includes(property)
                   return (

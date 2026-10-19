@@ -687,6 +687,7 @@ function Content({
   row,
   timing,
   properties,
+  showPriority,
   today,
   blocks,
   progress,
@@ -695,6 +696,7 @@ function Content({
   row: Row
   timing: boolean
   properties: readonly RowProperty[]
+  showPriority: boolean
   today: string
   blocks: BlockCounts
   progress: Progress | undefined
@@ -756,7 +758,7 @@ function Content({
           )}
           {timing && <TimerClock issueKey={issue.key} className="shrink-0" />}
           {progress !== undefined && <ProgressPill progress={progress} />}
-          <PriorityCell priority={issue.priority} />
+          {showPriority && <PriorityCell priority={issue.priority} />}
           <Properties issue={issue} properties={properties} today={today} />
           <Pick property="assignee" title="Change assignee">
             <Avatar person={issue.assignee} />
@@ -786,6 +788,8 @@ interface TreeRowProps {
   dropEdge: 'above' | 'below' | undefined
   /** The row properties the Display menu chose, shown on issue rows while the Tree is wide. */
   properties: readonly RowProperty[]
+  /** False when the Display menu turned the priority slot off. */
+  showPriority: boolean
   /** Today's local date, which the due date's colour and the short dates read. */
   today: string
   /** The open issues holding this row's issue up, and held up by it, as counts so the memo holds. */
@@ -832,6 +836,7 @@ export const TreeRow = memo(function TreeRow({
   dragging,
   dropEdge,
   properties,
+  showPriority,
   today,
   blockedBy,
   blocking,
@@ -921,6 +926,7 @@ export const TreeRow = memo(function TreeRow({
         row={row}
         timing={timing}
         properties={properties}
+        showPriority={showPriority}
         today={today}
         blocks={blocks}
         progress={progress}
