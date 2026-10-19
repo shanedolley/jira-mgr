@@ -7,6 +7,8 @@ import { Modal } from './Modal'
 import {
   defaultRow,
   matchingActions,
+  matchingCommands,
+  type AppCommand,
   matchingViews,
   type ActionId,
   type ActionRow,
@@ -26,6 +28,8 @@ interface CommandPaletteProps {
   onOpen: (key: string) => void
   /** Runs one action on the context issue, by the code its picker or key runs. */
   onAction: (id: ActionId, issue: Issue) => void
+  /** Runs a theme choice or Log out. */
+  onCommand: (command: AppCommand) => void
   /** Applies a saved view, as a click on it in the sidebar does. */
   onView: (view: SavedView) => void
   onClose: () => void
@@ -47,8 +51,13 @@ interface IssueItem {
   rid: string
   issue: Issue
 }
+interface CommandItem {
+  kind: 'command'
+  rid: string
+  command: AppCommand
+}
 /** A listed row. `rid` names it for the highlight. */
-type Row = ActionItem | ViewItem | IssueItem
+type Row = ActionItem | ViewItem | CommandItem | IssueItem
 
 const issueRow = (issue: Issue): IssueItem => ({ kind: 'issue', rid: issue.key, issue })
 
@@ -64,13 +73,20 @@ function leadRows(context: Issue | null, views: readonly SavedView[], query: str
     rid: `view:${view.id}`,
     view,
   }))
-  return { actions, views: found }
+  const commands = matchingCommands(query).map((command): CommandItem => ({
+    kind: 'command',
+    rid: `command:${command.id}`,
+    command,
+  }))
+  return { actions, views: found, commands }
 }
 
 /**
  * The Cmd+K palette (Q5, Q37): a modal with a combobox. With an issue in context, a chip names it
  * and a group of its actions comes first, each beside the key that runs the same thing; saved
- * views follow. Below them it searches the loaded issues by key and summary as you type, and a
+ * views follow. Once a query is typed, the commands that fit it (a theme choice, Log out) come above the
+ * actions; an arrow key can reach them but the highlight never starts on one, so Enter cannot run one
+ * by accident. Below them it searches the loaded issues by key and summary as you type, and a
  * "Search text in Jira" group lists the issues whose description, comments or other text hold the
  * query, found by Jira once typing pauses. What you type also narrows the actions and views by
  * label. Arrow keys move through every row, Enter or a click runs the row (an issue opens its
@@ -82,6 +98,7 @@ export function CommandPalette({
   context,
   onOpen,
   onAction,
+  onCommand,
   onView,
   onClose,
   returnFocus,
@@ -92,6 +109,7 @@ export function CommandPalette({
   const jiraId = `${uid}-jira`
   const actionsId = `${uid}-actions`
   const viewsId = `${uid}-views`
+  const commandsId = `${uid}-commands`
   const issuesId = `${uid}-issues`
   const chipId = `${uid}-chip`
   const optionId = (rid: string) => `${uid}-${rid}`
@@ -104,16 +122,22 @@ export function CommandPalette({
   const found = jira.status === 'done' ? textMatches(shown, jira.issues) : []
   const views = useViews().data ?? []
   // Labels are few, so they follow the field itself rather than the deferred value.
-  const { actions: actionRows, views: viewRows } = leadRows(context, views, query)
-  const lead: Row[] = [...actionRows, ...viewRows]
+  const {
+    actions: actionRows,
+    views: viewRows,
+    commands: commandRows,
+  } = leadRows(context, views, query)
+  const lead: Row[] = [...commandRows, ...actionRows, ...viewRows]
+  // A command is never the default: Enter on a typed query must not log out or change the theme.
+  const safeLead: Row[] = [...actionRows, ...viewRows]
   const loadedRows = shown.map(issueRow)
   const jiraRows = found.map(issueRow)
   const rows: Row[] = [...lead, ...loadedRows, ...jiraRows]
 
   // Until an arrow key moves it, the highlight is on the first issue, not the first action.
   const moved = rows.findIndex((row) => row.rid === activeRid)
-  const active = moved >= 0 ? rows[moved] : defaultRow<Row>(loadedRows, lead, jiraRows)
-  const activeIndex = active === undefined ? 0 : rows.indexOf(active)
+  const active = moved >= 0 ? rows[moved] : defaultRow<Row>(loadedRows, safeLead, jiraRows)
+  const activeIndex = active === undefined ? -1 : rows.indexOf(active)
 
   const activeId = active === undefined ? undefined : optionId(active.rid)
   // Only a move scrolls, so the list opens on the actions, above the highlighted first issue.
@@ -135,6 +159,9 @@ export function CommandPalette({
         break
       case 'view':
         onView(row.view)
+        break
+      case 'command':
+        onCommand(row.command)
         break
       case 'issue':
         onOpen(row.issue.key)
@@ -162,7 +189,7 @@ export function CommandPalette({
             deferred === query
               ? active
               : (chosen ??
-                defaultRow<Row>(searchIssues(issues, query).shown.map(issueRow), lead, []))
+                defaultRow<Row>(searchIssues(issues, query).shown.map(issueRow), safeLead, []))
           if (target !== undefined) choose(target)
         }
         break
@@ -256,6 +283,16 @@ export function CommandPalette({
         }}
         className="max-h-[min(24rem,60vh)] overflow-y-auto p-1"
       >
+        {commandRows.length > 0 && (
+          <div role="group" aria-labelledby={commandsId}>
+            {heading(commandsId, 'Commands')}
+            {commandRows.map((row) => (
+              <div key={row.rid} {...rowProps(row)}>
+                <span className="min-w-0 flex-1 truncate">{row.command.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {actionRows.length > 0 && (
           <div role="group" aria-labelledby={actionsId}>
             {heading(actionsId, 'Actions')}

@@ -153,6 +153,20 @@ test('with no issue in context the palette has no chip and no actions, only view
   await expect(palette().getByRole('option', { name: 'Go to view My issues' })).toBeVisible()
 })
 
+test('Enter on a query that matches a command and an action runs the action and never logs out', async () => {
+  await open()
+  await select(/PSAPAC-4,/)
+  await window.keyboard.press('Meta+k')
+  await search().fill('log')
+  await expect(palette().getByRole('option', { name: 'Log out', exact: true })).toBeVisible()
+  // The highlight starts on the action, not on the command above it.
+  await expect(action('Log work')).toHaveAttribute('aria-selected', 'true')
+  await window.keyboard.press('Enter')
+  await expect(palette()).toHaveCount(0)
+  await expect(window.getByRole('form', { name: 'Log work' })).toBeVisible()
+  await expect(window.getByRole('heading', { name: 'Log in to Jira' })).toHaveCount(0)
+})
+
 test('Assign to me writes what I writes, and the toast offers Undo', async () => {
   await open()
   await select(/PSAPAC-3,/)

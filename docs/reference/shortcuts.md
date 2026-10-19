@@ -83,15 +83,15 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 |---|---|---|
 | | `F` | Open the Filter menu, with focus on its first field; `Esc` closes it and returns to the Tree |
 | | `/` | Focus the text filter; works from a sidebar or toolbar button too, not under an open issue, Inbox, Sprint, Epics or Customers page |
-| | `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
+| | `Cmd+K` | Open the palette; once a query is typed it lists the matching commands (Theme: System, Theme: Light, Theme: Dark, Log out) first; with an issue in context it then lists that issue's actions, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
 | Text filter | `Enter`, `Down` | Move to the first issue row, skipping group headers, with the query kept |
 | Text filter | `Esc` | Clear the query; when empty, return to the Tree |
 | Filter menu, a field | `Down`, `Up` | Move between fields |
 | Filter menu, a field | `Right`, `Enter` | Open its values in the submenu, with focus in its search box |
 | Filter submenu, search box and values | `Down`, `Up` | Move between the search box and the values |
 | Filter submenu | `Left`, `Esc` | Close the submenu and return to its field; `Left` moves the caret and `Esc` clears the text while the search box holds text |
-| Palette | `Up`, `Down` | Move the highlight; it starts on the first loaded issue, and `Up` reaches the actions and views above it; Jira text matches never take it |
-| Palette | `Enter`, `Esc` | Open the highlighted row (an issue's page, or run an action or view), or close; the first loaded issue is highlighted by default |
+| Palette | `Up`, `Down` | Move the highlight; it starts on the first loaded issue, and `Up` reaches the commands, actions and views above it; Jira text matches never take it |
+| Palette | `Enter`, `Esc` | Open the highlighted row (an issue's page, or run an action, view or command), or close; the first loaded issue is highlighted by default, and with no issue, the first action or view. A command is never highlighted by default, so `Enter` runs one only after an arrow key picks it |
 | Saved views list | `Up`, `Down` | Move between views |
 | Saved views list | `F2` | Rename the focused view |
 | Saved views list | `Alt+Up`, `Alt+Down` | Move the focused view up or down one place |
@@ -107,6 +107,9 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Issue menu | `Left` | Close an open list of options and return to its item; in a search field only while it is empty. The date, estimate and Rename fields keep `Left` for the caret, and only `Esc` closes them |
 | Issue menu | `S`, `A`, `L`, `P`, `E`, `Shift+S`, `Shift+D`, `Shift+P`, `Shift+E`, `Shift+C` | Run the item that shows the key |
 | Issue menu | `Esc` | Close the open submenu, then the menu, and return focus to the row. `Tab` closes the menu too |
+| User menu | `Up`, `Down`, `Home`, `End` | Move between Theme, Keyboard shortcuts and Log out, or between System, Light and Dark in the Theme submenu; `Up` from the first goes to the last |
+| User menu | `Right`, `Enter`, `Left` | Open the Theme submenu, or run the focused item; `Left` closes the submenu and returns to Theme |
+| User menu | `Esc`, `Tab` | Close the submenu, then the menu, and return focus to the sidebar avatar. `Tab` closes the menu too |
 | Pickers | `Up`, `Down` | Move the highlight |
 | Pickers without a search field | `Home`, `End` | First or last option; in a searchable picker they move the caret |
 | Pickers | `Enter` | Choose the highlighted option |

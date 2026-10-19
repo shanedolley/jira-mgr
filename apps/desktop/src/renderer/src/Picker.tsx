@@ -99,7 +99,7 @@ const CREATE_ID = '__create__'
 /** Names a CSS anchor from a React id, whose colons a `dashed-ident` cannot hold. */
 export const anchorOf = (id: string) => `--picker-${id.replaceAll(/[^a-zA-Z0-9]/g, '')}`
 
-function Check() {
+export function Check() {
   return (
     <svg
       aria-hidden

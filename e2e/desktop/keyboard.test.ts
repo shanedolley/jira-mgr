@@ -307,11 +307,11 @@ test('Esc closes a picker, then the Peek, from wherever focus is', async () => {
   await window.keyboard.press(' ')
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
-  await window.getByRole('button', { name: 'Log out' }).focus()
+  await window.getByRole('button', { name: 'User menu' }).focus()
   await window.keyboard.press('Escape')
   await expect(issuePage()).toHaveCount(0)
   await expect(peek()).toBeVisible()
-  await window.getByRole('button', { name: 'Log out' }).focus()
+  await window.getByRole('button', { name: 'User menu' }).focus()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
 })
@@ -577,7 +577,7 @@ test('/ selects the text already in the filter, and does nothing with a modifier
 test('letters do nothing on a sidebar button, and still act in the Tree', async () => {
   await open()
   await select(/PSAPAC-2,/)
-  const logout = window.getByRole('button', { name: 'Log out' })
+  const logout = window.getByRole('button', { name: 'User menu' })
   await logout.focus()
   await expect(logout).toBeFocused()
 

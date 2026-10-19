@@ -70,6 +70,8 @@ import { unreadCount, useInbox } from './inboxQueries'
 import { LoadError } from './LoadError'
 import { ShortcutHelp } from './ShortcutHelp'
 import { Sidebar } from './Sidebar'
+import { setTheme } from './theme'
+import { useLogoutFlow } from './useLogoutFlow'
 import { SprintPage } from './SprintPage'
 import { SprintsList } from './SprintsList'
 import { useViews } from './viewQueries'
@@ -103,7 +105,7 @@ import {
 } from './filters'
 import { PROPERTY_KEYS, resolveKey, type PropertyCommand } from './keymap'
 import { allows, type MenuAction, type MenuItemId } from './menuItems'
-import type { ActionId } from './paletteActions'
+import type { ActionId, AppCommand } from './paletteActions'
 import { assignMeOutcome, assigneePatch } from './properties'
 import { attemptWith } from './PropertyPickers'
 import { cellUsable, movedColumn, releasedAt, type ColumnTarget } from './propertyFit'
@@ -362,6 +364,7 @@ export function Shell({ session }: { session: Session }) {
   const [searching, setSearching] = useState(false)
   // The `?` shortcut list.
   const [helping, setHelping] = useState(false)
+  const logout = useLogoutFlow()
   // The stop dialog, or with `to` the switch dialog, over the timer file as it was when `T` opened it.
   const [timing, setTiming] = useState<{
     snapshot: TimerSnapshot & { timer: RunningTimer }
@@ -386,6 +389,14 @@ export function Shell({ session }: { session: Session }) {
     if (!notice.warned) setHeard(spoken(notice))
     if (flash !== undefined) flashRows(flash.key, flash.fields)
   }, [])
+  // A failed logout shows where the 48px rail has no room for the footer's inline error.
+  useEffect(() => {
+    if (logout.error !== undefined) {
+      notify({ title: 'Could not log out', notes: [logout.error], warned: true })
+    }
+    // Keyed on the attempt, so a second failure with the same message shows again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logout.failedAt, notify])
   // A created issue to make active once its row exists.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const deleteIssue = useDeleteIssue()
@@ -1144,6 +1155,15 @@ export function Shell({ session }: { session: Session }) {
     }
   }
 
+  /** A palette command: a theme choice or Log out. The palette closes first, as for an action. */
+  function runCommand(command: AppCommand) {
+    flushSync(() => {
+      setSearching(false)
+    })
+    if (command.id === 'logout') logout.request()
+    else if (command.theme !== undefined) setTheme(command.theme)
+  }
+
   /**
    * A palette action on `issue`. The palette closes first, so its dialog is gone before a picker
    * opens or a create modal takes focus; each action then runs the code its key or picker runs.
@@ -1639,6 +1659,10 @@ export function Shell({ session }: { session: Session }) {
         }
         onOpenIssue={setPageKey}
         onStopTimer={stopFromSidebar}
+        logout={logout}
+        onShortcuts={() => {
+          setHelping(true)
+        }}
       />
       <section
         ref={listRef}
@@ -1995,6 +2019,7 @@ export function Shell({ session }: { session: Session }) {
           context={issues.find((i) => i.key === targetKey) ?? null}
           onOpen={openFromPalette}
           onAction={runAction}
+          onCommand={runCommand}
           onView={(view) => {
             setSearching(false)
             applyView(view)
@@ -2005,6 +2030,7 @@ export function Shell({ session }: { session: Session }) {
           returnFocus={restoreFocus}
         />
       )}
+      {logout.dialog}
       {helping && (
         <ShortcutHelp
           onClose={() => {

@@ -45,7 +45,8 @@ test('logs in to the layout and logs out again', async () => {
   await expect(detail.getByRole('button', { name: 'Status: To Do' })).toBeVisible()
   await expect(detail.getByRole('button', { name: 'Assignee: Unassigned' })).toBeVisible()
 
-  await window.getByRole('button', { name: 'Log out' }).click()
+  await window.getByRole('button', { name: 'User menu' }).click()
+  await window.getByRole('menuitem', { name: 'Log out' }).click()
   await expect(window.getByRole('heading', { name: 'Log in to Jira' })).toBeVisible()
   // Settings keep the site and project, so the form starts filled. The token is never kept.
   await expect(window.getByLabel('Site URL')).toHaveValue(SITE)
@@ -100,7 +101,7 @@ test('refetches the issues when the window regains focus', async () => {
   await expect.poll(async () => (await counts(app)).searches.unresolved).toBeGreaterThan(before)
 })
 
-test('follows the system theme and lets the toggle override it', async () => {
+test('follows the system theme and lets the user menu override it', async () => {
   const background = () =>
     window.evaluate<string>('getComputedStyle(document.body).backgroundColor')
   const attribute = () =>
@@ -114,33 +115,43 @@ test('follows the system theme and lets the toggle override it', async () => {
   expect(await attribute()).toBeNull()
 
   await logIn(window)
-  const theme = window.getByRole('group', { name: 'Theme' })
-  await expect(theme.getByRole('button', { name: 'System' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
-
-  // The choices are icons: no visible words, each named by its tooltip.
-  await expect(theme).toHaveText('')
-  for (const name of ['System', 'Light', 'Dark']) {
-    const button = theme.getByRole('button', { name })
-    await expect(button).toHaveAttribute('title', name)
-    await expect(button.locator('svg')).toBeVisible()
+  // The footer holds no theme group or Log out button any more.
+  await expect(window.getByRole('group', { name: 'Theme' })).toHaveCount(0)
+  await expect(window.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+  const choose = async (name: string) => {
+    await window.getByRole('button', { name: 'User menu' }).click()
+    await window.getByRole('menuitem', { name: 'Theme' }).click()
+    await window.getByRole('menuitemradio', { name }).click()
   }
 
+  await window.getByRole('button', { name: 'User menu' }).click()
+  await window.getByRole('menuitem', { name: 'Theme' }).click()
+  await expect(window.getByRole('menuitemradio', { name: 'System' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await window.keyboard.press('Escape')
+  await window.keyboard.press('Escape')
+
   // Forcing a theme beats the system setting.
-  await theme.getByRole('button', { name: 'Light' }).click()
+  await choose('Light')
   expect(await attribute()).toBe('light')
   expect(await background()).toBe(light)
   await window.emulateMedia({ colorScheme: 'light' })
-  await theme.getByRole('button', { name: 'Dark' }).click()
+  await choose('Dark')
   expect(await attribute()).toBe('dark')
   expect(await background()).toBe(dark)
 
-  // The choice survives a reload, and System hands control back to the OS.
+  // The choice survives a reload and is marked, and System hands control back to the OS.
   await window.reload()
   expect(await attribute()).toBe('dark')
-  await window.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'System' }).click()
+  await window.getByRole('button', { name: 'User menu' }).click()
+  await window.getByRole('menuitem', { name: 'Theme' }).click()
+  await expect(window.getByRole('menuitemradio', { name: 'Dark' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await window.getByRole('menuitemradio', { name: 'System' }).click()
   expect(await attribute()).toBeNull()
   expect(await background()).toBe(light)
 })

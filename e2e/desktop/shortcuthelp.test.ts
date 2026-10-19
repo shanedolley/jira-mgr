@@ -61,8 +61,8 @@ test('? opens the list on the nine sections with focus in the search field', asy
     await expect(headings().nth(at)).toContainText(title)
     await expect(help().getByRole('table', { name: title })).toBeVisible()
   }
-  await expect(rows()).toHaveCount(88)
-  await expect(status()).toHaveText('88 shortcuts in 9 sections')
+  await expect(rows()).toHaveCount(91)
+  await expect(status()).toHaveText('91 shortcuts in 9 sections')
 })
 
 test('shift keeps only the rows that hold it, with each heading counting N of M', async () => {
@@ -70,7 +70,7 @@ test('shift keeps only the rows that hold it, with each heading counting N of M'
   await field().fill('shift')
   const texts = await rowTexts()
   expect(texts.length).toBeGreaterThan(0)
-  expect(texts.length).toBeLessThan(88)
+  expect(texts.length).toBeLessThan(91)
   // A Shift key in the action text draws as the ⇧ keycap.
   for (const text of texts) expect(text).toMatch(/shift|⇧/)
 
@@ -96,8 +96,8 @@ test('cmd, ⌘ and ctrl give the same rows, and a section title shows the whole 
 
   await field().fill('pickers')
   const menus = help().getByRole('table', { name: 'Menus and pickers' })
-  await expect(menus.locator('tbody tr')).toHaveCount(10)
-  await expect(headings().filter({ hasText: 'Menus and pickers' })).toContainText('10 of 10')
+  await expect(menus.locator('tbody tr')).toHaveCount(13)
+  await expect(headings().filter({ hasText: 'Menus and pickers' })).toContainText('13 of 13')
 })
 
 test('matches in the action text are marked, and keycaps are not', async () => {
@@ -144,8 +144,8 @@ test('no match says so, offers Clear search and the live region reads the count'
   await help().getByRole('button', { name: 'Clear search' }).click()
   await expect(field()).toHaveValue('')
   await expect(field()).toBeFocused()
-  await expect(rows()).toHaveCount(88)
-  await expect(status()).toHaveText('88 shortcuts in 9 sections')
+  await expect(rows()).toHaveCount(91)
+  await expect(status()).toHaveText('91 shortcuts in 9 sections')
 })
 
 test('Esc clears the field and keeps the dialog, then closes it and returns focus', async () => {
@@ -158,7 +158,7 @@ test('Esc clears the field and keeps the dialog, then closes it and returns focu
   await window.keyboard.press('Escape')
   await expect(field()).toHaveValue('')
   await expect(help()).toBeVisible()
-  await expect(rows()).toHaveCount(88)
+  await expect(rows()).toHaveCount(91)
 
   await window.keyboard.press('Escape')
   await expect(help()).toHaveCount(0)
@@ -172,7 +172,7 @@ test('Esc clears the field from the Clear search and Close buttons, and closes o
   await window.keyboard.press('Escape')
   await expect(help()).toBeVisible()
   await expect(field()).toHaveValue('')
-  await expect(rows()).toHaveCount(88)
+  await expect(rows()).toHaveCount(91)
 
   await field().fill('shift')
   await help().getByRole('button', { name: 'Close' }).focus()

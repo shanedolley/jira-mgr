@@ -4,6 +4,7 @@ import { propertyRules } from '@jira-mgr/core/issue'
 import type { SavedView } from '../../shared/ipc'
 import { fitsParent } from './create'
 import { keyOf } from './keymap'
+import type { ThemePreference } from './theme'
 
 /**
  * What the palette can do to the issue in context. Every id but `subIssue` and
@@ -46,6 +47,23 @@ export const ISSUE_ACTIONS: readonly IssueAction[] = [
   { id: 'openInJira', label: 'Open in Jira', allowed: always },
 ]
 
+/** What the palette does to the app itself, whatever issue is in context. */
+export type CommandId = 'theme-system' | 'theme-light' | 'theme-dark' | 'logout'
+
+export interface AppCommand {
+  id: CommandId
+  label: string
+  /** The theme a `theme-*` command sets. */
+  theme?: ThemePreference
+}
+
+export const COMMANDS: readonly AppCommand[] = [
+  { id: 'theme-system', label: 'Theme: System', theme: 'system' },
+  { id: 'theme-light', label: 'Theme: Light', theme: 'light' },
+  { id: 'theme-dark', label: 'Theme: Dark', theme: 'dark' },
+  { id: 'logout', label: 'Log out' },
+]
+
 /** One action row: its label and, when a global shortcut runs the same thing, that key. */
 export interface ActionRow {
   id: ActionId
@@ -71,6 +89,11 @@ export function matchingActions(issue: Issue | null, query: string): ActionRow[]
     label: a.label,
     key: keyOf(a.id),
   }))
+}
+
+/** The commands whose label fits `query`. An empty query lists none, so they stay off the opening list. */
+export function matchingCommands(query: string): AppCommand[] {
+  return query.trim() === '' ? [] : COMMANDS.filter((c) => labelMatches(c.label, query))
 }
 
 /** The saved views whose name fits `query`. The "Go to view" lead-in is not searched. */

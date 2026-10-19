@@ -26,6 +26,8 @@ const peek = () => window.getByRole('complementary', { name: 'Peek' })
 const nav = () => window.getByRole('navigation', { name: 'Main' })
 const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 const properties = () => window.getByRole('complementary', { name: 'Properties' })
+/** Only the full sidebar, not the rail, holds the overview links. */
+const fullSidebar = () => window.getByRole('link', { name: 'Epics', exact: true })
 const showSidebar = () => window.getByRole('button', { name: 'Show sidebar' })
 
 /** Hovers the left of a row and peeks it: at a narrow width the Peek card covers its right half. */
@@ -260,40 +262,40 @@ test('under 960px the sidebar is a rail, and its button lays the full sidebar ov
   await open()
   await resize(1200)
   await expect(showSidebar()).toHaveCount(0)
-  await expect(window.getByRole('button', { name: 'Log out' })).toBeVisible()
+  await expect(fullSidebar()).toBeVisible()
 
   await resize(720)
   expect((await box(nav())).width).toBe(48)
   await expect(window.getByRole('link', { name: 'Inbox' })).toBeVisible()
   await expect(window.getByRole('link', { name: 'Issues', exact: true })).toBeVisible()
-  await expect(window.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+  await expect(fullSidebar()).toHaveCount(0)
   await expect(window.getByRole('link', { name: 'Issues', exact: true })).toHaveAttribute(
     'aria-current',
     'page',
   )
 
   await showSidebar().click()
-  await expect(window.getByRole('button', { name: 'Log out' })).toBeVisible()
+  await expect(fullSidebar()).toBeVisible()
   expect((await box(nav())).width).toBe(232)
   expect(await unreachableNow()).toEqual([])
   // Esc closes it and the button that opened it takes focus back.
   await window.keyboard.press('Escape')
-  await expect(window.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+  await expect(fullSidebar()).toHaveCount(0)
   await expect(showSidebar()).toBeFocused()
 
   // A click outside closes it, and so does a choice in it.
   await showSidebar().click()
-  await expect(window.getByRole('button', { name: 'Log out' })).toBeVisible()
+  await expect(fullSidebar()).toBeVisible()
   await window.mouse.click(600, 400)
-  await expect(window.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+  await expect(fullSidebar()).toHaveCount(0)
   await showSidebar().click()
   await window.getByRole('link', { name: /^Inbox/ }).click()
   await expect(window.getByRole('region', { name: 'Inbox' })).toBeVisible()
-  await expect(window.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+  await expect(fullSidebar()).toHaveCount(0)
 
   // Widening the window brings the full sidebar back.
   await resize(1200)
-  await expect(window.getByRole('button', { name: 'Log out' })).toBeVisible()
+  await expect(fullSidebar()).toBeVisible()
 })
 
 test('under 700px of Tree width the toolbar is one row of icons and the filter has its own row', async () => {
@@ -490,7 +492,7 @@ test('the Epics and Customers pages open from the sidebar overlay and keep every
     const page = window.getByRole('region', { name, exact: true })
     await expect(page).toBeVisible()
     // The overlay closed with the choice, and the page itself never scrolls sideways.
-    await expect(window.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+    await expect(fullSidebar()).toHaveCount(0)
     expect(await window.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       720,
     )
@@ -567,11 +569,11 @@ test('Esc after a click on bare sidebar overlay closes the overlay and leaves th
   await pick(/PSAPAC-2,/)
   await expect(peek()).toBeVisible()
   await showSidebar().click()
-  await expect(window.getByRole('button', { name: 'Log out' })).toBeVisible()
+  await expect(fullSidebar()).toBeVisible()
   // The Sprints heading takes no focus, so a click on it left focus on the body.
   await window.getByRole('heading', { name: 'Sprints' }).click()
   await window.keyboard.press('Escape')
-  await expect(window.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+  await expect(fullSidebar()).toHaveCount(0)
   await expect(peek()).toBeVisible()
   await expect(showSidebar()).toBeFocused()
 })
