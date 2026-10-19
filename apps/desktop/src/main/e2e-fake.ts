@@ -105,6 +105,8 @@ const FIRST_CREATED = 2000
 export interface FakeJiraCounts {
   /** Search pages served, per phase. */
   searches: { unresolved: number; done: number }
+  /** The Tree searches and Sprint page reads that asked for Jira's `comment` field. */
+  commentFieldReads: { search: number; sprint: number }
   /** Done pages requested before the unresolved phase had served its last page. */
   doneEarly: number
   /** Writes received: edits, transitions and sprint moves. */
@@ -729,6 +731,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   ]
   const counts: FakeJiraCounts = {
     searches: { unresolved: 0, done: 0 },
+    commentFieldReads: { search: 0, sprint: 0 },
     doneEarly: 0,
     edits: 0,
     applied: 0,
@@ -787,6 +790,22 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       ],
     ],
   ])
+  // Issues with 1 and 120 comments by someone else, for the Comments property's badge ("99+" from 100).
+  for (const [key, count] of [
+    ['PSAPAC-13', 1],
+    ['PSAPAC-21', 120],
+  ] as const) {
+    comments.set(
+      key,
+      Array.from({ length: count }, (_, i) => ({
+        id: 7100 + i,
+        author: OTHER,
+        body: doc(`Seeded note ${String(i + 1)}`),
+        created: new Date(Date.UTC(2026, 9, 3, 0, i)).toISOString(),
+        updated: new Date(Date.UTC(2026, 9, 3, 0, i)).toISOString(),
+      })),
+    )
+  }
   const worklogs = new Map<string, Worklog[]>([
     [
       'PSAPAC-2',
@@ -915,9 +934,26 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         }
       })
 
+  /** Jira's `comment` field on an issue: a few bodies, which core drops, and the `total` it keeps. */
+  const commentFieldOf = (key: string) => {
+    const list = comments.get(key) ?? []
+    return {
+      comments: list.slice(0, 5).map((c) => ({ ...c, id: String(c.id) })),
+      maxResults: 5,
+      total: list.length,
+      startAt: 0,
+    }
+  }
+
   const withLinks = (target: RawIssue) => ({
     ...target,
     fields: { ...target.fields, issuelinks: issuelinksOf(target.key) },
+  })
+
+  /** The issue with Jira's `comment` field, which it sends only when the request names it. */
+  const withComment = <T extends RawIssue>(target: T) => ({
+    ...target,
+    fields: { ...target.fields, comment: commentFieldOf(target.key) },
   })
 
   const detail = (target: RawIssue) => ({
@@ -925,6 +961,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     fields: {
       ...target.fields,
       issuelinks: issuelinksOf(target.key),
+      comment: commentFieldOf(target.key),
       subtasks: issues
         .filter((i) => i.fields.parent?.key === target.key && i.fields.issuetype.subtask)
         .map((i) => ({
@@ -1067,7 +1104,12 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       return json({ total: fields.length, fields })
     }
     if (method === 'POST' && path === '/rest/api/3/search/jql') {
-      const search = body() as { jql: string; maxResults: number; nextPageToken?: string }
+      const search = body() as {
+        jql: string
+        maxResults: number
+        nextPageToken?: string
+        fields?: string[]
+      }
       if (search.jql.includes('currentUser()')) {
         counts.inbox.searches++
         const found = issues
@@ -1128,6 +1170,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         return json({ errorMessages: ['The fake failed this page.'] }, 500)
       }
       counts.searches[phase]++
+      const asked = search.fields?.includes('comment') === true
+      if (asked) counts.commentFieldReads.search++
       const matching = issues
         .filter((i) => (i.fields.status.statusCategory.key === 'done') === (phase === 'done'))
         .sort((a, b) => keyNumber(b.key) - keyNumber(a.key))
@@ -1135,7 +1179,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const end = start + search.maxResults
       if (phase === 'unresolved' && end >= matching.length) unresolvedComplete = true
       return json({
-        issues: matching.slice(start, end).map(withLinks),
+        issues: matching
+          .slice(start, end)
+          .map(withLinks)
+          .map((i) => (asked ? withComment(i) : i)),
         isLast: end >= matching.length,
         nextPageToken: String(end),
       })
@@ -1168,11 +1215,15 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       )
       const startAt = Number(url.searchParams.get('startAt') ?? '0')
       const maxResults = Number(url.searchParams.get('maxResults') ?? '50')
+      const asked = url.searchParams.get('fields')?.split(',').includes('comment') === true
+      if (asked) counts.commentFieldReads.sprint++
       return json({
         startAt,
         maxResults,
         total: inSprint.length,
-        issues: inSprint.slice(startAt, startAt + maxResults),
+        issues: inSprint
+          .slice(startAt, startAt + maxResults)
+          .map((i) => (asked ? withComment(i) : i)),
       })
     }
     const sprintMove = /^\/rest\/agile\/1\.0\/sprint\/(\d+)\/issue$/.exec(path)

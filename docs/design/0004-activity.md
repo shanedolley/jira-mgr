@@ -88,6 +88,8 @@ Each comment shows its author, the time after a dot ("edited" when `updated` dif
 
 **Images.** An image dropped or pasted into a comment editor goes through D4's path unchanged: it uploads as an attachment of the issue and embeds as a `mediaSingle`. The comment's ADF then holds the same `media` node a description does. Jira renders it in a comment the same way, by the Media Services id; that has not been written live (Open Questions).
 
+**Comments modal.** *Amended 2026-10-19, build of #310.* The Comments slot on a Tree or Sprint page row ([0002](0002-issue-tree.md)) opens `CommentsSection` itself in a `Modal` titled "Comments on PSAPAC-123: <summary>", so the list, the author's Edit and Delete, `Cmd+Enter` to post and the drafts are the page's, and a draft typed in the modal is the page's draft. The section takes two props for it: `focusBox` puts focus in the new-comment box, and `onBoxLeave` runs when Esc leaves an empty box or a discard empties it, which closes the modal, while a saved or cancelled comment edit leaves the modal open and returns focus to the new-comment box. Esc over text asks first ("Discard your comment?"), and the Close button closes with the draft kept. A notice the section raises shows in the dialog, because the toasts sit under its backdrop. The modal shows no worklogs or history. A post or delete also sets the issue's `commentCount` in the issue lists, the issue read and the Sprint page copies.
+
 ### Worklogs
 
 The Worklogs section lists each worklog as one line: author, "logged 1h 30m", the started date and time, and its comment as plain text, with a total ("Logged 3h 15m") at the end of the heading row. The author sees Edit and Delete. An "Add worklog" button opens an inline form; so does Edit, prefilled.

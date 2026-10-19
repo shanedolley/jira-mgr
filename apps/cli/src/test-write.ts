@@ -26,13 +26,13 @@ export function serveWrites(
     // The read-back after a create: the recorded issue under the key the create answered with.
     if (method === 'GET' && path.startsWith('/rest/api/3/issue/PSAPAC-14?')) {
       return Response.json({
-        ...(loadFixture('issue-psapac-3066') as object),
+        ...withComment(),
         id: '10050',
         key: 'PSAPAC-14',
       })
     }
     if (method === 'GET' && path.startsWith('/rest/api/3/issue/PSAPAC-3066?')) {
-      return Response.json(loadFixture('issue-psapac-3066'))
+      return Response.json(withComment())
     }
     if (method === 'GET' && path.endsWith('/transitions')) {
       return Response.json(loadFixture('transitions-story'))
@@ -54,6 +54,18 @@ export function serveWrites(
   // Registered last, so it answers the createmeta paths before the catch-all above.
   const meta = serveCreatemeta(options.createmeta)
   return { requests, meta }
+}
+
+/**
+ * The recorded issue with the `comment` field Jira sends when a read asks for it, which the
+ * recording predates: three comments, no bodies.
+ */
+function withComment() {
+  const issue = loadFixture('issue-psapac-3066') as { fields: Record<string, unknown> }
+  return {
+    ...issue,
+    fields: { ...issue.fields, comment: { comments: [], maxResults: 0, total: 3, startAt: 0 } },
+  }
 }
 
 const recordedIssue = () => loadFixture('issue-psapac-3066') as { fields: Record<string, unknown> }

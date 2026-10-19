@@ -6,6 +6,7 @@ import { memo, type ReactNode } from 'react'
 
 import { Avatar } from './Avatar'
 import { isCellProperty, type CellProperty } from './cell'
+import { badgeText, commentsName, useOpenComments } from './commentsSlot'
 import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { keyOf } from './keymap'
@@ -99,6 +100,9 @@ export function rowName(
           const value = timeValue(issue, property)
           return value === null ? [] : [`${TIME_NAMES[property].toLowerCase()} ${value}`]
         }),
+        ...(properties.includes('comments') && (issue.commentCount ?? 0) > 0
+          ? [commentsName(issue.commentCount)]
+          : []),
         ...(progress === undefined ? [] : [progressText(progress)]),
       ].join(', ')
     }
@@ -504,6 +508,75 @@ export function TimeCell({
   )
 }
 
+/**
+ * The Comments property in a fixed slot: a chat bubble with the issue's comment count as a badge on
+ * its top right, the bubble alone at 0 and while the count is not loaded (the loads ask Jira for it
+ * only while this property is on); a count not loaded yet draws the bubble dimmer than 0 does. A
+ * click opens the Comments modal. On the Sprint page the slot is a button beside the row's own
+ * (Slot, which Enter and Space press natively). In the Tree the row reads the click as it reads the
+ * Logged slot's (`data-edit`): it activates the row and opens no Peek, and a Shift+click checks a
+ * range instead. The Tree's span cannot take focus, so it is no button and has no name of its own:
+ * the row's name carries the count, and the issue menu's Comments item is the keyboard's way in.
+ */
+export function CommentsCell({ issue, always }: { issue: Issue; always: boolean }) {
+  const open = useOpenComments()
+  const count = issue.commentCount
+  const name = commentsName(count)
+  const shared = {
+    'data-prop': 'comments',
+    title: name,
+    style: colWidth('comments'),
+    className: `flex shrink-0 items-center justify-end pr-2 text-xs text-muted ${open === null ? '' : 'cursor-pointer rounded hover:bg-line'}`,
+  }
+  const content = (
+    <span aria-hidden className="relative inline-flex size-4 items-center justify-center">
+      <svg
+        viewBox="0 0 16 16"
+        data-unloaded={count === undefined ? '' : undefined}
+        className={`size-4 ${count === undefined ? 'opacity-40' : ''}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      >
+        <path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2Z" />
+      </svg>
+      {count !== undefined && count > 0 && (
+        <span
+          data-badge="comments"
+          className="absolute -right-2 -top-0.5 min-w-3.5 rounded-full bg-line px-1 text-center text-[10px] font-medium leading-3.5 tabular-nums text-ink"
+        >
+          {badgeText(count)}
+        </span>
+      )}
+    </span>
+  )
+  if (open === null) return <span {...shared}>{content}</span>
+  // On the Sprint page the slot is a button beside the row's own. In the Tree the row's click
+  // would open the Peek, and its double-click the issue.
+  return always ? (
+    <Slot
+      {...shared}
+      aria-label={name}
+      onClick={() => {
+        open(issue)
+      }}
+    >
+      {content}
+    </Slot>
+  ) : (
+    <span
+      {...shared}
+      data-edit="comments"
+      onClick={(event) => {
+        if (!event.shiftKey) open(issue)
+      }}
+    >
+      {content}
+    </span>
+  )
+}
+
 function DateCell({
   property,
   at,
@@ -653,6 +726,8 @@ export function Properties({
           case 'remaining':
           case 'remainingPercent':
             return <TimeCell key={property} issue={issue} property={property} always={always} />
+          case 'comments':
+            return <CommentsCell key={property} issue={issue} always={always} />
           case 'start':
             return (
               <StartDate
@@ -891,9 +966,11 @@ export const TreeRow = memo(function TreeRow({
         const pick = target.closest<HTMLElement>('[data-pick]')
         const picked = pick?.dataset.pick
         // A click on an in-row field or a cell with its own editor leaves the Tree as it is. A
-        // Shift+click on the status dot or avatar checks a range instead, so it opens no editor.
+        // Shift+click on the status dot or avatar checks a range instead, so it opens no editor; so
+        // does one on the Comments slot, whose click opens the comments modal.
         const check = target.closest('[data-check]') !== null
-        const select = check ? 'toggle' : !edit && event.shiftKey ? 'range' : undefined
+        const range = event.shiftKey && (!edit || target.closest('[data-edit="comments"]') !== null)
+        const select = check ? 'toggle' : range ? 'range' : undefined
         onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
         if (row.kind !== 'issue') return
         if (

@@ -265,19 +265,32 @@ export function useDisplay() {
   })
 }
 
-/** Shows a display change at once, then writes it. A failed write refetches what the file holds. */
+/**
+ * Shows a display change at once, then writes it. A failed write refetches what the file holds.
+ * Turning Comments on reloads the issue lists and the Sprint pages once the file says so, since
+ * the loads ask Jira for the comment counts only while the saved display shows them.
+ */
 export function displayMutation(
   client: QueryClient,
   send: (display: Display) => Promise<Display>,
-): MutationOptions<Display, JiraMgrError, Display> {
+): MutationOptions<Display, JiraMgrError, Display, { before: Display | undefined }> {
   return {
     mutationFn: send,
     async onMutate(display) {
       await client.cancelQueries({ queryKey: displayKey })
+      const before = client.getQueryData<Display>(displayKey)
       client.setQueryData<Display>(displayKey, display)
+      return { before }
     },
     async onError() {
       await client.invalidateQueries({ queryKey: displayKey })
+    },
+    onSuccess(_saved, display, context) {
+      if (!display.properties.includes('comments')) return
+      if (context.before?.properties.includes('comments') === true) return
+      for (const queryKey of [unresolvedKey, doneKey, sprintKey]) {
+        void client.invalidateQueries({ queryKey })
+      }
     },
   }
 }

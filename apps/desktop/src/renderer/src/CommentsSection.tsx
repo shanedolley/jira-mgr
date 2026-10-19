@@ -1,6 +1,6 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import type { AdfDoc } from '@jira-mgr/core/adf'
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 
 import type { CommentItem, CurrentUser } from '../../shared/ipc'
 import { failureNotice, formatWhen, safeMarkdown } from './activity'
@@ -25,6 +25,12 @@ interface CommentsSectionProps {
   /** Puts focus back on the page once an editor's controls are gone. */
   onLeave: () => void
   onNotice: (notice: Notice) => void
+  /** Puts focus in the new-comment box when the section mounts. The page leaves it where it was. */
+  focusBox?: boolean
+  /** Lets the host focus the new-comment box through the editor's own handle. */
+  boxRef?: RefObject<AdfEditorHandle | null>
+  /** Runs when Esc leaves the new-comment box empty, or a discard empties it. Defaults to `onLeave`. */
+  onBoxLeave?: () => void
 }
 
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
@@ -287,14 +293,20 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
 }
 
 /** The box that adds a comment: the description's editor, always open, empty and not focused. */
-function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey' | 'onLeave'>) {
+function CommentBox({
+  issueKey,
+  onLeave,
+  focusBox,
+  boxRef,
+}: Pick<CommentsSectionProps, 'issueKey' | 'onLeave' | 'focusBox' | 'boxRef'>) {
   const draftKey = newCommentDraftKey(issueKey)
   const [restored] = useState(() => getDraft(draftKey))
   const [posting, setPosting] = useState(false)
   const [typed, setTyped] = useState(restored !== undefined)
   const [problem, setProblem] = useState<string | null>(null)
   const [discarding, setDiscarding] = useState(false)
-  const editor = useRef<AdfEditorHandle>(null)
+  const ownEditor = useRef<AdfEditorHandle>(null)
+  const editor = boxRef ?? ownEditor
   const busy = useRef(false)
   const add = useAddComment(issueKey)
 
@@ -340,7 +352,7 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
         label="New comment"
         saveLabel="Comment"
         cancelLabel={null}
-        autoFocus={false}
+        autoFocus={focusBox === true}
         editing={!posting}
         frozen={posting}
         onSave={(doc) => {
@@ -390,7 +402,15 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
 }
 
 /** The Activity section: the issue's comments, oldest first, and the box that adds one. */
-export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSectionProps) {
+export function CommentsSection({
+  issueKey,
+  me,
+  onLeave,
+  onNotice,
+  focusBox,
+  boxRef,
+  onBoxLeave = onLeave,
+}: CommentsSectionProps) {
   const comments = useComments(issueKey)
   // Changing the box's key mounts it again, so it reads the draft a comment row moved into it.
   const [boxVersion, setBoxVersion] = useState(0)
@@ -419,7 +439,13 @@ export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSec
           )
         }
       </QueryBody>
-      <CommentBox key={boxVersion} issueKey={issueKey} onLeave={onLeave} />
+      <CommentBox
+        key={boxVersion}
+        issueKey={issueKey}
+        onLeave={onBoxLeave}
+        focusBox={focusBox}
+        boxRef={boxRef}
+      />
     </Section>
   )
 }

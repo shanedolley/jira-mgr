@@ -126,6 +126,8 @@ import {
   treeLevelKey,
   useUnresolvedIssues,
 } from './queries'
+import { CommentsModal } from './CommentsModal'
+import { CommentsModalContext } from './commentsSlot'
 import { LogWorkContext, loggedIssue } from './logWork'
 import { LogWorkModal } from './LogWorkModal'
 import { NotifyContext, type Notify } from './notify'
@@ -365,6 +367,8 @@ export function Shell({ session }: { session: Session }) {
   } | null>(null)
   // The issue the Log work modal is open on.
   const [logging, setLogging] = useState<Issue | null>(null)
+  // The issue the Comments modal is open on.
+  const [commenting, setCommenting] = useState<Issue | null>(null)
   const timerQuery = useTimer()
   const startTimer = useStartTimer()
   const client = useQueryClient()
@@ -1085,6 +1089,21 @@ export function Shell({ session }: { session: Session }) {
   const requestLog = useCallback((issue: Issue) => {
     openLogRef.current(issue)
   }, [])
+  // The Comments slot too: it makes the row active, then opens the modal on a copy of the issue.
+  function openComments(issue: Issue) {
+    const row = listCovered
+      ? undefined
+      : rows.find((r) => r.kind === 'issue' && r.node.issue.key === issue.key)
+    if (row !== undefined) setTrack((held) => ({ ...held, activeId: row.id }))
+    setCommenting(issue)
+  }
+  const openCommentsRef = useRef(openComments)
+  useEffect(() => {
+    openCommentsRef.current = openComments
+  })
+  const requestComments = useCallback((issue: Issue) => {
+    openCommentsRef.current(issue)
+  }, [])
 
   /** An item of the right-click menu that is not a submenu. The menu closes first, so a dialog finds the Tree's focus to return to. */
   function runMenuAction(action: MenuAction, issue: Issue) {
@@ -1096,6 +1115,9 @@ export function Shell({ session }: { session: Session }) {
         break
       case 'logWork':
         openLog(issue)
+        break
+      case 'comments':
+        openComments(issue)
         break
       case 'related':
         onPage(key, '[aria-label="Add link"]', (button) => {
@@ -1296,7 +1318,8 @@ export function Shell({ session }: { session: Session }) {
           deleting !== null ||
           timing !== null ||
           // `logging` is set exactly while the modal renders: `loggedIssue` falls back to it.
-          logging !== null
+          logging !== null ||
+          commenting !== null
         )
           return
         if (command === 'logWork') {
@@ -1554,6 +1577,7 @@ export function Shell({ session }: { session: Session }) {
 
   const treeTop = useTreeTop(listRef, peekOpen)
   const loggingIssue = loggedIssue(issues, logging)
+  const commentingIssue = loggedIssue(issues, commenting)
   const layout = (
     <div
       style={
@@ -1921,6 +1945,16 @@ export function Shell({ session }: { session: Session }) {
           returnFocus={restoreFocus}
         />
       )}
+      {commentingIssue !== null && (
+        <CommentsModal
+          issue={commentingIssue}
+          me={meQuery.data}
+          onClose={() => {
+            setCommenting(null)
+          }}
+          returnFocus={restoreFocus}
+        />
+      )}
       {renaming !== null && (
         <SummaryDialog
           issue={renaming}
@@ -2021,7 +2055,9 @@ export function Shell({ session }: { session: Session }) {
 
   return (
     <NotifyContext value={notify}>
-      <LogWorkContext value={requestLog}>{layout}</LogWorkContext>
+      <LogWorkContext value={requestLog}>
+        <CommentsModalContext value={requestComments}>{layout}</CommentsModalContext>
+      </LogWorkContext>
     </NotifyContext>
   )
 }

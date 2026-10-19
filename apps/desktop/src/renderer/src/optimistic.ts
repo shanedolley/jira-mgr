@@ -109,6 +109,14 @@ function editEverywhere(
 }
 
 /**
+ * Shows `count` as the issue's comment count in every cache that holds it, at once. The comment
+ * list calls it after a post or delete; the next Tree refresh confirms the number.
+ */
+export function showCommentCount(client: QueryClient, key: string, count: number): void {
+  editEverywhere(client, key, (issue) => ({ ...issue, commentCount: count }))
+}
+
+/**
  * Takes the issue off each Sprint page read whose sprint a `sprints` patch no longer lists, as a
  * move to another sprint or to Backlog does, so the row leaves at once. Returns the copies taken.
  */

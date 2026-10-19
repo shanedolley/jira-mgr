@@ -11,6 +11,7 @@ export const SLOT_WIDTH: Record<RowProperty, number> = {
   logged: 64,
   remaining: 64,
   remainingPercent: 48,
+  comments: 40,
   start: 96,
   due: 96,
   created: 72,

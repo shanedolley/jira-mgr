@@ -510,6 +510,21 @@ describe('display', () => {
     })
   })
 
+  it("reads comments in the file's order, and a file without it as before", async () => {
+    const raw = { display: { properties: ['due', 'comments', 'remainingPercent', 'wat'] } }
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(raw))
+    expect((await readSettings()).display.properties).toEqual([
+      'due',
+      'comments',
+      'remainingPercent',
+    ])
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({ display: { properties: ['logged'] } }),
+    )
+    expect((await readSettings()).display.properties).toEqual(['logged'])
+  })
+
   it("reads the time properties in the file's order, and a file without them as before", async () => {
     const raw = {
       display: { properties: ['updated', 'remainingPercent', 'estimate', 'logged', 'remaining'] },

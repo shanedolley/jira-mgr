@@ -213,6 +213,61 @@ describe('searchIssues', () => {
     expect(mapped).toMatchObject({ key: 'PSAPAC-3117', creator: null })
   })
 
+  describe('commentCount', () => {
+    /** An issue of the recording with `comment` set to what Jira sends: the bodies and the total. */
+    async function mapWith(comment: unknown) {
+      const raw = recorded('search-unresolved-1').issues.find((i) => i.key === 'PSAPAC-3117')
+      if (raw === undefined) throw new Error('PSAPAC-3117 is missing from the fixture.')
+      const issue = structuredClone(raw)
+      if (comment !== undefined) Object.assign(issue.fields, { comment })
+      serveRaw({ issues: [issue], isLast: true })
+      const [mapped] = await searchIssues(client, { comments: true })
+      return mapped
+    }
+
+    it('keeps the total of the comment field and drops the bodies', async () => {
+      const mapped = await mapWith({
+        comments: [{ id: '1', body: { type: 'doc', version: 1, content: [] } }],
+        self: 'https://example.invalid/comment',
+        maxResults: 1,
+        total: 120,
+        startAt: 0,
+      })
+
+      expect(mapped?.commentCount).toBe(120)
+      expect(mapped).not.toHaveProperty('comment')
+    })
+
+    it('reads a total of 0 as 0', async () => {
+      expect((await mapWith({ comments: [], total: 0 }))?.commentCount).toBe(0)
+    })
+
+    it('leaves the count out when Jira sent no comment field, as every recording before it', async () => {
+      const mapped = await mapWith(undefined)
+      expect(mapped).toMatchObject({ key: 'PSAPAC-3117' })
+      expect(mapped).not.toHaveProperty('commentCount')
+    })
+
+    it('leaves the count out for junk and still maps the page', async () => {
+      for (const junk of [null, 'many', { total: 'many' }, { total: -1 }, { total: 1.5 }, []]) {
+        const mapped = await mapWith(junk)
+        expect(mapped).toMatchObject({ key: 'PSAPAC-3117' })
+        expect(mapped).not.toHaveProperty('commentCount')
+      }
+    })
+
+    it('asks Jira for the comment field only when told to', async () => {
+      const without = serveSearch()
+      await searchIssues(client, { pageSize: 10 })
+      expect(without[0]?.fields).not.toContain('comment')
+
+      const withComments = serveSearch()
+      await searchIssues(client, { pageSize: 10, comments: true })
+      expect(withComments[0]?.fields).toContain('comment')
+      expect(withComments[0]?.fields.filter((f) => f !== 'comment')).toEqual(without[0]?.fields)
+    })
+  })
+
   it('maps an Epic with no parent, no sprint and no estimate to nulls and an empty list', async () => {
     serveSearch()
     const epic = (await searchIssues(client)).find((i) => i.key === 'PSAPAC-3116')
@@ -295,6 +350,7 @@ describe('searchIssues', () => {
       expect.arrayContaining([...Object.values(IDS), 'summary', 'timetracking', 'parent']),
     )
     expect(body?.fields).not.toContain('description')
+    expect(body?.fields).not.toContain('comment')
     expect(body?.jql).toBe('project = "PSAPAC" AND statusCategory != Done ORDER BY key DESC')
   })
 
@@ -431,7 +487,8 @@ describe('getIssue', () => {
     expect(paths).toHaveLength(1)
     expect(paths[0]).toMatch(/^\/rest\/api\/3\/issue\/PSAPAC-3066\?fields=summary,/)
     expect(paths[0]).toContain(',customfield_14849,')
-    expect(paths[0]).toMatch(/,description,subtasks$/)
+    // A single read always asks for the comment count.
+    expect(paths[0]).toMatch(/,comment,description,subtasks$/)
     expect(issue).toMatchObject({
       key: 'PSAPAC-3066',
       summary: expect.any(String) as string,
@@ -490,6 +547,26 @@ describe('getIssue', () => {
     const issue = await getIssue(client, 'PSAPAC-3066')
     expect(issue.description).toBeNull()
     expect(Object.hasOwn(issue, 'description')).toBe(true)
+  })
+
+  it('reads the total of the comment field the read asked for, and leaves the bodies out', async () => {
+    const recorded = loadFixture('issue-psapac-3066') as { fields: Record<string, unknown> }
+    const comment = {
+      comments: [{ id: '1', body: 'x' }],
+      self: 'x',
+      maxResults: 1,
+      total: 3,
+      startAt: 0,
+    }
+    serveIssue({ ...recorded, fields: { ...recorded.fields, comment } })
+    const issue = await getIssue(client, 'PSAPAC-3066')
+    expect(issue.commentCount).toBe(3)
+    expect(issue).not.toHaveProperty('comment')
+  })
+
+  it('leaves the comment count out when the recorded response holds no comment field', async () => {
+    serveIssue()
+    expect(await getIssue(client, 'PSAPAC-3066')).not.toHaveProperty('commentCount')
   })
 
   it('maps an unknown issue to not_found', async () => {

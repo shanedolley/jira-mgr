@@ -40,7 +40,7 @@ interface Data {
 
 describe('jm issue get as JSON', () => {
   it('carries the issue, the ADF and Markdown descriptions, the subtasks and the URL', async () => {
-    const requests = serveIssue()
+    const requests = serveIssue(withFields({ comment: { comments: [], total: 3 } }))
     const { code, data, f } = await runJson(['issue', 'get', 'PSAPAC-3066'])
     expect(code).toBe(0)
     const issue = data as Data
@@ -61,6 +61,16 @@ describe('jm issue get as JSON', () => {
     expect(requests).toHaveLength(1)
     expect(requests[0]).toMatchObject({ method: 'GET' })
     expect(requests[0]?.path).toMatch(/^\/rest\/api\/3\/issue\/PSAPAC-3066\?fields=summary,/)
+  })
+
+  it('carries the comment count Jira sends, and no comment bodies', async () => {
+    serveIssue(
+      withFields({ comment: { comments: [{ id: '1', body: 'x' }], total: 3, startAt: 0 } }),
+    )
+    const { code, data } = await runJson(['issue', 'get', 'PSAPAC-3066'])
+    expect(code).toBe(0)
+    expect(data).toMatchObject({ key: 'PSAPAC-3066', commentCount: 3 })
+    expect(data).not.toHaveProperty('comment')
   })
 
   it('reads a key in any case as upper case', async () => {

@@ -449,6 +449,14 @@ export function createBackend(deps: BackendDeps = {}): Backend {
     inboxCache = createInboxCache()
   }
 
+  /**
+   * Whether the Comments property is on. Jira sends every comment body to give the count, so the
+   * Tree and the Sprint page ask for the field only while the saved display shows it.
+   */
+  async function wantsComments(): Promise<boolean> {
+    return (await readSettings()).display.properties.includes('comments')
+  }
+
   async function listIssues(
     { phase, loadId }: ListIssuesArgs,
     progress: ProgressSender,
@@ -460,6 +468,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       const issues: Issue[] = []
       for await (const page of searchIssuePages(http, {
         phases: [phase],
+        comments: await wantsComments(),
         signal: controller.signal,
       })) {
         issues.push(...page.issues)
@@ -794,7 +803,7 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       }
       return listSprints(http, board.id, { all })
     },
-    getSprint: ({ id }) => readSprint(http, id),
+    getSprint: async ({ id }) => readSprint(http, id, { comments: await wantsComments() }),
     searchUsers: ({ query }) => searchAssignableUsers(http, query),
     async listFieldOptions({ field }) {
       return getFieldOptions(http, field)

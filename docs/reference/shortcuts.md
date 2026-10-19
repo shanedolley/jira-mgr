@@ -72,6 +72,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Click on a Labels, Sprint, Due date or Start date slot | Open the slot's editor beside it, without opening the Peek, whether the slot is filled or empty. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
 | Click on the Original estimate slot | Turn it into a field in place, without opening the Peek. `Enter` saves and `Esc` cancels. The Sprint page's rows have the same button |
 | Click on the Logged slot | Open the Log work modal, without opening the Peek. The Sprint page's rows have the same button |
+| Click on the Comments slot | Open the Comments modal, without opening the Peek, whatever the count. The Sprint page's rows have the same button, which `Enter` and `Space` press. On the Tree `Shift+click` checks a range instead |
 | Click on a summary | Edit the summary in a modal, with the text selected. `E` opens the same modal on the active row. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
 
 ## Find, filter and views
@@ -98,7 +99,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 
 | Where | Key | Action |
 |---|---|---|
-| | `Shift+F10` | Open the issue menu of the active Tree row, or of the focused row on the Inbox, Sprint and Epics pages. The context-menu key and a right-click on a row do the same |
+| | `Shift+F10` | Open the issue menu of the active Tree row, or of the focused row on the Inbox, Sprint and Epics pages. The context-menu key and a right-click on a row do the same. Its Comments item opens the Comments modal for the row, the keyboard's way to it from the Tree |
 | Issue menu | `Up`, `Down`, `Home`, `End` | Move between items; `Up` from the first item goes to the last |
 | Issue menu | `Right`, `Enter` | Open the item's submenu, or run an item that has none |
 | Issue menu | `Left` | Close an open list of options and return to its item; in a search field only while it is empty. The date, estimate and Rename fields keep `Left` for the caret, and only `Esc` closes them |

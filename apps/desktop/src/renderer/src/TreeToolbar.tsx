@@ -63,6 +63,7 @@ export const PROPERTY_LABELS: Record<RowProperty, string> = {
   logged: 'Logged',
   remaining: 'Remaining',
   remainingPercent: 'Remaining %',
+  comments: 'Comments',
   start: 'Start date',
   due: 'Due date',
   created: 'Created',
