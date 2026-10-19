@@ -51,6 +51,7 @@ function issue(key: string, spec: Spec): Issue {
     remainingEstimateSeconds: null,
     timeSpentSeconds: null,
     timeRemainingHours: null,
+    commentCount: 0,
     created: '2026-10-01T00:00:00.000Z',
     updated: '2026-10-01T00:00:00.000Z',
   }

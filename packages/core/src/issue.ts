@@ -86,6 +86,11 @@ const jiraFields = z.object({
     })
     .nullish(),
   duedate: z.string().nullish(),
+  // Only the total counts: the comment bodies drop here. Missing or junk reads as none.
+  comment: z
+    .object({ total: z.number().int().min(0) })
+    .nullish()
+    .catch(null),
   created: jiraTime,
   updated: jiraTime,
   customer: option.nullish(),
@@ -167,6 +172,7 @@ export function issueSchema(ids: FieldIds) {
       remainingEstimateSeconds: f.timetracking?.remainingEstimateSeconds ?? null,
       timeSpentSeconds: f.timetracking?.timeSpentSeconds ?? null,
       timeRemainingHours: f.timeRemaining ?? null,
+      commentCount: f.comment?.total ?? 0,
       created: f.created,
       updated: f.updated,
     }))

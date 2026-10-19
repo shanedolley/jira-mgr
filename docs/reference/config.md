@@ -16,7 +16,7 @@ The state folder is `~/Library/Application Support/jira-mgr/`. `JM_STATE_DIR` re
 | `toggles.hideDone` | boolean | `true` |
 | `toggles.assigneeMe` | boolean | `false` |
 | `toggles.hideEmptyCustomers` | boolean | `true` |
-| `display.properties` | array of `labels`, `sprint`, `estimate`, `logged`, `remaining`, `remainingPercent`, `start`, `due`, `created`, `updated` | `["updated"]` |
+| `display.properties` | array of `labels`, `sprint`, `estimate`, `logged`, `remaining`, `remainingPercent`, `comments`, `start`, `due`, `created`, `updated` | `["updated"]` |
 | `display.order` | `key`, `priority`, `updated`, `due`, `status` or `manual` | `key` |
 | `display.direction` | `asc` or `desc` | the order's own: `desc` for `key`, `priority` and `updated`, `asc` for `due`, `status` and `manual` |
 | `display.manual` | optional array of at most 20000 issue keys | absent |

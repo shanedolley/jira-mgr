@@ -65,6 +65,7 @@ export function requestedFields(ids: FieldIds): string[] {
     'priority',
     'timetracking',
     'duedate',
+    'comment',
     'created',
     'updated',
     ids.customer,

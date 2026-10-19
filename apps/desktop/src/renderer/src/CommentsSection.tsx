@@ -25,6 +25,10 @@ interface CommentsSectionProps {
   /** Puts focus back on the page once an editor's controls are gone. */
   onLeave: () => void
   onNotice: (notice: Notice) => void
+  /** Puts focus in the new-comment box when the section mounts. The page leaves it where it was. */
+  focusBox?: boolean
+  /** Runs when Esc leaves the new-comment box empty, or a discard empties it. Defaults to `onLeave`. */
+  onBoxLeave?: () => void
 }
 
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
@@ -287,7 +291,11 @@ function CommentRow({ issueKey, comment, mine, onLeave, onNotice, onDraftMoved }
 }
 
 /** The box that adds a comment: the description's editor, always open, empty and not focused. */
-function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey' | 'onLeave'>) {
+function CommentBox({
+  issueKey,
+  onLeave,
+  focusBox,
+}: Pick<CommentsSectionProps, 'issueKey' | 'onLeave' | 'focusBox'>) {
   const draftKey = newCommentDraftKey(issueKey)
   const [restored] = useState(() => getDraft(draftKey))
   const [posting, setPosting] = useState(false)
@@ -340,7 +348,7 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
         label="New comment"
         saveLabel="Comment"
         cancelLabel={null}
-        autoFocus={false}
+        autoFocus={focusBox === true}
         editing={!posting}
         frozen={posting}
         onSave={(doc) => {
@@ -390,7 +398,14 @@ function CommentBox({ issueKey, onLeave }: Pick<CommentsSectionProps, 'issueKey'
 }
 
 /** The Activity section: the issue's comments, oldest first, and the box that adds one. */
-export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSectionProps) {
+export function CommentsSection({
+  issueKey,
+  me,
+  onLeave,
+  onNotice,
+  focusBox,
+  onBoxLeave = onLeave,
+}: CommentsSectionProps) {
   const comments = useComments(issueKey)
   // Changing the box's key mounts it again, so it reads the draft a comment row moved into it.
   const [boxVersion, setBoxVersion] = useState(0)
@@ -419,7 +434,7 @@ export function CommentsSection({ issueKey, me, onLeave, onNotice }: CommentsSec
           )
         }
       </QueryBody>
-      <CommentBox key={boxVersion} issueKey={issueKey} onLeave={onLeave} />
+      <CommentBox key={boxVersion} issueKey={issueKey} onLeave={onBoxLeave} focusBox={focusBox} />
     </Section>
   )
 }

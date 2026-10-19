@@ -18,6 +18,7 @@ import {
   issueDetailKey,
   issueMutation,
   pendingFields,
+  showCommentCount,
   sprintKey,
   summaryMutation,
   type BatchRequestItem,
@@ -615,6 +616,24 @@ describe('a Sprint page copy', () => {
     request.reject(new JiraMgrError('validation_failed', 'Jira refused the summary.'))
     await expect(done).rejects.toMatchObject({ code: 'validation_failed' })
     expect(sprintCopy(client)).toEqual(['One', 'Two'])
+  })
+})
+
+describe('showCommentCount', () => {
+  it('sets the count in the phase lists, the issue read and a Sprint page copy, and leaves other issues alone', () => {
+    const client = new QueryClient()
+    const one = issue('PSAPAC-1', 'One', { commentCount: 1 })
+    const two = issue('PSAPAC-2', 'Two', { commentCount: 5 })
+    client.setQueryData(unresolvedKey, [one, two])
+    client.setQueryData(issueDetailKey('PSAPAC-1'), detail(one))
+    client.setQueryData([...sprintKey, 5], { sprint: { id: 5 }, issues: [one, two], stats: {} })
+
+    showCommentCount(client, 'PSAPAC-1', 2)
+
+    const counts = (list: Issue[] | undefined) => list?.map((i) => i.commentCount)
+    expect(counts(client.getQueryData<Issue[]>(unresolvedKey))).toEqual([2, 5])
+    expect(client.getQueryData<IssueDetail>(issueDetailKey('PSAPAC-1'))?.commentCount).toBe(2)
+    expect(counts(client.getQueryData<SprintReport>([...sprintKey, 5])?.issues)).toEqual([2, 5])
   })
 })
 

@@ -787,6 +787,22 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       ],
     ],
   ])
+  // Issues with 1 and 120 comments by someone else, for the Comments property's badge ("99+" from 100).
+  for (const [key, count] of [
+    ['PSAPAC-13', 1],
+    ['PSAPAC-21', 120],
+  ] as const) {
+    comments.set(
+      key,
+      Array.from({ length: count }, (_, i) => ({
+        id: 7100 + i,
+        author: OTHER,
+        body: doc(`Seeded note ${String(i + 1)}`),
+        created: new Date(Date.UTC(2026, 9, 3, 0, i)).toISOString(),
+        updated: new Date(Date.UTC(2026, 9, 3, 0, i)).toISOString(),
+      })),
+    )
+  }
   const worklogs = new Map<string, Worklog[]>([
     [
       'PSAPAC-2',
@@ -915,9 +931,24 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         }
       })
 
+  /** Jira's `comment` field on an issue: a few bodies, which core drops, and the `total` it keeps. */
+  const commentFieldOf = (key: string) => {
+    const list = comments.get(key) ?? []
+    return {
+      comments: list.slice(0, 5).map((c) => ({ ...c, id: String(c.id) })),
+      maxResults: 5,
+      total: list.length,
+      startAt: 0,
+    }
+  }
+
   const withLinks = (target: RawIssue) => ({
     ...target,
-    fields: { ...target.fields, issuelinks: issuelinksOf(target.key) },
+    fields: {
+      ...target.fields,
+      issuelinks: issuelinksOf(target.key),
+      comment: commentFieldOf(target.key),
+    },
   })
 
   const detail = (target: RawIssue) => ({
@@ -925,6 +956,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     fields: {
       ...target.fields,
       issuelinks: issuelinksOf(target.key),
+      comment: commentFieldOf(target.key),
       subtasks: issues
         .filter((i) => i.fields.parent?.key === target.key && i.fields.issuetype.subtask)
         .map((i) => ({
@@ -1172,7 +1204,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         startAt,
         maxResults,
         total: inSprint.length,
-        issues: inSprint.slice(startAt, startAt + maxResults),
+        issues: inSprint.slice(startAt, startAt + maxResults).map((i) => ({
+          ...i,
+          fields: { ...i.fields, comment: commentFieldOf(i.key) },
+        })),
       })
     }
     const sprintMove = /^\/rest\/agile\/1\.0\/sprint\/(\d+)\/issue$/.exec(path)

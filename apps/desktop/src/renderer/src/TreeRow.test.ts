@@ -3,8 +3,9 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
+import { CommentsModalContext, badgeText, commentsName } from './commentsSlot'
 import { LogWorkContext, loggedIssue } from './logWork'
-import { PriorityCell, Properties, rowName, rowProgress, TimeCell } from './TreeRow'
+import { CommentsCell, PriorityCell, Properties, rowName, rowProgress, TimeCell } from './TreeRow'
 import type { TreeRow } from './tree'
 
 function row(over: Partial<Issue>): TreeRow {
@@ -209,6 +210,73 @@ describe('the Logged slot', () => {
     const epic = { id: '9', name: 'Epic', subtask: false, hierarchyLevel: 1 }
     expect(slot({ issueType: epic, timeSpentSeconds: 1800 })).not.toContain('role="button"')
     expect(slot({ ...story, timeSpentSeconds: 1800 }, false)).not.toContain('role="button"')
+  })
+})
+
+describe('the Comments slot', () => {
+  const slot = (over: Partial<Issue>, always = false, provided = true) => {
+    const { issue } = (row(over) as { node: { issue: Issue } }).node
+    const cell = createElement(CommentsCell, { issue, always })
+    return renderToStaticMarkup(
+      provided ? createElement(CommentsModalContext, { value: () => undefined }, cell) : cell,
+    )
+  }
+
+  it('prints the count as a badge, the icon alone at 0 and 99+ from 100', () => {
+    expect(badgeText(1)).toBe('1')
+    expect(badgeText(99)).toBe('99')
+    expect(badgeText(100)).toBe('99+')
+    expect(badgeText(120)).toBe('99+')
+    expect(slot({ commentCount: 0 })).not.toContain('data-badge')
+    expect(slot({ commentCount: 3 })).toMatch(/data-badge="comments"[^>]*>3</)
+    expect(slot({ commentCount: 120 })).toMatch(/data-badge="comments"[^>]*>99\+</)
+  })
+
+  it('states the number in its name, with the exact count past 99', () => {
+    expect(commentsName(0)).toBe('No comments')
+    expect(commentsName(1)).toBe('1 comment')
+    expect(commentsName(3)).toBe('3 comments')
+    expect(slot({ commentCount: 3 })).toContain('aria-label="3 comments"')
+    expect(slot({ commentCount: 120 })).toContain('aria-label="120 comments"')
+    expect(slot({ commentCount: 0 })).toContain('aria-label="No comments"')
+  })
+
+  it('is a row-read target in the Tree and a button on the Sprint page', () => {
+    expect(slot({ commentCount: 1 })).toContain('data-edit="comments"')
+    expect(slot({ commentCount: 1 })).toContain('role="button"')
+    const sprint = slot({ commentCount: 1 }, true)
+    expect(sprint).toMatch(/^<button /)
+    expect(sprint).not.toContain('data-edit')
+  })
+
+  it('is no target outside the Shell', () => {
+    expect(slot({ commentCount: 1 }, false, false)).not.toContain('role="button"')
+    expect(slot({ commentCount: 1 }, true, false)).not.toMatch(/^<button /)
+  })
+
+  it('joins the row name after the time values, only while the property is on and above 0', () => {
+    const some = row({
+      commentCount: 3,
+      timeSpentSeconds: 1800,
+      issueType: { name: 'Story', subtask: false, hierarchyLevel: 0 } as Issue['issueType'],
+    })
+    expect(rowName(some)).not.toContain('comment')
+    expect(rowName(some, ['logged', 'comments'])).toMatch(/, logged 30m, 3 comments$/)
+    expect(rowName(row({ commentCount: 0 }), ['comments'])).not.toContain('comment')
+  })
+
+  it('draws in the Properties strip in row order, after Remaining %', () => {
+    const { issue } = (
+      row({ commentCount: 2, labels: [], sprints: [] }) as { node: { issue: Issue } }
+    ).node
+    const strip = renderToStaticMarkup(
+      createElement(Properties, {
+        issue,
+        properties: ['comments', 'due'],
+        today: '2026-10-19',
+      }),
+    )
+    expect(strip).toContain('data-prop="comments"')
   })
 })
 

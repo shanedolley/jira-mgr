@@ -12,7 +12,13 @@ import {
 import type { AddAttachmentArgs, CommentItem, LinksResult, WorklogItem } from '../../shared/ipc'
 import { commentDraftIds, dropOrphanedCommentDrafts } from './drafts'
 import { call } from './ipc'
-import { applyUnaskedRead, current, issueDetailKey, isEditing } from './optimistic'
+import {
+  applyUnaskedRead,
+  current,
+  issueDetailKey,
+  isEditing,
+  showCommentCount,
+} from './optimistic'
 import {
   attachmentListKey,
   commentsKey,
@@ -122,12 +128,19 @@ export async function readIssue(client: QueryClient, key: string): Promise<void>
   }
 }
 
+/** Shows the cached comment list's length as the issue's count, when the list is cached. */
+function shownCount(client: QueryClient, key: string): void {
+  const list = client.getQueryData<CommentItem[]>(commentsKey(key))
+  if (list !== undefined) showCommentCount(client, key, list.length)
+}
+
 export function useAddComment(key: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (body: AdfDoc) => call('comments:add', { key, body }),
     onSuccess: (added) => {
       upsert(client, commentsKey(key), added)
+      shownCount(client, key)
     },
   })
 }
@@ -184,7 +197,15 @@ export function useDeleteComment(key: string) {
       client,
       commentsKey(key),
       (commentId) => call('comments:delete', { key, commentId }),
-      (list, commentId) => list.filter((comment) => comment.id !== commentId),
+      (list, commentId) => {
+        const kept = list.filter((comment) => comment.id !== commentId)
+        showCommentCount(client, key, kept.length)
+        return kept
+      },
+      // A refusal puts the list back, so the count follows it.
+      () => {
+        shownCount(client, key)
+      },
     ),
   )
 }

@@ -114,6 +114,7 @@ const ISSUE = {
   remainingEstimateSeconds: 14400,
   timeSpentSeconds: 14400,
   timeRemainingHours: null,
+  commentCount: 3,
   created: '2026-09-28T01:02:03.000Z',
   updated: '2026-10-06T23:10:00.000Z',
 } as const

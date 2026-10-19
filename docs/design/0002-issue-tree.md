@@ -354,6 +354,14 @@ Every shortcut has a visible alternative: a double-click for `Enter`, the Peek's
 - Turning a property on in the Display menu appends it to the end of the order; turning one off keeps the rest. A view that carries a display saves and restores its own order, and Update view wakes when only the order differs.
 - The Sprint page gains no drag: its names are drawn only.
 
+*Amended 2026-10-19, build of #310.* Shane wants Comments as a Display property on the canvas, a chat icon with a count badge that opens the comments in a modal. Shane approved the proposed defaults on 2026-10-19, and these are the build's rules:
+
+- The Display properties gain Comments (`comments`), off by default and placed after Remaining % and before Start date in the default order, so the time group stays together; turning it on appends it to the end of the user's order, as #301 sets. It is a 40px slot on the Tree and the Sprint page, resizable and in the column header like the others. A file written without it still loads, and an older build drops the name.
+- The count comes with the Tree's search: core adds Jira's `comment` field to `requestedFields` and keeps only its `total` as `Issue.commentCount` (`0` when the field is missing or malformed). The bodies drop at the boundary. Jira has no narrower form: `fields=comment.total` returns nothing. A live read-only measure on 2026-10-19 put the search payload at 18.2 MB without the field and 24.9 MB with it (+37%), nearly all of it in the Done phase, whose issues carry up to 22 comments.
+- The slot draws a bubble with the count as a badge on its top right, the bubble alone at 0 and `99+` from 100. Its accessible name is `3 comments`, `1 comment` or `No comments`, and the row's name ends with it while the property is on and the count is above 0. An Epic shows the slot like any issue.
+- A click on the slot (`data-edit="comments"`) makes the row active and opens the Comments modal without a Peek. A Shift+click checks a range instead. On the Sprint page the slot is a `Slot` button, so Enter and Space open it too. The Tree has no focusable slot, so its Enter keeps opening the issue.
+- A post or delete sets the row's count from the comment list at once, and the next refresh confirms it.
+
 ### Peek
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.

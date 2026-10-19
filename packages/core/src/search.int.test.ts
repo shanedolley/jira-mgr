@@ -161,6 +161,7 @@ describe('searchIssues', () => {
       remainingEstimateSeconds: 22200,
       timeSpentSeconds: 6600,
       timeRemainingHours: null,
+      commentCount: 0,
       created: '2026-10-06T00:49:43.825Z',
       updated: '2026-10-06T01:56:17.325Z',
     })
@@ -211,6 +212,43 @@ describe('searchIssues', () => {
     const [mapped] = await searchIssues(client)
 
     expect(mapped).toMatchObject({ key: 'PSAPAC-3117', creator: null })
+  })
+
+  describe('commentCount', () => {
+    /** An issue of the recording with `comment` set to what Jira sends: the bodies and the total. */
+    async function mapWith(comment: unknown) {
+      const raw = recorded('search-unresolved-1').issues.find((i) => i.key === 'PSAPAC-3117')
+      if (raw === undefined) throw new Error('PSAPAC-3117 is missing from the fixture.')
+      const issue = structuredClone(raw)
+      if (comment !== undefined) Object.assign(issue.fields, { comment })
+      serveRaw({ issues: [issue], isLast: true })
+      const [mapped] = await searchIssues(client)
+      return mapped
+    }
+
+    it('keeps the total of the comment field and drops the bodies', async () => {
+      const mapped = await mapWith({
+        comments: [{ id: '1', body: { type: 'doc', version: 1, content: [] } }],
+        self: 'https://example.invalid/comment',
+        maxResults: 1,
+        total: 120,
+        startAt: 0,
+      })
+
+      expect(mapped?.commentCount).toBe(120)
+      expect(mapped).not.toHaveProperty('comment')
+    })
+
+    it('reads 0 for a total of 0, a missing field and a recording that predates it', async () => {
+      expect((await mapWith({ comments: [], total: 0 }))?.commentCount).toBe(0)
+      expect((await mapWith(undefined))?.commentCount).toBe(0)
+    })
+
+    it('reads junk as 0 and still maps the page', async () => {
+      for (const junk of [null, 'many', { total: 'many' }, { total: -1 }, { total: 1.5 }, []]) {
+        expect(await mapWith(junk)).toMatchObject({ key: 'PSAPAC-3117', commentCount: 0 })
+      }
+    })
   })
 
   it('maps an Epic with no parent, no sprint and no estimate to nulls and an empty list', async () => {
@@ -292,7 +330,13 @@ describe('searchIssues', () => {
     const body = requests[0]
     expect(body?.maxResults).toBe(10)
     expect(body?.fields).toEqual(
-      expect.arrayContaining([...Object.values(IDS), 'summary', 'timetracking', 'parent']),
+      expect.arrayContaining([
+        ...Object.values(IDS),
+        'summary',
+        'timetracking',
+        'parent',
+        'comment',
+      ]),
     )
     expect(body?.fields).not.toContain('description')
     expect(body?.jql).toBe('project = "PSAPAC" AND statusCategory != Done ORDER BY key DESC')
