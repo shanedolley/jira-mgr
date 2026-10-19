@@ -87,6 +87,10 @@ describe('the shortcuts page the overlay lists', () => {
 
 describe('filterShortcuts', () => {
   const titles = (query: string) => filterShortcuts(SHORTCUT_TABLES, query).map((t) => t.title)
+  const keysOf = (query: string) =>
+    filterShortcuts(SHORTCUT_TABLES, query).flatMap((t) =>
+      t.rows.map((row) => shortcutCells(t, row).keys),
+    )
   const rowsOf = (query: string) => filterShortcuts(SHORTCUT_TABLES, query).flatMap((t) => t.rows)
 
   it('keeps every section and row for an empty or blank query', () => {
@@ -112,6 +116,23 @@ describe('filterShortcuts', () => {
     expect(rowsOf('ctrl')).toEqual(rowsOf('cmd'))
     expect(rowsOf('↵')).toEqual(rowsOf('enter'))
     expect(rowsOf('⇧')).toEqual(rowsOf('shift'))
+  })
+
+  it('finds a chord by what its keycap shows, or with or without the plus', () => {
+    const cmdK = rowsOf('cmd+k')
+    expect(cmdK.length).toBeGreaterThan(0)
+    expect(keysOf('cmd+k')).toContain('`Cmd+K`')
+    for (const query of ['⌘k', '⌘K', 'ctrl+k']) expect(rowsOf(query), query).toEqual(cmdK)
+    // Two words each match anywhere in a row, so these find the chord among others.
+    for (const query of ['cmd k', '⌘ k']) expect(keysOf(query), query).toContain('`Cmd+K`')
+    expect(keysOf('⌘z')).toContain('`Cmd+Z`')
+    expect(keysOf('⇧s')).toContain('`Shift+S`')
+    expect(rowsOf('+')).toHaveLength(SHORTCUT_COUNT)
+  })
+
+  it('matches escape to Esc', () => {
+    expect(rowsOf('escape').length).toBeGreaterThan(0)
+    expect(rowsOf('escape')).toEqual(rowsOf('esc'))
   })
 
   it('reads a key without its backticks', () => {
@@ -142,6 +163,14 @@ describe('splitMarks', () => {
       { text: 'a ', hit: false },
       { text: '(b', hit: true },
       { text: ') c', hit: false },
+    ])
+  })
+
+  it('marks the longest word first, so a short word does not split a longer one', () => {
+    expect(splitMarks('Shift s', 's shift')).toEqual([
+      { text: 'Shift', hit: true },
+      { text: ' ', hit: false },
+      { text: 's', hit: true },
     ])
   })
 

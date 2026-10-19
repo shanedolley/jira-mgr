@@ -61,8 +61,8 @@ test('? opens the list on the nine sections with focus in the search field', asy
     await expect(headings().nth(at)).toContainText(title)
     await expect(help().getByRole('table', { name: title })).toBeVisible()
   }
-  await expect(rows()).toHaveCount(76)
-  await expect(status()).toHaveText('76 shortcuts in 9 sections')
+  await expect(rows()).toHaveCount(80)
+  await expect(status()).toHaveText('80 shortcuts in 9 sections')
 })
 
 test('shift keeps only the rows that hold it, with each heading counting N of M', async () => {
@@ -70,7 +70,7 @@ test('shift keeps only the rows that hold it, with each heading counting N of M'
   await field().fill('shift')
   const texts = await rowTexts()
   expect(texts.length).toBeGreaterThan(0)
-  expect(texts.length).toBeLessThan(76)
+  expect(texts.length).toBeLessThan(80)
   // A Shift key in the action text draws as the ⇧ keycap.
   for (const text of texts) expect(text).toMatch(/shift|⇧/)
 
@@ -138,8 +138,8 @@ test('no match says so, offers Clear search and the live region reads the count'
   await help().getByRole('button', { name: 'Clear search' }).click()
   await expect(field()).toHaveValue('')
   await expect(field()).toBeFocused()
-  await expect(rows()).toHaveCount(76)
-  await expect(status()).toHaveText('76 shortcuts in 9 sections')
+  await expect(rows()).toHaveCount(80)
+  await expect(status()).toHaveText('80 shortcuts in 9 sections')
 })
 
 test('Esc clears the field and keeps the dialog, then closes it and returns focus', async () => {
@@ -152,11 +152,56 @@ test('Esc clears the field and keeps the dialog, then closes it and returns focu
   await window.keyboard.press('Escape')
   await expect(field()).toHaveValue('')
   await expect(help()).toBeVisible()
-  await expect(rows()).toHaveCount(76)
+  await expect(rows()).toHaveCount(80)
 
   await window.keyboard.press('Escape')
   await expect(help()).toHaveCount(0)
   await expect(tree()).toBeFocused()
+})
+
+test('Esc clears the field from the Clear search and Close buttons, and closes only when it is empty', async () => {
+  await openHelp()
+  await field().fill('zzzz')
+  await help().getByRole('button', { name: 'Clear search' }).focus()
+  await window.keyboard.press('Escape')
+  await expect(help()).toBeVisible()
+  await expect(field()).toHaveValue('')
+  await expect(rows()).toHaveCount(80)
+
+  await field().fill('shift')
+  await help().getByRole('button', { name: 'Close' }).focus()
+  await window.keyboard.press('Escape')
+  await expect(help()).toBeVisible()
+  await expect(field()).toHaveValue('')
+
+  await help().getByRole('button', { name: 'Close' }).focus()
+  await window.keyboard.press('Escape')
+  await expect(help()).toHaveCount(0)
+})
+
+test('Esc during an IME composition leaves the field alone', async () => {
+  await openHelp()
+  await field().fill('shift')
+  await field().evaluate((input) => {
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true }),
+    )
+  })
+  await expect(field()).toHaveValue('shift')
+  await expect(help()).toBeVisible()
+})
+
+test('what a keycap shows finds its row', async () => {
+  await openHelp()
+  await field().fill('⌘k')
+  const cmdK = await rowTexts()
+  expect(cmdK.length).toBeGreaterThan(0)
+  await field().fill('cmd+k')
+  expect(await rowTexts()).toEqual(cmdK)
+  await field().fill('escape')
+  const escape = await rowTexts()
+  await field().fill('esc')
+  expect(await rowTexts()).toEqual(escape)
 })
 
 /** The page and the dialog never scroll sideways, and the sections flow in `columns` columns. */

@@ -54,21 +54,25 @@ export interface ShortcutMatch extends ShortcutTable {
   total: number
 }
 
-// Words that name one key several ways: ⌘ and Ctrl stand in for Cmd, ↵ for Enter, ⇧ for Shift.
+// Words that name one key several ways: ⌘ and Ctrl stand in for Cmd, ↵ for Enter, ⇧ for Shift,
+// Escape for Esc.
 const ALIASES: readonly (readonly [string, string])[] = [
   ['⌘', 'cmd'],
   ['ctrl', 'cmd'],
   ['↵', 'enter'],
   ['⇧', 'shift'],
+  ['escape', 'esc'],
 ]
 const ALTERNATES: Record<string, string> = {
   cmd: '(?:cmd|ctrl|⌘)',
   enter: '(?:enter|↵)',
   shift: '(?:shift|⇧)',
+  esc: '(?:escape|esc)',
 }
 
+// The `+` of a chord is dropped on both sides, so what a keycap shows (⌘K) finds `Cmd+K`.
 const canon = (text: string) =>
-  ALIASES.reduce((t, [from, to]) => t.replaceAll(from, to), text.toLowerCase())
+  ALIASES.reduce((t, [from, to]) => t.replaceAll(from, to), text.toLowerCase()).replaceAll('+', '')
 
 const words = (query: string) => canon(query).split(/\s+/).filter(Boolean)
 
@@ -88,11 +92,14 @@ export function filterShortcuts(tables: readonly ShortcutTable[], query: string)
 
 /** `text` cut into runs, those that hold a word of `query` flagged `hit`. Backticks are the caller's to strip. */
 export function splitMarks(text: string, query: string): { text: string; hit: boolean }[] {
-  const wanted = words(query).map((word) =>
-    word
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/cmd|enter|shift/g, (name) => ALTERNATES[name] ?? name),
-  )
+  // Longest first, so `s shift` marks Shift whole rather than its s.
+  const wanted = words(query)
+    .sort((a, b) => b.length - a.length)
+    .map((word) =>
+      word
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/cmd|enter|shift|esc/g, (name) => ALTERNATES[name] ?? name),
+    )
   if (wanted.length === 0) return [{ text, hit: false }]
   return text
     .split(new RegExp(`(${wanted.join('|')})`, 'i'))

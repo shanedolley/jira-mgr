@@ -129,7 +129,11 @@ export function ShortcutHelp({ onClose, returnFocus }: ShortcutHelpProps) {
   return (
     <Modal
       titleId={titleId}
-      onClose={onClose}
+      onClose={() => {
+        // Esc from anywhere in the dialog: clear the search first, then close.
+        if (query === '') onClose()
+        else clear()
+      }}
       returnFocus={returnFocus}
       className="w-[min(60rem,calc(100vw-2rem))]"
     >
@@ -155,7 +159,7 @@ export function ShortcutHelp({ onClose, returnFocus }: ShortcutHelpProps) {
             setQuery(event.target.value)
           }}
           onKeyDown={(event) => {
-            if (event.key === 'Escape' && query !== '') {
+            if (event.key === 'Escape' && !event.nativeEvent.isComposing && query !== '') {
               event.preventDefault()
               clear()
             }
