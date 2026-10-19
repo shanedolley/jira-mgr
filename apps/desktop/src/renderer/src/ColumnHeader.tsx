@@ -152,6 +152,21 @@ export function ColumnHeader({
     if (commit && m.started) onMove(m.property, { to: m.to })
   }
 
+  /**
+   * Chromium now and then drops a capture with no pointerup or pointercancel while the button is
+   * still down. That is no cancel: take the capture back, and the release ends the gesture.
+   */
+  function recapture(event: React.PointerEvent<HTMLElement>) {
+    if ((event.buttons & 1) === 0) return false
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+      return true
+    } catch {
+      // The pointer is gone after all, so the gesture ends as a cancel.
+      return false
+    }
+  }
+
   const cancel = useEffectEvent(() => {
     end(false)
     endMove(false)
@@ -329,8 +344,8 @@ export function ColumnHeader({
                 onPointerCancel={() => {
                   endMove(false)
                 }}
-                onLostPointerCapture={() => {
-                  endMove(false)
+                onLostPointerCapture={(event) => {
+                  if (move.current === null || !recapture(event)) endMove(false)
                 }}
                 onKeyDown={(event) => {
                   onNameKey(event, property)
@@ -371,8 +386,8 @@ export function ColumnHeader({
                 onPointerCancel={() => {
                   end(false)
                 }}
-                onLostPointerCapture={() => {
-                  end(false)
+                onLostPointerCapture={(event) => {
+                  if (drag.current === null || !recapture(event)) end(false)
                 }}
                 onKeyDown={(event) => {
                   onKeyDown(event, property)

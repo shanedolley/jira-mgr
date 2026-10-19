@@ -130,7 +130,7 @@ test('hides the names and separators until the pointer is over the Tree header',
   await leave()
   for (const p of props) {
     await expect.poll(() => opacityOf(name(p))).toBe(0)
-    expect(await opacityOf(separator(LABELS[p] ?? ''))).toBe(0)
+    await expect.poll(() => opacityOf(separator(LABELS[p] ?? ''))).toBe(0)
   }
   await expect(highlight()).toBeHidden()
 
@@ -248,7 +248,7 @@ test('a drag from the hidden header keeps it shown wherever the pointer goes, an
   // Out of the strip and down into the rows, the button still down.
   await window.mouse.move(at.x - 10, at.y + 200, { steps: 4 })
   await expect.poll(() => opacityOf(name('sprint'))).toBeCloseTo(HOLD_OPACITY, 2)
-  expect(await opacityOf(separator('Sprint'))).toBe(1)
+  await expect.poll(() => opacityOf(separator('Sprint'))).toBe(1)
   // Far to the right the column hits 0 and "Release to remove" shows.
   await window.mouse.move(at.x + 400, at.y + 200, { steps: 6 })
   await expect(header().getByRole('status')).toHaveText('Release to remove Labels')
@@ -271,7 +271,7 @@ test('a drag of a name keeps the header shown until it ends', async () => {
   await window.mouse.move(at.x - 20, at.y + 200, { steps: 4 })
   await expect(name('labels')).toHaveAttribute('data-moving', '')
   await expect.poll(() => opacityOf(name('sprint'))).toBeCloseTo(HOLD_OPACITY, 2)
-  expect(await opacityOf(separator('Sprint'))).toBe(1)
+  await expect.poll(() => opacityOf(separator('Sprint'))).toBe(1)
   // The column being moved dims to half, though it is the one under the pointer.
   await expect.poll(() => opacityOf(name('labels'))).toBe(0.5)
   await window.keyboard.press('Escape')
@@ -357,7 +357,7 @@ test('the Sprint page hides the names and separators, shows 30% and 100%, and hi
   const row = await sprintPage().locator('[data-issue-key=PSAPAC-13]').boundingBox()
   for (const p of props) {
     await expect.poll(() => opacityOf(label(p))).toBe(0)
-    expect(await opacityOf(line(p))).toBe(0)
+    await expect.poll(() => opacityOf(line(p))).toBe(0)
   }
   await expect(sprintHighlight()).toBeHidden()
 
@@ -437,4 +437,46 @@ test('the Sprint highlight holds across the gaps between columns', async () => {
   await open()
   await openSprint()
   expect(await sweep(names(), () => drawn(sprintHighlight()))).toEqual([])
+})
+
+/** Fires the `lostpointercapture` Chromium sometimes sends mid-drag, with the button still down. */
+const loseCapture = (target: Locator) =>
+  target.evaluate((element) => {
+    element.dispatchEvent(
+      new PointerEvent('lostpointercapture', { pointerId: 1, buttons: 1, bubbles: true }),
+    )
+  })
+
+test('a capture lost mid-drag with the button down does not cancel a name move', async () => {
+  await open()
+  const at = await centreOf(name('labels'))
+  await window.mouse.move(at.x, at.y)
+  await window.mouse.down()
+  await window.mouse.move(at.x + 8, at.y)
+  await expect(name('labels')).toHaveAttribute('data-moving', '')
+  await loseCapture(name('labels'))
+  await expect(name('labels')).toHaveAttribute('data-moving', '')
+  const sprint = await header().locator('[data-col=sprint]').boundingBox()
+  if (sprint === null) throw new Error('not on screen')
+  await window.mouse.move(sprint.x + sprint.width - 6, at.y, { steps: 4 })
+  await window.mouse.up()
+  await expect
+    .poll(
+      async () =>
+        (await readState<{ display?: { properties?: string[] } }>(stateDir, 'settings.json'))
+          ?.display?.properties,
+    )
+    .toEqual(['updated', 'sprint', 'labels'])
+})
+
+test('a capture lost mid-drag with the button down does not cancel a resize', async () => {
+  await open()
+  const at = await centreOf(separator('Labels'))
+  await window.mouse.move(at.x, at.y)
+  await window.mouse.down()
+  await window.mouse.move(at.x - 30, at.y, { steps: 3 })
+  await loseCapture(separator('Labels'))
+  await window.mouse.move(at.x - 60, at.y, { steps: 3 })
+  await window.mouse.up()
+  await expect.poll(async () => (await savedWidths())?.labels).toBe(96 + 60)
 })
