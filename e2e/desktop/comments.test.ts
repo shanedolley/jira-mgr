@@ -12,6 +12,7 @@ import {
   logIn,
   refuseNextEdit,
   releaseEdit,
+  removeComment,
   showEverything,
 } from './harness.js'
 
@@ -303,4 +304,65 @@ test('on the Sprint page the slot is a button, and Enter on it opens the modal',
   await button('PSAPAC-13', '1 comment').focus()
   await window.keyboard.press('Enter')
   await expect(dialog).toBeVisible()
+})
+
+test('with many comments only the list scrolls, at the smallest window', async () => {
+  await open()
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setSize(900, 520)
+  })
+  await slot(/PSAPAC-21,/).click()
+  const dialog = window.getByRole('dialog', { name: /^Comments on PSAPAC-21: / })
+  await expect(dialog.getByText('Seeded note 120')).toBeInViewport()
+
+  const list = dialog.locator('ul').first()
+  await list.evaluate((el) => {
+    el.scrollTop = 0
+  })
+  await list.evaluate((el) => {
+    el.scrollTop = el.scrollHeight
+  })
+  await expect(dialog.getByRole('heading', { name: /^Comments on PSAPAC-21: / })).toBeInViewport()
+  await expect(box(dialog)).toBeInViewport()
+  await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
+  const overflow = await dialog.evaluate((el) => el.scrollHeight - el.clientHeight)
+  expect(overflow).toBeLessThanOrEqual(0)
+  expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true)
+})
+
+test('the list follows a post to the end but stays put when a comment goes elsewhere', async () => {
+  await open()
+  await slot(/PSAPAC-21,/).click()
+  const dialog = window.getByRole('dialog', { name: /^Comments on PSAPAC-21: / })
+  const list = dialog.locator('ul').first()
+  const atEnd = () => list.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight <= 24)
+  await expect.poll(atEnd).toBe(true)
+
+  // A post scrolls to the new comment, from the top of the list too.
+  await list.evaluate((el) => {
+    el.scrollTop = 0
+  })
+  await expect(box(dialog)).toBeVisible()
+  await box(dialog).click()
+  await window.keyboard.type('Newest of all')
+  await window.keyboard.press(`${MOD}+Enter`)
+  await expect.poll(writes).toBe(1)
+  await releaseEdit(app)
+  await expect(dialog.getByText('Newest of all')).toBeInViewport()
+
+  // Scrolled up, a deletion by someone else leaves the position alone.
+  await list.evaluate((el) => {
+    el.scrollTop = 200
+  })
+  await removeComment(app, 'PSAPAC-21', 7100)
+  await app.evaluate(({ BrowserWindow }) => {
+    const [first] = BrowserWindow.getAllWindows()
+    first?.emit('blur')
+    first?.emit('focus')
+  })
+  await expect(dialog.getByText('Seeded note 1', { exact: true })).toHaveCount(0)
+  // The browser keeps the rows in view where they were, so the offset drops by the removed row only.
+  expect(await list.evaluate((el) => el.scrollTop)).toBeLessThan(200)
+  expect(await list.evaluate((el) => el.scrollTop)).toBeGreaterThan(100)
+  expect(await atEnd()).toBe(false)
 })

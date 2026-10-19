@@ -10,6 +10,8 @@ interface SectionProps {
   actions?: ReactNode
   /** Drops the rule above, for a section that follows the description as part of its body. */
   plain?: boolean
+  /** Extra classes on the `<section>`, such as the flex column that lets a body scroll. */
+  className?: string
   children: ReactNode
 }
 
@@ -42,11 +44,11 @@ export function AddAction({
 }
 
 /** One block of the issue page: its heading, a 1px rule above, and what it holds. */
-export function Section({ title, actions, plain = false, children }: SectionProps) {
+export function Section({ title, actions, plain = false, className = '', children }: SectionProps) {
   return (
     <section
       aria-label={title}
-      className={plain ? 'space-y-1.5' : 'space-y-1.5 border-t border-line pt-4'}
+      className={`${plain ? 'space-y-1.5' : 'space-y-1.5 border-t border-line pt-4'} ${className}`}
     >
       <div className="flex min-h-6 items-center gap-2">
         <h2 className={SECTION_HEADING}>{title}</h2>
