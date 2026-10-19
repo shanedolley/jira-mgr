@@ -602,6 +602,18 @@ describe('display', () => {
     expect(calls).toHaveLength(1)
   })
 
+  it('settings:setDisplay passes priority on, and refuses one that is not a boolean', async () => {
+    const off = { ...DISPLAY, priority: false }
+    const { backend, calls } = fakeBackend()
+    const handlers = createHandlers(backend)
+    expect(await handlers['settings:setDisplay'](off, noProgress)).toMatchObject({ ok: true })
+    expect(calls).toEqual([{ method: 'setDisplay', args: [off] }])
+    expect(
+      await handlers['settings:setDisplay']({ ...DISPLAY, priority: 'no' }, noProgress),
+    ).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toHaveLength(1)
+  })
+
   it('settings:setDisplay passes the properties and order to the backend', async () => {
     const { backend, calls } = fakeBackend()
     const result = await createHandlers(backend)['settings:setDisplay'](DISPLAY, noProgress)

@@ -769,6 +769,38 @@ describe('display', () => {
     expect((await findView('two')).display?.widths).toEqual({ labels: 40 })
   })
 
+  it('reads priority as on unless the file says false, and keeps it through a write', async () => {
+    const read = async (priority?: unknown) => {
+      await writeFile(
+        join(dir, 'settings.json'),
+        JSON.stringify({ display: { properties: ['labels'], priority } }),
+      )
+      return (await readSettings()).display
+    }
+    expect(await read()).not.toHaveProperty('priority')
+    expect((await read(true)).priority).toBe(true)
+    expect((await read(false)).priority).toBe(false)
+    for (const junk of ['false', 0, null, [], {}]) {
+      expect(await read(junk)).not.toHaveProperty('priority')
+    }
+    await writeSettings({ ...(await readSettings()), display: { ...display, priority: false } })
+    await writeSettings({ ...(await readSettings()), toggles: { ...toggles, hideDone: false } })
+    expect((await readSettings()).display.priority).toBe(false)
+  })
+
+  it('stores priority per view, apart from the settings', async () => {
+    const off = { ...display, priority: false }
+    await createView('Off', { filters: {}, toggles, display: off })
+    await createView('On', { filters: {}, toggles, display })
+    expect((await findView('off')).display?.priority).toBe(false)
+    expect((await findView('on')).display).not.toHaveProperty('priority')
+    expect((await readSettings()).display).not.toHaveProperty('priority')
+    await updateView('on', { filters: {}, toggles, display: off })
+    expect((await findView('on')).display?.priority).toBe(false)
+    await updateView('off', { filters: {}, toggles, display: { ...display, priority: true } })
+    expect((await findView('off')).display?.priority).toBe(true)
+  })
+
   it('reads a views file with no display unchanged, and gives a view none', async () => {
     const old = [{ id: 'bugs', name: 'Bugs', filters: { type: ['Bug'] }, toggles }]
     await writeFile(join(dir, 'views.json'), JSON.stringify(old))

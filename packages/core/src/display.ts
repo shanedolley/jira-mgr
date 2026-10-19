@@ -80,6 +80,10 @@ export function keepKnownProperties(names: readonly string[]): RowProperty[] {
   return [...new Set(names)].filter((p): p is RowProperty => known.includes(p))
 }
 
+/** True unless the display turned the priority slot off: a missing `priority` reads as on. */
+export const showsPriority = (display: { priority?: boolean }): boolean =>
+  display.priority !== false
+
 /** Filled bars out of four for each priority name PSAPAC and a default Jira site use. */
 const LEVELS: Record<string, number> = {
   highest: 4,

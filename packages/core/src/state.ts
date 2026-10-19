@@ -56,7 +56,7 @@ const toggles = z
  * Row properties and issue order. Every Jira request reads `settings.json`, so a value this build
  * does not know must never fail the file: unknown properties drop, an unknown order reads as `key`,
  * a missing or unknown direction as the order's default, a `manual` list that is not a list of at
- * most `MANUAL_ORDER_LIMIT` strings as none, `widths` entries that are not whole pixel widths of a
+ * most `MANUAL_ORDER_LIMIT` strings as none, a `priority` that is not a boolean as on, `widths` entries that are not whole pixel widths of a
  * listed property as none, and a `display` that is not an object reads as the defaults.
  */
 const displayFields = z
@@ -68,16 +68,19 @@ const displayFields = z
       .default([...DEFAULT_PROPERTIES]),
     order: z.enum(ISSUE_ORDERS).default(DEFAULT_ORDER).catch(DEFAULT_ORDER),
     direction: z.enum(ORDER_DIRECTIONS).optional().catch(undefined),
+    /** Whether rows draw the priority slot. Only `false` hides it; a missing or other value reads as on. */
+    priority: z.boolean().optional().catch(undefined),
     /** The issue keys the Manual order follows. Absent until the user drags a row. */
     manual: z.array(z.string()).max(MANUAL_ORDER_LIMIT).optional().catch(undefined),
     /** Column widths in pixels by property. Read as `unknown` so one bad entry never fails the rest. */
     widths: z.unknown().optional(),
   })
-  .transform(({ manual, widths, ...d }) => {
+  .transform(({ manual, widths, priority, ...d }) => {
     const kept = keepKnownWidths(widths, d.properties)
     return {
       ...d,
       direction: d.direction ?? ORDER_DEFAULT_DIRECTION[d.order],
+      ...(priority === undefined ? {} : { priority }),
       ...(manual === undefined ? {} : { manual }),
       ...(kept === undefined ? {} : { widths: kept }),
     }

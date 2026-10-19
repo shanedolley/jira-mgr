@@ -347,6 +347,7 @@ const displayArgs: z.ZodType<Display> = z.strictObject({
   properties: z.array(z.enum(ROW_PROPERTIES)).max(ROW_PROPERTIES.length),
   order: z.enum(ISSUE_ORDERS),
   direction: z.enum(ORDER_DIRECTIONS),
+  priority: z.boolean().optional(),
   manual: z.array(z.string().min(1).max(MAX_ISSUE_KEY)).max(MANUAL_ORDER_LIMIT).optional(),
   widths: z
     .partialRecord(z.enum(ROW_PROPERTIES), z.number().int().min(1).max(WIDTH_MAX))

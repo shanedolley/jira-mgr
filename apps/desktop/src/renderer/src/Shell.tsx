@@ -4,6 +4,7 @@ import {
   ORDER_DEFAULT_DIRECTION,
   type PropertyWidths,
   type RowProperty,
+  showsPriority,
 } from '@jira-mgr/core/display'
 import {
   buildHierarchy,
@@ -1508,6 +1509,7 @@ export function Shell({ session }: { session: Session }) {
         peekedKey={peekOpen ? peekedKey : null}
         timerKey={timerQuery.data?.timer?.issueKey ?? null}
         properties={display.properties}
+        showPriority={showsPriority(display)}
         widths={display.widths ?? NO_WIDTHS}
         onResize={resizeColumn}
         onMoveColumn={moveColumn}
@@ -1778,6 +1780,7 @@ export function Shell({ session }: { session: Session }) {
           <SprintPage
             sprintId={sprintId}
             properties={display?.properties ?? []}
+            showPriority={display === undefined || showsPriority(display)}
             widths={display?.widths ?? NO_WIDTHS}
             today={today}
             pageRef={sprintRef}
