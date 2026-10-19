@@ -592,6 +592,8 @@ The same pull request updates `apps/desktop/README.md` (layout table, IPC sectio
 - The column under the pointer wears a 2px `--row-selected` border on both edges from the top of the strip to the bottom of the visible list, drawn above the rows with `pointer-events: none` and unaffected by a Hold row's fade. CSS anchor positioning places it: the hovered cell takes `anchor-name: --col-hl`, so the highlight needs no measuring and follows a drag's live width.
 - The Sprint page's strip follows the same rules, with the highlight reaching the bottom of its last status section. It has no drag or focus, being drawn only.
 
+*Amended 2026-10-19, build of #334.* Shane asked to move the window by the blank space between the view title and the Shortcuts button, which only the sidebar header allowed. The Issues list's header and the Inbox's header gain `.app-drag`; the Sprint page, Issue page, Epics and Customers headers already had it. Each button in them takes `.app-no-drag` (the existing per-control pattern), since `-webkit-app-region` is not inherited and a drag region swallows clicks on any child that does not opt out. The ViewTabs and toolbar rows below the header stay outside the region, so the Display and Filter menus, which open in the top layer, take clicks. `e2e/desktop/windowdrag.test.ts` asserts the computed region of each header and control.
+
 ## Open Questions
 
 None. On 2026-10-13 Shane replaced session-only collapse with a stored expansion level (#209); a chevron click still lasts for the session only. The 2026-10-09 decision that an open issue keeps its Done ancestors as context under "Hide done" was replaced on 2026-10-12 (Core Changes, #199).
