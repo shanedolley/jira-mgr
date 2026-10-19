@@ -304,3 +304,27 @@ test('on the Sprint page the slot is a button, and Enter on it opens the modal',
   await window.keyboard.press('Enter')
   await expect(dialog).toBeVisible()
 })
+
+test('with many comments only the list scrolls, at the smallest window', async () => {
+  await open()
+  await app.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows()[0]?.setSize(900, 520)
+  })
+  await slot(/PSAPAC-21,/).click()
+  const dialog = window.getByRole('dialog', { name: /^Comments on PSAPAC-21: / })
+  await expect(dialog.getByText('Seeded note 120')).toBeInViewport()
+
+  const list = dialog.locator('ul').first()
+  await list.evaluate((el) => {
+    el.scrollTop = 0
+  })
+  await list.evaluate((el) => {
+    el.scrollTop = el.scrollHeight
+  })
+  await expect(dialog.getByRole('heading', { name: /^Comments on PSAPAC-21: / })).toBeInViewport()
+  await expect(box(dialog)).toBeInViewport()
+  await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
+  const overflow = await dialog.evaluate((el) => el.scrollHeight - el.clientHeight)
+  expect(overflow).toBeLessThanOrEqual(0)
+  expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true)
+})

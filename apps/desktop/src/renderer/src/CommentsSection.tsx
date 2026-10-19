@@ -1,6 +1,6 @@
 import { JiraMgrError } from '@jira-mgr/core'
 import type { AdfDoc } from '@jira-mgr/core/adf'
-import { useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import { useCallback, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 
 import type { CommentItem, CurrentUser } from '../../shared/ipc'
 import { failureNotice, formatWhen, safeMarkdown } from './activity'
@@ -31,6 +31,8 @@ interface CommentsSectionProps {
   boxRef?: RefObject<AdfEditorHandle | null>
   /** Runs when Esc leaves the new-comment box empty, or a discard empties it. Defaults to `onLeave`. */
   onBoxLeave?: () => void
+  /** Fills the height its parent gives it: only the comment list scrolls, from the newest comment up. */
+  contained?: boolean
 }
 
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
@@ -410,18 +412,30 @@ export function CommentsSection({
   focusBox,
   boxRef,
   onBoxLeave = onLeave,
+  contained = false,
 }: CommentsSectionProps) {
   const comments = useComments(issueKey)
+  // The list is oldest first, so the newest comment is at its end: show it on open and on a new comment.
+  const count = comments.data?.length
+  const showNewest = useCallback(
+    (list: HTMLUListElement | null) => {
+      if (contained && list !== null && count !== undefined) list.scrollTop = list.scrollHeight
+    },
+    [contained, count],
+  )
   // Changing the box's key mounts it again, so it reads the draft a comment row moved into it.
   const [boxVersion, setBoxVersion] = useState(0)
   return (
-    <Section title="Activity">
+    <Section title="Activity" className={contained ? 'flex min-h-0 flex-1 flex-col' : ''}>
       <QueryBody query={comments} loading="Loading comments" what="the comments">
         {(list) =>
           list.length === 0 ? (
             <p className="text-muted">No comments</p>
           ) : (
-            <ul className="space-y-3">
+            <ul
+              ref={showNewest}
+              className={`space-y-3 ${contained ? 'min-h-0 overflow-y-auto' : ''}`}
+            >
               {list.map((comment) => (
                 <CommentRow
                   key={comment.id}
