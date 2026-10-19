@@ -435,6 +435,7 @@ export function IssueTree({
         role="tree"
         data-key-scope
         aria-label="Issues"
+        aria-multiselectable="true"
         tabIndex={0}
         aria-activedescendant={activeRow === undefined ? undefined : rowDomId(activeRow.id)}
         onKeyDown={onKeyDown}

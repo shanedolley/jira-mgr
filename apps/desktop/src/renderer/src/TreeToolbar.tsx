@@ -112,12 +112,22 @@ interface TreeToolbarProps {
   showClear: boolean
   /** How many of the shown rows are checked. The master checkbox shows from one on (#300). */
   checkState: CheckState
-  /** A click on the master checkbox: check every shown row, or clear them when all are checked. */
-  onMaster: () => void
+  /** A press on the master checkbox: check every shown row, or clear them when all are checked. `pointer` is a mouse click, not Space. */
+  onMaster: (pointer: boolean) => void
+  /** A batch runs, so the selection must not change under it. */
+  masterDisabled: boolean
 }
 
 /** Checks or clears every shown row. A dash means some are checked; it does not show with none. */
-function MasterCheck({ state, onChange }: { state: CheckState; onChange: () => void }) {
+function MasterCheck({
+  state,
+  disabled,
+  onChange,
+}: {
+  state: CheckState
+  disabled: boolean
+  onChange: (pointer: boolean) => void
+}) {
   if (state === 'none') return null
   return (
     <input
@@ -128,7 +138,10 @@ function MasterCheck({ state, onChange }: { state: CheckState; onChange: () => v
       ref={(el) => {
         if (el !== null) el.indeterminate = state === 'some'
       }}
-      onChange={onChange}
+      disabled={disabled}
+      onChange={(event) => {
+        onChange((event.nativeEvent as MouseEvent).detail > 0)
+      }}
       className="size-4 shrink-0 accent-accent"
     />
   )
@@ -324,6 +337,7 @@ export function TreeToolbar({
   showClear,
   checkState,
   onMaster,
+  masterDisabled,
 }: TreeToolbarProps) {
   const chips = filterChips(filters, choices)
   // The operator each field's list shows. A field that holds only "is not" values still opens on "is".
@@ -348,7 +362,7 @@ export function TreeToolbar({
     <div className="@container shrink-0">
       <div className="space-y-2 border-b border-line px-4 py-2">
         <div className="flex flex-wrap items-center gap-2">
-          <MasterCheck state={checkState} onChange={onMaster} />
+          <MasterCheck state={checkState} disabled={masterDisabled} onChange={onMaster} />
           {(Object.keys(TOGGLE_LABELS) as (keyof Toggles)[]).map((name) => (
             <button
               key={name}

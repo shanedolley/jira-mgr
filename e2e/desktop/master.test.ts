@@ -60,13 +60,15 @@ test('the master shows once a row is checked, with a dash for some and a tick fo
   await check(3)
   await expect(master()).toBeVisible()
   await expect(master()).not.toBeChecked()
-  expect(await dash()).toBe(true)
+  await expect.poll(dash).toBe(true)
 
   await master().click()
+  // A mouse click hands focus back to the Tree, as the toggles do.
+  await expect(tree()).toBeFocused()
   await expect(checkedRows()).toHaveCount(12)
   await expect(selectedRows()).toHaveCount(12)
   await expect(master()).toBeChecked()
-  expect(await dash()).toBe(false)
+  await expect.poll(dash).toBe(false)
   await expect(bar()).toContainText('12 selected')
   // The Epic shows only as context to the filter, so it stays unchecked.
   await expect(item(/^PSAPAC-900, Epic, /)).not.toHaveAttribute('aria-checked', /.*/)
@@ -74,7 +76,7 @@ test('the master shows once a row is checked, with a dash for some and a tick fo
   // One row unchecked: the dash is back.
   await check(5)
   await expect(checkedRows()).toHaveCount(11)
-  expect(await dash()).toBe(true)
+  await expect.poll(dash).toBe(true)
   await expect(master()).not.toBeChecked()
 })
 
@@ -94,7 +96,11 @@ test('clicking the master with all rows checked clears them, and the master goes
 
 test('the master sits left of Hide done on the same line, in a wide font too', async () => {
   await openBulk()
+  const before = await toggle('Hide done').boundingBox()
   await check(1)
+  await expect(master()).toBeVisible()
+  // The master joins the line without pushing the toggles onto another.
+  expect((await toggle('Hide done').boundingBox())?.y).toBe(before?.y)
   const same = async () => {
     const [m, d] = await Promise.all([master().boundingBox(), toggle('Hide done').boundingBox()])
     expect(m).not.toBeNull()
@@ -124,6 +130,8 @@ test('Tab reaches the master, and Space checks all then clears', async () => {
   await window.keyboard.press('Space')
   await expect(checkedRows()).toHaveCount(12)
   await expect(master()).toBeChecked()
+  // Space keeps focus on the box, so a second press can clear.
+  await expect(master()).toBeFocused()
   await window.keyboard.press('Space')
   await expect(checkedRows()).toHaveCount(0)
   await expect(master()).toHaveCount(0)
@@ -143,7 +151,7 @@ test('a filter limits the master to the matches, and clearing the filter adds no
   await expect(story(2)).toBeVisible()
   await expect(story(2)).toHaveAttribute('aria-checked', 'false')
   await expect(checkedRows()).toHaveCount(4)
-  expect(await dash()).toBe(true)
+  await expect.poll(dash).toBe(true)
 })
 
 test('Hide done and a collapsed group keep their rows out of the master', async () => {
@@ -164,7 +172,7 @@ test('Hide done and a collapsed group keep their rows out of the master', async 
   await item('Beta Ltd, 5 issues', true).click()
   await expect(item('Beta Ltd, 5 issues', true)).toHaveAttribute('aria-expanded', 'true')
   await expect(checkedRows()).toHaveCount(shown)
-  expect(await dash()).toBe(true)
+  await expect.poll(dash).toBe(true)
   await master().click()
   const afterExpand = await checkedRows().count()
   expect(afterExpand).toBeGreaterThan(shown)
@@ -178,7 +186,7 @@ test('Hide done and a collapsed group keep their rows out of the master', async 
   await expect(item(/PSAPAC-14,/)).toBeVisible()
   await expect(item(/PSAPAC-14,/)).toHaveAttribute('aria-checked', 'false')
   await expect(checkedRows()).toHaveCount(afterExpand)
-  expect(await dash()).toBe(true)
+  await expect.poll(dash).toBe(true)
 })
 
 test('the master writes nothing to Jira', async () => {
