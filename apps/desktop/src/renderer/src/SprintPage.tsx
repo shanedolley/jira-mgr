@@ -13,6 +13,7 @@ import { flushSync } from 'react-dom'
 
 import { Avatar } from './Avatar'
 import type { CellProperty } from './cell'
+import { nameFade } from './ColumnHeader'
 import { resolveKey } from './keymap'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
@@ -221,7 +222,7 @@ function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
     <div
       aria-hidden
       data-column-names
-      style={{ paddingRight: AFTER_STRIP }}
+      style={{ ...nameFade, paddingRight: AFTER_STRIP }}
       className="flex max-w-[64rem] select-none justify-end gap-x-2"
     >
       {properties.map((property) => (
@@ -233,13 +234,16 @@ function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
         >
           <span
             title={PROPERTY_LABELS[property]}
+            data-col-name={property}
             className="block truncate text-right text-xs leading-6 text-muted"
           >
             {PROPERTY_LABELS[property]}
           </span>
-          <span className="absolute inset-y-0 -left-1 w-px bg-line" />
+          <span data-col-sep={property} className="absolute inset-y-0 -left-1 w-px bg-line" />
         </div>
       ))}
+      {/* Reaches down the sections below: the wrapper in `Issues` is its containing block. */}
+      <span aria-hidden data-col-highlight />
     </div>
   )
 }
@@ -283,113 +287,119 @@ function Issues({
           </p>
         </div>
         {groups.length === 0 && <p className="text-muted">No issues in this sprint.</p>}
-        {groups.length > 0 && properties.length > 0 && <ColumnNames properties={properties} />}
-        {groups.map(({ status, issues: inGroup }) => (
-          <section key={status.id} aria-label={status.name} className="space-y-1">
-            <h2 className={`${SECTION_HEADING} flex max-w-[40rem] items-center gap-2`}>
-              <StatusDot status={status} />
-              {status.name}
-              <span className="font-normal text-muted">{inGroup.length}</span>
-            </h2>
-            <ul
-              className={`divide-y divide-line rounded-md border border-line ${properties.length === 0 ? 'max-w-[40rem]' : 'max-w-[64rem]'}`}
-            >
-              {inGroup.map((issue) => (
-                <li
-                  key={issue.key}
-                  data-issue-key={issue.key}
-                  data-active={issue.key === active}
-                  className="group/row relative data-[active=true]:bg-hover"
+        {groups.length > 0 && (
+          <div className="relative space-y-6">
+            {properties.length > 0 && <ColumnNames properties={properties} />}
+            {groups.map(({ status, issues: inGroup }) => (
+              <section key={status.id} aria-label={status.name} className="space-y-1">
+                <h2 className={`${SECTION_HEADING} flex max-w-[40rem] items-center gap-2`}>
+                  <StatusDot status={status} />
+                  {status.name}
+                  <span className="font-normal text-muted">{inGroup.length}</span>
+                </h2>
+                <ul
+                  className={`divide-y divide-line rounded-md border border-line ${properties.length === 0 ? 'max-w-[40rem]' : 'max-w-[64rem]'}`}
                 >
-                  {/* The row's target, under the content: a button cannot hold the slots, so they sit beside it. A double-click, or Enter or Space on the button, opens the issue; a single click does nothing. */}
-                  <button
-                    type="button"
-                    data-row
-                    aria-label={`${issue.key} ${issue.summary}`}
-                    // The property values, which the name leaves out.
-                    aria-describedby={properties.length === 0 ? undefined : `props-${issue.key}`}
-                    onClick={(event) => {
-                      if (event.detail === 0) onOpen(issue.key)
-                    }}
-                    onDoubleClick={() => {
-                      onOpen(issue.key)
-                    }}
-                    className="absolute inset-0 text-left"
-                  />
-                  {/* Ignores the pointer, so a click outside a slot reaches the button under it. Each slot takes it back (Slot). */}
-                  <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-2.5 pr-2.5">
-                    <Slot
-                      data-pick="status"
-                      title="Change status"
-                      aria-label={`Status of ${issue.key}: ${issue.status.name}`}
-                      aria-haspopup="listbox"
-                      onClick={(event) => {
-                        onEditCell(issue, 'status', event.currentTarget)
-                      }}
-                      className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-line"
+                  {inGroup.map((issue) => (
+                    <li
+                      key={issue.key}
+                      data-issue-key={issue.key}
+                      data-active={issue.key === active}
+                      className="group/row relative data-[active=true]:bg-hover"
                     >
-                      <StatusDot status={issue.status} />
-                    </Slot>
-                    {/* `pr-8` holds the avatar's 20px and the 12px gap before it: the avatar sits on the key's line however the rest wraps. */}
-                    <span
-                      {...holdFade(status)}
-                      className="relative flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 pr-8"
-                    >
-                      <span className="w-20 shrink-0 font-mono text-xs text-muted">
-                        {issue.key}
-                      </span>
-                      <Slot
-                        data-summary
-                        aria-label={`Edit summary of ${issue.key}`}
-                        title="Edit summary"
-                        onClick={() => {
-                          onEditSummary(issue)
+                      {/* The row's target, under the content: a button cannot hold the slots, so they sit beside it. A double-click, or Enter or Space on the button, opens the issue; a single click does nothing. */}
+                      <button
+                        type="button"
+                        data-row
+                        aria-label={`${issue.key} ${issue.summary}`}
+                        // The property values, which the name leaves out.
+                        aria-describedby={
+                          properties.length === 0 ? undefined : `props-${issue.key}`
+                        }
+                        onClick={(event) => {
+                          if (event.detail === 0) onOpen(issue.key)
                         }}
-                        className={`flex-1 truncate text-left text-muted ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
-                      >
-                        {issue.summary}
-                      </Slot>
-                      {showPriority && (
+                        onDoubleClick={() => {
+                          onOpen(issue.key)
+                        }}
+                        className="absolute inset-0 text-left"
+                      />
+                      {/* Ignores the pointer, so a click outside a slot reaches the button under it. Each slot takes it back (Slot). */}
+                      <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-2.5 pr-2.5">
                         <Slot
-                          data-pick="priority"
-                          title="Change priority"
-                          aria-label={`Priority of ${issue.key}: ${issue.priority?.name ?? 'none'}`}
+                          data-pick="status"
+                          title="Change status"
+                          aria-label={`Status of ${issue.key}: ${issue.status.name}`}
                           aria-haspopup="listbox"
                           onClick={(event) => {
-                            onEditCell(issue, 'priority', event.currentTarget)
+                            onEditCell(issue, 'status', event.currentTarget)
                           }}
-                          className="-m-0.5 inline-flex shrink-0 rounded p-0.5 hover:outline hover:outline-1 hover:outline-line"
+                          className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-line"
                         >
-                          <PrioritySlot priority={issue.priority} />
+                          <StatusDot status={issue.status} />
                         </Slot>
-                      )}
-                      <Properties
-                        id={`props-${issue.key}`}
-                        issue={issue}
-                        properties={properties}
-                        today={today}
-                        always
-                        onEditCell={onEditCell}
-                      />
-                      <Slot
-                        data-pick="assignee"
-                        title="Change assignee"
-                        aria-label={`Assignee of ${issue.key}: ${issue.assignee?.displayName ?? 'Unassigned'}`}
-                        aria-haspopup="listbox"
-                        onClick={(event) => {
-                          onEditCell(issue, 'assignee', event.currentTarget)
-                        }}
-                        className="absolute right-0 top-0.5 -m-0.5 flex rounded-full p-0.5 hover:bg-line"
-                      >
-                        <Avatar person={issue.assignee} />
-                      </Slot>
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+                        {/* `pr-8` holds the avatar's 20px and the 12px gap before it: the avatar sits on the key's line however the rest wraps. */}
+                        <span
+                          {...holdFade(status)}
+                          className="relative flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 pr-8"
+                        >
+                          <span className="w-20 shrink-0 font-mono text-xs text-muted">
+                            {issue.key}
+                          </span>
+                          <Slot
+                            data-summary
+                            aria-label={`Edit summary of ${issue.key}`}
+                            title="Edit summary"
+                            onClick={() => {
+                              onEditSummary(issue)
+                            }}
+                            className={`flex-1 truncate text-left text-muted ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
+                          >
+                            {issue.summary}
+                          </Slot>
+                          {showPriority && (
+                            <Slot
+                              data-pick="priority"
+                              title="Change priority"
+                              aria-label={`Priority of ${issue.key}: ${issue.priority?.name ?? 'none'}`}
+                              aria-haspopup="listbox"
+                              onClick={(event) => {
+                                onEditCell(issue, 'priority', event.currentTarget)
+                              }}
+                              className="-m-0.5 inline-flex shrink-0 rounded p-0.5 hover:outline hover:outline-1 hover:outline-line"
+                            >
+                              <PrioritySlot priority={issue.priority} />
+                            </Slot>
+                          )}
+                          <Properties
+                            id={`props-${issue.key}`}
+                            issue={issue}
+                            properties={properties}
+                            today={today}
+                            always
+                            onEditCell={onEditCell}
+                          />
+                          <Slot
+                            data-pick="assignee"
+                            title="Change assignee"
+                            aria-label={`Assignee of ${issue.key}: ${issue.assignee?.displayName ?? 'Unassigned'}`}
+                            aria-haspopup="listbox"
+                            onClick={(event) => {
+                              onEditCell(issue, 'assignee', event.currentTarget)
+                            }}
+                            className="absolute right-0 top-0.5 -m-0.5 flex rounded-full p-0.5 hover:bg-line"
+                          >
+                            <Avatar person={issue.assignee} />
+                          </Slot>
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
       </div>
     </article>
   )

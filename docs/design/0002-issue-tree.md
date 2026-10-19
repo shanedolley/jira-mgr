@@ -568,6 +568,14 @@ D2 shipped in one pull request (#71) with `Refs #29`, after this doc, built in t
 
 The same pull request updates `apps/desktop/README.md` (layout table, IPC section, known limits), `e2e/README.md` (`releaseDone`, `failDone`, `JM_E2E_BULK`) and core's README (the context rule, `STATUS_ORDER`). No decision here is hard to reverse, so none needs an ADR. Backing out is a revert: the only state D2 writes is `settings.json`'s `toggles`, which the schema already holds and the CLI ignores.
 
+*Amended 2026-10-19, build of #307.* Shane wants the column names and separators out of sight until the pointer is over the Column header, and the column under the pointer highlighted down its whole length. #275's "the header is never faded" no longer holds for the names and separators. Shane's decisions, with the builder's defaults accepted with his go on 2026-10-19:
+
+- Outside the strip the names and separators are at `opacity: 0`. Over the strip the names show at `HOLD_OPACITY` (30%) and the separators at full opacity; the name of the column under the pointer shows at 100%. The trigger is the pointer over that column's part of the strip, not its cells below.
+- The strip keeps its 24px and its bottom border, and the hidden names and separators stay focusable, so no row moves and Tab still reaches them. The strip stays shown while the pointer is on it, during a separator or name drag (pointer capture keeps it hovered, red "Release to remove" state included), and while focus is on a name or separator (`:focus-within`), so a key resize or a `Delete` from the hidden state shows the strip.
+- The fade takes 100ms and is skipped under `prefers-reduced-motion`.
+- The column under the pointer wears a 2px `--row-selected` border on both edges from the top of the strip to the bottom of the visible list, drawn above the rows with `pointer-events: none` and unaffected by a Hold row's fade. CSS anchor positioning places it: the hovered cell takes `anchor-name: --col-hl`, so the highlight needs no measuring and follows a drag's live width.
+- The Sprint page's strip follows the same rules, with the highlight reaching the bottom of its last status section. It has no drag or focus, being drawn only.
+
 ## Open Questions
 
 None. On 2026-10-13 Shane replaced session-only collapse with a stored expansion level (#209); a chevron click still lasts for the session only. The 2026-10-09 decision that an open issue keeps its Done ancestors as context under "Hide done" was replaced on 2026-10-12 (Core Changes, #199).

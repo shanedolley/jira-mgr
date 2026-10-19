@@ -1,8 +1,15 @@
 import type { RowProperty } from '@jira-mgr/core/display'
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from 'react'
 
 import { clampWidth, colWidth, dragCap, setColWidth, type ColumnTarget } from './propertyFit'
+import { HOLD_OPACITY } from './StatusDot'
 import { PROPERTY_LABELS } from './TreeToolbar'
+
+/**
+ * The opacity of the names while the strip shows (#307), as the custom property `styles.css` reads:
+ * Hold's 30%, with the name under the pointer in full. The Sprint page's strip spreads it too.
+ */
+export const nameFade = { '--name-fade': HOLD_OPACITY } as CSSProperties
 
 /**
  * What a row leaves right of its property strip, in pixels: the avatar (20), the gap before it (8)
@@ -76,6 +83,10 @@ const treeOf = (from: Element) =>
  * Each name also drags the column to a new place. The drop line shows the edge the column would land
  * beside, in this component's state alone, so no row renders while it runs; release saves once.
  * Escape cancels. A focused name takes Alt+Left and Alt+Right to move the column one place.
+ *
+ * The names and separators show only while the pointer is over the strip (a drag or a move keeps it
+ * there by pointer capture) or focus is on a name or separator. `styles.css` draws that, and the
+ * highlight down the column under the pointer.
  */
 export function ColumnHeader({
   properties,
@@ -139,6 +150,21 @@ export function ColumnHeader({
     if (m.name.hasPointerCapture(m.pointerId)) m.name.releasePointerCapture(m.pointerId)
     if (m.started) treeOf(m.name)?.focus({ preventScroll: true })
     if (commit && m.started) onMove(m.property, { to: m.to })
+  }
+
+  /**
+   * Chromium now and then drops a capture with no pointerup or pointercancel while the button is
+   * still down. That is no cancel: take the capture back, and the release ends the gesture.
+   */
+  function recapture(event: React.PointerEvent<HTMLElement>) {
+    if ((event.buttons & 1) === 0) return false
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+      return true
+    } catch {
+      // The pointer is gone after all, so the gesture ends as a cancel.
+      return false
+    }
   }
 
   const cancel = useEffectEvent(() => {
@@ -279,102 +305,105 @@ export function ColumnHeader({
   }
 
   return (
-    <div
-      role="group"
-      ref={header}
-      aria-label="Column widths"
-      data-column-header
-      style={{ paddingRight: scrollbar + AFTER_STRIP }}
-      className="absolute inset-x-0 top-0 hidden h-6 select-none justify-end border-b border-line @tree:flex"
-    >
-      <span role="status" className="absolute left-3 top-0 text-xs leading-6 text-danger">
-        {removing === null ? '' : `Release to remove ${PROPERTY_LABELS[removing]}`}
-      </span>
-      <span aria-live="polite" className="sr-only">
-        {said}
-      </span>
-      <div className="flex gap-x-2">
-        {properties.map((property, index) => (
-          <div
-            key={property}
-            data-col={property}
-            style={colWidth(property)}
-            className="relative shrink-0"
-          >
-            <button
-              type="button"
-              title={PROPERTY_LABELS[property]}
-              aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
-              data-col-name={property}
-              data-moving={moving?.property === property ? '' : undefined}
-              onPointerDown={(event) => {
-                onNameDown(event, property)
-              }}
-              onPointerMove={onNameMove}
-              onPointerUp={() => {
-                endMove(true)
-              }}
-              onPointerCancel={() => {
-                endMove(false)
-              }}
-              onLostPointerCapture={() => {
-                endMove(false)
-              }}
-              onKeyDown={(event) => {
-                onNameKey(event, property)
-              }}
-              className="block w-full cursor-grab touch-none truncate text-right text-xs leading-6 text-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent data-[moving]:opacity-50"
-            >
-              {PROPERTY_LABELS[property]}
-            </button>
-            {moving !== null && moving.to === index && moving.property !== property && (
-              <span
-                aria-hidden
-                data-drop-line={
-                  moving.to < properties.indexOf(moving.property) ? 'before' : 'after'
-                }
-                className={`pointer-events-none absolute inset-y-0 z-20 w-0.5 bg-accent ${moving.to < properties.indexOf(moving.property) ? '-left-1' : '-right-1'}`}
-              />
-            )}
+    <>
+      <div
+        role="group"
+        ref={header}
+        aria-label="Column widths"
+        data-column-header
+        style={{ ...nameFade, paddingRight: scrollbar + AFTER_STRIP }}
+        className="absolute inset-x-0 top-0 hidden h-6 select-none justify-end border-b border-line @tree:flex"
+      >
+        <span role="status" className="absolute left-3 top-0 text-xs leading-6 text-danger">
+          {removing === null ? '' : `Release to remove ${PROPERTY_LABELS[removing]}`}
+        </span>
+        <span aria-live="polite" className="sr-only">
+          {said}
+        </span>
+        <div className="flex gap-x-2">
+          {properties.map((property, index) => (
             <div
-              role="separator"
-              aria-orientation="vertical"
-              aria-label={`Resize ${PROPERTY_LABELS[property]} column`}
-              aria-valuemin={0}
-              aria-valuemax={dragCap(properties, fitted, property, room)}
-              aria-valuenow={fitted[property]}
-              aria-valuetext={pixels(fitted[property])}
-              aria-keyshortcuts="ArrowLeft ArrowRight Delete"
-              // A column the window draws at 0 has nothing to focus.
-              tabIndex={fitted[property] === 0 ? -1 : 0}
-              data-col-sep={property}
-              data-removing={removing === property ? '' : undefined}
-              onPointerDown={(event) => {
-                onPointerDown(event, property)
-              }}
-              onPointerMove={onPointerMove}
-              onPointerUp={() => {
-                end(true)
-              }}
-              onPointerCancel={() => {
-                end(false)
-              }}
-              onLostPointerCapture={() => {
-                end(false)
-              }}
-              onKeyDown={(event) => {
-                onKeyDown(event, property)
-              }}
-              className="group/sep absolute inset-y-0 -left-[10px] z-10 flex w-3 cursor-col-resize touch-none justify-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              key={property}
+              data-col={property}
+              style={colWidth(property)}
+              className="relative shrink-0"
             >
-              <span
-                aria-hidden
-                className="h-full w-px bg-line group-hover/sep:bg-accent group-data-[removing]/sep:bg-danger"
-              />
+              <button
+                type="button"
+                title={PROPERTY_LABELS[property]}
+                aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
+                data-col-name={property}
+                data-moving={moving?.property === property ? '' : undefined}
+                onPointerDown={(event) => {
+                  onNameDown(event, property)
+                }}
+                onPointerMove={onNameMove}
+                onPointerUp={() => {
+                  endMove(true)
+                }}
+                onPointerCancel={() => {
+                  endMove(false)
+                }}
+                onLostPointerCapture={(event) => {
+                  if (move.current === null || !recapture(event)) endMove(false)
+                }}
+                onKeyDown={(event) => {
+                  onNameKey(event, property)
+                }}
+                className="block w-full cursor-grab touch-none truncate text-right text-xs leading-6 text-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                {PROPERTY_LABELS[property]}
+              </button>
+              {moving !== null && moving.to === index && moving.property !== property && (
+                <span
+                  aria-hidden
+                  data-drop-line={
+                    moving.to < properties.indexOf(moving.property) ? 'before' : 'after'
+                  }
+                  className={`pointer-events-none absolute inset-y-0 z-20 w-0.5 bg-accent ${moving.to < properties.indexOf(moving.property) ? '-left-1' : '-right-1'}`}
+                />
+              )}
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={`Resize ${PROPERTY_LABELS[property]} column`}
+                aria-valuemin={0}
+                aria-valuemax={dragCap(properties, fitted, property, room)}
+                aria-valuenow={fitted[property]}
+                aria-valuetext={pixels(fitted[property])}
+                aria-keyshortcuts="ArrowLeft ArrowRight Delete"
+                // A column the window draws at 0 has nothing to focus.
+                tabIndex={fitted[property] === 0 ? -1 : 0}
+                data-col-sep={property}
+                data-removing={removing === property ? '' : undefined}
+                onPointerDown={(event) => {
+                  onPointerDown(event, property)
+                }}
+                onPointerMove={onPointerMove}
+                onPointerUp={() => {
+                  end(true)
+                }}
+                onPointerCancel={() => {
+                  end(false)
+                }}
+                onLostPointerCapture={(event) => {
+                  if (drag.current === null || !recapture(event)) end(false)
+                }}
+                onKeyDown={(event) => {
+                  onKeyDown(event, property)
+                }}
+                className="group/sep absolute inset-y-0 -left-[10px] z-10 flex w-3 cursor-col-resize touch-none justify-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+              >
+                <span
+                  aria-hidden
+                  className="h-full w-px bg-line group-hover/sep:bg-accent group-data-[removing]/sep:bg-danger"
+                />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+      <span aria-hidden data-col-highlight />
+    </>
   )
 }
