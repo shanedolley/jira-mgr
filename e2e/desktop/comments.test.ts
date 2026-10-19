@@ -351,9 +351,21 @@ test('the list follows a post to the end but stays put when a comment goes elsew
   await expect(dialog.getByText('Newest of all')).toBeInViewport()
 
   // Scrolled up, a deletion by someone else leaves the position alone.
-  await list.evaluate((el) => {
-    el.scrollTop = 200
-  })
+  // Wait for the scroll event: the list reads its position from it, so a refetch that lands first
+  // sees the old end and follows the list down.
+  await list.evaluate(
+    (el) =>
+      new Promise<void>((resolve) => {
+        el.addEventListener(
+          'scroll',
+          () => {
+            resolve()
+          },
+          { once: true },
+        )
+        el.scrollTop = 200
+      }),
+  )
   await removeComment(app, 'PSAPAC-21', 7100)
   await app.evaluate(({ BrowserWindow }) => {
     const [first] = BrowserWindow.getAllWindows()

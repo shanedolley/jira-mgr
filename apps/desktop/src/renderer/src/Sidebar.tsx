@@ -199,6 +199,7 @@ export function Sidebar({
       {overlay && (
         <div
           aria-hidden
+          data-scrim
           onClick={() => {
             setOpen(false)
           }}

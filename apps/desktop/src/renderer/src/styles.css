@@ -594,6 +594,15 @@ input {
 }
 
 /*
+ * While the overlay sidebar's scrim is up, the headers under it are no drag region, so a click on
+ * the scrim in their strip closes the sidebar. A `no-drag` on the scrim would lose to the later
+ * header, since regions apply in layout order. Unlayered like `.app-drag`, so it wins.
+ */
+body:has([data-scrim]) header.app-drag {
+  -webkit-app-region: no-drag;
+}
+
+/*
  * Under 960px the Peek is a card over the Tree, so its header is no drag region. Unlayered like
  * `.app-drag`, so it wins over the utility layer.
  */

@@ -1671,7 +1671,7 @@ export function Shell({ session }: { session: Session }) {
         inert={listCovered}
         className="relative col-start-2 row-start-1 flex min-h-0 min-w-0 flex-col bg-canvas"
       >
-        <header className="flex h-10 shrink-0 items-center justify-between border-b border-line px-4 max-rail:pl-6">
+        <header className="app-drag flex h-10 shrink-0 items-center justify-between border-b border-line px-4 max-rail:pl-6">
           <h1 className="font-semibold">Issues</h1>
           <div className="flex items-center gap-3">
             <span role="status" className="text-xs text-muted">
@@ -1683,7 +1683,7 @@ export function Shell({ session }: { session: Session }) {
               onClick={() => {
                 setHelping(true)
               }}
-              className="btn btn-sm gap-2"
+              className="btn btn-sm app-no-drag gap-2"
             >
               Shortcuts
               <Kbd aria-hidden>?</Kbd>
@@ -1694,7 +1694,7 @@ export function Shell({ session }: { session: Session }) {
               onClick={() => {
                 setSearching(true)
               }}
-              className="btn btn-sm gap-2"
+              className="btn btn-sm app-no-drag gap-2"
             >
               Search
               <Kbd aria-hidden>⌘K</Kbd>
@@ -1706,7 +1706,7 @@ export function Shell({ session }: { session: Session }) {
               onClick={() => {
                 openCreate()
               }}
-              className="btn btn-sm gap-2"
+              className="btn btn-sm app-no-drag gap-2"
             >
               New issue
               <Kbd aria-hidden>C</Kbd>
