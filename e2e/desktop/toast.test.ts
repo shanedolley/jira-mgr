@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, notices, refuseNextEdit, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, peekRow, refuseNextEdit, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -40,7 +40,7 @@ async function open() {
 
 /** Picks a Priority in the Peek of the issue whose row matches. The fake holds the edit until released. */
 async function pickPriority(row: RegExp, name: string) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
   await peekPicker('Priority').click()
   await option(name).click()
@@ -131,7 +131,7 @@ for (const rate of [1, 10]) {
 
 test('the page shows a pending edit the same way', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
   await props()
@@ -151,7 +151,7 @@ test('the page shows a pending edit the same way', async () => {
 
 test('on the page the refused property row flashes too', async () => {
   await open()
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
   await watchFlash()
@@ -181,7 +181,7 @@ test('a refusal still shows when the Peek has moved on to another issue, and Ret
   await pickPriority(/PSAPAC-3,/, 'Highest')
   await expect.poll(writes).toBe(1)
   // The Peek follows the row, so PSAPAC-3's pickers are gone before Jira answers.
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await expect(peek().getByText('PSAPAC-2')).toBeVisible()
   await releaseEdit(app)
 

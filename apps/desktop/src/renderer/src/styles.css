@@ -88,7 +88,6 @@
   --band-hover: light-dark(oklch(0.935 0.008 275), oklch(0.26 0.012 275));
 }
 
-.tree-row:hover,
 .tree-row[data-active='true'] {
   background: var(--hover);
 }
@@ -115,7 +114,6 @@
   background: var(--band);
 }
 
-.tree-row[data-band]:hover,
 .tree-row[data-band][data-active='true'] {
   background: var(--band-hover);
 }

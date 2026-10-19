@@ -5,7 +5,15 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, joinSprint, launch, logIn, releaseEdit } from './harness.js'
+import {
+  counts,
+  joinSprint,
+  launch,
+  logIn,
+  openSprintRow,
+  peekRow,
+  releaseEdit,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -160,7 +168,7 @@ test('arrow keys move between the tabs and select as they go', async () => {
 
 test('opens the sprint from the link beside the Sprint value on an issue page', async () => {
   await open()
-  await item(/PSAPAC-13,/).click()
+  await peekRow(item(/PSAPAC-13,/))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
   const props = issuePage().getByRole('complementary', { name: 'Properties' })
@@ -175,7 +183,7 @@ test('opens the sprint from the link beside the Sprint value on an issue page', 
 
 test('only an issue that is in a sprint has the link to open it', async () => {
   await open()
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await window.keyboard.press('Enter')
   const props = issuePage().getByRole('complementary', { name: 'Properties' })
   await expect(props.getByRole('button', { name: 'Sprint: Backlog' })).toBeVisible()
@@ -184,7 +192,7 @@ test('only an issue that is in a sprint has the link to open it', async () => {
   // The same page for an issue in the sprint has it.
   await window.keyboard.press('Escape')
   await expect(issuePage()).toHaveCount(0)
-  await item(/PSAPAC-13,/).click()
+  await peekRow(item(/PSAPAC-13,/))
   await window.keyboard.press('Enter')
   await expect(props.getByRole('button', { name: 'Sprint: Sprint 5' })).toBeVisible()
   await expect(props.getByRole('button', { name: 'Open sprint Sprint 5' })).toBeVisible()
@@ -298,9 +306,7 @@ test('Esc, Back and the Issues link leave the sprint page for the Tree', async (
 test('opens an issue from the sprint, and Back returns to the sprint', async () => {
   await open()
   await entry('Current').click()
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-13 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-13 / }))
   await expect(issuePage().getByRole('heading', { name: 'Book the kickoff' })).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(issuePage()).toHaveCount(0)
@@ -375,9 +381,7 @@ test('counts an edit made on an issue opened from the sprint once the page is ba
   expect(await count('Completed')).toBe('2 29%')
   expect(await count('Started')).toBe('3 43%')
 
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-4 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-4 / }))
   await issuePage()
     .getByRole('button', { name: /^Status:/ })
     .click()
@@ -402,9 +406,7 @@ test('counts an edit made on an issue opened from the sprint once the page is ba
 test('drops an issue moved out of the sprint from its rows and its Scope', async () => {
   await open()
   await entry('Current').click()
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-13 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-13 / }))
   await issuePage().getByRole('button', { name: 'Sprint: Sprint 5' }).click()
   await window.getByRole('option', { name: 'Backlog' }).click()
   await settle(1)
@@ -420,9 +422,7 @@ test('drops an issue moved out of the sprint from its rows and its Scope', async
 test('keeps focus out of the sprint page while an issue page is open over it', async () => {
   await open()
   await entry('Current').click()
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-13 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-13 / }))
   await expect(issuePage()).toBeFocused()
   // The page is the sprint page's child in the layout only: nothing in it may take focus.
   const inside = () =>
@@ -449,7 +449,7 @@ test('keeps focus out of the sprint page while an issue page is open over it', a
 
 test('the palette offers no action for the Tree row a Sprint page hides', async () => {
   await open()
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await window.keyboard.press('Escape')
   await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
   await entry('Current').click()

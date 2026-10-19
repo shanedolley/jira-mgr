@@ -13,6 +13,7 @@ import {
   joinSprint,
   launch,
   logIn,
+  peekRow,
   releaseDone,
   releaseUnresolved,
   showEverything,
@@ -95,7 +96,7 @@ test.describe('progress', () => {
   test('a Done sub-issue counts while Hide done removes its row', async () => {
     await open()
     await loadDone()
-    await item(/PSAPAC-12,/).click()
+    await peekRow(item(/PSAPAC-12,/))
     await window.keyboard.press('Enter')
     await expect(issuePage().getByRole('heading', { name: 'Outline the sections' })).toBeVisible()
     await window.keyboard.press('s')
@@ -124,7 +125,7 @@ test.describe('progress', () => {
   test('the Sub-issue of line names the parent with its progress and opens it', async () => {
     await open()
     await loadDone()
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     await expect(
       issuePage().getByRole('heading', { name: 'Kick off the engagement' }),
@@ -145,7 +146,7 @@ test.describe('progress', () => {
   test('a Story’s line counts its Subtasks, and the line follows an edit', async () => {
     await open()
     await loadDone()
-    await item(/PSAPAC-12,/).click()
+    await peekRow(item(/PSAPAC-12,/))
     await window.keyboard.press('Enter')
     const line = issuePage().locator('[data-parent-line]').locator('xpath=..')
     await expect(line).toContainText('PSAPAC-11')
@@ -527,7 +528,7 @@ test.describe('surfaces', () => {
 
   test('the palette offers no action for the Tree row an overview hides', async () => {
     await open()
-    await item(/PSAPAC-2,/).click()
+    await peekRow(item(/PSAPAC-2,/))
     await window.keyboard.press('Escape')
     await link('Epics').click()
     await expect(epicsPage().getByRole('button', { name: /^PSAPAC-50 / })).toBeFocused()
@@ -545,7 +546,7 @@ test.describe('surfaces', () => {
 
   test('letter keys and the filter shortcut do nothing under an overview', async () => {
     await open()
-    await item(/PSAPAC-2,/).click()
+    await peekRow(item(/PSAPAC-2,/))
     await window.keyboard.press('Escape')
     await link('Epics').click()
     await window.keyboard.press('s')
@@ -677,7 +678,7 @@ test.describe('load states', () => {
     await failDone(app)
     await releaseDone(app)
     await expect(banner()).toBeVisible()
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     const line = issuePage().locator('[data-parent-line]').locator('xpath=..')
     await expect(line).toContainText('PSAPAC-10')
@@ -731,7 +732,7 @@ test.describe('load states', () => {
   test('the pill names its progress for a screen reader', async () => {
     await open()
     await loadDone()
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     await expect(
       issuePage().locator('[data-parent-line]').locator('xpath=..').getByRole('img', {

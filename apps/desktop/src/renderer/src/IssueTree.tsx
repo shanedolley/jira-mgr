@@ -12,6 +12,7 @@ import {
   useState,
   type DragEvent,
   type KeyboardEvent,
+  type PointerEvent,
   type ReactNode,
   type RefObject,
 } from 'react'
@@ -20,19 +21,21 @@ import type { CellProperty } from './cell'
 import { ColumnHeader } from './ColumnHeader'
 import { keepsLetters } from './keymap'
 import { colVars, extrasWidth, fitWidths, stripRoom } from './propertyFit'
-import { DOUBLE_CLICK_MS } from './summaryEdit'
 import { TreeRow, rowDomId, rowProgress } from './TreeRow'
 import {
   ROW_HEIGHT,
   canDropOn,
   clickRow,
   dropIndicator,
+  hoverRow,
   layoutRows,
   moveActive,
   orderStep,
+  pointerMoved,
   rowAtOffset,
   windowRange,
   type MoveResult,
+  type Point,
   type TreeRow as Row,
   type TreeState,
 } from './tree'
@@ -79,9 +82,11 @@ interface IssueTreeProps {
   blocks: ReadonlyMap<string, OpenBlocks>
   /** Called with the next state after a key or a click. */
   onChange: (next: MoveResult) => void
+  /** The pointer moved over a row: it becomes the active row, and the Peek stays on its issue. */
+  onHover: (id: string) => void
   /** A click on a cell with its own editor, such as the status dot or avatar, made after the row became active. */
   onCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
-  /** A click on an issue row's pencil, or a second click on its summary, which asks for the summary editor. */
+  /** A single click on an issue row's summary, which asks for the summary editor. */
   onEditSummary: (issue: Issue) => void
   /** Lets the Shell scroll a row into view before a cell editor opens on it. */
   control: RefObject<TreeControl | null>
@@ -119,6 +124,7 @@ export function IssueTree({
   today,
   blocks,
   onChange,
+  onHover,
   onEditSummary,
   onCell,
   control,
@@ -128,14 +134,8 @@ export function IssueTree({
   treeRef,
   empty,
 }: IssueTreeProps) {
-  // A second click on a summary opens the editor once no double-click, other click or key follows it.
-  const editTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  useEffect(
-    () => () => {
-      clearTimeout(editTimer.current)
-    },
-    [],
-  )
+  /** Where the pointer last was, so a scroll under a still pointer is not a move. */
+  const pointer = useRef<Point | null>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [height, setHeight] = useState(0)
   const [width, setWidth] = useState(0)
@@ -274,7 +274,6 @@ export function IssueTree({
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     // A field in a row (the estimate) keeps its keys: Arrows, Enter and Space are its own.
     if (event.target instanceof Element && keepsLetters(event.target)) return
-    clearTimeout(editTimer.current)
     const input = {
       key: event.key,
       shiftKey: event.shiftKey,
@@ -301,7 +300,7 @@ export function IssueTree({
   }
 
   /** The id of the row an event happened in. */
-  const rowIdOf = (event: DragEvent<HTMLDivElement>) =>
+  const rowIdOf = (event: { target: EventTarget }) =>
     (event.target instanceof Element
       ? event.target.closest<HTMLElement>('[data-row-id]')?.dataset.rowId
       : undefined) ?? null
@@ -352,20 +351,41 @@ export function IssueTree({
 
   const indicator = drag?.over == null ? null : dropIndicator(rows, drag.id, drag.over)
 
+  /**
+   * The pointer moving over a row makes it the active row, the last input winning over the keys:
+   * `J` and `K` move the active row from there, and the pointer takes it back when it moves again.
+   * A scroll under a still pointer sends the pointer events from the same spot and moves nothing.
+   */
+  function onPointerMove(event: PointerEvent<HTMLDivElement>) {
+    const now = { x: event.clientX, y: event.clientY }
+    const moved = pointerMoved(pointer.current, now)
+    pointer.current = now
+    // A cell editor, picker or menu holds the row it opened on, so the pointer passing over others moves nothing.
+    if (!moved || document.querySelector(':popover-open') !== null) return
+    // With focus on the page body no letter would reach the Tree, so the pointer over it takes focus there.
+    if (document.activeElement === document.body) treeRef.current?.focus({ preventScroll: true })
+    const next = hoverRow(rows, state, rowIdOf(event))
+    if (next === null) return
+    // The row is under the pointer already, so the view must not scroll it into place.
+    ensured.current = next
+    onHover(next)
+  }
+
+  /** A pointer that left the Tree moves again on re-entering, even at the spot it left from. */
+  function forgetPointer() {
+    pointer.current = null
+  }
+
   const armed = useRef<string | null>(null)
   const onRowClick = useCallback(
-    (
-      id: string,
-      onChevron: boolean,
-      select: 'toggle' | 'range' | 'activate' | undefined,
-      detail: number,
-    ) => {
-      // The second click of a double-click on an issue is inert: the Peek may have moved a header or
+    (id: string, onChevron: boolean, select: 'toggle' | 'range' | undefined, detail: number) => {
+      // The second click of a double-click on an issue is inert: a header's click may have moved
       // another row under it, and the double-click opens the first click's issue.
-      clearTimeout(editTimer.current)
       if (detail > 1 && armed.current !== null) return
       // The click also focuses the Tree, the nearest focusable ancestor of the row.
-      onChange({ ...clickRow(rows, state, id, onChevron, select), openPage: false })
+      const next = clickRow(rows, state, id, onChevron, select)
+      // A click on blank row space changes nothing, and a stale state must not undo a hover.
+      if (next !== state) onChange({ ...next, openPage: false })
     },
     [rows, state, onChange],
   )
@@ -384,19 +404,7 @@ export function IssueTree({
   const onRowArm = useCallback((id: string | null) => {
     armed.current = id
   }, [])
-  const onRowEdit = useCallback(
-    (issue: Issue, wait: boolean) => {
-      clearTimeout(editTimer.current)
-      if (wait)
-        editTimer.current = setTimeout(() => {
-          onEditSummary(issue)
-        }, DOUBLE_CLICK_MS)
-      else onEditSummary(issue)
-    },
-    [onEditSummary],
-  )
   const onRowOpen = useCallback(() => {
-    clearTimeout(editTimer.current)
     const id = armed.current
     // The armed row may have left the Tree since, with a filter or a collapse.
     if (id !== null && rows.some((r) => r.id === id)) {
@@ -430,6 +438,8 @@ export function IssueTree({
         tabIndex={0}
         aria-activedescendant={activeRow === undefined ? undefined : rowDomId(activeRow.id)}
         onKeyDown={onKeyDown}
+        onPointerMove={onPointerMove}
+        onPointerLeave={forgetPointer}
         onScroll={onScroll}
         onDragStart={onDragStart}
         onDragEnter={onDragOver}
@@ -469,7 +479,7 @@ export function IssueTree({
                 onClick={onRowClick}
                 onArm={onRowArm}
                 onOpen={onRowOpen}
-                onEdit={onRowEdit}
+                onEdit={onEditSummary}
                 onCell={onRowCell}
                 onAdd={onAdd}
                 done={children?.done}

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, releaseEdit } from './harness.js'
+import { counts, launch, logIn, peekRow, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -30,7 +30,7 @@ const links = () => issuePage().getByRole('region', { name: 'Links' })
 
 /** Opens the issue's page from its row. */
 async function openPage(row: RegExp, title: string) {
-  await item(row).click()
+  await peekRow(item(row))
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('heading', { name: title })).toBeVisible()
   await expect(links().getByText('Loading links')).toHaveCount(0)
@@ -68,11 +68,11 @@ test('a blocked row shows a count, the blocker shows a second pill, and a Relate
 test('the Peek lists the blockers of the issue it shows', async () => {
   await open()
 
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   const section = peek().getByRole('region', { name: 'Blocked by' })
   await expect(section.locator('[data-blocker=PSAPAC-1]')).toBeVisible()
 
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await expect(peek().getByRole('region', { name: 'Blocked by' })).toHaveCount(0)
 })
 
@@ -81,7 +81,7 @@ test('both pills clear when the blocker moves to Done', async () => {
   await expect(blocked(/PSAPAC-2,/)).toBeVisible()
   const before = (await counts(app)).edits
 
-  await item(/PSAPAC-1,/).click()
+  await peekRow(item(/PSAPAC-1,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('s')
   await window.getByRole('option', { name: 'Done' }).click()

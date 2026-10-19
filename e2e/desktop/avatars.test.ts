@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn } from './harness.js'
+import { counts, launch, logIn, peekRow } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -51,10 +51,9 @@ test('shows a profile image, and initials when there is none or it fails to load
 
 test('the assignee picker shows an image, a failed image and no image', async () => {
   await logIn(window)
-  await window
-    .getByRole('tree', { name: 'Issues' })
-    .getByRole('treeitem', { name: /PSAPAC-3,/ })
-    .click()
+  await peekRow(
+    window.getByRole('tree', { name: 'Issues' }).getByRole('treeitem', { name: /PSAPAC-3,/ }),
+  )
   const peek = window.getByRole('complementary', { name: 'Peek' })
   await peek.getByRole('button', { name: /Assignee/ }).click()
 

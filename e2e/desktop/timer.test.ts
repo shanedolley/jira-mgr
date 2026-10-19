@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, notices, readState, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, peekRow, readState, releaseEdit } from './harness.js'
 
 interface TimerFile {
   issueKey: string
@@ -68,7 +68,7 @@ async function open() {
 
 /** Makes the row active, then closes its Peek so the keys go to the Tree. */
 async function select(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(window.getByRole('complementary', { name: 'Peek' })).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(tree()).toBeFocused()
@@ -200,7 +200,7 @@ test.describe('start and stop with T', () => {
   })
 
   test('the issue page shows the clock and a button that starts and stops', async () => {
-    await item(/PSAPAC-2,/).click()
+    await peekRow(item(/PSAPAC-2,/))
     await window.keyboard.press('Enter')
     await expect(issuePage()).toBeVisible()
     await issuePage().getByRole('button', { name: 'Start timer' }).click()

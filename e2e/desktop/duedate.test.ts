@@ -13,6 +13,8 @@ import {
   logIn,
   moveIssue,
   notices,
+  openSprintRow,
+  peekRow,
   refuseKeys,
   releaseEdit,
   showEverything,
@@ -100,7 +102,7 @@ async function settle(expected: number) {
 
 /** Clicks a row, then closes the Peek the click opened, which would narrow the Tree under the width the slots need. */
 async function pick(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -314,9 +316,7 @@ test('a Sprint page slot opens the editor, saves a date and returns focus to the
   expect((await due('PSAPAC-11', '2099-01-01').boundingBox())?.width).toBe(width)
 
   // The row button still opens the issue.
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-4 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-4 / }))
   await expect(issuePage()).toBeVisible()
 })
 

@@ -416,6 +416,26 @@ export async function showEverything(window: Page) {
   await window.getByRole('button', { name: 'Everything', exact: true }).click()
 }
 
+/**
+ * Makes an issue row active and opens its Peek the way a user does since #299: the pointer rests on
+ * the row, the Tree has focus, and `o` peeks. A click on the row no longer does either.
+ */
+export async function peekRow(row: Locator) {
+  const page = row.page()
+  // A move to the spot the pointer already rests on is not a move, so park it off every row first.
+  await page.mouse.move(2, 2)
+  await row.hover()
+  await page.getByRole('tree', { name: 'Issues' }).focus()
+  await page.keyboard.press('o')
+}
+
+/**
+ * Opens the issue of a Sprint page row the way a user does since #299: a double-click on the row's
+ * blank space, over its issue key. A single click does nothing, and the summary and every slot
+ * have a click of their own.
+ */
+export const openSprintRow = (row: Locator) => row.dblclick({ position: { x: 60, y: 16 } })
+
 /** Moves an issue to another status in the fake Jira, as if someone else did. The next refetch sees it. */
 export const moveIssue = (
   app: ElectronApplication,

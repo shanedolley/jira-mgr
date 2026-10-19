@@ -14,6 +14,7 @@ import {
   logIn,
   moveIssue,
   notices,
+  peekRow,
   refuseKeys,
   releaseEdit,
   showEverything,
@@ -205,7 +206,7 @@ test('a click on the slot selects no text and arms no double-click', async () =>
 
 test('L opens the list on the active row, and the keyboard alone toggles a label', async () => {
   await open()
-  await item(EMPTY).click()
+  await peekRow(item(EMPTY))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -233,7 +234,7 @@ test('L opens the list on the active row, and the keyboard alone toggles a label
 
 test('L opens the Peek picker when a narrow Tree hides the slot, and anchors nothing to it', async () => {
   await open()
-  await item(EMPTY).click()
+  await peekRow(item(EMPTY))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -254,7 +255,7 @@ test('L opens the Peek picker when a narrow Tree hides the slot, and anchors not
 
 test('L pressed in the Peek opens the Peek picker, not the Tree row cell', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek()).toBeVisible()
   // Focus inside the Peek, on its summary button, so the key does not come from the Tree.
   await peek().getByRole('button', { name: 'Migrate the dashboards' }).focus()

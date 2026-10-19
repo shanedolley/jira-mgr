@@ -1,11 +1,19 @@
 import type { Issue } from '@jira-mgr/core'
 import type { PropertyWidths, RowProperty } from '@jira-mgr/core/display'
 import type { SprintReport } from '@jira-mgr/core/sprints'
-import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import {
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react'
+import { flushSync } from 'react-dom'
 
 import { Avatar } from './Avatar'
 import type { CellProperty } from './cell'
-import { Icon, PENCIL } from './Icon'
+import { resolveKey } from './keymap'
 import { LoadError } from './LoadError'
 import { STATE_LABELS } from './properties'
 import { colVars, colWidth, floorWidths } from './propertyFit'
@@ -23,6 +31,7 @@ import {
 import { useSprintReport } from './sprintQueries'
 import { PrioritySlot, Properties } from './TreeRow'
 import { PROPERTY_LABELS } from './TreeToolbar'
+import { pointerMoved, type Point } from './tree'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -196,10 +205,10 @@ function Panel({ report }: { report: SprintReport }) {
 }
 
 /**
- * What a row leaves right of its property strip, in pixels: the row's `pr-10` (40), the avatar (20),
+ * What a row leaves right of its property strip, in pixels: the row's `pr-2.5` (10), the avatar (20),
  * the gap before it (12) and the list's border (1).
  */
-const AFTER_STRIP = 73
+const AFTER_STRIP = 43
 
 /**
  * The names of the properties above the first status section, at the widths the rows use, each
@@ -235,12 +244,13 @@ function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
   )
 }
 
-/** The sprint's issues, grouped by status, each opening its page. */
+/** The sprint's issues, grouped by status. A double-click on a row opens its page. */
 function Issues({
   report,
   properties,
   widths,
   today,
+  active,
   onOpen,
   onEditSummary,
   onEditCell,
@@ -249,6 +259,8 @@ function Issues({
   properties: readonly RowProperty[]
   widths: PropertyWidths
   today: string
+  /** The key of the active row, which the pointer made active last. */
+  active: string | null
   onOpen: (key: string) => void
   onEditSummary: (issue: Issue) => void
   onEditCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
@@ -284,22 +296,26 @@ function Issues({
                 <li
                   key={issue.key}
                   data-issue-key={issue.key}
-                  className="group/row relative hover:bg-hover"
+                  data-active={issue.key === active}
+                  className="group/row relative data-[active=true]:bg-hover"
                 >
-                  {/* The row's click target, under the content: a button cannot hold the slots, so they sit beside it. */}
+                  {/* The row's target, under the content: a button cannot hold the slots, so they sit beside it. A double-click, or Enter or Space on the button, opens the issue; a single click does nothing. */}
                   <button
                     type="button"
                     data-row
                     aria-label={`${issue.key} ${issue.summary}`}
                     // The property values, which the name leaves out.
                     aria-describedby={properties.length === 0 ? undefined : `props-${issue.key}`}
-                    onClick={() => {
+                    onClick={(event) => {
+                      if (event.detail === 0) onOpen(issue.key)
+                    }}
+                    onDoubleClick={() => {
                       onOpen(issue.key)
                     }}
                     className="absolute inset-0 text-left"
                   />
                   {/* Ignores the pointer, so a click outside a slot reaches the button under it. Each slot takes it back (Slot). */}
-                  <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-2.5 pr-10">
+                  <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-2.5 pr-2.5">
                     <Slot
                       data-pick="status"
                       title="Change status"
@@ -320,11 +336,17 @@ function Issues({
                       <span className="w-20 shrink-0 font-mono text-xs text-muted">
                         {issue.key}
                       </span>
-                      <span
-                        className={`flex-1 truncate text-muted ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
+                      <Slot
+                        data-summary
+                        aria-label={`Edit summary of ${issue.key}`}
+                        title="Edit summary"
+                        onClick={() => {
+                          onEditSummary(issue)
+                        }}
+                        className={`flex-1 truncate text-left text-muted ${properties.length === 0 ? 'min-w-0' : 'min-w-[10rem]'}`}
                       >
                         {issue.summary}
-                      </span>
+                      </Slot>
                       <Slot
                         data-pick="priority"
                         title="Change priority"
@@ -358,16 +380,6 @@ function Issues({
                         <Avatar person={issue.assignee} />
                       </Slot>
                     </span>
-                    <Slot
-                      aria-label={`Edit summary of ${issue.key}`}
-                      title="Edit summary"
-                      onClick={() => {
-                        onEditSummary(issue)
-                      }}
-                      className="btn btn-ghost btn-icon btn-sm absolute right-2 top-1 opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100"
-                    >
-                      <Icon path={PENCIL} />
-                    </Slot>
                   </div>
                 </li>
               ))}
@@ -391,6 +403,10 @@ interface SprintPageProps {
   onBack: () => void
   /** Opens the page of one of the sprint's issues. */
   onOpenIssue: (key: string) => void
+  /** Opens the Peek on one of the sprint's issues, beside the page. */
+  onPeekIssue: (key: string) => void
+  /** The Peek is open beside the page, so the first Esc closes it. */
+  peekOpen: boolean
   /** Opens the summary editor of one of the sprint's issues. */
   onEditSummary: (issue: Issue) => void
   /** A click on a row's cell button: the cell editor opens the editor of `property` against `cell`. */
@@ -410,15 +426,52 @@ export function SprintPage({
   pageRef,
   onBack,
   onOpenIssue,
+  onPeekIssue,
+  peekOpen,
   onEditSummary,
   onEditCell,
 }: SprintPageProps) {
   const report = useSprintReport(sprintId)
+  // The row the pointer last moved over stays active when it leaves, so `o` and `O` keep a target.
+  const [active, setActive] = useState<string | null>(null)
+  const pointer = useRef<Point | null>(null)
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key !== 'Escape' || event.defaultPrevented) return
+    if (event.defaultPrevented) return
+    if (event.key === 'Escape') {
+      // With the Peek open beside the page, the first Esc is the Peek's: the Shell closes it.
+      if (peekOpen) return
+      event.preventDefault()
+      onBack()
+      return
+    }
+    // `o` and `O` act on the active row as on the Tree. The page has no other letter keys.
+    const command = resolveKey(
+      event.nativeEvent,
+      event.target instanceof Element ? event.target : null,
+    )
+    const found = report.data?.issues.find((i) => i.key === active)
+    if (found === undefined || (command !== 'peek' && command !== 'openPage')) return
     event.preventDefault()
-    onBack()
+    if (command === 'peek') onPeekIssue(found.key)
+    else onOpenIssue(found.key)
+  }
+
+  /** The pointer moving over a row makes it active. A scroll under a still pointer moves nothing. */
+  function onPointerMove(event: PointerEvent<HTMLElement>) {
+    const now = { x: event.clientX, y: event.clientY }
+    const moved = pointerMoved(pointer.current, now)
+    pointer.current = now
+    if (!moved || document.querySelector(':popover-open') !== null) return
+    // With focus on the page body no key would reach the page, so the pointer over it takes focus there.
+    if (document.activeElement === document.body) pageRef.current?.focus({ preventScroll: true })
+    const row = event.target instanceof Element ? event.target.closest('[data-issue-key]') : null
+    const key = row instanceof HTMLElement ? row.dataset.issueKey : undefined
+    // Flushed at once, so a key pressed right after the move acts on this row.
+    if (key === undefined) return
+    flushSync(() => {
+      setActive(key)
+    })
   }
 
   return (
@@ -426,7 +479,12 @@ export function SprintPage({
       ref={pageRef}
       tabIndex={-1}
       aria-label="Sprint page"
+      data-key-scope
       onKeyDown={onKeyDown}
+      onPointerMove={onPointerMove}
+      onPointerLeave={() => {
+        pointer.current = null
+      }}
       className="relative z-10 grid h-full min-h-0 grid-cols-[minmax(0,1fr)_21rem] grid-rows-[auto_minmax(0,1fr)] bg-canvas focus-visible:outline-none max-stack:grid-cols-[minmax(0,1fr)] max-stack:grid-rows-[auto] max-stack:content-start max-stack:overflow-y-auto"
     >
       <header className="app-drag col-span-2 flex h-10 items-center gap-3 border-b border-line px-4 max-rail:pl-6 max-stack:sticky max-stack:top-0 max-stack:z-10 max-stack:col-span-1 max-stack:bg-canvas">
@@ -455,6 +513,7 @@ export function SprintPage({
             properties={properties}
             widths={widths}
             today={today}
+            active={active}
             onOpen={onOpenIssue}
             onEditSummary={onEditSummary}
             onEditCell={onEditCell}

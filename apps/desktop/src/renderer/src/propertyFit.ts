@@ -48,10 +48,9 @@ const EXTRA_WIDTH = { pill: 48, differs: 136, timer: 72, progress: 64 }
 
 /**
  * Everything in a row but the title and the optional extras, in pixels: the chevron, type icon,
- * status dot, key column, priority slot, avatar, the padding, the title's 5rem minimum and the
- * summary pencil (14 icon, 4 padding, less its 4 negative margin).
+ * status dot, key column, priority slot, avatar, the padding and the title's 5rem minimum.
  */
-const CHROME = 8 + 16 + 16 + 18 + 88 + 16 + 24 + 80 + 14
+const CHROME = 8 + 16 + 16 + 18 + 88 + 16 + 24 + 80
 
 /** The extras one row holds, as the width they take with their gaps. */
 export function extrasWidth(extras: {
@@ -76,9 +75,9 @@ export function extrasWidth(extras: {
  * it, so the same widths hold in every row and the columns line up.
  */
 export function stripRoom(rowWidth: number, level: number, extras: number): number {
-  // Eight gaps between the nine items of a row: chevron, type, status, key, title, the pencil,
-  // priority, the strip and the avatar. Each extra brings its own gap, counted in `extras`.
-  return rowWidth - CHROME - (4 + (level - 1) * 16) - extras - GAP * 8
+  // Seven gaps between the eight items of a row: chevron, type, status, key, title, priority,
+  // the strip and the avatar. Each extra brings its own gap, counted in `extras`.
+  return rowWidth - CHROME - (4 + (level - 1) * 16) - extras - GAP * 7
 }
 
 /** The pixels `count` columns take beside their gaps. */

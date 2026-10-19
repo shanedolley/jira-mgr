@@ -2,7 +2,8 @@
  * The one table of global shortcuts (D7). The Shell listens once and asks `resolveKey` what a
  * keystroke means, so every guard lives in one place and tests need no DOM. The Tree's own keys
  * (`J`, `K`, arrows, `Space`, `Enter`) stay in `tree.ts`: they act on the Tree element, and
- * `resolveKey` never sees them because they are not letters it owns.
+ * `resolveKey` never sees them because they are not letters it owns. `o` and `O` are the
+ * exception: the Tree acts on them first, and the Sprint page, which has no Tree keys, reads them here.
  */
 
 /** The shortcuts that open a property of the active issue, and the key each one answers to. */
@@ -26,6 +27,8 @@ export type Command =
   | 'assignMe'
   | 'copyKey'
   | 'copyLink'
+  | 'peek'
+  | 'openPage'
   | 'create'
   | 'logWork'
   | 'timer'
@@ -87,6 +90,7 @@ const SHIFT_LETTERS = new Map<string, Command>([
   ['p', 'parent'],
   ['e', 'estimate'],
   ['c', 'sprint'],
+  ['o', 'openPage'],
 ])
 
 const LETTERS = new Map<string, Command>([
@@ -102,6 +106,7 @@ const LETTERS = new Map<string, Command>([
   ['y', 'copyKey'],
   ['u', 'copyLink'],
   ['f', 'filterMenu'],
+  ['o', 'peek'],
 ])
 
 /** The key a command answers to, such as `S` or `Shift+D`, or `undefined` for a command without one. */

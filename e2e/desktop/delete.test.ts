@@ -10,6 +10,7 @@ import {
   launch,
   logIn,
   notices,
+  peekRow,
   releaseDone,
   releaseEdit,
   showEverything,
@@ -51,7 +52,7 @@ async function open() {
 /** Opens the full page of the issue whose row matches, with Enter. */
 async function openPage(row: RegExp) {
   await open()
-  await item(row).click()
+  await peekRow(item(row))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
 }
@@ -137,7 +138,7 @@ test('says that the children of an Epic stay and lose their parent', async () =>
   // Hide done keeps the Done children off the Tree, so turn it off to see them arrive.
   await window.getByRole('button', { name: 'Hide done', exact: true }).click()
   await expect(item('2 done', true)).toBeVisible()
-  await item(/PSAPAC-10,/).click()
+  await peekRow(item(/PSAPAC-10,/))
   await peek().getByRole('button', { name: 'Delete' }).click()
 
   const confirm = dialog('PSAPAC-10')
@@ -167,7 +168,7 @@ test('says that the children of an Epic stay and lose their parent', async () =>
 
 test('puts the issue back and says why when Jira refuses the delete', async () => {
   await open()
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await peek().getByRole('button', { name: 'Delete' }).click()
   await dialog('PSAPAC-3').getByRole('button', { name: 'Delete issue', exact: true }).click()
 
@@ -229,7 +230,7 @@ test('deletes a Done parent the lists do not hold yet, opened from a child page'
 
 test('keeps the delete dialog open when a refetch drops the issue, says it is gone, and leaves C working', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await peek().getByRole('button', { name: 'Delete' }).click()
   await expect(dialog('PSAPAC-4')).toBeVisible()
   await expect(dialog('PSAPAC-4').getByRole('button', { name: 'Delete issue' })).toBeEnabled()

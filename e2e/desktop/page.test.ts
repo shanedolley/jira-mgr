@@ -13,6 +13,7 @@ import {
   launch,
   logIn,
   notices,
+  peekRow,
   releaseDone,
   releaseEdit,
   releaseNewestEdit,
@@ -55,7 +56,7 @@ async function open() {
 /** Opens the full page of the issue whose row matches, with Enter. */
 async function openPage(row: RegExp, title: string) {
   await open()
-  await item(row).click()
+  await peekRow(item(row))
   // The Peek reads the description once it has held still on the row.
   await expect.poll(async () => (await counts(app)).issueReads.length).toBe(1)
   await window.keyboard.press('Enter')
@@ -76,7 +77,7 @@ async function settle(expected: number) {
 
 test('shows the type icon in the Peek and in the page header', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek().getByRole('img', { name: 'Story' })).toBeVisible()
 
   await window.keyboard.press('Enter')
@@ -90,7 +91,7 @@ test('shows the type icon in the Peek and in the page header', async () => {
 
 test('Enter opens the full page and Esc returns to the Tree, while Space keeps the Peek', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   // A click peeks. Close the Peek, then Space brings it back without opening the page.
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -112,13 +113,16 @@ test('Enter opens the full page and Esc returns to the Tree, while Space keeps t
   await expect(peek()).toBeVisible()
 })
 
-/** Where on a summary the pointer lands: on its text, which the Peek's narrowing leaves in the Tree. */
+/** Where on a summary the pointer lands: on its text. */
 const ON_TEXT = { x: 20, y: 8 }
 
-test('a double-click on a row opens its page, and Esc returns to the Tree with the row active', async () => {
+/** A row's blank space: its issue key takes no click of its own, so a double-click on it opens the page. */
+const blank = (row: Locator) => row.locator('.tree-key')
+
+test("a double-click on a row's blank space opens its page, and Esc returns to the Tree with the row active", async () => {
   await open()
   const row = item(/PSAPAC-4,/)
-  await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+  await blank(row).dblclick()
   await expect(heading('Migrate the dashboards')).toBeVisible()
 
   await window.keyboard.press('Escape')
@@ -128,47 +132,26 @@ test('a double-click on a row opens its page, and Esc returns to the Tree with t
   await expect(tree()).toHaveAttribute('aria-activedescendant', /PSAPAC-4$/)
 
   // An Epic opens its own page.
-  await item(/PSAPAC-10,/)
-    .getByText('Customer onboarding')
-    .dblclick()
+  await blank(item(/PSAPAC-10,/)).dblclick()
   await expect(heading('Customer onboarding')).toBeVisible()
 })
 
-/** Slows the renderer, so a render can land between the two clicks of a double-click. */
+/** Slows the renderer, so a render can land between the pointer's move and the clicks of a double-click. */
 async function throttle(rate: number) {
   const session = await window.context().newCDPSession(window)
   await session.send('Emulation.setCPUThrottlingRate', { rate })
 }
 
 for (const rate of [1, 20]) {
-  test(`a double-click opens the issue its first click hit when the Peek moves the rows, at ${String(rate)}x CPU`, async () => {
+  test(`a double-click opens the issue under it while hover renders late, at ${String(rate)}x CPU`, async () => {
     await open()
     await throttle(rate)
     const row = item(/PSAPAC-4,/)
-    const before = (await row.boundingBox())?.y ?? 0
-    // While Done loads, the first click's Peek wraps the toolbar's status line onto its own row,
-    // so the second click lands on the row above.
-    await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+    await blank(row).dblclick()
     await expect(heading('Migrate the dashboards')).toBeVisible()
-    expect((await row.boundingBox())?.y ?? 0).toBeGreaterThan(before)
 
     await window.keyboard.press('Escape')
     await expect(item(/PSAPAC-4,/)).toHaveAttribute('data-active', 'true')
-  })
-}
-
-for (const rate of [1, 20]) {
-  test(`a double-click whose second click lands on a Customer header opens the first issue and leaves the Customer expanded, at ${String(rate)}x CPU`, async () => {
-    await open()
-    await throttle(rate)
-    const header = item('Acme, 8 issues', true)
-    // The Peek's toolbar wrap moves the Customer header under the second click.
-    await item(/PSAPAC-10,/).dblclick({ position: { x: 90, y: 8 } })
-    await expect(heading('Customer onboarding')).toBeVisible()
-
-    await window.keyboard.press('Escape')
-    await expect(header).toHaveAttribute('aria-expanded', 'true')
-    await expect(item(/PSAPAC-10,/)).toHaveAttribute('data-active', 'true')
   })
 }
 
@@ -191,8 +174,8 @@ test('a double-click on a checkbox, status dot, avatar, chevron or with Shift he
     await window.keyboard.press('Escape')
   }
 
-  // The same row still opens from its summary, so the checks above could have failed.
-  await row.getByText('Migrate the dashboards').dblclick({ position: ON_TEXT })
+  // The same row still opens from its blank space, so the checks above could have failed.
+  await blank(row).dblclick()
   await expect(heading('Migrate the dashboards')).toBeVisible()
 })
 
@@ -207,7 +190,7 @@ test('a double-click on a Customer header toggles it as two clicks do and opens 
 
 test('Back to issues returns from the page to the Tree', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await peek().getByRole('button', { name: 'Open' }).click()
   await expect(heading('Migrate the dashboards')).toBeVisible()
 
@@ -332,7 +315,7 @@ test('moves an issue to Done into its parent chip without reloading either list'
   // The chip shows only while "Hide done" is off.
   await window.getByRole('button', { name: 'Hide done', exact: true }).click()
   await expect(item('2 done', true)).toBeVisible()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Enter')
   await expect(heading('Migrate the dashboards')).toBeVisible()
   const before = await counts(app)
@@ -755,7 +738,7 @@ test("matches the Epic's Customer from the Peek with one click", async () => {
   await open()
   const flagged = item(/PSAPAC-31,/)
   await expect(flagged).toHaveAttribute('aria-label', /Customer differs from Epic/)
-  await flagged.click()
+  await peekRow(flagged)
   await expect(peek().getByText(/Customer differs from the Epic/)).toBeVisible()
   // The Peek reads the description once it has held still, before the edit below.
   await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-31'])
@@ -785,7 +768,7 @@ test("matches the Epic's Customer from the issue page", async () => {
 
 test('opens the page from the Peek with its Open button, and reaches the Peek by Tab', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek()).toBeVisible()
 
   await window.keyboard.press('Tab')
@@ -933,7 +916,7 @@ test('offers Retry when the page cannot read its issue, and shows the descriptio
   await open()
   // The Peek reads first, and says so when it fails.
   await failRead(app)
-  await item(/PSAPAC-1,/).click()
+  await peekRow(item(/PSAPAC-1,/))
   await expect(peek().getByText('Could not load the description.')).toBeVisible()
   await failRead(app)
   await window.keyboard.press('Enter')
@@ -956,7 +939,7 @@ test('offers Retry when the page cannot read its issue, and shows the descriptio
 
 test('says the comments no longer exist when Jira answers 404 to their load', async () => {
   await open()
-  await item(/PSAPAC-1,/).click()
+  await peekRow(item(/PSAPAC-1,/))
   await failComments(app, 404)
   await window.keyboard.press('Enter')
   await expect(heading('Kick off the engagement')).toBeVisible()
@@ -972,7 +955,7 @@ test('says the comments no longer exist when Jira answers 404 to their load', as
 
 test('says Jira had a problem when it answers 500 to the comments load, and Retry recovers', async () => {
   await open()
-  await item(/PSAPAC-1,/).click()
+  await peekRow(item(/PSAPAC-1,/))
   await failComments(app, 500)
   await window.keyboard.press('Enter')
   await expect(heading('Kick off the engagement')).toBeVisible()
@@ -1123,7 +1106,7 @@ for (const [name, css] of FONTS) {
     await expect(heading(LONG_SUMMARY)).toBeVisible()
     await settle(1)
     await window.keyboard.press('Escape')
-    await item(/PSAPAC-4,/).click()
+    await peekRow(item(/PSAPAC-4,/))
     await window.keyboard.press('Enter')
     await expect(heading('Migrate the dashboards')).toBeVisible()
     if (css !== undefined) await window.addStyleTag({ content: css })

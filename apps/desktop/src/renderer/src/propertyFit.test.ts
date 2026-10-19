@@ -39,9 +39,9 @@ describe('stripRoom', () => {
     expect(stripRoom(1000, 1, 0)).toBeGreaterThan(stripRoom(900, 1, 0))
   })
 
-  it('keeps room for the summary pencil: 22px more than a row without one needs', () => {
-    // Chrome 280, the 4px level indent and eight 8px gaps leave the 72px slot of `updated` at 420.
-    expect(stripRoom(420, 1, 0)).toBe(72)
+  it('reserves nothing for a summary pencil: the row has none', () => {
+    // Chrome 266, the 4px level indent and seven 8px gaps leave 94px for the strip at 420.
+    expect(stripRoom(420, 1, 0)).toBe(94)
   })
 })
 

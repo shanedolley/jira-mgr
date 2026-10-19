@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, inboxChange, launch, logIn, notices, releaseEdit } from './harness.js'
+import { counts, inboxChange, launch, logIn, notices, peekRow, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -40,7 +40,7 @@ async function open() {
 
 async function openPage(row: RegExp, title: string) {
   await open()
-  await item(row).click()
+  await peekRow(item(row))
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('heading', { name: title })).toBeVisible()
   await expect(section('Activity').getByText('Loading comments')).toHaveCount(0)
@@ -57,7 +57,7 @@ const openLogged = () => openPage(/PSAPAC-2,/, 'Review the data model')
  * bare text link is not button chrome: a picker is a field, as a select is, and the rest take their
  * shape from the row around them.
  */
-const NOT_CHROME = '[aria-haspopup="listbox"], [data-row], [data-prop]'
+const NOT_CHROME = '[aria-haspopup="listbox"], [data-row], [data-prop], [data-summary]'
 
 const BIN = 'M3.5 4.5h9M6.5 4.5v-1h3v1M5 4.5l.5 8h5l.5-8'
 const CROSS = ['m4 4 8 8M12 4l-8 8', 'm4.5 4.5 7 7m0-7-7 7']
@@ -128,7 +128,7 @@ async function openSwitchDialog(hoursAgo: number) {
   )
   ;({ app, window } = await launch(stateDir, { TZ: noonZone() }))
   await open()
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(tree()).toBeFocused()
@@ -200,7 +200,7 @@ test.describe('button system', () => {
     await open()
     await expectSystem('list', 8)
 
-    await item(/PSAPAC-4,/).click()
+    await peekRow(item(/PSAPAC-4,/))
     await expect(peek().getByRole('button', { name: 'Start timer' })).toBeVisible()
     await expectSystem('peek', 12)
 
@@ -233,7 +233,7 @@ test.describe('button system', () => {
     await expectSystem('create dialog', 3)
     await create.getByRole('button', { name: 'Cancel' }).click()
 
-    await item(/PSAPAC-4,/).click()
+    await peekRow(item(/PSAPAC-4,/))
     await peek().getByRole('button', { name: 'Delete' }).click()
     const confirm = window.getByRole('dialog', { name: /Delete/ })
     await expect(confirm).toBeVisible()
@@ -329,7 +329,7 @@ test.describe('button system', () => {
 
   test('a toast and its buttons follow the system, and the toast takes the 8px radius', async () => {
     await open()
-    await item(/PSAPAC-4,/).click()
+    await peekRow(item(/PSAPAC-4,/))
     await peek()
       .getByRole('button', { name: /^Priority:/ })
       .click()
@@ -476,7 +476,7 @@ test.describe('delete controls', () => {
     expect(await del.evaluate((e) => getComputedStyle(e).borderTopColor)).toBe('rgba(0, 0, 0, 0)')
 
     await issuePage().getByRole('button', { name: 'Back to issues' }).click()
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     await expect(section('Activity').getByRole('listitem').first()).toBeVisible()
     const comment = section('Activity')
@@ -493,7 +493,7 @@ test.describe('delete controls', () => {
   test('the issue Delete is red only on hover on the page and in the Peek, and solid red in its confirm', async () => {
     await open()
     const red = await danger()
-    await item(/PSAPAC-4,/).click()
+    await peekRow(item(/PSAPAC-4,/))
     const inPeek = peek().getByRole('button', { name: 'Delete' })
     expect(await colourOf(inPeek)).not.toBe(red)
     await expect.poll(() => hoveredColourOf(inPeek)).toBe(red)

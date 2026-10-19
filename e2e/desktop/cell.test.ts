@@ -12,6 +12,8 @@ import {
   logIn,
   moveIssue,
   notices,
+  openSprintRow,
+  peekRow,
   refuseKeys,
   releaseEdit,
 } from './harness.js'
@@ -156,7 +158,7 @@ test('a click outside closes the list, and a second click on the dot closes it t
 
 test('a click on the dot selects no text, keeps the checked rows and arms no double-click', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('x')
   await expect(item(/PSAPAC-4,/)).toHaveAttribute('aria-checked', 'true')
@@ -174,7 +176,7 @@ test('a click on the dot selects no text, keeps the checked rows and arms no dou
 
 test('Shift+click on the dot checks a range and opens no list', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Escape')
   await dot(/PSAPAC-3,/).click({ modifiers: ['Shift'] })
 
@@ -184,7 +186,7 @@ test('Shift+click on the dot checks a range and opens no list', async () => {
 
 test('S opens the same list on the active row, and arrows and Enter choose', async () => {
   await open()
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -337,7 +339,7 @@ test('S on an active row scrolled partly out at the Tree top brings its dot into
   await open()
   // A short window, so the Tree scrolls.
   await shortWindow()
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
   // The wheel scrolls the row 12px above the top edge. The keyboard did not move the active row.
@@ -374,9 +376,7 @@ test('the Sprint page rows offer the same list and still open their issue', asyn
   await expect(issuePage()).toHaveCount(0)
 
   // The row button still opens the issue.
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-13 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-13 / }))
   await expect(issuePage()).toBeVisible()
 })
 

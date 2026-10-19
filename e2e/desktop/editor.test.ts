@@ -13,6 +13,7 @@ import {
   logIn,
   normaliseDescriptions,
   notices,
+  peekRow,
   refuseNextEdit,
   releaseDone,
   releaseEdit,
@@ -72,7 +73,7 @@ async function openPage(row: RegExp, title: string) {
 }
 
 async function openFromTree(row: RegExp, title: string) {
-  await item(row).click()
+  await peekRow(item(row))
   await window.keyboard.press('Enter')
   await expect(heading(title)).toBeVisible()
   await expect(window.getByText('Loading description')).toHaveCount(0)
@@ -460,7 +461,7 @@ test('an image uploading when the user leaves the page is embedded when the draf
   await expect(issuePage()).toHaveCount(0)
   await releaseUpload(app)
 
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Enter')
   await expect(issuePage().getByText('Unsaved draft restored.')).toBeVisible()
   await expect(editor().locator('img')).toBeVisible()

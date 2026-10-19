@@ -10,6 +10,7 @@ import {
   logIn,
   moveIssue,
   notices,
+  peekRow,
   refuseKeys,
   refuseNextBulk,
   releaseEdit,
@@ -263,7 +264,7 @@ for (const rate of [1, 20]) {
 
 test('Esc clears the selection first, and a second Esc closes the Peek', async () => {
   await open()
-  await story(2).click()
+  await peekRow(story(2))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('x')
   await expect(checkedRows()).toHaveCount(1)

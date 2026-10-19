@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, logWork, releaseEdit, setEstimate } from './harness.js'
+import { counts, launch, logIn, logWork, peekRow, releaseEdit, setEstimate } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -50,7 +50,7 @@ const period = (scope: Locator, name: string) =>
 async function openPeek(row: RegExp) {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
 }
 

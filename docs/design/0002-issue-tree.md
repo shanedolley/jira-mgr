@@ -241,9 +241,11 @@ The Tree is one focusable element, `role="tree"` with `aria-label="Issues"` and 
 | `Home`, `End` | First or last row | First or last row |
 | `Enter` | Opens the issue: the Peek until D3, the issue page after. With the Peek open, moves focus into it | Expands or collapses; a chip reveals or hides |
 | `Space` | Opens or closes the Peek | Nothing |
+| `o` | Opens the Peek on the active issue, or switches an open Peek to it; never closes it | Nothing |
+| `O` (`Shift+o`) | Opens the issue page | Nothing |
 | `Esc` | Closes the Peek when open | The same |
 
-`J` and `K` match in either case, so Shift and Caps Lock make no difference. Moves stop at the first and last rows. The Tree calls `preventDefault` on every key in the table, `Space` and the page keys included, so the container never scrolls by itself. A click makes a row active and focuses the Tree. A click on a row's chevron expands or collapses it; elsewhere, a click opens an issue row and toggles a header or chip. A cell with its own editor (a status dot, avatar, priority, Labels, Sprint, Due date or Start date slot, or the Original estimate field) makes its row active and leaves the Peek as it is.
+`J` and `K` match in either case, so Shift and Caps Lock make no difference. Moves stop at the first and last rows. The Tree calls `preventDefault` on every key in the table, `Space` and the page keys included, so the container never scrolls by itself. The pointer moving over a row makes it active (#299), with no click. A click on a row's chevron expands or collapses it, and a click on a header or chip toggles it; a click on blank issue-row space does nothing. A cell with its own editor (a status dot, avatar, priority, Labels, Sprint, Due date or Start date slot, or the Original estimate field) leaves the Peek as it is.
 
 **Focus.** After any toolbar control acts (a toggle, a chip's remove, Clear, a Groups item) and when the Filter popover closes, focus returns to the Tree, so `J` and `K` work at once. `Esc` routes by where focus is:
 
@@ -265,11 +267,11 @@ Closing the Peek by `Esc`, `Space` or its Close button returns focus to the Tree
 | No Epic header | `No Epic, 3 issues` |
 | Done chip | `4 done` |
 
-Rows contain no buttons, since a `treeitem` holds no focusable children: the Tree's keys and a row click are its controls. The active row carries a focus ring of at least 3:1 contrast, distinct from the hover background and from context rows, in both themes. Context rows keep WCAG 2.2 AA text contrast. Expanding animates nothing, so `prefers-reduced-motion` needs no case.
+Rows contain no buttons, since a `treeitem` holds no focusable children: the Tree's keys, the pointer's hover and a click on a summary or slot are its controls. The active row carries a focus ring of at least 3:1 contrast, distinct from the hover background and from context rows, in both themes. Context rows keep WCAG 2.2 AA text contrast. Expanding animates nothing, so `prefers-reduced-motion` needs no case.
 
 **Boundary with D7.** The handler sits on the Tree element, so it never sees a keystroke typed into the text filter or the Peek's summary field, which the React standard requires. It ignores any event with `metaKey`, `ctrlKey` or `altKey`, so `Cmd+K` and `Cmd+Z` pass through. D7's global shortcuts (`C`, `S`, `A`, `L`, `P`, `E`, and `T` in D9) share no key with it. D2 lifts the active issue key to the Shell, where D7 reads it as the target of `S`, `A` and the rest. When D7 adds its global `Esc`, it skips events already handled (`defaultPrevented`).
 
-Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Close button for `Esc` and `Space`, the chevron and chip for the arrows, and the Groups menu's Customers and Everything for `Shift` with the side arrows.
+Every shortcut has a visible alternative: a double-click for `Enter`, the Peek's Open button for `Shift+O`, the Peek's Close button for `Esc` and `Space`, the chevron and chip for the arrows, and the Groups menu's Customers and Everything for `Shift` with the side arrows.
 
 *Amended 2026-10-17, build of #267.* Shane wants to select the status on the canvas and edit it there, in a popover over the row instead of the Peek. The orchestrator decided these, and Shane approved them by closing #267 on 2026-10-18:
 
@@ -326,8 +328,9 @@ Every shortcut has a visible alternative: a row click for `Enter`, the Peek's Cl
 
 D1's always-open detail pane becomes the Peek, since Q5 gives the issue a full page (D3) and a space-bar preview. The Shell's grid has two columns, sidebar and Tree, and gains a third while the Peek is open: `IssueDetail`, a labelled `aside` named "Peek", not a dialog, because it blocks nothing. Opening it leaves focus on the Tree. It keeps D1's summary editor and adds Engagement, the parent key and the mismatch detail.
 
-The Peek shows the issue under `peekedKey` (`Shell.tsx:763`), which follows the active row with these exceptions:
+The Peek shows the issue under `peekedKey` (`Shell.tsx:763`), which follows the active row when a key moves it, with these exceptions:
 
+- The pointer moving the active row (#299) does not move the Peek. `o` points it at the active row. Hover reaches the Shell as `hover`, not through `apply`, so only a key, `Space` opening the Peek or `o` sets `lastIssueKey`.
 - On a header or chip row it keeps showing the last issue.
 - While its summary field is open, it stays on that issue. Focus leaving the field saves the edit (D11), so a click on another row saves it first and the Peek then follows that row. `J` and `K` type into the field and do not move the active row.
 - When its issue leaves the Tree, through a refetch or a filter, it keeps showing the issue's last data under the label "No longer in this view", until the user moves the active row or closes the Peek.
@@ -352,12 +355,23 @@ The Peek shows the issue under `peekedKey` (`Shell.tsx:763`), which follows the 
 - **Left alone.** A running timer on the issue is not touched and logs separately on stop. A Hold-faded row stays loggable. Subtask time does not roll up: the modal logs against the row's own issue.
 - **Key.** `W`, free in `LETTERS` and the palette.
 
+### Hover Active Row
+
+*Added 2026-10-19, build of #299.* Shane wants the row under the pointer to be the active row, with `o` peeking it and `O` opening its page, and no click that selects or peeks (2026-10-18). Decisions are his, by accepting the proposed defaults.
+
+- **Last input wins.** `pointermove` over the Tree makes a row active (`hoverRow`, `IssueTree.onPointerMove`) when the position differs from the last one (`pointerMoved`). A scroll or a rebuild under a still pointer makes the browser resend the pointer events from the same spot, so those change nothing, and a key that moved the active row keeps it until the pointer really moves. `J`, `K` and the arrows move from the hovered row. Hover covers issue rows, Customer and No Epic headers and chips. Hover takes focus to the Tree when it is on the page body, and `o` and `O` from the Peek act on the active Tree row. A cell editor, picker or menu that is open (`:popover-open`) holds its row: the pointer moves nothing until it closes. The view does not scroll a hovered row into place, and the Shell flushes the update at once so a key pressed right after the move acts on the new row.
+- **Leaving the list.** The last row stays active, so the letter keys keep a target.
+- **Peek and page.** `o` and `O` live in `moveActive`, so a text field, a picker or a dialog keeps its letters (`keepsLetters`). `o` points the Peek at the active row (`MoveResult.peekHere`) and never closes it; `Space` toggles. The Shell's `hover` sets only the active row, so the Peek stays on its issue while the pointer moves, and `apply` moves `peekedKey` only when a key moved the row, the Peek just opened, or `o` asked.
+- **Clicks.** A click on blank issue-row space does nothing (`clickRow` returns the same state, and the Tree skips `onChange`). A chevron, header and chip click toggle; the checkbox, a range click and an in-row cell keep their own action and name their row active, for a click that lands before the hover rendered. A double-click on blank space opens the page, the issue its first click hit. The hover tint of `.tree-row` is gone, so the active row is the only highlighted one; the Peek's `aria-selected` row keeps its fill.
+- **Sprint page.** The section is a `data-key-scope`, a row is active under the pointer (`data-active`), and `resolveKey` reads `o` (`peek`) and `Shift+O` (`openPage`) there. `o` opens the Peek beside the page, which keeps its column while the page is open; the first Esc closes that Peek and the second closes the page. The row button opens the issue on a double-click, or on Enter or Space from the keyboard (a click with `detail` 0). The summary is a button that opens the modal. The other letters still do nothing there.
+- **Replaced.** `C` no longer reads CSS `:hover` and the navigation-key tracking in the Shell: the hovered row is the active row.
+
 ### Summary Modal
 
 *Added 2026-10-17, build of #278.* Shane asked to select an issue's summary on the canvas and edit it in a modal. The choices below are the orchestrator's, for Shane to confirm.
 
-- **Gesture.** A second click on the summary text of the row that is already active and showing in the Peek opens the modal; the first click only selects, so click-to-Peek is unchanged. Because a double-click opens the page, the second-click editor waits 500 ms (`DOUBLE_CLICK_MS`, about the macOS double-click interval) and a double-click, a page open, another click or a Tree key cancels it. Arrowing to a row and then clicking its summary once opens the modal, since the keyboard made the row active and the Peek shows it; this is accepted. A hover pencil after the summary (`[data-edit="summary"]`, a click target only, as the status dot is) opens it at once. A Shift+click never edits.
-- **Keyboard.** `E` with focus in the Tree opens the modal on the active row; in the Peek and on the page it keeps the in-place field. The Sprint page cannot take a letter key, so each of its rows has a real pencil button beside the row's button (a button cannot nest in a button), named "Edit summary of KEY".
+- **Gesture.** A single click on the summary text opens the modal at once (amended 2026-10-19, build of #299). A click has no other job on an issue row, since hover makes the row active and `o` opens the Peek, so the second-click rule, its 500 ms wait (`DOUBLE_CLICK_MS`) and the hover pencil (`[data-edit="summary"]`) are gone. A double-click on the summary therefore edits it, and a double-click on blank row space opens the page. A Shift+click never edits.
+- **Keyboard.** `E` with focus in the Tree opens the modal on the active row; in the Peek and on the page it keeps the in-place field. The Sprint page's summary is a real button (a button cannot nest in a button), named "Edit summary of KEY", beside the row's button.
 - **Modal.** `SummaryDialog` on `Modal`, titled "Edit summary", one field (max 255) selected on open, Save and Cancel. Enter saves, Esc, Cancel and a click outside close with no write. An empty summary stays open with "A summary cannot be empty." Focus returns to the control that opened it.
 - **Write.** The context menu's path: `useSetSummary` through `useAttempt('Summary')`, so the row changes at once, an undo entry is kept and a refusal reverts with the Retry toast. `editEverywhere` also patches the Sprint page's own read, which no phase cache holds.
 - **No target.** Customer headers, the No Epic row and chips; a Hold-faded row stays editable.

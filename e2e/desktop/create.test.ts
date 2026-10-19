@@ -12,6 +12,7 @@ import {
   launch,
   logIn,
   notices,
+  peekRow,
   refuseNextEdit,
   releaseEdit,
   releaseMe,
@@ -72,28 +73,20 @@ async function open() {
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
 }
 
-/** Makes the row the active one, with the Tree focused. A click also opens the Peek, which Esc closes. */
+/** Makes the row the active one, with the Tree focused. `peekRow` also opens the Peek, which Esc closes. */
 async function select(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await window.keyboard.press('Escape')
   await expect(item(row)).toHaveAttribute('data-active', 'true')
   await expect(tree()).toBeFocused()
 }
-
-/** The accessible name of the row under the pointer, or null when none is. */
-const hoveredLabel = () =>
-  window.evaluate(
-    () =>
-      document.querySelector('[role="tree"] [role="treeitem"]:hover')?.getAttribute('aria-label') ??
-      null,
-  )
 
 /** Moves the pointer off every row, so only the selection says where `C` starts. */
 const parkPointer = () => window.mouse.move(2, 2)
 
 async function openCreate(row: RegExp) {
   await select(row)
-  // The click can leave the pointer over a neighbour once the row scrolls, and a hovered row wins.
+  // The pointer can rest over a neighbour once the row scrolls, and a hovered row is the active one.
   await parkPointer()
   await window.keyboard.press('c')
   await expect(dialog()).toBeVisible()
@@ -126,7 +119,7 @@ test('C opens the create modal for a Story under the selected Epic, with its Cus
   await expect(field('Assignee', 'Test User')).toBeVisible()
 })
 
-test('C over a hovered Epic starts a Story under it, ahead of the selected row, and moves nothing', async () => {
+test('C over a hovered Epic starts a Story under it, since the hovered row is the active one', async () => {
   await open()
   await select(/PSAPAC-2,/)
   await item(/PSAPAC-30,/).hover()
@@ -138,72 +131,33 @@ test('C over a hovered Epic starts a Story under it, ahead of the selected row, 
   await expect(field('Customer', 'Beta Ltd')).toBeVisible()
   await expect(field('Engagement', 'South')).toBeVisible()
 
-  // Hovering selected nothing and opened no Peek.
+  // Hovering made the Epic active and opened no Peek.
   await dialog().getByRole('button', { name: 'Cancel' }).click()
-  await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'true')
-  await expect(item(/PSAPAC-30,/)).toHaveAttribute('data-active', 'false')
+  await expect(item(/PSAPAC-30,/)).toHaveAttribute('data-active', 'true')
+  await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'false')
   await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
 })
 
-test('a hover ends when J or K moves the active row past a resting pointer, and counts again once the pointer moves', async () => {
+test('C starts from the keyboard row after K moves it past a resting pointer, and from the hover once the pointer moves', async () => {
   await open()
   await select(/PSAPAC-2,/)
   const epic = item(/PSAPAC-30,/)
   await epic.hover()
   await window.keyboard.press('k')
-  await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'false')
+  await expect(epic).toHaveAttribute('data-active', 'false')
 
-  // The pointer still rests on the Epic, but the active row moved, so C starts from the active row.
+  // The pointer still rests on the Epic, but K moved the active row, so C starts from that row.
   await window.keyboard.press('c')
   await expect(dialog()).toBeVisible()
-  await expect(field('Type', 'Subtask')).toBeVisible()
-  await expect(field('Parent', 'PSAPAC-10 Customer onboarding')).toHaveCount(0)
   await expect(dialog().getByRole('button', { name: /^Parent: PSAPAC-30/ })).toHaveCount(0)
   await dialog().getByRole('button', { name: 'Cancel' }).click()
   await expect(dialog()).toHaveCount(0)
 
-  // Moving the pointer again makes the hover count.
+  // Moving the pointer again makes the Epic the active row.
   await epic.hover({ position: { x: 40, y: 8 } })
   await window.keyboard.press('c')
   await expect(field('Type', 'Story')).toBeVisible()
   await expect(field('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
-})
-
-test('arrows outside the Tree leave the hover alone', async () => {
-  await open()
-  await select(/PSAPAC-2,/)
-  await item(/PSAPAC-30,/).hover()
-  await window.getByRole('button', { name: 'New issue' }).focus()
-  await window.keyboard.press('ArrowDown')
-  await window.keyboard.press('ArrowLeft')
-  // Focus without scrolling, which would slide another row under the pointer.
-  await tree().evaluate((el) => {
-    el.focus({ preventScroll: true })
-  })
-
-  await window.keyboard.press('c')
-  await expect(field('Type', 'Story')).toBeVisible()
-  await expect(field('Parent', 'PSAPAC-30 Reporting')).toBeVisible()
-})
-
-test('a wheel turn brings the hover back after J, and C starts from the row it puts under the pointer', async () => {
-  await open()
-  await select(/PSAPAC-2,/)
-  // A short Tree scrolls, so the wheel can put another row under the resting pointer.
-  await tree().evaluate((el) => {
-    el.style.height = '120px'
-    el.style.maxHeight = '120px'
-  })
-  await item(/PSAPAC-30,/).hover()
-  await window.keyboard.press('j')
-  // The pointer still rests on the Epic. The wheel puts a Story further down under it, and J left
-  // the active row somewhere else.
-  await window.mouse.wheel(0, 80)
-  await expect.poll(hoveredLabel).toMatch(/^PSAPAC-31, Story/)
-  await window.keyboard.press('c')
-  await expect(dialog()).toBeVisible()
-  await expect(field('Type', 'Subtask')).toBeVisible()
-  await expect(field('Parent', 'PSAPAC-31 Build the monthly report')).toBeVisible()
 })
 
 test('C over a selected Story starts a Subtask under it, with its Customer and Engagement', async () => {
@@ -292,7 +246,7 @@ test('C does nothing with Cmd or Ctrl, in a text field, or while a picker has th
   await window.getByLabel('Filter by key or summary').fill('')
 
   // A listbox with no search field takes the letters too.
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Enter')
   // The Peek under the page has a Status picker too, so the query names the page's sidebar.
   const status = window
@@ -726,7 +680,7 @@ test('selects nothing new when a filter hides the issue just created', async () 
   await select(/PSAPAC-2,/)
   await window.getByLabel('Filter by key or summary').fill('data model')
   await expect(item(/PSAPAC-4,/)).toHaveCount(0)
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('c')
   await dialog().getByLabel('Summary').fill('Filtered out')
@@ -942,7 +896,7 @@ test('Cmd+Enter creates from the summary', async () => {
 
 test('C on an open issue page prefills from that issue', async () => {
   await open()
-  await item(/PSAPAC-11,/).click()
+  await peekRow(item(/PSAPAC-11,/))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
   await expect(issuePage()).toBeFocused()
@@ -1493,7 +1447,7 @@ test('a file dropped on the chips area stages, and a mixed drop on the descripti
 
 test('a drop on the dialog does not attach to the issue page behind it', async () => {
   await open()
-  await item(/PSAPAC-1,/).click()
+  await peekRow(item(/PSAPAC-1,/))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
   await expect(issuePage().getByText('Loading attachments')).toHaveCount(0)

@@ -12,6 +12,8 @@ import {
   logIn,
   moveIssue,
   notices,
+  openSprintRow,
+  peekRow,
   refuseKeys,
   releaseEdit,
 } from './harness.js'
@@ -140,7 +142,7 @@ test('Esc closes the list with no write and leaves the Tree focused', async () =
 
 test('Shift+C opens the same list below the active row slot, and arrows and Enter choose', async () => {
   await open()
-  await item(/PSAPAC-13,/).click()
+  await peekRow(item(/PSAPAC-13,/))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -164,7 +166,7 @@ test('Shift+C opens the same list below the active row slot, and arrows and Ente
 
 test('Shift+C opens the issue menu list when the Peek narrows the Tree and hides the slot', async () => {
   await open()
-  await item(/PSAPAC-13,/).click()
+  await peekRow(item(/PSAPAC-13,/))
   await expect(peek()).toBeVisible()
   // The open Peek leaves the Tree too narrow to draw its slots.
   await expect(slot(/PSAPAC-13,/)).toBeHidden()
@@ -179,7 +181,7 @@ test('an Epic offers no Sprint target, and Shift+C opens nothing on it', async (
   await open()
   await expect(slot(/PSAPAC-10,/)).not.toHaveAttribute('data-pick', /.+/)
 
-  await item(/PSAPAC-10,/).click()
+  await peekRow(item(/PSAPAC-10,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('Shift+C')
   await window.waitForTimeout(150)
@@ -288,9 +290,7 @@ test('a Sprint page row offers the same list from its Sprint slot and still open
   expect(await writes()).toBe(before)
 
   // The row button still opens the issue.
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-13 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-13 / }))
   await expect(issuePage()).toBeVisible()
 })
 

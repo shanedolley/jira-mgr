@@ -96,11 +96,11 @@ test('a row tabs through its controls in order, each with a name', async () => {
   await overlay('PSAPAC-4').focus()
   const names = [
     /^Status of PSAPAC-4:/,
+    'Edit summary of PSAPAC-4',
     /^Priority of PSAPAC-4:/,
     'Original estimate 2h',
     /^Log work on PSAPAC-4,/,
     /^Assignee of PSAPAC-4:/,
-    'Edit summary of PSAPAC-4',
   ]
   for (const name of names) {
     await window.keyboard.press('Tab')
@@ -108,7 +108,7 @@ test('a row tabs through its controls in order, each with a name', async () => {
   }
 })
 
-test('a click outside a slot opens the issue and a click on a slot runs only its action', async () => {
+test('a double-click outside a slot opens the issue and a click on a slot runs only its action', async () => {
   await openSprint()
   const row = sprintRow('PSAPAC-4')
 
@@ -127,6 +127,6 @@ test('a click outside a slot opens the issue and a click on a slot runs only its
   await expect(row.locator('[data-prop=estimate]')).toBeFocused()
 
   // Near the row's corner, clear of every slot: the content ignores the pointer, so the button under it gets the click.
-  await overlay('PSAPAC-4').click({ position: { x: 3, y: 3 } })
+  await overlay('PSAPAC-4').dblclick({ position: { x: 3, y: 3 } })
   await expect(issuePage()).toBeVisible()
 })

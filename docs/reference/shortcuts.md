@@ -4,11 +4,11 @@ Source: `apps/desktop/src/renderer/src/keymap.ts` for global keys and `tree.ts` 
 
 ## Global
 
-A letter acts only when pressed alone, not held, not typed into a field, picker, dialog or editor, and only with focus in the Tree, the Peek or the issue page. `T` on a sidebar button does nothing.
+A letter acts only when pressed alone, not held, not typed into a field, picker, dialog or editor, and only with focus in the Tree, the Peek, the issue page or the Sprint page. `T` on a sidebar button does nothing. A letter on the Tree acts on the active row: the row under the pointer, or the row `J` or `K` last moved to, whichever came last.
 
 | Key | Action |
 |---|---|
-| `C` | Create an issue under the issue the pointer rests on, else the active one: a Story under an Epic, a Subtask under a Story, Task or Bug or beside a Subtask |
+| `C` | Create an issue under the active (hovered) issue: a Story under an Epic, a Subtask under a Story, Task or Bug or beside a Subtask |
 | `T` | Start or stop the timer on the active issue |
 | `W` | Open the Log work modal for the active issue. An Epic has no worklog, so `W` does nothing there. A click on a row's Logged slot, the menu's Log work and the palette's Log work open the same modal |
 | `S` | Open Status. From the Tree it opens the list beside the active row's status dot, and `Esc` or a choice returns focus to the Tree; with a page open it opens the page's Status |
@@ -30,7 +30,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Shift+F10` | Open the issue menu of the active Tree row, or of the focused row on the Inbox, Sprint and Epics pages. The context-menu key and a right-click on a row do the same |
 | `Cmd+K` | Open the palette; with an issue in context it lists that issue's actions first, each beside its key, then saved views, then it searches loaded issues and, below them, Jira text. Not over a dialog or open picker |
 | `Cmd+Z` | Undo; a text field keeps its own undo. A batch from the bulk bar goes back as one, skipping issues that changed since |
-| `Esc` | Close the issue page, then the Sprint page or the Epics or Customers page, then clear the checked issues, then close the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
+| `Esc` | Close the issue page, then the Peek opened beside a Sprint page, then the Sprint page or the Epics or Customers page, then clear the checked issues, then close the Peek. An issue page opened from a sprint, the Epics table or the Customers page returns to it |
 | `Tab` | The first stop is a "Skip to issues" link, hidden until it has focus; `Enter` on it moves focus to the Tree |
 
 ## Tree
@@ -46,14 +46,18 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | `Left` | Collapse; otherwise parent row |
 | `Shift+Left` | Close to the Customer headers (the Customers level, stored) |
 | `Enter` | Open the issue page; toggle a header |
-| Double-click | On an issue row, open its page as `Enter` does, the issue the first click hit. The checkbox, the pencil, the chevron, every slot with an editor or action of its own (status dot, priority, avatar, Labels, Sprint, Due date, Start date, Original estimate and Logged) and a Shift+double-click ignore it, and a header or chip does only what its two clicks do |
+| Pointer over a row | Make it the active row: an issue row, a Customer header, a No Epic header or a chip. No click is needed. The last input wins: after `J` or `K` the keyboard row stays active until the pointer moves again, and a scroll under a still pointer changes nothing. When the pointer leaves the list the last row stays active. The Peek stays on its issue while the pointer moves |
+| `o` | Open the Peek on the active issue row, also with focus in the Peek; with the Peek open, switch it to the active row. It never closes the Peek: `Space` toggles. A header or chip does nothing. The Sprint page's rows answer too, with the Peek beside the page |
+| `Shift+O` | Open the issue page of the active issue row. A header or chip does nothing. The Sprint page's rows answer too |
+| Click on blank row space | Nothing: no Peek, no selection. A header or chip still expands or collapses |
+| Double-click | On an issue row's blank space, open its page as `Enter` does, the issue the first click hit. The checkbox, the summary, the chevron, every slot with an editor or action of its own (status dot, priority, avatar, Labels, Sprint, Due date, Start date, Original estimate and Logged) and a Shift+double-click ignore it, and a header or chip does only what its two clicks do |
 | Click on a status dot | Open the Status list beside the dot, without opening the Peek. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
 | Click on an avatar | Open the Assignee list beside the avatar, without opening the Peek, also on an unassigned row. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
 | Click on a priority slot | Open the Priority list beside the slot, without opening the Peek, whether the slot draws bars or is empty. The Sprint page's rows have the same button. On the Tree `Shift+click` checks a range instead |
 | Click on a Labels, Sprint, Due date or Start date slot | Open the slot's editor beside it, without opening the Peek, whether the slot is filled or empty. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
 | Click on the Original estimate slot | Turn it into a field in place, without opening the Peek. `Enter` saves and `Esc` cancels. The Sprint page's rows have the same button |
 | Click on the Logged slot | Open the Log work modal, without opening the Peek. The Sprint page's rows have the same button |
-| Click on the pencil after a summary | Edit the summary in a modal. A second click on the summary of the active row in the Peek does the same, after a double-click would have opened the page |
+| Click on a summary | Edit the summary in a modal, with the text selected. `E` opens the same modal on the active row. The Sprint page's rows have the same button. `Shift+click` checks a range instead |
 | `Space` | Toggle the Peek |
 | `X` | Check or uncheck the active issue; the checkbox in a row's left gutter does the same |
 | `Shift+Down`, `Shift+Up` | Move to the next or previous row and check the issue rows it crosses |

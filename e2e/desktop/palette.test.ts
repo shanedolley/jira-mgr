@@ -4,7 +4,16 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { SITE, counts, launch, logIn, notices, releaseEdit, setDescription } from './harness.js'
+import {
+  counts,
+  launch,
+  logIn,
+  notices,
+  peekRow,
+  releaseEdit,
+  setDescription,
+  SITE,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -47,7 +56,7 @@ async function open() {
 
 /** Makes the row active and closes the Peek the click opened: the state a key starts from. */
 async function select(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)

@@ -10,6 +10,7 @@ import {
   launch,
   logIn,
   moveIssue,
+  peekRow,
   readState,
   releaseDone,
   showEverything,
@@ -178,7 +179,7 @@ test("marks a Story whose Customer differs from its Epic's", async () => {
   await expect(item(/PSAPAC-32,/)).not.toHaveAttribute('aria-label', /differs/)
 
   // The Peek names both in full.
-  await flagged.click()
+  await peekRow(flagged)
   await expect(peek()).toContainText("Epic's Customer: Beta Ltd.")
 })
 
@@ -795,7 +796,7 @@ test('keeps the rows in view steady when Done issues load above them', async () 
 
 test('keeps the Peek on an issue a filter removed, labelled, until the active row moves', async () => {
   await open()
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await expect(peek().getByRole('heading', { name: 'Fix the export timeout' })).toBeVisible()
 
   await window.getByLabel('Filter by key or summary').fill('dashboards')
@@ -803,19 +804,19 @@ test('keeps the Peek on an issue a filter removed, labelled, until the active ro
   await expect(peek().getByRole('heading', { name: 'Fix the export timeout' })).toBeVisible()
   await expect(peek()).toContainText('No longer in this view')
 
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
   await expect(peek()).not.toContainText('No longer in this view')
 })
 
 test('saves an unsaved summary when another row is clicked, and cancels one on Esc', async () => {
   await open()
-  await item(/PSAPAC-11,/).click()
+  await peekRow(item(/PSAPAC-11,/))
   await peek().getByRole('button', { name: 'Draft the runbook' }).click()
   await peek().getByLabel('Summary').fill('Draft the runbook, edited')
 
   // The click takes focus from the field, which saves, and the Peek follows the active row.
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await expect(item(/PSAPAC-2,/)).toHaveAttribute('data-active', 'true')
   await expect(peek().getByRole('heading', { name: 'Review the data model' })).toBeVisible()
   await expect(item(/Draft the runbook, edited/)).toBeVisible()
