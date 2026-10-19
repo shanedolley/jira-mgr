@@ -32,7 +32,7 @@ import {
 import { STATE_LABELS } from './properties'
 import { colVars, colWidth, floorWidths } from './propertyFit'
 import { SECTION_HEADING } from './Section'
-import { Slot } from './Slot'
+import { Slot, SLOT } from './Slot'
 import { holdFade, StatusDot } from './StatusDot'
 import {
   BREAKDOWNS,
@@ -384,21 +384,21 @@ function Issues({
                           {...holdFade(status)}
                           className="relative flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 pr-8"
                         >
-                          {/* A click on the key peeks the issue (#299). A Shift+click or Cmd+click checks, through `onClickCapture`. */}
-                          <Slot
+                          {/* A click on the key peeks the issue (#299). It is text that takes a click, not button chrome, so it is a span with a role; the `o` key is the keyboard route. A Shift+click or Cmd+click checks, through `onClickCapture`. */}
+                          <span
+                            role="button"
                             title="Peek"
                             aria-label={`Peek ${issue.key}`}
-                            tabIndex={-1}
                             onClick={() => {
                               onPeek(issue.key)
                             }}
                             onDoubleClick={(event) => {
                               if (!event.shiftKey && !togglesCheck(event)) onOpen(issue.key)
                             }}
-                            className="sprint-key w-20 shrink-0 cursor-pointer text-left font-mono text-xs text-muted"
+                            className={`${SLOT} sprint-key w-20 shrink-0 cursor-pointer font-mono text-xs text-muted`}
                           >
                             {issue.key}
-                          </Slot>
+                          </span>
                           <Slot
                             data-summary
                             aria-label={`Edit summary of ${issue.key}`}
