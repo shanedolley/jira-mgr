@@ -20,7 +20,7 @@ import {
 import type { CellProperty } from './cell'
 import { ColumnHeader } from './ColumnHeader'
 import { keepsLetters } from './keymap'
-import { colVars, extrasWidth, fitWidths, stripRoom } from './propertyFit'
+import { colVars, extrasWidth, fitWidths, stripRoom, type ColumnTarget } from './propertyFit'
 import { TreeRow, rowDomId, rowProgress } from './TreeRow'
 import {
   ROW_HEIGHT,
@@ -76,6 +76,8 @@ interface IssueTreeProps {
   widths: PropertyWidths
   /** A column was resized to `width` pixels, or removed when that is 0. */
   onResize: (property: RowProperty, width: number) => void
+  /** A column was dragged or keyed to a new place. Returns the place it took, or `null` if it did not move. */
+  onMoveColumn: (property: RowProperty, target: ColumnTarget) => number | null
   /** Today's local date, for the dates a row shows. */
   today: string
   /** The open blockers of each loaded issue, by key. */
@@ -121,6 +123,7 @@ export function IssueTree({
   properties,
   widths,
   onResize,
+  onMoveColumn,
   today,
   blocks,
   onChange,
@@ -428,6 +431,7 @@ export function IssueTree({
           room={room}
           scrollbar={scrollbar}
           onResize={onResize}
+          onMove={onMoveColumn}
         />
       )}
       <div

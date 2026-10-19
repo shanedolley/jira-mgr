@@ -536,7 +536,7 @@ const TREE_PROPS = 'hidden h-5 min-w-0 justify-end overflow-hidden @tree:flex'
 const SLOTS = '[&>*]:h-5 [&>*]:leading-5 [&>[data-prop]]:overflow-hidden'
 
 /**
- * The properties the Display menu chose, in the menu's order. Each keeps a fixed slot, so the
+ * The properties the Display menu chose, in the Column header's order. Each keeps a fixed slot, so the
  * columns line up down the list. The Tree shows them only while it is wide, as the title needs the
  * room; `always` is for the Sprint page's list: it shows them at any width, and they wrap onto their own line, pushed right (`ml-auto`) under the header, when the title would have no room.
  */

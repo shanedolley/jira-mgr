@@ -1,7 +1,7 @@
 import type { RowProperty } from '@jira-mgr/core/display'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 
-import { clampWidth, colWidth, dragCap, setColWidth } from './propertyFit'
+import { clampWidth, colWidth, dragCap, setColWidth, type ColumnTarget } from './propertyFit'
 import { PROPERTY_LABELS } from './TreeToolbar'
 
 /**
@@ -10,6 +10,9 @@ import { PROPERTY_LABELS } from './TreeToolbar'
  * list's right edge, plus the list's scrollbar.
  */
 const AFTER_STRIP = 44
+
+/** A press on a name must travel this far before it is a drag, so a click on it does nothing. */
+const MOVE_THRESHOLD = 4
 
 /** Arrow keys resize a column by this many pixels, or by `BIG_STEP` with Shift held. */
 const STEP = 8
@@ -29,6 +32,19 @@ interface Drag {
   separator: HTMLElement
 }
 
+interface Move {
+  property: RowProperty
+  pointerId: number
+  /** The pointer's x when the press began. */
+  x: number
+  /** Whether the pointer has travelled `MOVE_THRESHOLD`. */
+  started: boolean
+  /** The place the column would take if released now. */
+  to: number
+  header: HTMLElement
+  name: HTMLElement
+}
+
 interface ColumnHeaderProps {
   properties: readonly RowProperty[]
   /** The width each column is drawn at, which the Tree fits to its room. */
@@ -39,6 +55,8 @@ interface ColumnHeaderProps {
   scrollbar: number
   /** A column resized to `width`, where 0 removes it. A drag reports once, on release. */
   onResize: (property: RowProperty, width: number) => void
+  /** A column dragged or keyed to a new place. Returns the place it took, or `null` if it did not move. */
+  onMove: (property: RowProperty, target: ColumnTarget) => number | null
 }
 
 /** A separator's spoken value. */
@@ -54,10 +72,35 @@ const treeOf = (from: Element) =>
  * a CSS custom property on the Tree's container, so no row renders while it runs, and saves once,
  * on release. Releasing at 0 removes the column. Escape cancels. A focused separator takes
  * Left (wider) and Right (narrower) by 8px, 32px with Shift, and Delete or Backspace to remove.
+ *
+ * Each name also drags the column to a new place. The drop line shows the edge the column would land
+ * beside, in this component's state alone, so no row renders while it runs; release saves once.
+ * Escape cancels. A focused name takes Alt+Left and Alt+Right to move the column one place.
  */
-export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: ColumnHeaderProps) {
+export function ColumnHeader({
+  properties,
+  fitted,
+  room,
+  scrollbar,
+  onResize,
+  onMove,
+}: ColumnHeaderProps) {
   const drag = useRef<Drag | null>(null)
+  const move = useRef<Move | null>(null)
+  const header = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
+  /** The column being dragged to a new place, and where a release would put it. */
+  const [moving, setMoving] = useState<{ property: RowProperty; to: number } | null>(null)
+  /** The new place a key gave a column, for a screen reader. */
+  const [said, setSaid] = useState('')
+  /** The name a key moved, which takes focus back once its column is drawn in the new place. */
+  const refocus = useRef<RowProperty | null>(null)
+  useEffect(() => {
+    if (refocus.current === null) return
+    const name = header.current?.querySelector<HTMLElement>(`[data-col-name="${refocus.current}"]`)
+    refocus.current = null
+    if (name !== null && name !== undefined && document.activeElement !== name) name.focus()
+  })
   const [removing, setRemoving] = useState<RowProperty | null>(null)
   /**
    * The width the last key set, until the next render draws it. A key can arrive before the render
@@ -87,12 +130,25 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
     tree?.focus({ preventScroll: true })
   }
 
+  /** Ends a move: saves the new place on release, or leaves the column where it was. */
+  function endMove(commit: boolean) {
+    const m = move.current
+    if (m === null) return
+    move.current = null
+    setMoving(null)
+    if (m.name.hasPointerCapture(m.pointerId)) m.name.releasePointerCapture(m.pointerId)
+    if (m.started) treeOf(m.name)?.focus({ preventScroll: true })
+    if (commit && m.started) onMove(m.property, { to: m.to })
+  }
+
   const cancel = useEffectEvent(() => {
     end(false)
+    endMove(false)
   })
+  const active = dragging || moving !== null
   // Captured, so Escape ends the drag before the page's own Escape would leave the page.
   useEffect(() => {
-    if (!dragging) return
+    if (!active) return
     const key = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       event.preventDefault()
@@ -103,7 +159,62 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
     return () => {
       document.removeEventListener('keydown', key, true)
     }
-  }, [dragging])
+  }, [active])
+
+  function onNameDown(event: React.PointerEvent<HTMLButtonElement>, property: RowProperty) {
+    const bar = event.currentTarget.closest<HTMLElement>('[data-column-header]')
+    if (event.button !== 0 || drag.current !== null || move.current !== null || bar === null) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    move.current = {
+      property,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      started: false,
+      to: properties.indexOf(property),
+      header: bar,
+      name: event.currentTarget,
+    }
+  }
+
+  function onNameMove(event: React.PointerEvent<HTMLButtonElement>) {
+    const m = move.current
+    if (m?.pointerId !== event.pointerId) return
+    if (!m.started) {
+      if (Math.abs(event.clientX - m.x) < MOVE_THRESHOLD) return
+      m.started = true
+    }
+    // The column whose centre is nearest the pointer is the place the drop would take.
+    let to = m.to
+    let nearest = Infinity
+    m.header.querySelectorAll<HTMLElement>('[data-col]').forEach((cell, index) => {
+      const box = cell.getBoundingClientRect()
+      const gap = Math.abs(box.left + box.width / 2 - event.clientX)
+      if (gap < nearest) {
+        nearest = gap
+        to = index
+      }
+    })
+    m.to = to
+    setMoving((now) =>
+      now?.property === m.property && now.to === to ? now : { property: m.property, to },
+    )
+  }
+
+  /** Alt with Left or Right moves the focused name's column one place; any other key is left alone. */
+  function onNameKey(event: React.KeyboardEvent<HTMLButtonElement>, property: RowProperty) {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    // The Tree and the Shell read arrows too, so the name keeps its keys.
+    event.stopPropagation()
+    const place = onMove(property, { step: event.key === 'ArrowLeft' ? -1 : 1 })
+    if (place === null) return
+    refocus.current = property
+    setSaid(
+      `${PROPERTY_LABELS[property]} moved to position ${String(place + 1)} of ${String(properties.length)}`,
+    )
+  }
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>, property: RowProperty) {
     const pane = event.currentTarget.closest<HTMLElement>('[data-tree-pane]')
@@ -167,6 +278,7 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
   return (
     <div
       role="group"
+      ref={header}
       aria-label="Column widths"
       data-column-header
       style={{ paddingRight: scrollbar + AFTER_STRIP }}
@@ -175,21 +287,52 @@ export function ColumnHeader({ properties, fitted, room, scrollbar, onResize }: 
       <span role="status" className="absolute left-3 top-0 text-xs leading-6 text-danger">
         {removing === null ? '' : `Release to remove ${PROPERTY_LABELS[removing]}`}
       </span>
+      <span aria-live="polite" className="sr-only">
+        {said}
+      </span>
       <div className="flex gap-x-2">
-        {properties.map((property) => (
+        {properties.map((property, index) => (
           <div
             key={property}
             data-col={property}
             style={colWidth(property)}
             className="relative shrink-0"
           >
-            <span
-              aria-hidden
+            <button
+              type="button"
               title={PROPERTY_LABELS[property]}
-              className="block truncate text-right text-xs leading-6 text-muted"
+              aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight"
+              data-col-name={property}
+              data-moving={moving?.property === property ? '' : undefined}
+              onPointerDown={(event) => {
+                onNameDown(event, property)
+              }}
+              onPointerMove={onNameMove}
+              onPointerUp={() => {
+                endMove(true)
+              }}
+              onPointerCancel={() => {
+                endMove(false)
+              }}
+              onLostPointerCapture={() => {
+                endMove(false)
+              }}
+              onKeyDown={(event) => {
+                onNameKey(event, property)
+              }}
+              className="block w-full cursor-grab touch-none truncate text-right text-xs leading-6 text-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent data-[moving]:opacity-50"
             >
               {PROPERTY_LABELS[property]}
-            </span>
+            </button>
+            {moving !== null && moving.to === index && moving.property !== property && (
+              <span
+                aria-hidden
+                data-drop-line={
+                  moving.to < properties.indexOf(moving.property) ? 'before' : 'after'
+                }
+                className={`pointer-events-none absolute inset-y-0 z-20 w-0.5 bg-accent ${moving.to < properties.indexOf(moving.property) ? '-left-1' : '-right-1'}`}
+              />
+            )}
             <div
               role="separator"
               aria-orientation="vertical"

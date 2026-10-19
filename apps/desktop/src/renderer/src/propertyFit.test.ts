@@ -12,6 +12,7 @@ import {
   dragCap,
   extrasWidth,
   fitWidths,
+  movedColumn,
   floorWidths,
   releasedAt,
   sameWidths,
@@ -227,5 +228,50 @@ describe('floorWidths', () => {
       due: 40,
       updated: SLOT_WIDTH.updated,
     })
+  })
+})
+
+describe('movedColumn', () => {
+  const display: Display = {
+    properties: ['labels', 'due', 'updated'],
+    order: 'key',
+    direction: 'desc',
+    widths: { due: 40 },
+  }
+
+  it('moves a property to an index, and by a step, keeping the widths and the rest', () => {
+    expect(movedColumn(display, 'updated', { to: 0 })).toEqual({
+      ...display,
+      properties: ['updated', 'labels', 'due'],
+    })
+    expect(movedColumn(display, 'labels', { to: 2 })?.properties).toEqual([
+      'due',
+      'updated',
+      'labels',
+    ])
+    expect(movedColumn(display, 'due', { step: -1 })?.properties).toEqual([
+      'due',
+      'labels',
+      'updated',
+    ])
+    expect(movedColumn(display, 'due', { step: 1 })?.properties).toEqual([
+      'labels',
+      'updated',
+      'due',
+    ])
+  })
+
+  it('does nothing past either end, to its own place, or for a property that is not shown', () => {
+    expect(movedColumn(display, 'labels', { step: -1 })).toBeUndefined()
+    expect(movedColumn(display, 'updated', { step: 1 })).toBeUndefined()
+    expect(movedColumn(display, 'due', { to: 1 })).toBeUndefined()
+    expect(movedColumn(display, 'due', { to: 3 })).toBeUndefined()
+    expect(movedColumn(display, 'sprint', { to: 0 })).toBeUndefined()
+  })
+
+  it('does not change the display it was given', () => {
+    const before = structuredClone(display)
+    movedColumn(display, 'updated', { to: 0 })
+    expect(display).toEqual(before)
   })
 })

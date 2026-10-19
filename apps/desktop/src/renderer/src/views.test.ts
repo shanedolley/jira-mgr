@@ -121,6 +121,13 @@ describe('viewDisplayMatches', () => {
     expect(viewDisplayMatches(saved, { ...display, widths: { updated: 72 } })).toBe(true)
   })
 
+  it('stops matching when only the order of the columns differs', () => {
+    const two = { ...display, properties: ['labels' as const, 'due' as const] }
+    const held = { ...sprint, display: two }
+    expect(viewDisplayMatches(held, two)).toBe(true)
+    expect(viewDisplayMatches(held, { ...two, properties: ['due', 'labels'] })).toBe(false)
+  })
+
   it('stops matching when the manual order differs, and only under Manual', () => {
     const manual = { ...display, order: 'manual' as const, direction: 'asc' as const }
     const held = { ...sprint, display: { ...manual, manual: ['P-2', 'P-1'] } }
