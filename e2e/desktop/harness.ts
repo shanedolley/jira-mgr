@@ -431,11 +431,24 @@ export async function peekRow(row: Locator) {
 }
 
 /**
- * Opens the issue of a Sprint page row the way a user does since #299: a double-click on the row's
- * blank space, over its issue key. A single click does nothing, and the summary and every slot
- * have a click of their own.
+ * A point on a Sprint page row's blank space: the strip above the content, at the right edge. The
+ * checkbox, status dot, key, summary and every slot take the pointer, so the row button under the
+ * content gets only the clicks that land here.
  */
-export const openSprintRow = (row: Locator) => row.dblclick({ position: { x: 60, y: 16 } })
+export async function sprintBlank(row: Locator) {
+  const box = await row.boundingBox()
+  if (box === null) throw new Error('the row is not drawn')
+  return { x: box.width - 4, y: 2 }
+}
+
+/**
+ * Opens the issue of a Sprint page row the way a user does since #299: a double-click on the row's
+ * blank space. A single click does nothing, and the key, summary and every slot have a click of
+ * their own (the key peeks the issue).
+ */
+export async function openSprintRow(row: Locator) {
+  await row.dblclick({ position: await sprintBlank(row) })
+}
 
 /** Moves an issue to another status in the fake Jira, as if someone else did. The next refetch sees it. */
 export const moveIssue = (

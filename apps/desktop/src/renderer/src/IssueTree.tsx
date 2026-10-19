@@ -396,7 +396,8 @@ export function IssueTree({
       if (detail > 1 && armed.current !== null) return
       // The click also focuses the Tree, the nearest focusable ancestor of the row.
       const next = clickRow(rows, state, id, onChevron, select, peek)
-      // A click on blank row space changes nothing; one on the key peeks, and a stale state must not undo a hover.
+      // A click on blank row space changes nothing; one on the key peeks. A stale state must not
+      // undo a hover.
       if (next !== state) {
         onChange({
           ...next,

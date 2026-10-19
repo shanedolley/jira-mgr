@@ -640,9 +640,11 @@ export function moveActive(
  * A click on a row. Hover already made the issue row active (`hoverRow`), so a click on blank row
  * space neither activates it nor opens the Peek: the same `state` comes back. A click on a chevron
  * expands or collapses the row, and so does a click on a header or chip. With `select`, a click on
- * a checkable issue row checks it instead: `toggle` flips it (its checkbox, or Cmd+click) and `range` adds every
- * checkable row from the anchor to it (Shift+click), the anchor being the active issue when none is
- * set. A click on an issue's key (`peek`) opens the Peek on it, as `o` does. These clicks also name their row active, for a click that lands before the hover rendered.
+ * a checkable issue row checks it instead: `toggle` flips it (its checkbox, or Cmd+click) and
+ * `range` adds every checkable row from the anchor to it (Shift+click), the anchor being the
+ * active issue when none is set. A click on an issue's key (`peek`) with no `select` opens the Peek
+ * on it, as `o` does. These clicks also name their row active, for a click that lands before the
+ * hover rendered.
  */
 export function clickRow(
   rows: readonly TreeRow[],
@@ -663,7 +665,7 @@ export function clickRow(
   }
   if (onChevron || row.kind !== 'issue') return row.expandable ? toggle(row, active) : active
   // A click on the issue key peeks the issue, as `o` does.
-  if (peek) return { ...active, peekOpen: true }
+  if (peek && select === undefined) return { ...active, peekOpen: true }
   return state
 }
 

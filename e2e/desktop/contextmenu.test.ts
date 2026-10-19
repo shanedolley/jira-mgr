@@ -15,6 +15,7 @@ import {
   refuseNextEdit,
   releaseEdit,
   SITE,
+  sprintBlank,
 } from './harness.js'
 
 let app: ElectronApplication
@@ -215,8 +216,8 @@ test('opens the same menu on a Sprint page row and returns focus to that row', a
   await expect(sprintPage()).toBeVisible()
   const row = sprintPage().getByRole('button', { name: /^PSAPAC-4\b/ })
 
-  // Over the issue key, which takes no click of its own: the summary button covers the middle.
-  await row.click({ button: 'right', position: { x: 60, y: 16 } })
+  // On the row's blank space: the key, summary and slots take the pointer.
+  await row.click({ button: 'right', position: await sprintBlank(row) })
   await expect(menu()).toBeVisible()
   await expect(menu()).toHaveAccessibleName('Actions for PSAPAC-4')
   expect(await entries()).toEqual(ALL)

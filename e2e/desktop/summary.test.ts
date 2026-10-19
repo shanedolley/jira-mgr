@@ -104,7 +104,7 @@ test('Enter saves at once, records an undo and returns focus to the Tree', async
 
 test('a double-click on blank row space opens the page and no editor', async () => {
   await select()
-  await row().locator('.tree-key').dblclick()
+  await row().getByRole('img').first().dblclick()
   await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
   await window.waitForTimeout(900)
   await expect(dialog()).toHaveCount(0)
