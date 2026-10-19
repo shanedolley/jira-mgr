@@ -4,13 +4,6 @@
   "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449165",
   "key": "PSAPAC-3066",
   "fields": {
-    "comment": {
-      "comments": [],
-      "self": "https://engineering-collibra.atlassian.net/rest/api/3/issue/1449165/comment",
-      "maxResults": 0,
-      "total": 0,
-      "startAt": 0
-    },
     "customfield_21785": 1.57,
     "summary": "Attend the Data Domain Owners forums to preview the new UI",
     "issuetype": {

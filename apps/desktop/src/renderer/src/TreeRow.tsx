@@ -511,10 +511,12 @@ export function TimeCell({
 /**
  * The Comments property in a fixed slot: a chat bubble with the issue's comment count as a badge on
  * its top right, the bubble alone at 0 and while the count is not loaded (the loads ask Jira for it
- * only while this property is on). A click opens the Comments modal. On the Sprint page the
- * slot is a button beside the row's own (Slot, which Enter and Space press natively). In the Tree
- * the row reads the click as it reads the Logged slot's (`data-edit`): it activates the row and
- * opens no Peek, and a Shift+click checks a range instead.
+ * only while this property is on); a count not loaded yet draws the bubble dimmer than 0 does. A
+ * click opens the Comments modal. On the Sprint page the slot is a button beside the row's own
+ * (Slot, which Enter and Space press natively). In the Tree the row reads the click as it reads the
+ * Logged slot's (`data-edit`): it activates the row and opens no Peek, and a Shift+click checks a
+ * range instead. The Tree's span cannot take focus, so it is no button and has no name of its own:
+ * the row's name carries the count, and the issue menu's Comments item is the keyboard's way in.
  */
 export function CommentsCell({ issue, always }: { issue: Issue; always: boolean }) {
   const open = useOpenComments()
@@ -523,7 +525,6 @@ export function CommentsCell({ issue, always }: { issue: Issue; always: boolean 
   const shared = {
     'data-prop': 'comments',
     title: name,
-    'aria-label': name,
     style: colWidth('comments'),
     className: `flex shrink-0 items-center justify-end pr-2 text-xs text-muted ${open === null ? '' : 'cursor-pointer rounded hover:bg-line'}`,
   }
@@ -531,7 +532,8 @@ export function CommentsCell({ issue, always }: { issue: Issue; always: boolean 
     <span aria-hidden className="relative inline-flex size-4 items-center justify-center">
       <svg
         viewBox="0 0 16 16"
-        className="size-4"
+        data-unloaded={count === undefined ? '' : undefined}
+        className={`size-4 ${count === undefined ? 'opacity-40' : ''}`}
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
@@ -555,6 +557,7 @@ export function CommentsCell({ issue, always }: { issue: Issue; always: boolean 
   return always ? (
     <Slot
       {...shared}
+      aria-label={name}
       onClick={() => {
         open(issue)
       }}
@@ -564,7 +567,6 @@ export function CommentsCell({ issue, always }: { issue: Issue; always: boolean 
   ) : (
     <span
       {...shared}
-      role="button"
       data-edit="comments"
       onClick={(event) => {
         if (!event.shiftKey) open(issue)

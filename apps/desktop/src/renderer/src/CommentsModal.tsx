@@ -1,5 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 
 import type { CurrentUser } from '../../shared/ipc'
 import { CommentsSection } from './CommentsSection'
@@ -22,6 +22,7 @@ interface CommentsModalProps {
 export function CommentsModal({ issue, me, onClose, returnFocus }: CommentsModalProps) {
   const titleId = useId()
   const [notice, setNotice] = useState<Notice | null>(null)
+  const content = useRef<HTMLDivElement>(null)
   return (
     <Modal
       titleId={titleId}
@@ -29,15 +30,20 @@ export function CommentsModal({ issue, me, onClose, returnFocus }: CommentsModal
       returnFocus={returnFocus}
       className="w-[min(40rem,calc(100vw-2rem))]"
     >
-      <div className="space-y-3 p-5">
+      <div ref={content} className="space-y-3 p-5">
         <h2 id={titleId} className="text-base font-semibold">
           Comments on {issue.key}: {issue.summary}
         </h2>
         <CommentsSection
           issueKey={issue.key}
           me={me}
-          // An edit that ends keeps focus in the dialog; the box closing it is the way out.
-          onLeave={() => undefined}
+          // A comment edit that ends (saved, cancelled or discarded) leaves its editor, so focus
+          // goes to the new-comment box rather than to the body. The box closing the modal is the way out.
+          onLeave={() => {
+            content.current
+              ?.querySelector<HTMLElement>('[role="textbox"][aria-label="New comment"]')
+              ?.focus()
+          }}
           onBoxLeave={onClose}
           onNotice={setNotice}
           focusBox

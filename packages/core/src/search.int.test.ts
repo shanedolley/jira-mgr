@@ -549,6 +549,26 @@ describe('getIssue', () => {
     expect(Object.hasOwn(issue, 'description')).toBe(true)
   })
 
+  it('reads the total of the comment field the read asked for, and leaves the bodies out', async () => {
+    const recorded = loadFixture('issue-psapac-3066') as { fields: Record<string, unknown> }
+    const comment = {
+      comments: [{ id: '1', body: 'x' }],
+      self: 'x',
+      maxResults: 1,
+      total: 3,
+      startAt: 0,
+    }
+    serveIssue({ ...recorded, fields: { ...recorded.fields, comment } })
+    const issue = await getIssue(client, 'PSAPAC-3066')
+    expect(issue.commentCount).toBe(3)
+    expect(issue).not.toHaveProperty('comment')
+  })
+
+  it('leaves the comment count out when the recorded response holds no comment field', async () => {
+    serveIssue()
+    expect(await getIssue(client, 'PSAPAC-3066')).not.toHaveProperty('commentCount')
+  })
+
   it('maps an unknown issue to not_found', async () => {
     serveIssue({ errorMessages: ['Issue does not exist or you do not have permission.'] }, 404)
     expect((await failure(getIssue(client, 'PSAPAC-99999'))).code).toBe('not_found')

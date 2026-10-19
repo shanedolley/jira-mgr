@@ -78,15 +78,15 @@ test('the Comments chip is off by default and, once on, every issue row shows a 
   // Turning the property on reloads the list with the field, and the counts arrive.
   await expect.poll(async () => (await counts(app)).commentFieldReads.search).toBeGreaterThan(0)
   // The icon alone at 0, the number from 1, "99+" from 100; an Epic shows the slot like any issue.
-  await expect(slot(/PSAPAC-4,/)).toHaveAttribute('aria-label', 'No comments')
+  await expect(slot(/PSAPAC-4,/)).toHaveAttribute('title', 'No comments')
   await expect(badge(/PSAPAC-4,/)).toHaveCount(0)
-  await expect(slot(/PSAPAC-13,/)).toHaveAttribute('aria-label', '1 comment')
+  await expect(slot(/PSAPAC-13,/)).toHaveAttribute('title', '1 comment')
   await expect(badge(/PSAPAC-13,/)).toHaveText('1')
-  await expect(slot(/PSAPAC-1,/)).toHaveAttribute('aria-label', '2 comments')
+  await expect(slot(/PSAPAC-1,/)).toHaveAttribute('title', '2 comments')
   await expect(badge(/PSAPAC-1,/)).toHaveText('2')
-  await expect(slot(/PSAPAC-21,/)).toHaveAttribute('aria-label', '120 comments')
+  await expect(slot(/PSAPAC-21,/)).toHaveAttribute('title', '120 comments')
   await expect(badge(/PSAPAC-21,/)).toHaveText('99+')
-  await expect(slot(/PSAPAC-10,/)).toHaveAttribute('aria-label', 'No comments')
+  await expect(slot(/PSAPAC-10,/)).toHaveAttribute('title', 'No comments')
   await expect(item(/PSAPAC-1,/)).toHaveAttribute('aria-label', /, 2 comments/)
 })
 
@@ -169,7 +169,7 @@ test('posting with Cmd+Enter adds the comment and the badge follows at once', as
   await releaseEdit(app)
   await expect(dialog.getByText('Booked it')).toHaveCount(1)
   await expect(badge(/PSAPAC-13,/)).toHaveText('2')
-  await expect(slot(/PSAPAC-13,/)).toHaveAttribute('aria-label', '2 comments')
+  await expect(slot(/PSAPAC-13,/)).toHaveAttribute('title', '2 comments')
 })
 
 test('the author edits and deletes their own comment, and the badge follows a delete', async () => {
@@ -199,6 +199,27 @@ test('the author edits and deletes their own comment, and the badge follows a de
   await releaseEdit(app)
   await expect.poll(async () => (await counts(app)).applied).toBe(2)
   await expect(badge(/PSAPAC-1,/)).toHaveText('1')
+})
+
+test('after a comment edit is saved or cancelled, focus goes to the comment box, not the body', async () => {
+  await open()
+  await slot(/PSAPAC-1,/).click()
+  const dialog = modal('PSAPAC-1', 'Kick off the engagement')
+  await dialog.getByRole('button', { name: 'Edit comment' }).click()
+  const editor = dialog.getByRole('textbox', { name: 'Comment by Test User' })
+  await expect(editor).toBeFocused()
+  await window.keyboard.press('Escape')
+  await expect(box(dialog)).toBeFocused()
+
+  await dialog.getByRole('button', { name: 'Edit comment' }).click()
+  await expect(editor).toBeFocused()
+  await window.keyboard.press('End')
+  await window.keyboard.type('!')
+  await window.keyboard.press(`${MOD}+Enter`)
+  await expect.poll(writes).toBe(1)
+  await releaseEdit(app)
+  await expect(dialog.getByText('My first comment!')).toBeVisible()
+  await expect(box(dialog)).toBeFocused()
 })
 
 test('a draft survives closing and reopening, and Esc over a draft asks before discarding', async () => {

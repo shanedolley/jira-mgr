@@ -25,6 +25,7 @@ const ALL = [
   'priority',
   'estimate',
   'logWork',
+  'comments',
   'related',
   'copy',
   'openInJira',
@@ -33,7 +34,7 @@ const ALL = [
 ]
 
 describe('the right-click menu items', () => {
-  it('list the 18 actions of a Story, Task or Bug in order', () => {
+  it('list the 19 actions of a Story, Task or Bug in order', () => {
     for (const type of ['Story', 'Task', 'Bug']) expect(ids(issue(type))).toEqual(ALL)
   })
 
@@ -65,6 +66,7 @@ describe('the right-click menu items', () => {
       priority: 'P',
       estimate: 'Shift+E',
       logWork: 'W',
+      comments: undefined,
       related: undefined,
       copy: undefined,
       openInJira: undefined,

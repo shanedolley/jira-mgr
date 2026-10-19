@@ -1116,6 +1116,9 @@ export function Shell({ session }: { session: Session }) {
       case 'logWork':
         openLog(issue)
         break
+      case 'comments':
+        openComments(issue)
+        break
       case 'related':
         onPage(key, '[aria-label="Add link"]', (button) => {
           button.click()

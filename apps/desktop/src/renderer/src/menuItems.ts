@@ -22,6 +22,7 @@ export type MenuItemId =
   | 'priority'
   | 'estimate'
   | 'logWork'
+  | 'comments'
   | 'related'
   | 'copy'
   | 'openInJira'
@@ -30,7 +31,7 @@ export type MenuItemId =
 
 /** The items that go to the Shell as an action. The rest open a submenu with their own control. */
 export type MenuAction =
-  'open' | 'logWork' | 'related' | 'copy' | 'openInJira' | 'comment' | 'delete'
+  'open' | 'logWork' | 'comments' | 'related' | 'copy' | 'openInJira' | 'comment' | 'delete'
 
 export interface MenuItem {
   id: MenuItemId
@@ -63,6 +64,7 @@ const DEFINITIONS: readonly Definition[] = [
   { id: 'priority', label: 'Priority', group: 1 },
   { id: 'estimate', label: 'Original estimate', group: 1, rule: 'estimates' },
   { id: 'logWork', label: 'Log work', group: 2, rule: 'estimates' },
+  { id: 'comments', label: 'Comments', group: 2 },
   { id: 'related', label: 'Related issues', group: 2 },
   { id: 'copy', label: 'Copy', group: 2 },
   { id: 'openInJira', label: 'Open in Jira', group: 2 },

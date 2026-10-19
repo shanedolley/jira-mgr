@@ -380,6 +380,7 @@ export function IssueMenu({ issue, issues, me, x, y, open, onRun, onClose }: Iss
         return <RenameItem issue={issue} shortcut={item.key} onDone={onClose} />
       case 'open':
       case 'logWork':
+      case 'comments':
       case 'related':
       case 'copy':
       case 'openInJira':

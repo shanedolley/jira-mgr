@@ -92,6 +92,7 @@ const ALL = [
   'Priority|P',
   'Original estimate|⇧E',
   'Log work|W',
+  'Comments|',
   'Related issues|',
   'Copy|',
   'Open in Jira|',
@@ -250,6 +251,7 @@ test('opens on an Epics page row, listing what an Epic allows', async () => {
     'Rename',
     'Labels',
     'Priority',
+    'Comments',
     'Related issues',
     'Copy',
     'Open in Jira',
@@ -515,6 +517,24 @@ for (const press of ['ContextMenu', 'Shift+F10']) {
     await expect(tree()).toBeFocused()
   })
 }
+
+test('the Comments item, reached by Shift+F10, opens the Comments modal on the row and Esc returns to the Tree', async () => {
+  await open()
+  await select(/PSAPAC-13,/)
+  await window.keyboard.press('Shift+F10')
+  await expect(menu()).toHaveAccessibleName('Actions for PSAPAC-13')
+  await entry('Comments').focus()
+  await window.keyboard.press('Enter')
+
+  const dialog = window.getByRole('dialog', { name: 'Comments on PSAPAC-13: Book the kickoff' })
+  await expect(menu()).toHaveCount(0)
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Seeded note 1')).toBeVisible()
+  await expect(dialog.getByRole('textbox', { name: 'New comment' })).toBeFocused()
+  await window.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+})
 
 test('Shift+F10 on a focused Sprint page row opens its menu', async () => {
   await joinSprint(app, ['PSAPAC-4', 'PSAPAC-13'], 5)
