@@ -281,6 +281,13 @@ describe('the Comments slot', () => {
     expect(rowName(row({ commentCount: 0 }), ['comments'])).not.toContain('comment')
   })
 
+  it('names the comments where the Column order puts them', () => {
+    const some = row({ commentCount: 3, timeSpentSeconds: 1800, dueDate: '2026-10-14' })
+    expect(rowName(some, ['comments', 'logged', 'due'])).toMatch(
+      /, 3 comments, logged 30m, due 2026-10-14$/,
+    )
+  })
+
   it('draws in the Properties strip in row order, after Remaining %', () => {
     const { issue } = (
       row({ commentCount: 2, labels: [], sprints: [] }) as { node: { issue: Issue } }

@@ -97,13 +97,13 @@ export function rowName(
           if (property === 'sprint') {
             return sprint === undefined ? [] : [`sprint ${sprintTitle(sprint)}`]
           }
+          if (property === 'comments') {
+            return (issue.commentCount ?? 0) > 0 ? [commentsName(issue.commentCount)] : []
+          }
           if (!isTime(property)) return []
           const value = timeValue(issue, property)
           return value === null ? [] : [`${TIME_NAMES[property].toLowerCase()} ${value}`]
         }),
-        ...(properties.includes('comments') && (issue.commentCount ?? 0) > 0
-          ? [commentsName(issue.commentCount)]
-          : []),
         ...(progress === undefined ? [] : [progressText(progress)]),
       ].join(', ')
     }
