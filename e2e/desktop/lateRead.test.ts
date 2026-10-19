@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, notices, releaseEdit, releaseUpload } from './harness.js'
+import { counts, launch, logIn, notices, peekRow, releaseEdit, releaseUpload } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -34,7 +34,7 @@ async function start(env: Record<string, string>) {
 
 /** Creates a Task under the Epic PSAPAC-10 (C over an Epic starts a Story under it) and lets the fake Jira answer the create. */
 async function createTask(summary: string) {
-  await item(/PSAPAC-10,/).click()
+  await peekRow(item(/PSAPAC-10,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('c')
   await dialog().getByLabel('Summary').fill(summary)
@@ -84,7 +84,7 @@ test('no second toast when the second read finds nothing new', async () => {
 
 test('the second read is reported even when the uploads outlast it', async () => {
   await start({ JM_E2E_LATE_AUTOMATION_MS: '600', JM_E2E_LATE_READ_MS: '1500' })
-  await item(/PSAPAC-10,/).click()
+  await peekRow(item(/PSAPAC-10,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('c')
   await dialog().getByLabel('Summary').fill('Book the workshop')

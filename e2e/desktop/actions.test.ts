@@ -4,7 +4,16 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { SITE, counts, launch, logIn, notices, refuseNextEdit, releaseEdit } from './harness.js'
+import {
+  counts,
+  launch,
+  logIn,
+  notices,
+  peekRow,
+  refuseNextEdit,
+  releaseEdit,
+  SITE,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -35,7 +44,7 @@ async function open() {
 
 /** Makes the row active, then closes the Peek the click opened: the state a letter starts from. */
 async function select(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -134,7 +143,7 @@ test('Y copies the issue key and U copies its link on the configured site', asyn
 
 test('Copy key and Copy link in the Peek copy for its issue', async () => {
   await open()
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await expect(peek()).toBeVisible()
   await clearClipboard()
 
@@ -152,7 +161,7 @@ async function narrowestPeekHeader(font?: string) {
   if (font !== undefined) {
     await window.addStyleTag({ content: `* { font-family: ${font} !important }` })
   }
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await expect(peek()).toBeVisible()
   const header = peek().locator('.app-drag')
   await expect(header.getByRole('button')).toHaveCount(5)
@@ -308,9 +317,10 @@ test('the + on a Customer header opens create with that Customer, without toggli
   await open()
   const header = item(/^Beta Ltd, 5 issues$/)
   await expect(header).toHaveAttribute('aria-expanded', 'true')
-  const active = await tree().getAttribute('aria-activedescendant')
 
   await header.hover()
+  // The hovered header is the active row.
+  await expect(header).toHaveAttribute('data-active', 'true')
   await header.getByRole('button', { name: 'Add issue to Beta Ltd' }).click()
   await expect(dialog()).toBeVisible()
   await expect(dialog().getByRole('button', { name: 'Customer: Beta Ltd' })).toBeVisible()
@@ -320,7 +330,7 @@ test('the + on a Customer header opens create with that Customer, without toggli
   await expect(dialog()).toHaveCount(0)
   // The click did not collapse the group nor move the active row, and focus is back on the Tree.
   await expect(header).toHaveAttribute('aria-expanded', 'true')
-  expect(await tree().getAttribute('aria-activedescendant')).toBe(active)
+  await expect(header).toHaveAttribute('data-active', 'true')
   await expect(tree()).toBeFocused()
 })
 

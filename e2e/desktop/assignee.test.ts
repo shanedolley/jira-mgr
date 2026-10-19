@@ -13,6 +13,8 @@ import {
   logIn,
   moveIssue,
   notices,
+  openSprintRow,
+  peekRow,
   refuseKeys,
   releaseEdit,
 } from './harness.js'
@@ -152,7 +154,7 @@ test('a second click on the avatar closes the list and does not open it again', 
 
 test('a click on the avatar selects no text, keeps the checked rows and arms no double-click', async () => {
   await open()
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('x')
   await expect(item(/PSAPAC-2,/)).toHaveAttribute('aria-checked', 'true')
@@ -170,7 +172,7 @@ test('a click on the avatar selects no text, keeps the checked rows and arms no 
 
 test('Shift+click on the avatar checks a range and opens no list', async () => {
   await open()
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await window.keyboard.press('Escape')
   await avatar(/PSAPAC-4,/).click({ modifiers: ['Shift'] })
 
@@ -181,7 +183,7 @@ test('Shift+click on the avatar checks a range and opens no list', async () => {
 
 test('A opens the list on the active row, and arrows and Enter choose by keyboard alone', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -313,9 +315,7 @@ test('the Sprint page rows offer the same list, named by assignee, and still ope
   expect(await assigneeOf('PSAPAC-3')).toBeNull()
 
   // The row button still opens the issue.
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-13 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-13 / }))
   await expect(issuePage()).toBeVisible()
 })
 
@@ -390,17 +390,15 @@ test('holds its layout with a wide font on the Sprint page: the avatar button cl
   await openSprint()
   await window.addStyleTag({ content: '* { font-family: Verdana, sans-serif !important }' })
 
-  // The button sits inside its row, left of the pencil, in every row.
+  // The button sits inside its row, in every row.
   const overlaps = await sprintPage().evaluate((page) =>
     [...page.querySelectorAll('li[data-issue-key]')].flatMap((row) => {
       const button = row.querySelector('[data-pick=assignee]')
-      const pencil = row.querySelector('[aria-label^="Edit summary of"]')
-      if (button === null || pencil === null) return ['row without its parts']
+      const summary = row.querySelector('[aria-label^="Edit summary of"]')
+      if (button === null || summary === null) return ['row without its parts']
       const box = button.getBoundingClientRect()
       const edge = row.getBoundingClientRect()
-      return box.right > pencil.getBoundingClientRect().left + 0.5 ||
-        box.right > edge.right ||
-        box.left < edge.left
+      return box.right > edge.right || box.left < edge.left
         ? [row.getAttribute('data-issue-key') ?? '']
         : []
     }),

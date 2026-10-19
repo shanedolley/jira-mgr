@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { SITE, counts, launch, logIn, releaseEdit } from './harness.js'
+import { counts, launch, logIn, peekRow, releaseEdit, SITE } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -36,7 +36,7 @@ test('logs in to the layout and logs out again', async () => {
   await expect(row).toBeVisible()
   await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
 
-  await row.click()
+  await peekRow(row)
   const detail = window.getByRole('complementary', { name: 'Peek' })
   await expect(detail.getByRole('heading', { name: 'Fix the export timeout' })).toBeVisible()
   await expect(detail.getByText('PSAPAC-3')).toBeVisible()
@@ -54,7 +54,7 @@ test('logs in to the layout and logs out again', async () => {
 
 test('updates a summary before Jira answers, and restores it when Jira refuses', async () => {
   await logIn(window)
-  await window.getByRole('treeitem', { name: /Migrate the dashboards/ }).click()
+  await peekRow(window.getByRole('treeitem', { name: /Migrate the dashboards/ }))
   const detail = window.getByRole('complementary', { name: 'Peek' })
   // The Peek reads the description once it has held still on the row, before the edit below.
   await expect.poll(async () => (await counts(app)).issueReads).toEqual(['PSAPAC-4'])

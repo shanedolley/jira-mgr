@@ -28,8 +28,13 @@ const issuePage = () => window.getByRole('region', { name: 'Issue page' })
 const properties = () => window.getByRole('complementary', { name: 'Properties' })
 const showSidebar = () => window.getByRole('button', { name: 'Show sidebar' })
 
-/** Clicks the left of a row: at a narrow width the Peek card covers its right half. */
-const pick = (name: RegExp) => item(name).click({ position: { x: 100, y: 10 } })
+/** Hovers the left of a row and peeks it: at a narrow width the Peek card covers its right half. */
+async function pick(name: RegExp) {
+  await window.mouse.move(2, 2)
+  await item(name).hover({ position: { x: 100, y: 10 } })
+  await tree().focus()
+  await window.keyboard.press('o')
+}
 
 async function open() {
   await logIn(window)

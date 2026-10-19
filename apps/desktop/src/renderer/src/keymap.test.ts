@@ -130,6 +130,37 @@ describe('the letter shortcuts', () => {
   })
 })
 
+describe('the peek and open keys', () => {
+  it('map O to the Peek and Shift+O to the issue page, in either case', () => {
+    expect(resolveKey(key('o'), scoped)).toBe('peek')
+    // A Caps Lock letter arrives uppercase with no Shift.
+    expect(resolveKey(key('O'), scoped)).toBe('peek')
+    expect(resolveKey(key('O', { shiftKey: true }), scoped)).toBe('openPage')
+    expect(resolveKey(key('o', { shiftKey: true }), scoped)).toBe('openPage')
+  })
+
+  it('give O and Shift+O the same guards as the letters', () => {
+    for (const shiftKey of [false, true]) {
+      const press = (extra: Partial<KeyEvent> = {}) => key('o', { shiftKey, ...extra })
+      expect(resolveKey(press(), nowhere)).toBeNull()
+      expect(resolveKey(press(), null)).toBeNull()
+      for (const own of ['input', 'textarea', 'dialog', '[popover]', '[role="listbox"]']) {
+        expect(resolveKey(press(), inside(SCOPE, own))).toBeNull()
+      }
+      for (const extra of [
+        { metaKey: true },
+        { ctrlKey: true },
+        { altKey: true },
+        { repeat: true },
+        { isComposing: true },
+        { defaultPrevented: true },
+      ]) {
+        expect(resolveKey(press(extra), scoped)).toBeNull()
+      }
+    }
+  })
+})
+
 describe('the filter key', () => {
   it('answers to / from anywhere that is not a field, picker or dialog', () => {
     expect(resolveKey(key('/'), scoped)).toBe('filter')
@@ -307,6 +338,8 @@ describe('keyOf', () => {
     expect(keyOf('parent')).toBe('Shift+P')
     expect(keyOf('estimate')).toBe('Shift+E')
     expect(keyOf('sprint')).toBe('Shift+C')
+    expect(keyOf('peek')).toBe('O')
+    expect(keyOf('openPage')).toBe('Shift+O')
     expect(keyOf('openInJira')).toBeUndefined()
   })
 })

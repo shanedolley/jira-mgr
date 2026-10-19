@@ -13,6 +13,8 @@ import {
   logIn,
   moveIssue,
   notices,
+  openSprintRow,
+  peekRow,
   releaseEdit,
   showEverything,
 } from './harness.js'
@@ -149,7 +151,7 @@ test('a click on the slot selects no text and arms no double-click', async () =>
 
 test('P opens the same list on the active row, and arrows and Enter choose', async () => {
   await open()
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -360,9 +362,7 @@ test('a Sprint page row draws a priority slot, empty for Medium, that opens the 
   await expect(issuePage()).toHaveCount(0)
 
   // The row button still opens the issue.
-  await sprintPage()
-    .getByRole('button', { name: /^PSAPAC-13 / })
-    .click()
+  await openSprintRow(sprintPage().getByRole('button', { name: /^PSAPAC-13 / }))
   await expect(issuePage()).toBeVisible()
 })
 
@@ -468,25 +468,24 @@ test('holds its layout with a wide font: the Sprint page slot keeps 16px, clears
 const rowFit = () =>
   sprintPage().evaluate((page) =>
     [...page.querySelectorAll('li[data-issue-key]')].map((row) => {
-      const summary = row.querySelector('span.truncate')?.getBoundingClientRect()
+      const summary = row.querySelector('[data-summary]')?.getBoundingClientRect()
       const key = row.querySelector('span.font-mono')?.getBoundingClientRect()
       // The assignee slot, which holds an unassigned row's dotted circle too: only a person's avatar carries `data-avatar`.
       const avatar = row.querySelector('[data-pick=assignee]')?.getBoundingClientRect()
       const slots = [...row.querySelectorAll('[data-props] > [data-prop]')]
       const lastSlot = slots.at(-1)?.getBoundingClientRect()
-      const pencil = row.querySelector('[aria-label^="Edit summary of"]')?.getBoundingClientRect()
+      const edge = row.getBoundingClientRect()
       return {
         key: row.getAttribute('data-issue-key'),
         summary: summary?.width ?? 0,
         slot: row.querySelector('[data-pick=priority]') !== null,
         // The avatar starts above the key's bottom edge, so it shares the key's line.
         firstLine: avatar !== undefined && key !== undefined && avatar.top < key.bottom,
-        // The avatar sits right of the last property slot, whichever line that slot is on, and left of the pencil.
+        // The avatar sits right of the last property slot, whichever line that slot is on, and inside the row.
         clear:
           avatar !== undefined &&
-          pencil !== undefined &&
           (lastSlot === undefined || avatar.left >= lastSlot.right) &&
-          avatar.right <= pencil.left,
+          avatar.right <= edge.right,
       }
     }),
   )

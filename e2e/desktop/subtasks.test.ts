@@ -12,6 +12,7 @@ import {
   logIn,
   moveIssue,
   notices,
+  peekRow,
   releaseEdit,
   showEverything,
 } from './harness.js'
@@ -52,7 +53,7 @@ async function openPage(row: RegExp, title: string) {
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
   // Subtasks show only from the Everything level.
   await showEverything(window)
-  await item(row).click()
+  await peekRow(item(row))
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('heading', { name: title })).toBeVisible()
   await expect(window.getByText('Loading subtasks')).toHaveCount(0)
@@ -142,7 +143,7 @@ test('an Epic and a Subtask offer no way to add a sub-issue', async () => {
   await expect(subtasks()).toHaveCount(0)
 
   await issuePage().getByRole('button', { name: 'Back to issues' }).click()
-  await item(/PSAPAC-12,/).click()
+  await peekRow(item(/PSAPAC-12,/))
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('heading', { name: 'Outline the sections' })).toBeVisible()
   await expect(addButton()).toHaveCount(0)

@@ -281,20 +281,6 @@ function flashRows(key: string, fields: readonly string[]) {
 /** The widths of a display that sets none, one object so the Tree's memos hold. */
 const NO_WIDTHS: PropertyWidths = {}
 
-/** The Tree's moving keys, which end a hover's claim on `C` until the pointer moves again. */
-const NAVIGATION_KEYS = new Set([
-  'j',
-  'k',
-  'arrowup',
-  'arrowdown',
-  'arrowleft',
-  'arrowright',
-  'pageup',
-  'pagedown',
-  'home',
-  'end',
-])
-
 /**
  * Sidebar, Tree and, while it is open, the Peek. The Shell owns the tree state: the filters, the
  * collapsed and revealed sets, the active row and the Peek. The rows derive from the query caches
@@ -395,8 +381,6 @@ export function Shell({ session }: { session: Session }) {
   const deleteIssue = useDeleteIssue()
   const editIssue = useEditIssue()
   const treeRef = useRef<HTMLDivElement>(null)
-  // Where the pointer last was, and whether it moved since the last Tree navigation key.
-  const pointer = useRef({ x: -1, y: -1, moved: false })
   const peekRef = useRef<HTMLElement>(null)
   const listRef = useRef<HTMLElement>(null)
   const pageRef = useRef<HTMLElement>(null)
@@ -559,9 +543,31 @@ export function Shell({ session }: { session: Session }) {
     if (!next.peekOpen) setEditingKey(null)
     const row = rows.find((r) => r.id === next.activeId)
     if (row?.kind === 'issue') {
-      setLastIssueKey(row.node.issue.key)
+      // Hover moves the active row without moving the Peek, so the Peek follows the active row
+      // only when a key moved it, the Peek just opened, or `o` asked for it.
+      if (next.peekHere || next.activeId !== activeId || (next.peekOpen && !peekOpen)) {
+        setLastIssueKey(row.node.issue.key)
+      }
       if (next.openPage) setPageKey(row.node.issue.key)
     }
+  }
+
+  /**
+   * The pointer moved over a row, which becomes active. The Peek stays on its issue. The update is
+   * flushed at once: a key or click right after the move reads the state it renders, and a stale
+   * active row would write itself back over the hover.
+   */
+  function hover(id: string) {
+    flushSync(() => {
+      setEnterPending(false)
+      setTrack((t) => ({ ...t, activeId: id }))
+    })
+  }
+
+  /** `o` on the Sprint page: the Peek shows `key`, beside the page. */
+  function peekIssue(key: string) {
+    setLastIssueKey(key)
+    setPeekOpen(true)
   }
 
   /**
@@ -757,7 +763,7 @@ export function Shell({ session }: { session: Session }) {
   function closePeek() {
     setPeekOpen(false)
     setEditingKey(null)
-    focusTree()
+    restoreFocus()
   }
 
   const peekedKey = editingKey ?? lastIssueKey
@@ -771,25 +777,14 @@ export function Shell({ session }: { session: Session }) {
 
   const canCreate = treeReady && creating === null && deleting === null && timing === null
 
-  /**
-   * The issue row under the pointer, read from CSS `:hover` when asked, so hovering stores nothing
-   * and moves neither the selection nor the Peek. A header or chip under the pointer is not one,
-   * and neither is any row once a Tree navigation key has moved the active row past a resting pointer.
-   */
-  function hoveredIssueRow() {
-    if (!pointer.current.moved) return undefined
-    const id = document.querySelector('[role="tree"] [role="treeitem"]:hover')?.id
-    return rows.find((r) => r.kind === 'issue' && rowDomId(r.id) === id)
-  }
-
-  /** Opens the create modal. `C` passes `under`, which starts the new issue under the hovered or active issue. */
+  /** Opens the create modal. `C` passes `under`, which starts the new issue under the active (hovered) issue. */
   function openCreate(under = false) {
     if (!canCreate) return
     setCreating(
       pageKey === null
         ? createContext(
             // The Tree is out of sight under the Inbox or a Sprint page, so its rows say nothing of the user's intent.
-            covered ? undefined : (hoveredIssueRow() ?? rows.find((r) => r.id === activeId)),
+            covered ? undefined : rows.find((r) => r.id === activeId),
             issues,
             under,
           )
@@ -1188,6 +1183,10 @@ export function Shell({ session }: { session: Session }) {
     const command = resolveKey(event, target)
     if (command === null) return
     switch (command) {
+      case 'peek':
+      case 'openPage':
+        // The Tree and the Sprint page act on these themselves, so one from the Peek or a page means nothing.
+        return
       case 'palette':
         event.preventDefault()
         setSearching(true)
@@ -1344,36 +1343,11 @@ export function Shell({ session }: { session: Session }) {
     const context = (event: MouseEvent) => {
       onContext(event)
     }
-    // A hover counts for `C` only once the pointer moves or the wheel turns after the last Tree
-    // navigation key, as in Linear. A row moved or scrolled by a key under a resting pointer fires
-    // neither, so a hover that navigation walked away from is not read.
-    const track = (event: PointerEvent) => {
-      if (event.clientX === pointer.current.x && event.clientY === pointer.current.y) return
-      pointer.current = { x: event.clientX, y: event.clientY, moved: true }
-    }
-    const wheeled = () => {
-      pointer.current.moved = true
-    }
-    // Only an unmodified navigation key pressed in the Tree: Cmd+K, a field's typing and a
-    // picker's arrows leave the hover alone.
-    const navigated = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey || event.altKey) return
-      if (!(event.target instanceof Element) || event.target.closest('[role="tree"]') === null) {
-        return
-      }
-      if (NAVIGATION_KEYS.has(event.key.toLowerCase())) pointer.current.moved = false
-    }
     document.addEventListener('keydown', listen)
     document.addEventListener('contextmenu', context)
-    document.addEventListener('keydown', navigated, true)
-    document.addEventListener('pointermove', track)
-    document.addEventListener('wheel', wheeled, { passive: true })
     return () => {
       document.removeEventListener('keydown', listen)
       document.removeEventListener('contextmenu', context)
-      document.removeEventListener('keydown', navigated, true)
-      document.removeEventListener('pointermove', track)
-      document.removeEventListener('wheel', wheeled)
     }
   }, [])
 
@@ -1511,6 +1485,7 @@ export function Shell({ session }: { session: Session }) {
         today={today}
         blocks={blocks}
         onChange={apply}
+        onHover={hover}
         onEditSummary={setRenaming}
         onCell={editCell}
         control={treeControl}
@@ -1745,8 +1720,8 @@ export function Shell({ session }: { session: Session }) {
           onEditingChange={(editing) => {
             setEditingKey(editing ? lastIssueKey : null)
           }}
-          onLeave={focusTree}
-          inert={listCovered}
+          onLeave={restoreFocus}
+          inert={pageOpen || inboxOpen || overview !== null}
           asideRef={peekRef}
         />
       )}
@@ -1756,7 +1731,11 @@ export function Shell({ session }: { session: Session }) {
         </div>
       )}
       {sprintId !== null && (
-        <div inert={pageOpen} className="[grid-column:2/-1] row-start-1 min-h-0">
+        // The Peek opened from the page keeps its column beside it.
+        <div
+          inert={pageOpen}
+          className={`${peekOpen ? '[grid-column:2]' : '[grid-column:2/-1]'} row-start-1 min-h-0`}
+        >
           <SprintPage
             sprintId={sprintId}
             properties={display?.properties ?? []}
@@ -1767,6 +1746,7 @@ export function Shell({ session }: { session: Session }) {
               setSprintId(null)
             }}
             onOpenIssue={setPageKey}
+            onPeekIssue={peekIssue}
             onEditSummary={setRenaming}
             onEditCell={editCell}
           />

@@ -14,6 +14,7 @@ import {
   inboxWatch,
   launch,
   logIn,
+  peekRow,
   readState,
   type InboxItem,
 } from './harness.js'
@@ -297,9 +298,7 @@ test('the arrow keys work on arrival, and Esc on a page returns to the entry it 
 test('the Inbox link shows the Inbox while an issue page is open', async () => {
   await seed()
   await open()
-  await tree()
-    .getByRole('treeitem', { name: /PSAPAC-1,/ })
-    .click()
+  await peekRow(tree().getByRole('treeitem', { name: /PSAPAC-1,/ }))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
 
@@ -347,9 +346,9 @@ const nav = () => window.getByRole('navigation', { name: 'Main' })
 const palette = () => window.getByRole('dialog', { name: 'Search issues' })
 const help = () => window.getByRole('dialog', { name: 'Keyboard shortcuts' })
 
-/** Makes a Tree row the active one and closes the Peek the click opened, so the Tree holds an active issue. */
+/** Makes a Tree row the active one and closes the Peek it opened, so the Tree holds an active issue. */
 async function activate(row: RegExp) {
-  await tree().getByRole('treeitem', { name: row }).click()
+  await peekRow(tree().getByRole('treeitem', { name: row }))
   await window.keyboard.press('Escape')
   await expect(window.getByRole('complementary', { name: 'Peek' })).toHaveCount(0)
 }

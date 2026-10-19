@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { launch, logIn, notices, readState, showEverything } from './harness.js'
+import { launch, logIn, notices, peekRow, readState, showEverything } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -194,7 +194,7 @@ test('a drop shows a line where the row lands, and a drop outside the siblings d
 
 test('Alt+Shift with Up and Down moves the focused row, announces its position and stops at the ends', async () => {
   await open()
-  await row(4).click()
+  await peekRow(row(4))
   await expect(tree()).toBeFocused()
   await window.keyboard.press('Alt+Shift+ArrowUp')
   await expect.poll(epicOrder).toEqual([13, 4, 11, 12, 3, 2, 1])
@@ -215,7 +215,7 @@ test('Alt+Shift with Up and Down moves the focused row, announces its position a
   // A row with a Subtask steps over it with the row.
   await window.keyboard.press('Alt+Shift+ArrowDown')
   await expect.poll(epicOrder).toEqual([13, 11, 12, 4, 3, 2, 1])
-  await row(1).click()
+  await peekRow(row(1))
   await window.keyboard.press('Alt+Shift+ArrowDown')
   await expect(heard()).toHaveText('PSAPAC-1 is already last among its siblings.')
 
@@ -226,7 +226,7 @@ test('Alt+Shift with Up and Down moves the focused row, announces its position a
 
 test('quick key presses on a slow machine each move the row one place', async () => {
   await open()
-  await row(1).click()
+  await peekRow(row(1))
   await expect(tree()).toBeFocused()
   await throttle(20)
   for (let i = 0; i < 3; i++) await window.keyboard.press('Alt+Shift+ArrowUp')
@@ -238,7 +238,7 @@ test('quick key presses on a slow machine each move the row one place', async ()
 
 test('Undo puts the previous order back, one move at a time', async () => {
   await open()
-  await row(4).click()
+  await peekRow(row(4))
   await window.keyboard.press('Alt+Shift+ArrowUp')
   await window.keyboard.press('Alt+Shift+ArrowUp')
   await expect.poll(epicOrder).toEqual([4, 13, 11, 12, 3, 2, 1])
@@ -261,7 +261,7 @@ test('Undo puts the previous order back, one move at a time', async () => {
 
 test('Undo puts the order back and keeps a property shown since the move', async () => {
   await open()
-  await row(4).click()
+  await peekRow(row(4))
   await window.keyboard.press('Alt+Shift+ArrowUp')
   await expect.poll(async () => (await savedDisplay())?.order).toBe('manual')
   await inDisplayMenu(async () => {
@@ -286,13 +286,13 @@ test('each saved view keeps its own manual order, and the file gains one optiona
     window.getByRole('list', { name: 'Saved views' }).getByRole('button', { name, exact: true })
 
   await open()
-  await row(4).click()
+  await peekRow(row(4))
   await window.keyboard.press('Alt+Shift+ArrowUp')
   await window.keyboard.press('Alt+Shift+ArrowUp')
   await expect.poll(epicOrder).toEqual([4, 13, 11, 12, 3, 2, 1])
   await createView('Ranked')
 
-  await row(1).click()
+  await peekRow(row(1))
   for (let i = 0; i < 5; i++) await window.keyboard.press('Alt+Shift+ArrowUp')
   await expect.poll(epicOrder).toEqual([1, 4, 13, 11, 12, 3, 2])
   await createView('Reversed')

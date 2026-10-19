@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { launch, logIn } from './harness.js'
+import { launch, logIn, peekRow } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -71,7 +71,7 @@ async function openPage(row: RegExp, title: string) {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
-  await item(row).click()
+  await peekRow(item(row))
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('heading', { name: title })).toBeVisible()
 }
@@ -81,7 +81,7 @@ test.describe('scrim and shadow', () => {
     await logIn(window)
     await expect(item(/PSAPAC-10,/)).toBeVisible()
     await expect(window.getByText('Loading Done issues:')).toBeVisible()
-    await item(/PSAPAC-2,/).click()
+    await peekRow(item(/PSAPAC-2,/))
     await window.keyboard.press('Escape')
     await expect(tree()).toBeFocused()
     await window.keyboard.press('c')
@@ -139,7 +139,7 @@ test.describe('drop zone', () => {
     await logIn(window)
     await expect(item(/PSAPAC-10,/)).toBeVisible()
     await expect(window.getByText('Loading Done issues:')).toBeVisible()
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     await expect(
       issuePage().getByRole('heading', { name: 'Kick off the engagement' }),
@@ -213,7 +213,7 @@ test.describe('drop zone', () => {
   test('the label sits on an inset dashed accent border', async () => {
     await logIn(window)
     await expect(item(/PSAPAC-10,/)).toBeVisible()
-    await item(/PSAPAC-4,/).click()
+    await peekRow(item(/PSAPAC-4,/))
     await window.keyboard.press('Enter')
     await expect(issuePage()).toBeVisible()
     await dragEnter(window.locator('body'))

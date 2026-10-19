@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { joinSprint, launch, logIn, readState, showEverything } from './harness.js'
+import { joinSprint, launch, logIn, peekRow, readState, showEverything } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -413,7 +413,7 @@ test('the Sprint page shows one header row at the widths the Tree set', async ()
 
 /** Makes the row active and closes the Peek the click opened, which leaves the Tree too narrow to draw its slots. */
 async function select(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)

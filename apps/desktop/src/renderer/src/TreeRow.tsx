@@ -8,7 +8,6 @@ import { Avatar } from './Avatar'
 import { isCellProperty, type CellProperty } from './cell'
 import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
-import { Icon, PENCIL } from './Icon'
 import { keyOf } from './keymap'
 import { useLogWork } from './logWork'
 import { ProgressPill, progressText } from './Progress'
@@ -162,22 +161,6 @@ function Pick({
       }`}
     >
       {children}
-    </span>
-  )
-}
-
-/**
- * The pencil after a row's summary, which opens the summary editor on a click. It shows under the
- * pointer and is a click target only, as `Pick` is: `E` is the keyboard's way to the same editor.
- */
-function EditPencil() {
-  return (
-    <span
-      data-edit="summary"
-      title="Edit summary (E)"
-      className="-ml-1 inline-flex shrink-0 cursor-pointer rounded p-0.5 text-muted opacity-0 hover:bg-line group-hover/row:opacity-100"
-    >
-      <Icon path={PENCIL} />
     </span>
   )
 }
@@ -758,7 +741,6 @@ function Content({
           >
             {issue.summary}
           </span>
-          <EditPencil />
           <BlockPills {...blocks} />
           {customerMismatch !== null && (
             <span
@@ -807,29 +789,26 @@ interface TreeRowProps {
   blockedBy: number
   blocking: number
   /**
-   * `toggle` is a click on the checkbox and `range` a Shift+click, which check instead of opening.
-   * `active` is a click on the status dot, which only makes the row active.
+   * `toggle` is a click on the checkbox and `range` a Shift+click, which check instead of toggling
+   * the row.
    */
   onClick: (
     id: string,
     onChevron: boolean,
-    select: 'toggle' | 'range' | 'activate' | undefined,
+    select: 'toggle' | 'range' | undefined,
     detail: number,
   ) => void
   /**
    * The issue a double-click opens, set by a first click: the row's issue, or `null` for a header,
-   * a chip, the checkbox, the status dot, the avatar, the chevron or a Shift+click, which keep
-   * their own double-click.
+   * a chip, the checkbox, the status dot, the avatar, the chevron, the summary or a Shift+click,
+   * which keep their own double-click.
    */
   onArm: (id: string | null) => void
   /** A double-click, which opens the armed issue's page as Enter does. */
   onOpen: () => void
-  /**
-   * A click that asks for the summary editor, after `onClick` has made the row active. `wait` is a
-   * second click on the summary, which a double-click may turn into a page open.
-   */
-  onEdit: (issue: Issue, wait: boolean) => void
-  /** A click on the row's status dot or avatar, after `onClick` has made the row active: the cell editor opens on `cell`. */
+  /** A single click on the summary, which asks for the summary editor. */
+  onEdit: (issue: Issue) => void
+  /** A click on the row's status dot, avatar or another cell with its own editor, which opens on `cell`. */
   onCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
   /** Done over total of the issue's children, which the row shows beside its title, as numbers so the memo holds. */
   done: number | undefined
@@ -893,42 +872,35 @@ export const TreeRow = memo(function TreeRow({
       }}
       onClick={(event) => {
         const target = event.target as Element
+        const edit = target.closest('[data-edit]') !== null
         if (event.detail === 1) {
           const own =
-            target.closest('[data-check], [data-pick], [data-chevron], [data-edit]') !== null
+            edit ||
+            target.closest('[data-check], [data-pick], [data-chevron], [data-summary]') !== null
           onArm(row.kind === 'issue' && !own && !event.shiftKey ? row.id : null)
         }
         const pick = target.closest<HTMLElement>('[data-pick]')
         const picked = pick?.dataset.pick
-        // An in-row field or a cell with its own editor makes its row active and leaves the Peek as it is.
-        // A Shift+click on the status dot or avatar checks a range instead, so it opens no editor.
-        const select =
-          target.closest('[data-check]') !== null
-            ? 'toggle'
-            : target.closest('[data-edit]') !== null
-              ? 'activate'
-              : event.shiftKey
-                ? 'range'
-                : isCellProperty(picked) && row.kind === 'issue'
-                  ? 'activate'
-                  : undefined
+        // A click on an in-row field or a cell with its own editor leaves the Tree as it is. A
+        // Shift+click on the status dot or avatar checks a range instead, so it opens no editor.
+        const check = target.closest('[data-check]') !== null
+        const select = check ? 'toggle' : !edit && event.shiftKey ? 'range' : undefined
         onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
         if (row.kind !== 'issue') return
-        const edit = summaryClick({
-          active,
-          selected,
-          detail: event.detail,
-          shiftKey: event.shiftKey,
-          onSummary: target.closest('[data-summary]') !== null,
-          onPencil: target.closest('[data-edit="summary"]') !== null,
-        })
-        if (edit !== null) onEdit(row.node.issue, edit === 'later')
-        if (select === 'activate' && pick !== null && isCellProperty(picked)) {
+        if (
+          summaryClick({
+            shiftKey: event.shiftKey,
+            onSummary: target.closest('[data-summary]') !== null,
+          })
+        ) {
+          onEdit(row.node.issue)
+        }
+        if (!check && (edit || !event.shiftKey) && pick !== null && isCellProperty(picked)) {
           onCell(row.node.issue, picked, pick)
         }
       }}
       // A double-click opens the issue its first click hit, not the row under the pointer by then:
-      // the Peek opening can move the rows between the two clicks.
+      // a header's click can move the rows between the two clicks.
       onDoubleClick={onOpen}
       data-band={row.kind === 'customer' ? '' : undefined}
       style={{

@@ -14,6 +14,7 @@ import {
   launch,
   logIn,
   notices,
+  peekRow,
   refuseNextEdit,
   releaseEdit,
   releaseReads,
@@ -54,7 +55,7 @@ async function openPage(row: RegExp, title: string) {
   await logIn(window)
   await expect(item(/PSAPAC-10,/)).toBeVisible()
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
-  await item(row).click()
+  await peekRow(item(row))
   await window.keyboard.press('Enter')
   await expect(heading(title)).toBeVisible()
   await expect(section('Activity').getByText('Loading comments')).toHaveCount(0)
@@ -150,7 +151,7 @@ test.describe('lists', () => {
     await expect(logs).toContainText('Logged 1h 30m')
 
     await issuePage().getByRole('button', { name: 'Back to issues' }).click()
-    await item(/PSAPAC-10,/).click()
+    await peekRow(item(/PSAPAC-10,/))
     await window.keyboard.press('Enter')
     await expect(heading('Customer onboarding')).toBeVisible()
     await expect(section('Worklogs')).toHaveCount(0)
@@ -292,7 +293,7 @@ test.describe('comments', () => {
     await expect(issuePage()).toHaveCount(0)
     await expect.poll(blocksUnload).toBe(true)
 
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     await expect(heading('Kick off the engagement')).toBeVisible()
     await expect(editor).toContainText('My first comment and more')
@@ -311,7 +312,7 @@ test.describe('comments', () => {
     await window.keyboard.type('Half written')
     await issuePage().getByRole('button', { name: 'Back to issues' }).click()
     await expect(issuePage()).toHaveCount(0)
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     await expect(heading('Kick off the engagement')).toBeVisible()
     await expect(section('Activity').getByRole('textbox', { name: 'New comment' })).toContainText(
@@ -338,7 +339,7 @@ test.describe('comments', () => {
   }
 
   async function reopenStory() {
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     await expect(heading('Kick off the engagement')).toBeVisible()
     await expect(
@@ -391,7 +392,7 @@ test.describe('comments', () => {
   test('stops counting the draft of a comment deleted in Jira', async () => {
     await leaveWithDraft()
     await removeComment(app, 'PSAPAC-1', 7900)
-    await item(/PSAPAC-1,/).click()
+    await peekRow(item(/PSAPAC-1,/))
     await window.keyboard.press('Enter')
     await expect(heading('Kick off the engagement')).toBeVisible()
 

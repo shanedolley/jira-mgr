@@ -10,6 +10,7 @@ import {
   dropIndicator,
   fallbackRow,
   flattenTree,
+  hoverRow,
   indexNodes,
   issuesShown,
   layoutOf,
@@ -18,6 +19,7 @@ import {
   mergeIssues,
   moveActive,
   orderStep,
+  pointerMoved,
   pruneChecked,
   rowAtOffset,
   windowRange,
@@ -665,6 +667,45 @@ describe('moveActive', () => {
     expect(move('d:P-1', press(' '), { peekOpen: true })).toMatchObject({ peekOpen: true })
   })
 
+  it('o opens the Peek on the active issue, never closes it, and asks the Shell to show that issue', () => {
+    expect(move('i:P-4', press('o'))).toMatchObject({
+      activeId: 'i:P-4',
+      peekOpen: true,
+      openPage: false,
+      peekHere: true,
+    })
+    // Already open, it stays open: Space is the toggle.
+    expect(move('i:P-4', press('o'), { peekOpen: true })).toMatchObject({
+      peekOpen: true,
+      peekHere: true,
+    })
+  })
+
+  it('O (Shift+o) opens the full page of the active issue and leaves the Peek as it was', () => {
+    expect(move('i:P-4', press('O', { shiftKey: true }))).toMatchObject({
+      activeId: 'i:P-4',
+      peekOpen: false,
+      openPage: true,
+    })
+    expect(move('i:P-4', press('O', { shiftKey: true }), { peekOpen: true })).toMatchObject({
+      peekOpen: true,
+      openPage: true,
+    })
+    expect(move('i:P-4', press('O', { shiftKey: true }))?.peekHere).toBeUndefined()
+  })
+
+  it('o and O do nothing on a header, a chip or with no active row, but are handled', () => {
+    for (const active of ['c:1', 'n:1', 'd:P-1', null]) {
+      for (const input of [press('o'), press('O', { shiftKey: true })]) {
+        expect(move(active, input)).toMatchObject({
+          activeId: active,
+          peekOpen: false,
+          openPage: false,
+        })
+      }
+    }
+  })
+
   it('Esc closes the Peek, and is left alone when it is closed', () => {
     expect(move('i:P-4', press('Escape'), { peekOpen: true })?.peekOpen).toBe(false)
     expect(move('c:1', press('Escape'), { peekOpen: true })?.peekOpen).toBe(false)
@@ -672,7 +713,7 @@ describe('moveActive', () => {
   })
 
   it('ignores keys pressed with Cmd, Ctrl or Alt', () => {
-    for (const key of ['j', 'k', 'z', 'ArrowDown', 'Enter', ' ', 'Escape']) {
+    for (const key of ['j', 'k', 'z', 'o', 'O', 'ArrowDown', 'Enter', ' ', 'Escape']) {
       expect(move('i:P-1', press(key, { metaKey: true }))).toBeNull()
       expect(move('i:P-1', press(key, { ctrlKey: true }))).toBeNull()
       expect(move('i:P-1', press(key, { altKey: true }))).toBeNull()
@@ -822,26 +863,16 @@ describe('pruneChecked', () => {
 describe('clickRow', () => {
   const rows = flattenTree(groupsOf(SAMPLE), NONE)
 
-  it('opens an issue row in the Peek and makes it active', () => {
-    expect(clickRow(rows, state(null), 'i:P-4', false)).toMatchObject({
-      activeId: 'i:P-4',
-      peekOpen: true,
-    })
+  it('does nothing on blank issue-row space: no Peek, no activation, the same state back', () => {
+    const idle = state('i:P-2')
+    expect(clickRow(rows, idle, 'i:P-4', false)).toBe(idle)
+    const open = { ...state('i:P-2'), peekOpen: true }
+    expect(clickRow(rows, open, 'i:P-4', false)).toBe(open)
   })
 
-  it('a click on an in-row field makes the row active and leaves the Peek and the checks alone', () => {
-    const closed = clickRow(rows, state(null), 'i:P-4', false, 'activate')
-    expect(closed).toMatchObject({ activeId: 'i:P-4', peekOpen: false })
-    expect(closed.checked.size).toBe(0)
-    const open = clickRow(rows, { ...state('i:P-2'), peekOpen: true }, 'i:P-4', false, 'activate')
-    expect(open).toMatchObject({ activeId: 'i:P-4', peekOpen: true })
-  })
-
-  it('a click on a cell with its own editor makes the row active and changes nothing else', () => {
-    const held = clickRow(rows, state(null), 'i:P-2', false, 'toggle')
-    const next = clickRow(rows, held, 'i:P-4', false, 'activate')
-    expect(next).toEqual({ ...held, activeId: 'i:P-4' })
-    expect(next.peekOpen).toBe(false)
+  it('does nothing for a row no longer shown', () => {
+    const idle = state('i:P-2')
+    expect(clickRow(rows, idle, 'i:gone', false)).toBe(idle)
   })
 
   it('a checkbox click checks the issue and makes it active and the anchor, without the Peek', () => {
@@ -890,11 +921,64 @@ describe('clickRow', () => {
     expect(chevron.peekOpen).toBe(false)
   })
 
-  it('makes a leaf active when its chevron is clicked, with nothing to toggle', () => {
+  it('names a leaf active when its chevron is clicked, with nothing to toggle', () => {
     const result = clickRow(rows, state(null), 'i:P-4', true)
 
     expect(result).toMatchObject({ activeId: 'i:P-4', peekOpen: false })
     expect([...result.collapsed]).toEqual([])
+  })
+})
+
+describe('hover and the keys', () => {
+  const groups = groupsOf(SAMPLE)
+  const rows = flattenTree(groups, NONE)
+  const context: MoveContext = { pageSize: 3 }
+  const key = (name: string) => moveActive(rows, state('i:P-2'), press(name), context)
+
+  it('makes a row active, whatever its kind, and leaves the Peek where it is', () => {
+    expect(hoverRow(rows, state('i:P-2'), 'i:P-4')).toBe('i:P-4')
+    expect(hoverRow(rows, state('i:P-2'), 'c:1')).toBe('c:1')
+    expect(hoverRow(rows, state('i:P-2'), 'd:P-1')).toBe('d:P-1')
+    expect(hoverRow(rows, state('i:P-2'), 'n:1')).toBe('n:1')
+  })
+
+  it('changes nothing for the active row, a row not shown or no row', () => {
+    expect(hoverRow(rows, state('i:P-2'), 'i:P-2')).toBeNull()
+    expect(hoverRow(rows, state('i:P-2'), 'i:gone')).toBeNull()
+    expect(hoverRow(rows, state('i:P-2'), null)).toBeNull()
+  })
+
+  it('lets the last input win: J and K move from the hovered row, and the pointer takes it back', () => {
+    const hovered = hoverRow(rows, state('i:P-2'), 'i:P-4')
+    expect(moveActive(rows, state(hovered), press('j'), context)?.activeId).toBe('d:P-1')
+    expect(moveActive(rows, state(hovered), press('k'), context)?.activeId).toBe('i:P-3')
+    // After a key moved the active row, the pointer hovering another row makes that one active again.
+    const keyed = key('j')?.activeId ?? null
+    expect(keyed).toBe('i:P-3')
+    expect(hoverRow(rows, state(keyed), 'i:P-6')).toBe('i:P-6')
+    // The keyed row stays active until the pointer moves: nothing hovers by itself.
+    expect(moveActive(rows, state(keyed), press('x'), context)?.activeId).toBe('i:P-3')
+  })
+
+  it('acts on the hovered row with o, O, X and Space', () => {
+    const hovered = hoverRow(rows, state('i:P-2'), 'i:P-4')
+    expect(moveActive(rows, state(hovered), press('o'), context)).toMatchObject({
+      activeId: 'i:P-4',
+      peekHere: true,
+    })
+    expect(moveActive(rows, state(hovered), press('x'), context)?.checked).toEqual(new Set(['P-4']))
+  })
+})
+
+describe('pointerMoved', () => {
+  it('counts the first position and any change of position as a move', () => {
+    expect(pointerMoved(null, { x: 10, y: 20 })).toBe(true)
+    expect(pointerMoved({ x: 10, y: 20 }, { x: 11, y: 20 })).toBe(true)
+    expect(pointerMoved({ x: 10, y: 20 }, { x: 10, y: 21 })).toBe(true)
+  })
+
+  it('does not count the same spot again, as a scroll under a still pointer sends it', () => {
+    expect(pointerMoved({ x: 10, y: 20 }, { x: 10, y: 20 })).toBe(false)
   })
 })
 

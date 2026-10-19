@@ -40,6 +40,8 @@ const text = () => row().getByText('Migrate the dashboards')
 
 /** Where on a summary the pointer lands: on its text, which the Peek's narrowing leaves in the Tree. */
 const ON_TEXT = { x: 20, y: 8 }
+/** Where on a Sprint page row's button the pointer lands over the issue key, which takes no click of its own. */
+const ON_KEY = { x: 60, y: 16 }
 
 const writes = async () => (await counts(app)).edits
 const lastBody = async () => (await counts(app)).editBodies.at(-1)
@@ -58,20 +60,21 @@ async function open() {
   await expect(window.getByText('Loading Done issues:')).toBeVisible()
 }
 
-/** Makes PSAPAC-4 the active row with its Peek open, and leaves focus in the Tree. */
+/** Makes PSAPAC-4 the active row by hovering it, and leaves focus in the Tree. */
 async function select() {
   await open()
-  await text().click({ position: ON_TEXT })
-  await expect(peek()).toBeVisible()
+  await row().hover()
   await expect(row()).toHaveAttribute('data-active', 'true')
 }
 
-test("a second click on the active row's summary opens the editor with the summary selected", async () => {
+test("a single click on a row's summary opens the editor with the summary selected", async () => {
   await select()
-  // The first click only selected the row.
   await expect(dialog()).toHaveCount(0)
 
   await text().click({ position: ON_TEXT })
+  // The click neither peeks nor opens the page.
+  await expect(peek()).toHaveCount(0)
+  await expect(issuePage()).toHaveCount(0)
   await expect(dialog()).toBeVisible()
   await expect(dialog().getByRole('heading', { name: 'Edit summary' })).toBeVisible()
   await expect(field()).toBeFocused()
@@ -101,29 +104,31 @@ test('Enter saves at once, records an undo and returns focus to the Tree', async
   await settle(2)
 })
 
-test('a double-click on the active row still opens its page and no editor', async () => {
+test('a double-click on blank row space opens the page and no editor', async () => {
   await select()
-  await text().dblclick({ position: ON_TEXT })
+  await row().locator('.tree-key').dblclick()
   await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
-  // Long enough for a second-click editor to have opened.
   await window.waitForTimeout(900)
   await expect(dialog()).toHaveCount(0)
 })
 
-test('a click on a row that is not active only selects it', async () => {
+test('a click on blank row space opens no editor and no Peek, and activates nothing', async () => {
   await select()
+  await item(/PSAPAC-3,/).hover()
   await item(/PSAPAC-3,/)
-    .getByText('Fix the export timeout')
-    .click({ position: ON_TEXT })
+    .locator('.tree-key')
+    .click()
   await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
   await window.waitForTimeout(900)
   await expect(dialog()).toHaveCount(0)
+  await expect(peek()).toHaveCount(0)
 })
 
-test('the pencil on a hovered row opens the editor, and Cancel closes it with no write', async () => {
+test('a hovered row has no pencil, and Cancel closes the editor with no write', async () => {
   await open()
   await row().hover()
-  await row().locator('[data-edit="summary"]').click()
+  await expect(row().locator('[data-edit="summary"]')).toHaveCount(0)
+  await text().click({ position: ON_TEXT })
   await expect(dialog()).toBeVisible()
   await expect(field()).toHaveValue('Migrate the dashboards')
 
@@ -191,13 +196,14 @@ test('a Customer header offers no target, and E on it opens nothing', async () =
   await open()
   const header = item('Acme, 8 issues', true)
   await expect(header.locator('[data-edit="summary"], [data-summary]')).toHaveCount(0)
-  await header.click()
+  await header.hover()
+  await expect(header).toHaveAttribute('data-active', 'true')
   await window.keyboard.press('e')
   await window.waitForTimeout(900)
   await expect(dialog()).toHaveCount(0)
 })
 
-test('the Sprint page edits a summary from its pencil and still opens an issue from its row', async () => {
+test('the Sprint page edits a summary from a click on it, and opens an issue from a double-click on its row', async () => {
   await joinSprint(app, ['PSAPAC-4', 'PSAPAC-13'], 5)
   await open()
   await window
@@ -207,38 +213,38 @@ test('the Sprint page edits a summary from its pencil and still opens an issue f
     .click()
   await expect(sprintPage()).toBeVisible()
 
-  const pencil = sprintPage().getByRole('button', { name: 'Edit summary of PSAPAC-4' })
+  const summary = sprintPage().getByRole('button', { name: 'Edit summary of PSAPAC-4' })
   const listed = sprintPage().getByRole('button', { name: /^PSAPAC-4/ })
-  await pencil.click()
+  await expect(sprintPage().locator('[data-issue-key="PSAPAC-4"] [data-edit]')).toHaveCount(0)
+  await summary.click()
   await expect(field()).toBeFocused()
   await field().fill('Migrate the dashboards in the sprint')
   await window.keyboard.press('Enter')
   await expect(dialog()).toHaveCount(0)
   await expect(listed).toHaveAccessibleName('PSAPAC-4 Migrate the dashboards in the sprint')
-  await expect(pencil).toBeFocused()
+  await expect(summary).toBeFocused()
   await settle(1)
 
-  // The row itself still opens the issue.
-  await listed.click()
+  // A double-click on the row's blank space, over its key, opens the issue.
+  await listed.dblclick({ position: ON_KEY })
   await expect(issuePage()).toBeVisible()
   await expect(dialog()).toHaveCount(0)
 })
 
-test('in a wide font the pencil stays in its row and the editor fits', async () => {
+test('in a wide font the summary stays a click target in its row and the editor fits', async () => {
   await open()
   await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
   await row().hover()
   const inside = await row().evaluate((el) => {
-    const pencil = el.querySelector('[data-edit="summary"]')?.getBoundingClientRect()
+    const summary = el.querySelector('[data-summary]')?.getBoundingClientRect()
     const box = el.getBoundingClientRect()
-    return pencil !== undefined && pencil.right <= box.right && pencil.left >= box.left
+    return summary !== undefined && summary.width > 0 && summary.right <= box.right
   })
   expect(inside).toBe(true)
-  await expect(row().locator('[data-edit="summary"]')).toBeVisible()
 
-  await row().locator('[data-edit="summary"]').click()
+  await text().click({ position: ON_TEXT })
   await field().fill('w'.repeat(255))
   const fits = await dialog().evaluate((el) => el.scrollWidth - el.clientWidth)
   expect(fits).toBe(0)

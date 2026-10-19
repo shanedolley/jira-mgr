@@ -4,7 +4,15 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, readState, releaseEdit, showEverything } from './harness.js'
+import {
+  counts,
+  launch,
+  logIn,
+  peekRow,
+  readState,
+  releaseEdit,
+  showEverything,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -78,7 +86,7 @@ const headers = async () =>
 /** Sets the priority of an issue by its picker: click the row, then P and the option's number. */
 async function setPriority(key: RegExp, option: number) {
   const { edits } = await counts(app)
-  await item(key).click()
+  await peekRow(item(key))
   await window.keyboard.press('p')
   await expect(window.getByRole('listbox', { name: 'Priority' })).toBeFocused()
   await expect(window.getByRole('option', { name: /Low/ })).toBeVisible()

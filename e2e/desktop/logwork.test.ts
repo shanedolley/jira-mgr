@@ -10,6 +10,7 @@ import {
   launch,
   logIn,
   logWork,
+  peekRow,
   refuseNextEdit,
   releaseEdit,
   showEverything,
@@ -164,7 +165,7 @@ test('keeps the modal open with the text and the error when Jira refuses', async
 
 test('W, the context menu and the palette open the same modal', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek()).toBeVisible()
 
   await window.keyboard.press('w')
@@ -208,7 +209,7 @@ test('the Sprint page offers the same target, without opening the issue', async 
 
 test('W on the issue page logs work and returns focus to the page', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
 

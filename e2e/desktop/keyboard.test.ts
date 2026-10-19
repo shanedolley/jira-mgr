@@ -10,6 +10,7 @@ import {
   logIn,
   moveIssue,
   notices,
+  peekRow,
   refuseNextEdit,
   releaseDone,
   releaseEdit,
@@ -49,7 +50,7 @@ async function open() {
 
 /** Makes the row active and shows its Peek, then closes the Peek: the state `S` starts from. */
 async function select(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -135,7 +136,7 @@ test('the palette reaches a Done issue the Tree hides, and the letters then act 
 
 test('the palette takes letters as text, and Esc closes it and returns focus', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('Meta+k')
 
@@ -238,7 +239,7 @@ test('E from the Tree edits the summary in a modal, and Cmd+Z puts the old one b
 
 test('E with focus in the Peek edits the summary in place, not in the modal', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek()).toBeVisible()
   // Focus inside the Peek, on its summary button, so the key does not come from the Tree.
   await peek().getByRole('button', { name: 'Migrate the dashboards' }).focus()
@@ -255,7 +256,7 @@ test('E with focus in the Peek edits the summary in place, not in the modal', as
 
 test('on the page the letters open the sidebar, Esc closes the picker and then leaves the page', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeFocused()
 
@@ -337,7 +338,7 @@ test('the letters do nothing with no issue selected, in a text field, with a mod
   await filter.fill('')
 
   // An issue is active, but the keys carry a modifier.
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Escape')
   for (const key of ['Alt+s', 'Control+a', 'Meta+l']) await window.keyboard.press(key)
   await nothingOpen()
@@ -442,7 +443,7 @@ test('Cmd+Z leaves native undo to a text field, and a refused edit leaves nothin
   // From the Tree it undoes. Now an edit Jira refuses: Highest is refused by the fake.
   await filter.fill('')
   await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/priority Low/)
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Escape')
   await window.keyboard.press('Meta+z')
   await settle(before + 2)
@@ -707,7 +708,7 @@ test('the header Shortcuts button opens the list, and its Close button returns f
 
 test('hovering a Peek picker shows its key as a keycap', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek()).toBeVisible()
   for (const [label, letter] of [
     ['Status', 'S'],

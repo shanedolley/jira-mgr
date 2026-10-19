@@ -5,15 +5,16 @@ import { join } from 'node:path'
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
 import {
-  SITE,
   counts,
   inboxChange,
   joinSprint,
   launch,
   logIn,
   notices,
+  peekRow,
   refuseNextEdit,
   releaseEdit,
+  SITE,
 } from './harness.js'
 
 let app: ElectronApplication
@@ -49,7 +50,7 @@ async function open() {
 
 /** Makes the row active, then closes the Peek the click opened: the state a key starts from. */
 async function select(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -98,7 +99,7 @@ const ALL = [
   'Delete|',
 ]
 
-test('right-click on a Tree row opens the menu at the pointer without selecting the row or opening the Peek', async () => {
+test('right-click on a Tree row opens the menu at the pointer, on the row the pointer made active, without opening the Peek', async () => {
   await open()
   await select(/PSAPAC-3,/)
   // The first row, so the whole menu fits below the pointer.
@@ -114,9 +115,9 @@ test('right-click on a Tree row opens the menu at the pointer without selecting 
   const shown = await menu().boundingBox()
   expect(Math.abs((shown?.x ?? 0) - x)).toBeLessThanOrEqual(1)
   expect(Math.abs((shown?.y ?? 0) - y)).toBeLessThanOrEqual(1)
-  // The selection and the Peek stay where they were.
-  await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
-  await expect(item(/PSAPAC-10,/)).toHaveAttribute('data-active', 'false')
+  // The pointer moving to the row made it active, and the Peek stays closed.
+  await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'false')
+  await expect(item(/PSAPAC-10,/)).toHaveAttribute('data-active', 'true')
   await expect(peek()).toHaveCount(0)
 
   // Esc closes it and the Tree has focus again.
@@ -141,7 +142,7 @@ test('the menu stays inside a small window when the pointer is at its edge', asy
   expect(shown?.y).toBeGreaterThanOrEqual(0)
 })
 
-test('changes a status from the menu, closes it and keeps the row active', async () => {
+test('changes a status from the menu, closes it and keeps the right-clicked row active', async () => {
   await open()
   await select(/PSAPAC-3,/)
   await item(/PSAPAC-4,/).click({ button: 'right' })
@@ -155,7 +156,7 @@ test('changes a status from the menu, closes it and keeps the row active', async
   await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/To Do/)
   await settle(1)
   await expect(tree()).toBeFocused()
-  await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
+  await expect(item(/PSAPAC-4,/)).toHaveAttribute('data-active', 'true')
 })
 
 test('sets a due date from the menu with one write', async () => {
@@ -213,7 +214,8 @@ test('opens the same menu on a Sprint page row and returns focus to that row', a
   await expect(sprintPage()).toBeVisible()
   const row = sprintPage().getByRole('button', { name: /^PSAPAC-4\b/ })
 
-  await row.click({ button: 'right' })
+  // Over the issue key, which takes no click of its own: the summary button covers the middle.
+  await row.click({ button: 'right', position: { x: 60, y: 16 } })
   await expect(menu()).toBeVisible()
   await expect(menu()).toHaveAccessibleName('Actions for PSAPAC-4')
   expect(await entries()).toEqual(ALL)

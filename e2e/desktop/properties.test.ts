@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, notices, releaseEdit } from './harness.js'
+import { counts, launch, logIn, notices, peekRow, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -45,7 +45,7 @@ const rowCentres = () =>
 
 test('the Peek spaces its property rows 32px apart, with an 8px gap before the read-only ones', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect(peek().getByRole('button', { name: 'Priority: Medium' })).toBeVisible()
 
   const rows = await rowCentres()
@@ -66,7 +66,7 @@ test('the Peek spaces its property rows 32px apart, with an 8px gap before the r
 
 test('the Peek shows a chevron on editable rows only', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   const rows = peek().locator('dl[data-issue] > div')
   await expect(rows).toHaveCount(8)
   for (const [i, chevron] of [1, 1, 1, 1, 0, 0, 0, 0].entries()) {
@@ -76,7 +76,7 @@ test('the Peek shows a chevron on editable rows only', async () => {
 
 test('the Peek shows the description in three lines at most, and reads it from the issue', async () => {
   await open()
-  await item(/PSAPAC-1,/).click()
+  await peekRow(item(/PSAPAC-1,/))
   const description = peek().getByRole('region', { name: 'Description' })
   const text = description.getByText('Agree the scope with the sponsor.')
   await expect(text).toBeVisible()
@@ -96,25 +96,25 @@ test('the Peek shows the description in three lines at most, and reads it from t
   expect(clamp.height).toBeCloseTo(clamp.line * 3, 0)
   expect(clamp.overflows).toBe(true)
 
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await expect(description.getByText('No description')).toBeVisible()
 })
 
 test('the Peek starts the timer on an issue, and offers none on an Epic', async () => {
   await open()
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await peek().getByRole('button', { name: 'Start timer' }).click()
   await expect(notices(window).getByText('Started the timer on PSAPAC-2')).toBeVisible()
   await expect(peek().getByRole('button', { name: 'Stop timer' })).toBeVisible()
 
-  await item(/PSAPAC-10,/).click()
+  await peekRow(item(/PSAPAC-10,/))
   await expect(peek().getByRole('button', { name: 'Close' })).toBeVisible()
   await expect(peek().getByRole('button', { name: /timer$/ })).toHaveCount(0)
 })
 
 test('the page asks to set an estimate, and shows Time left only once there is one', async () => {
   await open()
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('button', { name: 'Review the data model' })).toBeVisible()
 
@@ -133,7 +133,7 @@ test('the page asks to set an estimate, and shows Time left only once there is o
 
 test('the page rows sit 32px apart, and read-only rows have no chevron', async () => {
   await open()
-  await item(/PSAPAC-10,/).click()
+  await peekRow(item(/PSAPAC-10,/))
   await window.keyboard.press('Enter')
   await expect(issuePage().getByRole('button', { name: 'Customer onboarding' })).toBeVisible()
 
@@ -159,7 +159,7 @@ const reads = async () => (await counts(app)).issueReads
 
 test('the Peek reads the description once it holds still, not on each row an arrow key passes', async () => {
   await open()
-  await item(/PSAPAC-10,/).click()
+  await peekRow(item(/PSAPAC-10,/))
   await expect.poll(reads).toEqual(['PSAPAC-10'])
 
   for (let i = 0; i < 4; i++) await window.keyboard.press('ArrowDown')
@@ -173,12 +173,12 @@ test('the Peek reads the description once it holds still, not on each row an arr
 
 test('the Peek shows a row visited again from the read it already holds', async () => {
   await open()
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await expect.poll(reads).toEqual(['PSAPAC-2'])
-  await item(/PSAPAC-3,/).click()
+  await peekRow(item(/PSAPAC-3,/))
   await expect.poll(reads).toEqual(['PSAPAC-2', 'PSAPAC-3'])
 
-  await item(/PSAPAC-2,/).click()
+  await peekRow(item(/PSAPAC-2,/))
   await expect(peek().getByRole('heading', { name: 'Review the data model' })).toBeVisible()
   await window.waitForTimeout(500)
   expect(await reads()).toEqual(['PSAPAC-2', 'PSAPAC-3'])
@@ -186,7 +186,7 @@ test('the Peek shows a row visited again from the read it already holds', async 
 
 test('a read of the page that opens while an edit is in flight keeps the edit', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await expect.poll(reads).toEqual(['PSAPAC-4'])
 
   await peek().getByRole('button', { name: 'Status: In Progress' }).click()
@@ -215,7 +215,7 @@ const listbox = (name: string) => window.getByRole('listbox', { name })
 
 test('a Peek picker opens 13rem wide and leaves every property name readable', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await peek().getByRole('button', { name: 'Priority: Medium' }).click()
 
   const box = await listbox('Priority').locator('xpath=..').boundingBox()
@@ -228,7 +228,7 @@ test('a Peek picker opens 13rem wide and leaves every property name readable', a
 
 test('Priority and Labels options carry a glyph, and a check marks the chosen priority', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
 
   await peek().getByRole('button', { name: 'Priority: Medium' }).click()
   const priorities = listbox('Priority').getByRole('option')
@@ -254,7 +254,7 @@ test('Priority and Labels options carry a glyph, and a check marks the chosen pr
 /** The Peek's Priority picker, opened by ArrowDown and focused, so each case closes it with no wait after. */
 async function openPeekPriority() {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   const trigger = peek().getByRole('button', { name: /^Priority:/ })
   const listbox = window.getByRole('listbox', { name: 'Priority' })
   await trigger.focus()

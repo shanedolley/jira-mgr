@@ -356,8 +356,10 @@ export interface KeyInput {
 export interface MoveResult extends TreeState {
   /** Shift+Left or Shift+Right: the Shell sets this level, clearing the rows opened by hand. */
   level?: TreeLevel
-  /** Enter on an issue row: the Shell opens the active issue's full page. */
+  /** Enter or `O` on an issue row: the Shell opens the active issue's full page. */
   openPage: boolean
+  /** `o` on an issue row: the Shell points the Peek at the active issue, whichever it showed. */
+  peekHere?: true
 }
 
 export interface MoveContext {
@@ -488,8 +490,8 @@ function customerOf(rows: readonly TreeRow[], row: TreeRow): TreeRow {
 
 /**
  * What a key does to the Tree: the next active row, collapsed and revealed sets and Peek state,
- * or `null` for a key the Tree does not handle. `J` and `K` match in either case; every other
- * single letter belongs to D7. A key pressed with Cmd, Ctrl or Alt is never handled, so `Cmd+K`
+ * or `null` for a key the Tree does not handle. `J` and `K` match in either case, `o` and `O` differ
+ * by Shift; every other single letter belongs to D7. A key pressed with Cmd, Ctrl or Alt is never handled, so `Cmd+K`
  * and `Cmd+Z` pass through. Pure, so the table of keys is tested without a DOM.
  */
 export function moveActive(
@@ -580,6 +582,13 @@ export function moveActive(
       if (row?.kind !== 'issue') return stay()
       return stay({ ...state, peekOpen: !state.peekOpen })
     }
+    // `o` peeks the active (hovered) issue and never closes the Peek; `O` opens its page.
+    case 'o':
+    case 'O': {
+      if (row?.kind !== 'issue') return stay()
+      if (input.shiftKey) return { ...state, openPage: true }
+      return { ...state, peekOpen: true, openPage: false, peekHere: true }
+    }
     case 'x':
     case 'X':
       return checkable(row) ? stay(toggleChecked(state, row.node.issue.key)) : stay()
@@ -593,33 +602,57 @@ export function moveActive(
 }
 
 /**
- * A click on a row: the row becomes active. A click on its chevron expands or collapses it;
- * elsewhere it opens an issue row in the Peek and toggles a header or chip. With `select`, a click
- * on a checkable issue row checks it instead: `toggle` flips it (its checkbox) and `range` adds
- * every checkable row from the anchor to it (Shift+click), the anchor being the active issue when
- * none is set. Neither opens the Peek. `activate` only makes the row active: a click on an
- * in-row field (#276) or on a cell with its own editor (#267) leaves the Peek as it is.
+ * A click on a row. Hover already made the issue row active (`hoverRow`), so a click on blank row
+ * space neither activates it nor opens the Peek: the same `state` comes back. A click on a chevron
+ * expands or collapses the row, and so does a click on a header or chip. With `select`, a click on
+ * a checkable issue row checks it instead: `toggle` flips it (its checkbox) and `range` adds every
+ * checkable row from the anchor to it (Shift+click), the anchor being the active issue when none is
+ * set. These clicks also name their row active, for a click that lands before the hover rendered.
  */
 export function clickRow(
   rows: readonly TreeRow[],
   state: TreeState,
   id: string,
   onChevron: boolean,
-  select?: 'toggle' | 'range' | 'activate',
+  select?: 'toggle' | 'range',
 ): TreeState {
   const row = rows.find((r) => r.id === id)
   if (row === undefined) return state
   const active = { ...state, activeId: id }
-  if (select === 'activate') return active
   if (select !== undefined && checkable(row)) {
     if (select === 'toggle') return toggleChecked(active, row.node.issue.key)
     const current = rows.find((r) => r.id === state.activeId)
     const from = state.anchor ?? (checkable(current) ? current.node.issue.key : row.node.issue.key)
     return checkMore(active, keysBetween(rows, `i:${from}`, id), from)
   }
-  if (onChevron) return row.expandable ? toggle(row, active) : active
-  if (row.kind === 'issue') return { ...active, peekOpen: true }
-  return row.expandable ? toggle(row, active) : active
+  if (onChevron || row.kind !== 'issue') return row.expandable ? toggle(row, active) : active
+  return state
+}
+
+/** A pointer position, in client pixels. */
+export interface Point {
+  x: number
+  y: number
+}
+
+/**
+ * Whether the pointer moved. A scroll or a rebuild under a still pointer makes the browser send
+ * the pointer events again from the same spot, and those are not a move: the key that moved the
+ * active row keeps it until the pointer really moves.
+ */
+export const pointerMoved = (last: Point | null, now: Point): boolean =>
+  last?.x !== now.x || last.y !== now.y
+
+/**
+ * The row the pointer made active by moving over row `id`, or `null` when it changes nothing: no
+ * row, a row no longer shown, or the row that is already active. The Peek stays where it is.
+ */
+export function hoverRow(
+  rows: readonly TreeRow[],
+  state: TreeState,
+  id: string | null,
+): string | null {
+  return id !== null && id !== state.activeId && rows.some((r) => r.id === id) ? id : null
 }
 
 /** Where each row starts and how tall the list is. A header's slot holds its gap above it. */

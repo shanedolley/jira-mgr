@@ -11,6 +11,7 @@ import {
   logIn,
   moveIssue,
   notices,
+  peekRow,
   refuseNextEdit,
   releaseEdit,
   setEstimate,
@@ -80,7 +81,7 @@ const effective = (locator: Locator) =>
 
 /** Clicks a row, then closes the Peek the click opened, which would narrow the Tree under the width the slots need. */
 async function pick(row: RegExp) {
-  await item(row).click()
+  await peekRow(item(row))
   await expect(peek()).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
@@ -221,7 +222,7 @@ test('a refused write puts the old value back and offers Retry', async () => {
 
 test('Shift+E from the Tree focuses the field in the active row', async () => {
   await open()
-  await item(/PSAPAC-4,/).click()
+  await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Escape')
   await expect(peek()).toHaveCount(0)
   await expect(tree()).toBeFocused()
