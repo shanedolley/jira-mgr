@@ -7,6 +7,7 @@
 | [0003](0003-token-in-own-keychain-item.md) | API Token in a Keychain Item of Our Own | accepted | 2026-10-07 |
 | [0004](0004-custom-fields-resolved-by-name.md) | Custom Fields Resolved by Name | accepted | 2026-10-07 |
 | [0005](0005-tiptap-editor-with-adf-round-trip.md) | TipTap Editor With ADF Round-Trip | accepted | 2026-10-07 |
+| [0006](0006-adopt-oxlint-keep-prettier-and-vite.md) | Adopt Oxlint, Keep Prettier and Vite | proposed | 2026-10-19 |
 
 ## Adding a Record
 
