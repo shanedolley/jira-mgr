@@ -566,7 +566,7 @@ test('sends a date once when Enter is followed at once by leaving the field', as
   await due.fill('2027-02-02')
   // One task, so the blur lands before Jira's answer re-renders the field.
   await window.evaluate(`(() => {
-    const input = document.querySelector('[aria-label="Due date"]')
+    const input = document.querySelector('input[aria-label="Due date"]')
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     input.blur()
   })()`)
@@ -581,7 +581,7 @@ test('sends a second edit of the same field only once Jira has answered the firs
 
   // One task, so neither edit is replaced by Jira's answer to the other.
   await window.evaluate(`(() => {
-    const input = document.querySelector('[aria-label="Due date"]')
+    const input = document.querySelector('input[aria-label="Due date"]')
     const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
     const type = (value) => {
       set.call(input, value)
