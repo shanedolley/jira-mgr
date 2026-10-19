@@ -2,9 +2,12 @@ import type { Issue } from '@jira-mgr/core'
 import type { PropertyWidths, RowProperty } from '@jira-mgr/core/display'
 import type { SprintReport } from '@jira-mgr/core/sprints'
 import {
+  useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
   type ReactNode,
   type RefObject,
@@ -12,10 +15,20 @@ import {
 import { flushSync } from 'react-dom'
 
 import { Avatar } from './Avatar'
+import { BulkBar, type BulkBarProps } from './BulkBar'
 import type { CellProperty } from './cell'
 import { nameFade } from './ColumnHeader'
-import { resolveKey } from './keymap'
+import { keepsLetters, resolveKey } from './keymap'
 import { LoadError } from './LoadError'
+import {
+  checkAll,
+  extendBy,
+  NO_SELECTION,
+  prune,
+  rangeTo,
+  togglesCheck,
+  type Selection,
+} from './multiSelect'
 import { STATE_LABELS } from './properties'
 import { colVars, colWidth, floorWidths } from './propertyFit'
 import { SECTION_HEADING } from './Section'
@@ -28,11 +41,18 @@ import {
   percentOf,
   shareText,
   type BreakdownId,
+  type StatusGroup,
 } from './sprintView'
 import { useSprintReport } from './sprintQueries'
-import { PrioritySlot, Properties } from './TreeRow'
+import { CheckGlyph, PrioritySlot, Properties } from './TreeRow'
 import { PROPERTY_LABELS } from './TreeToolbar'
-import { pointerMoved, type Point } from './tree'
+import { clearSelection, pointerMoved, toggleChecked, type Point } from './tree'
+
+/**
+ * A slot that turns into a field in place (the estimate and Logged). A click in one is the field's;
+ * the Comments slot is a button, so Shift+click and Cmd+click on it check like anywhere on the row.
+ */
+const FIELD = '[data-edit]:not([data-edit="comments"])'
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -251,6 +271,8 @@ function ColumnNames({ properties }: { properties: readonly RowProperty[] }) {
 /** The sprint's issues, grouped by status. A double-click on a row opens its page. */
 function Issues({
   report,
+  groups,
+  checked,
   properties,
   showPriority,
   widths,
@@ -261,6 +283,10 @@ function Issues({
   onEditCell,
 }: {
   report: SprintReport
+  /** The issues by status, in the order a Shift+click range runs. */
+  groups: readonly StatusGroup[]
+  /** The keys of the checked issues. */
+  checked: ReadonlySet<string>
   properties: readonly RowProperty[]
   showPriority: boolean
   widths: PropertyWidths
@@ -272,7 +298,7 @@ function Issues({
   onEditCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
 }) {
   const { sprint, issues } = report
-  const groups = groupByStatus(issues)
+  const selecting = checked.size > 0
   return (
     <article className="min-h-0 overflow-y-auto px-8 pb-6 pt-4 text-sm leading-[22px] max-stack:min-h-auto max-stack:overflow-y-visible max-stack:px-4">
       <div
@@ -305,7 +331,8 @@ function Issues({
                       key={issue.key}
                       data-issue-key={issue.key}
                       data-active={issue.key === active}
-                      className="group/row relative data-[active=true]:bg-hover"
+                      data-checked={checked.has(issue.key) ? 'true' : undefined}
+                      className="sprint-row group/row relative data-[active=true]:bg-hover"
                     >
                       {/* The row's target, under the content: a button cannot hold the slots, so they sit beside it. A double-click, or Enter or Space on the button, opens the issue; a single click does nothing. */}
                       <button
@@ -319,13 +346,25 @@ function Issues({
                         onClick={(event) => {
                           if (event.detail === 0) onOpen(issue.key)
                         }}
-                        onDoubleClick={() => {
-                          onOpen(issue.key)
+                        onDoubleClick={(event) => {
+                          // A Shift+click or Cmd+click checks, so its double-click opens nothing.
+                          if (!event.shiftKey && !togglesCheck(event)) onOpen(issue.key)
                         }}
                         className="absolute inset-0 text-left"
                       />
                       {/* Ignores the pointer, so a click outside a slot reaches the button under it. Each slot takes it back (Slot). */}
-                      <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-2.5 pr-2.5">
+                      <div className="pointer-events-none relative flex min-h-8 items-start gap-x-2.5 py-1 pl-7 pr-2.5">
+                        {/* The page reads the click (`onClickCapture`), so this holds no handler. It shows under the pointer, on the active row and, once any row is checked, on every row. */}
+                        <Slot
+                          data-check
+                          role="checkbox"
+                          aria-checked={checked.has(issue.key)}
+                          aria-label={`Select ${issue.key}`}
+                          tabIndex={-1}
+                          className={`absolute left-1.5 top-2 flex size-4 items-center justify-center group-hover/row:opacity-100 group-data-[active=true]/row:opacity-100 ${selecting ? 'opacity-100' : 'opacity-0'}`}
+                        >
+                          <CheckGlyph checked={checked.has(issue.key)} />
+                        </Slot>
                         <Slot
                           data-pick="status"
                           title="Change status"
@@ -343,7 +382,7 @@ function Issues({
                           {...holdFade(status)}
                           className="relative flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 pr-8"
                         >
-                          <span className="w-20 shrink-0 font-mono text-xs text-muted">
+                          <span className="sprint-key w-20 shrink-0 font-mono text-xs text-muted">
                             {issue.key}
                           </span>
                           <Slot
@@ -427,12 +466,18 @@ interface SprintPageProps {
   onEditSummary: (issue: Issue) => void
   /** A click on a row's cell button: the cell editor opens the editor of `property` against `cell`. */
   onEditCell: (issue: Issue, property: CellProperty, cell: HTMLElement) => void
+  /** What the bulk bar needs beyond the page's own checked issues. */
+  bulk: Omit<BulkBarProps, 'checked' | 'onClear'>
+  /** How many issues the page has checked, so the Shell can lift its notices above the bar. */
+  onCheckedChange: (count: number) => void
 }
 
 /**
  * The page of one sprint: its issues by status beside a panel of dates, goal, counts and
  * breakdowns. Completed means the status category is Done. It shows the last copy it read at
- * once and reads again on opening. Esc and Back return to the Tree.
+ * once and reads again on opening. It holds its own checked set (`X`, `Shift+Up`, `Shift+Down`,
+ * `Cmd+A`, the gutter checkbox, `Shift+click`, `Cmd+click`), which Esc clears before it returns to
+ * the Tree, and which leaving the page drops.
  */
 export function SprintPage({
   sprintId,
@@ -447,20 +492,86 @@ export function SprintPage({
   peekOpen,
   onEditSummary,
   onEditCell,
+  bulk,
+  onCheckedChange,
 }: SprintPageProps) {
   const report = useSprintReport(sprintId)
   // The row the pointer last moved over stays active when it leaves, so `o` and `O` keep a target.
   const [active, setActive] = useState<string | null>(null)
   const pointer = useRef<Point | null>(null)
 
+  const [selection, setSelection] = useState<Selection>(NO_SELECTION)
+  // The rows in page order, across the status sections, which a range runs through.
+  const groups = useMemo(() => groupByStatus(report.data?.issues ?? []), [report.data])
+  const order = useMemo(() => groups.flatMap((g) => g.issues.map((i) => i.key)), [groups])
+  // Only the rows shown stay checked, except while a batch runs: its optimistic changes can take
+  // rows off the page that return if Jira refuses them.
+  const pruned = bulk.progress === null ? prune(order, selection) : selection
+  if (pruned !== selection) setSelection(pruned)
+  const { checked } = selection
+  useEffect(() => {
+    onCheckedChange(checked.size)
+    return () => {
+      onCheckedChange(0)
+    }
+  }, [checked.size, onCheckedChange])
+  const checkedIssues = useMemo(() => {
+    const byKey = new Map((report.data?.issues ?? []).map((i) => [i.key, i]))
+    return [...checked].flatMap((key) => byKey.get(key) ?? [])
+  }, [report.data, checked])
+
+  function clearChecked() {
+    setSelection(clearSelection(selection))
+    pageRef.current?.focus()
+  }
+
+  /** Makes `key` the active row at once, so a key pressed right after acts on it. */
+  function activate(key: string) {
+    flushSync(() => {
+      setActive(key)
+    })
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.defaultPrevented) return
     if (event.key === 'Escape') {
-      // With the Peek open beside the page, the first Esc is the Peek's: the Shell closes it.
+      // The checked issues go first, as on the Tree.
+      if (checked.size > 0) {
+        event.preventDefault()
+        clearChecked()
+        return
+      }
+      // With the Peek open beside the page, the next Esc is the Peek's: the Shell closes it.
       if (peekOpen) return
       event.preventDefault()
       onBack()
       return
+    }
+    const modifier = event.metaKey || event.ctrlKey
+    const own = event.target instanceof Element && keepsLetters(event.target)
+    if (!own && !event.altKey) {
+      if (modifier && !event.shiftKey && /^a$/i.test(event.key)) {
+        event.preventDefault()
+        setSelection(checkAll(order, selection))
+        return
+      }
+      if (!modifier && /^x$/i.test(event.key) && active !== null) {
+        event.preventDefault()
+        setSelection(toggleChecked(selection, active))
+        return
+      }
+      // Shift with Up or Down moves the active row and checks the rows it crosses.
+      if (!modifier && event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+        event.preventDefault()
+        const moved = extendBy(order, selection, active, event.key === 'ArrowDown' ? 1 : -1)
+        if (moved === null) return
+        setSelection(moved.selection)
+        activate(moved.active)
+        event.currentTarget
+          .querySelector(`[data-issue-key="${moved.active}"]`)
+          ?.scrollIntoView({ block: 'nearest' })
+        return
+      }
     }
     // `o` and `O` act on the active row as on the Tree. The page has no other letter keys.
     const command = resolveKey(
@@ -472,6 +583,40 @@ export function SprintPage({
     event.preventDefault()
     if (command === 'peek') onPeekIssue(found.key)
     else onOpenIssue(found.key)
+  }
+
+  /** The key of the issue row `target` is in, or `undefined` outside the rows. */
+  const rowKeyOf = (target: EventTarget) =>
+    target instanceof Element
+      ? target.closest<HTMLElement>('[data-issue-key]')?.dataset.issueKey
+      : undefined
+
+  /**
+   * A Shift+click checks a range and a Cmd+click (Ctrl off macOS) toggles the issue, wherever on
+   * its row they land: the capture phase takes them before a slot opens its editor, so they open
+   * nothing. A click on a row's checkbox toggles it. A key's click (`detail` 0) is left alone, and
+   * so is a click in an open field.
+   */
+  function onClickCapture(event: MouseEvent<HTMLElement>) {
+    const key = rowKeyOf(event.target)
+    if (key === undefined || event.detail === 0) return
+    const target = event.target as Element
+    const check = target.closest('[data-check]') !== null
+    if (!check && target.closest(FIELD) !== null) return
+    const toggle = check || togglesCheck(event)
+    if (!toggle && !event.shiftKey) return
+    event.stopPropagation()
+    activate(key)
+    setSelection(toggle ? toggleChecked(selection, key) : rangeTo(order, selection, key, active))
+  }
+
+  /** The press of such a click must not select the text it crosses, nor take the focus off the page. */
+  function onMouseDown(event: MouseEvent<HTMLElement>) {
+    if (!event.shiftKey && !togglesCheck(event)) return
+    if (rowKeyOf(event.target) === undefined) return
+    if (event.target instanceof Element && event.target.closest(FIELD) !== null) return
+    event.preventDefault()
+    event.currentTarget.focus()
   }
 
   /** The pointer moving over a row makes it active. A scroll under a still pointer moves nothing. */
@@ -498,6 +643,8 @@ export function SprintPage({
       aria-label="Sprint page"
       data-key-scope
       onKeyDown={onKeyDown}
+      onClickCapture={onClickCapture}
+      onMouseDown={onMouseDown}
       onPointerMove={onPointerMove}
       onPointerLeave={() => {
         pointer.current = null
@@ -527,6 +674,8 @@ export function SprintPage({
         <>
           <Issues
             report={report.data}
+            groups={groups}
+            checked={checked}
             properties={properties}
             showPriority={showPriority}
             widths={widths}
@@ -539,6 +688,7 @@ export function SprintPage({
           <Panel report={report.data} />
         </>
       )}
+      <BulkBar {...bulk} checked={checkedIssues} onClear={clearChecked} />
     </section>
   )
 }

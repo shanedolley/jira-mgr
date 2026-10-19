@@ -342,6 +342,8 @@ export function Shell({ session }: { session: Session }) {
   const [overview, setOverview] = useState<Overview | null>(null)
   // The sprint whose page is open. It covers the Tree like an issue page, which opens above it.
   const [sprintId, setSprintId] = useState<number | null>(null)
+  // How many issues the Sprint page has checked. The page holds them; the notices rise above its bar.
+  const [sprintChecked, setSprintChecked] = useState(0)
   // The create modal, opened by `C` or the New issue button, with the selection it started from
   // and, from the palette's Create sub-issue, the type it starts as.
   const [creating, setCreating] = useState<
@@ -1754,7 +1756,8 @@ export function Shell({ session }: { session: Session }) {
         )}
         {body}
         <BulkBar
-          checked={checkedIssues}
+          // The Sprint page covers the Tree and has a bar of its own.
+          checked={sprintOpen ? [] : checkedIssues}
           all={issues}
           me={meQuery.data}
           progress={batch.progress}
@@ -1816,6 +1819,14 @@ export function Shell({ session }: { session: Session }) {
             peekOpen={peekOpen}
             onEditSummary={setRenaming}
             onEditCell={editCell}
+            bulk={{
+              all: issues,
+              me: meQuery.data,
+              progress: batch.progress,
+              run: batch.run,
+              onNotice: notify,
+            }}
+            onCheckedChange={setSprintChecked}
           />
         </div>
       )}
@@ -2008,7 +2019,7 @@ export function Shell({ session }: { session: Session }) {
       {toasts.length > 0 && (
         <ul
           aria-label="Notices"
-          className={`fixed ${checked.size > 0 ? 'bottom-[4.5rem]' : 'bottom-4'} left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2 max-rail:left-16 max-rail:max-w-[min(28rem,calc(100vw-5rem))]`}
+          className={`fixed ${(sprintOpen ? sprintChecked : checked.size) > 0 ? 'bottom-[4.5rem]' : 'bottom-4'} left-[15.5rem] z-50 flex w-max max-w-[min(28rem,calc(100vw-16.5rem))] flex-col gap-2 max-rail:left-16 max-rail:max-w-[min(28rem,calc(100vw-5rem))]`}
         >
           {toasts.map((toast) => (
             <Toast

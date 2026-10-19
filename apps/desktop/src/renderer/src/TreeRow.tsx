@@ -11,6 +11,7 @@ import { EstimateCell } from './EstimateField'
 import { LabelDot, PriorityBars, priorityLevel } from './Glyphs'
 import { keyOf } from './keymap'
 import { useLogWork } from './logWork'
+import { togglesCheck } from './multiSelect'
 import { ProgressPill, progressText } from './Progress'
 import { colWidth } from './propertyFit'
 import { dueTone, localDay, rowSprint, shortDate, timeValue, type TimeProperty } from './rowProps'
@@ -172,6 +173,31 @@ function Pick({
   )
 }
 
+/** The drawing of a row's checkbox, which the Tree and the Sprint page share. */
+export function CheckGlyph({ checked }: { checked: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" className="size-3.5" fill="none" strokeLinecap="round">
+      <rect
+        x="1.5"
+        y="1.5"
+        width="13"
+        height="13"
+        rx="3.5"
+        className={checked ? 'fill-accent' : 'stroke-muted'}
+        strokeWidth="1.25"
+      />
+      {checked && (
+        <path
+          d="m4.8 8.3 2.2 2.2 4.2-4.6"
+          className="stroke-accent-ink"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      )}
+    </svg>
+  )
+}
+
 /**
  * The checkbox in an issue row's left gutter, drawn only: a click on it is read by the row, and `X`
  * is the keyboard's way to the same. It shows under the pointer, on the active row and, once any
@@ -184,25 +210,7 @@ function Check({ checked, shown }: { checked: boolean; shown: boolean }) {
       data-check
       className={`absolute left-0.5 flex size-4 items-center justify-center group-hover/row:opacity-100 group-data-[active=true]/row:opacity-100 ${shown ? 'opacity-100' : 'opacity-0'}`}
     >
-      <svg viewBox="0 0 16 16" className="size-3.5" fill="none" strokeLinecap="round">
-        <rect
-          x="1.5"
-          y="1.5"
-          width="13"
-          height="13"
-          rx="3.5"
-          className={checked ? 'fill-accent' : 'stroke-muted'}
-          strokeWidth="1.25"
-        />
-        {checked && (
-          <path
-            d="m4.8 8.3 2.2 2.2 4.2-4.6"
-            className="stroke-accent-ink"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-        )}
-      </svg>
+      <CheckGlyph checked={checked} />
     </span>
   )
 }
@@ -569,7 +577,7 @@ export function CommentsCell({ issue, always }: { issue: Issue; always: boolean 
       {...shared}
       data-edit="comments"
       onClick={(event) => {
-        if (!event.shiftKey) open(issue)
+        if (!event.shiftKey && !togglesCheck(event)) open(issue)
       }}
     >
       {content}
@@ -871,8 +879,8 @@ interface TreeRowProps {
   blockedBy: number
   blocking: number
   /**
-   * `toggle` is a click on the checkbox and `range` a Shift+click, which check instead of toggling
-   * the row.
+   * `toggle` is a click on the checkbox or a Cmd+click and `range` a Shift+click, which check
+   * instead of toggling the row.
    */
   onClick: (
     id: string,
@@ -947,41 +955,53 @@ export const TreeRow = memo(function TreeRow({
       draggable={row.kind === 'issue'}
       data-dragging={dragging ? 'true' : undefined}
       data-drop={dropEdge}
-      // A Shift+click checks a range, so it must not also select the text it crosses. Stopping the
-      // default also stops the click from focusing the Tree, so the Tree takes focus here.
+      // A Shift+click checks a range and a Cmd+click toggles, so neither may also select the text it
+      // crosses. Stopping the default also stops the click from focusing the Tree, so the Tree takes
+      // focus here.
       onMouseDown={(event) => {
-        if (!event.shiftKey) return
+        if (!event.shiftKey && !togglesCheck(event)) return
         event.preventDefault()
         event.currentTarget.closest<HTMLElement>('[role="tree"]')?.focus()
       }}
       onClick={(event) => {
         const target = event.target as Element
         const edit = target.closest('[data-edit]') !== null
+        // A Shift+click checks a range and a Cmd+click (Ctrl off macOS) toggles the issue: neither
+        // opens an editor, a modal or the page, wherever on the row it lands.
+        const checking = event.shiftKey || togglesCheck(event)
         if (event.detail === 1) {
           const own =
             edit ||
             target.closest('[data-check], [data-pick], [data-chevron], [data-summary]') !== null
-          onArm(row.kind === 'issue' && !own && !event.shiftKey ? row.id : null)
+          onArm(row.kind === 'issue' && !own && !checking ? row.id : null)
         }
         const pick = target.closest<HTMLElement>('[data-pick]')
         const picked = pick?.dataset.pick
         // A click on an in-row field or a cell with its own editor leaves the Tree as it is. A
-        // Shift+click on the status dot or avatar checks a range instead, so it opens no editor; so
-        // does one on the Comments slot, whose click opens the comments modal.
+        // Shift+click or Cmd+click on the status dot, avatar or Comments slot checks instead, so it
+        // opens no editor or modal.
         const check = target.closest('[data-check]') !== null
-        const range = event.shiftKey && (!edit || target.closest('[data-edit="comments"]') !== null)
-        const select = check ? 'toggle' : range ? 'range' : undefined
+        const field = target.closest('[data-edit]:not([data-edit="comments"])') !== null
+        const select = check
+          ? 'toggle'
+          : field
+            ? undefined
+            : event.shiftKey
+              ? 'range'
+              : togglesCheck(event)
+                ? 'toggle'
+                : undefined
         onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
         if (row.kind !== 'issue') return
         if (
           summaryClick({
-            shiftKey: event.shiftKey,
+            checking,
             onSummary: target.closest('[data-summary]') !== null,
           })
         ) {
           onEdit(row.node.issue)
         }
-        if (!check && (edit || !event.shiftKey) && pick !== null && isCellProperty(picked)) {
+        if (!check && (edit || !checking) && pick !== null && isCellProperty(picked)) {
           onCell(row.node.issue, picked, pick)
         }
       }}

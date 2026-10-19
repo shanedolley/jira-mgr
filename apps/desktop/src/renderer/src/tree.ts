@@ -422,12 +422,19 @@ function keysBetween(rows: readonly TreeRow[], fromId: string, toId: string): st
 }
 
 /** The state with `keys` checked as well, the anchor kept or, with none yet, set to `anchor`. */
-function checkMore(state: TreeState, keys: readonly string[], anchor: string | null): TreeState {
+export function checkMore<T extends Pick<TreeState, 'checked' | 'anchor'>>(
+  state: T,
+  keys: readonly string[],
+  anchor: string | null,
+): T {
   return { ...state, checked: new Set([...state.checked, ...keys]), anchor: state.anchor ?? anchor }
 }
 
 /** The state with `key` checked or unchecked, which also becomes the anchor. */
-function toggleChecked(state: TreeState, key: string): TreeState {
+export function toggleChecked<T extends Pick<TreeState, 'checked' | 'anchor'>>(
+  state: T,
+  key: string,
+): T {
   const checked = new Set(state.checked)
   if (!checked.delete(key)) checked.add(key)
   return { ...state, checked, anchor: key }
@@ -633,7 +640,7 @@ export function moveActive(
  * A click on a row. Hover already made the issue row active (`hoverRow`), so a click on blank row
  * space neither activates it nor opens the Peek: the same `state` comes back. A click on a chevron
  * expands or collapses the row, and so does a click on a header or chip. With `select`, a click on
- * a checkable issue row checks it instead: `toggle` flips it (its checkbox) and `range` adds every
+ * a checkable issue row checks it instead: `toggle` flips it (its checkbox, or Cmd+click) and `range` adds every
  * checkable row from the anchor to it (Shift+click), the anchor being the active issue when none is
  * set. These clicks also name their row active, for a click that lands before the hover rendered.
  */

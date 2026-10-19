@@ -3,16 +3,17 @@
  */
 
 export interface SummaryClick {
-  shiftKey: boolean
+  /** The click checks rows (Shift+click or Cmd+click) instead. */
+  checking: boolean
   /** The click landed on the summary text. */
   onSummary: boolean
 }
 
 /**
  * Whether a click on an issue row asks for the summary editor: a single click on the summary text.
- * A Shift+click checks a range, so it never edits.
+ * A Shift+click checks a range and a Cmd+click toggles the issue, so neither edits.
  */
-export const summaryClick = (click: SummaryClick): boolean => click.onSummary && !click.shiftKey
+export const summaryClick = (click: SummaryClick): boolean => click.onSummary && !click.checking
 
 /** What saving a draft does: nothing new (`unchanged`), a refusal (`empty`), or a write of `summary`. */
 export type SummaryDraft =

@@ -936,6 +936,33 @@ describe('clickRow', () => {
     expect([...off.checked]).toEqual([])
   })
 
+  it('a Cmd+click toggles one issue and keeps the others checked, the anchor moving to it', () => {
+    const held = state('i:P-2', { checked: new Set(['P-2', 'P-6']), anchor: 'P-6' })
+    const added = clickRow(rows, held, 'i:P-4', false, 'toggle')
+    expect([...added.checked].sort()).toEqual(['P-2', 'P-4', 'P-6'])
+    expect(added).toMatchObject({ anchor: 'P-4', peekOpen: false })
+    const removed = clickRow(rows, added, 'i:P-2', false, 'toggle')
+    expect([...removed.checked].sort()).toEqual(['P-4', 'P-6'])
+    expect(removed.anchor).toBe('P-2')
+  })
+
+  it('a Cmd+click on a header, a chip or a row with no issue is a plain click', () => {
+    const header = clickRow(rows, state(null), 'c:1', false, 'toggle')
+    expect([...header.collapsed]).toEqual(['c:1'])
+    expect([...header.checked]).toEqual([])
+    const idle = state(null)
+    expect(clickRow(rows, idle, 'i:gone', false, 'toggle')).toBe(idle)
+  })
+
+  it('Cmd+click and Shift+click combine: check A, Cmd+click C, Shift+click E checks A, C and C to E', () => {
+    const a = clickRow(rows, state(null), 'i:P-2', false, 'toggle')
+    const c = clickRow(rows, a, 'i:P-3', false, 'toggle')
+    const e = clickRow(rows, c, 'i:P-6', false, 'range')
+    // P-3 to P-6 runs through P-4; the Done P-5 sits behind its chip and is not shown.
+    expect([...e.checked].sort()).toEqual(['P-2', 'P-3', 'P-4', 'P-6'])
+    expect(e.anchor).toBe('P-3')
+  })
+
   it('a Shift+click adds every issue row from the anchor to the row, in either direction', () => {
     const anchored = state('i:P-2', { checked: new Set(['P-2']), anchor: 'P-2' })
     const down = clickRow(rows, anchored, 'i:P-4', false, 'range')
