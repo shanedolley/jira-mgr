@@ -642,9 +642,10 @@ export function moveActive(
  * expands or collapses the row, and so does a click on a header or chip. With `select`, a click on
  * a checkable issue row checks it instead: `toggle` flips it (its checkbox, or Cmd+click) and
  * `range` adds every checkable row from the anchor to it (Shift+click), the anchor being the
- * active issue when none is set. A click on an issue's key (`peek`) with no `select` opens the Peek
- * on it, as `o` does. These clicks also name their row active, for a click that lands before the
- * hover rendered.
+ * active issue when none is set. A plain click on a checkable issue row sets the anchor when there
+ * is none, so the next Shift+click starts at the row last clicked and not at the row under the
+ * pointer. A click on an issue's key (`peek`) with no `select` also opens the Peek on it, as `o`
+ * does. These clicks also name their row active, for a click that lands before the hover rendered.
  */
 export function clickRow(
   rows: readonly TreeRow[],
@@ -664,9 +665,12 @@ export function clickRow(
     return checkMore(active, keysBetween(rows, `i:${from}`, id), from)
   }
   if (onChevron || row.kind !== 'issue') return row.expandable ? toggle(row, active) : active
+  // A plain click on an issue row is where a later Shift+click starts, unless a row is the anchor.
+  const anchored =
+    checkable(row) && state.anchor === null ? { ...state, anchor: row.node.issue.key } : state
   // A click on the issue key peeks the issue, as `o` does.
-  if (peek && select === undefined) return { ...active, peekOpen: true }
-  return state
+  if (peek && select === undefined) return { ...anchored, activeId: id, peekOpen: true }
+  return anchored
 }
 
 /** A pointer position, in client pixels. */

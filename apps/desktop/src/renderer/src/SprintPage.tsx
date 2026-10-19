@@ -621,7 +621,11 @@ export function SprintPage({
     if (!check && target.closest(FIELD) !== null) return
     // A Shift+click on the checkbox is a range too, not a toggle.
     const toggle = !event.shiftKey && (check || togglesCheck(event))
-    if (!toggle && !event.shiftKey) return
+    if (!toggle && !event.shiftKey) {
+      // A plain click is where a later Shift+click starts, unless a row is the anchor already.
+      if (selection.anchor === null) setSelection({ ...selection, anchor: key })
+      return
+    }
     event.stopPropagation()
     activate(key)
     setSelection(toggle ? toggleChecked(selection, key) : rangeTo(order, selection, key, active))
