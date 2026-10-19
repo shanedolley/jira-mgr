@@ -87,6 +87,18 @@ test('arrows move, Right opens the submenu, Left closes it, Esc closes the menu 
   await expect(avatar()).toBeFocused()
 })
 
+test('Home and End jump to the first and last item, and Tab closes the menu', async () => {
+  await avatar().click()
+  await expect(themeRow()).toBeFocused()
+  await window.keyboard.press('End')
+  await expect(menu().getByRole('menuitem', { name: 'Log out' })).toBeFocused()
+  await window.keyboard.press('Home')
+  await expect(themeRow()).toBeFocused()
+  await window.keyboard.press('Tab')
+  await expect(menu()).toBeHidden()
+  await expect(avatar()).toBeFocused()
+})
+
 test('Enter on a theme choice sets it and closes the menu', async () => {
   await avatar().focus()
   await window.keyboard.press('Enter')

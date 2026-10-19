@@ -164,11 +164,6 @@ export function Sidebar({
           onShortcuts={onShortcuts}
           onLogout={logout.request}
         />
-        {logout.error !== undefined && (
-          <p role="alert" className="sr-only">
-            {logout.error}
-          </p>
-        )}
       </nav>
     )
   }

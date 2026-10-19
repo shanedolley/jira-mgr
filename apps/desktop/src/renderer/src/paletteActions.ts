@@ -4,6 +4,7 @@ import { propertyRules } from '@jira-mgr/core/issue'
 import type { SavedView } from '../../shared/ipc'
 import { fitsParent } from './create'
 import { keyOf } from './keymap'
+import type { ThemePreference } from './theme'
 
 /**
  * What the palette can do to the issue in context. Every id but `subIssue` and
@@ -49,10 +50,17 @@ export const ISSUE_ACTIONS: readonly IssueAction[] = [
 /** What the palette does to the app itself, whatever issue is in context. */
 export type CommandId = 'theme-system' | 'theme-light' | 'theme-dark' | 'logout'
 
-export const COMMANDS: readonly { id: CommandId; label: string }[] = [
-  { id: 'theme-system', label: 'Theme: System' },
-  { id: 'theme-light', label: 'Theme: Light' },
-  { id: 'theme-dark', label: 'Theme: Dark' },
+export interface AppCommand {
+  id: CommandId
+  label: string
+  /** The theme a `theme-*` command sets. */
+  theme?: ThemePreference
+}
+
+export const COMMANDS: readonly AppCommand[] = [
+  { id: 'theme-system', label: 'Theme: System', theme: 'system' },
+  { id: 'theme-light', label: 'Theme: Light', theme: 'light' },
+  { id: 'theme-dark', label: 'Theme: Dark', theme: 'dark' },
   { id: 'logout', label: 'Log out' },
 ]
 
@@ -84,7 +92,7 @@ export function matchingActions(issue: Issue | null, query: string): ActionRow[]
 }
 
 /** The commands whose label fits `query`. An empty query lists none, so they stay off the opening list. */
-export function matchingCommands(query: string): { id: CommandId; label: string }[] {
+export function matchingCommands(query: string): AppCommand[] {
   return query.trim() === '' ? [] : COMMANDS.filter((c) => labelMatches(c.label, query))
 }
 

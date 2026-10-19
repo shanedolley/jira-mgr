@@ -29,7 +29,7 @@ interface UserMenuProps {
 /** The items of the popover that holds `from`, not those of a submenu inside it. */
 function itemsOf(popover: HTMLElement | null): HTMLElement[] {
   return [...(popover?.querySelectorAll<HTMLElement>(ITEM) ?? [])].filter(
-    (item) => item.closest('[popover]') === popover,
+    (item) => item.closest('[popover]') === popover && !item.hasAttribute('disabled'),
   )
 }
 
@@ -76,6 +76,13 @@ export function UserMenu({
       event.stopPropagation()
       return
     }
+    // Tab leaves the menu, so it ends it, as in the issue menu.
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      event.stopPropagation()
+      closeAll()
+      return
+    }
     const popover = event.currentTarget
     const items = itemsOf(popover)
     const at = items.indexOf(document.activeElement as HTMLElement)
@@ -87,6 +94,11 @@ export function UserMenu({
         items[(at + step + items.length) % items.length]?.focus()
         break
       }
+      case 'Home':
+      case 'End':
+        event.preventDefault()
+        ;(event.key === 'Home' ? items[0] : items.at(-1))?.focus()
+        break
       case 'ArrowRight':
         if (popover === menuRef.current && document.activeElement === themeRef.current) {
           event.preventDefault()
@@ -110,7 +122,7 @@ export function UserMenu({
         type="button"
         popoverTarget={`${uid}-menu`}
         aria-haspopup="menu"
-        aria-label="User menu"
+        aria-label={`User menu, ${email}`}
         title={email}
         style={{ anchorName: anchor }}
         className={
