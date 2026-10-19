@@ -523,7 +523,7 @@ export function TimeCell({
  * click opens the Comments modal. On the Sprint page the slot is a button beside the row's own
  * (Slot, which Enter and Space press natively). In the Tree the row reads the click as it reads the
  * Logged slot's (`data-edit`): it activates the row and opens no Peek, and a Shift+click checks a
- * range instead. The Tree's span cannot take focus, so it is no button and has no name of its own:
+ * range and a Cmd+click checks one row instead. The Tree's span cannot take focus, so it is no button and has no name of its own:
  * the row's name carries the count, and the issue menu's Comments item is the keyboard's way in.
  */
 export function CommentsCell({ issue, always }: { issue: Issue; always: boolean }) {
