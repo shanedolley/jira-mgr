@@ -942,6 +942,12 @@ describe('clickRow', () => {
     expect(on).toMatchObject({ activeId: 'i:P-4', peekOpen: true })
   })
 
+  it('a plain click on the key also sets the anchor, and keeps one that is set', () => {
+    expect(clickRow(rows, state('i:P-2'), 'i:P-4', false, undefined, true).anchor).toBe('P-4')
+    const held = { ...state('i:P-2'), anchor: 'P-1' }
+    expect(clickRow(rows, held, 'i:P-4', false, undefined, true).anchor).toBe('P-1')
+  })
+
   it('a Cmd+click or Shift+click on the key checks instead of peeking', () => {
     const on = clickRow(rows, state('i:P-2'), 'i:P-4', false, 'toggle', true)
     expect(on).toMatchObject({ peekOpen: false })
