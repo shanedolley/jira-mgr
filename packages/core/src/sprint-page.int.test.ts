@@ -125,6 +125,18 @@ describe('listSprintIssues', () => {
     expect(requests.every((r) => r.method === 'GET')).toBe(true)
   })
 
+  it('asks for the comment field only when told to', async () => {
+    const without = serveSprint()
+    await listSprintIssues(client, 10170)
+    const fieldsOf = (request?: { path: string }) =>
+      new URL(request?.path ?? '', JIRA_SITE).searchParams.get('fields')?.split(',') ?? []
+    expect(fieldsOf(without[0])).not.toContain('comment')
+
+    const withComments = serveSprint()
+    await listSprintIssues(client, 10170, { comments: true })
+    expect(fieldsOf(withComments[0])).toContain('comment')
+  })
+
   it('reads an empty sprint as no issues', async () => {
     serveSprint(emptySprint())
     expect(await listSprintIssues(client, 10170)).toEqual([])

@@ -22,6 +22,8 @@ export interface SearchOptions {
   pageSize?: number
   /** The phases to load, in load order. Defaults to both. A skipped phase sends no request. */
   phases?: readonly SearchPhase[]
+  /** Also asks for each issue's comment count (`Issue.commentCount`). Off by default: it makes the load heavier. */
+  comments?: boolean
   signal?: AbortSignal
 }
 
@@ -50,8 +52,12 @@ const textQuery = z
 
 const quote = (text: string) => `"${text.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
 
-/** Only the fields `Issue` needs, with the resolved custom field ids. */
-export function requestedFields(ids: FieldIds): string[] {
+/**
+ * Only the fields `Issue` needs, with the resolved custom field ids. `comments` adds Jira's
+ * `comment` field, which sends every comment body for a total only the Comments property shows:
+ * on the live PSAPAC project it made a full load 37% larger.
+ */
+export function requestedFields(ids: FieldIds, comments = false): string[] {
   return [
     'summary',
     'issuetype',
@@ -65,7 +71,6 @@ export function requestedFields(ids: FieldIds): string[] {
     'priority',
     'timetracking',
     'duedate',
-    'comment',
     'created',
     'updated',
     ids.customer,
@@ -73,6 +78,7 @@ export function requestedFields(ids: FieldIds): string[] {
     ids.sprint,
     ids.startDate,
     ids.timeRemaining,
+    ...(comments ? ['comment'] : []),
   ]
 }
 
@@ -84,10 +90,10 @@ export function requestedFields(ids: FieldIds): string[] {
 export async function* searchJqlPages(
   http: HttpClient,
   jql: string,
-  options: { pageSize?: number; signal?: AbortSignal } = {},
+  options: { pageSize?: number; comments?: boolean; signal?: AbortSignal } = {},
 ): AsyncGenerator<Issue[]> {
   const ids = await getFieldIds()
-  const fields = requestedFields(ids)
+  const fields = requestedFields(ids, options.comments)
   const pageSchema = z.object({
     issues: z.array(issueSchema(ids)),
     nextPageToken: z.string().optional(),
@@ -222,7 +228,8 @@ export async function getIssue(
 ): Promise<IssueDetail> {
   const issue = parseInput(issueKey, key, 'get the issue')
   const ids = await getFieldIds()
-  const fields = [...requestedFields(ids), 'description', 'subtasks'].join(',')
+  // A single read always carries the comment count: one issue's bodies cost little.
+  const fields = [...requestedFields(ids, true), 'description', 'subtasks'].join(',')
   const raw = await http.request('GET', `/rest/api/3/issue/${issue}?fields=${fields}`, options)
   const base = parseResponse(issueSchema(ids), raw, 'issue')
   const { description, subtasks } = parseResponse(detailSchema, raw, 'issue').fields

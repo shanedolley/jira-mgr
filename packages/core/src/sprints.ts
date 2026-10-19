@@ -112,13 +112,17 @@ export async function getSprint(http: HttpClient, sprintId: number): Promise<Spr
 }
 
 /** Every issue in the sprint, paged. Read-only: it reads the sprint's issues and moves none. */
-export async function listSprintIssues(http: HttpClient, sprintId: number): Promise<Issue[]> {
+export async function listSprintIssues(
+  http: HttpClient,
+  sprintId: number,
+  options: { comments?: boolean } = {},
+): Promise<Issue[]> {
   const id = parseInput(positiveInt, sprintId, 'list the sprint issues')
   const ids = await getFieldIds()
   const page = z
     .object({ total: z.number(), issues: z.array(issueSchema(ids)) })
     .transform((p) => ({ total: p.total, items: p.issues }))
-  const fields = requestedFields(ids).join(',')
+  const fields = requestedFields(ids, options.comments).join(',')
   return fetchAll(http, `/rest/agile/1.0/sprint/${String(id)}/issue?fields=${fields}`, page)
 }
 
@@ -229,10 +233,14 @@ export interface SprintReport {
 }
 
 /** What the sprint page shows: the sprint, its issues and their counts. */
-export async function readSprint(http: HttpClient, sprintId: number): Promise<SprintReport> {
+export async function readSprint(
+  http: HttpClient,
+  sprintId: number,
+  options: { comments?: boolean } = {},
+): Promise<SprintReport> {
   const [sprint, issues] = await Promise.all([
     getSprint(http, sprintId),
-    listSprintIssues(http, sprintId),
+    listSprintIssues(http, sprintId, options),
   ])
   return { sprint, issues, stats: sprintStats(issues) }
 }

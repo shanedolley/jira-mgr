@@ -278,7 +278,6 @@ An array of issues.
       "remainingEstimateSeconds": 14400,
       "timeSpentSeconds": 14400,
       "timeRemainingHours": null,
-      "commentCount": 3,
       "created": "2026-09-28T01:02:03.000Z",
       "updated": "2026-10-06T23:10:00.000Z"
     }
@@ -410,7 +409,6 @@ An array of Customer groups, each with its Epics and the issues under no Epic.
             "remainingEstimateSeconds": 14400,
             "timeSpentSeconds": 14400,
             "timeRemainingHours": null,
-            "commentCount": 3,
             "created": "2026-09-28T01:02:03.000Z",
             "updated": "2026-10-06T23:10:00.000Z"
           },
@@ -469,7 +467,7 @@ jm issue get PSAPAC-12
 
 #### Output
 
-The issue, its description as ADF and as Markdown, its subtasks and its URL.
+The issue, its description as ADF and as Markdown, its subtasks, its URL and its `commentCount`. Only a single-issue read carries `commentCount`: `issue list` and `issue tree` do not ask Jira for it.
 
 ```json
 {
@@ -536,9 +534,9 @@ The issue, its description as ADF and as Markdown, its subtasks and its URL.
     "remainingEstimateSeconds": 14400,
     "timeSpentSeconds": 14400,
     "timeRemainingHours": null,
-    "commentCount": 3,
     "created": "2026-09-28T01:02:03.000Z",
     "updated": "2026-10-06T23:10:00.000Z",
+    "commentCount": 3,
     "description": {
       "type": "doc",
       "version": 1,
@@ -692,9 +690,9 @@ The new issue, read back after the create: the same object as `jm issue get`. It
     "remainingEstimateSeconds": 14400,
     "timeSpentSeconds": 14400,
     "timeRemainingHours": null,
-    "commentCount": 3,
     "created": "2026-09-28T01:02:03.000Z",
     "updated": "2026-10-06T23:10:00.000Z",
+    "commentCount": 3,
     "description": {
       "type": "doc",
       "version": 1,

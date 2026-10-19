@@ -161,7 +161,6 @@ describe('searchIssues', () => {
       remainingEstimateSeconds: 22200,
       timeSpentSeconds: 6600,
       timeRemainingHours: null,
-      commentCount: 0,
       created: '2026-10-06T00:49:43.825Z',
       updated: '2026-10-06T01:56:17.325Z',
     })
@@ -222,7 +221,7 @@ describe('searchIssues', () => {
       const issue = structuredClone(raw)
       if (comment !== undefined) Object.assign(issue.fields, { comment })
       serveRaw({ issues: [issue], isLast: true })
-      const [mapped] = await searchIssues(client)
+      const [mapped] = await searchIssues(client, { comments: true })
       return mapped
     }
 
@@ -239,15 +238,33 @@ describe('searchIssues', () => {
       expect(mapped).not.toHaveProperty('comment')
     })
 
-    it('reads 0 for a total of 0, a missing field and a recording that predates it', async () => {
+    it('reads a total of 0 as 0', async () => {
       expect((await mapWith({ comments: [], total: 0 }))?.commentCount).toBe(0)
-      expect((await mapWith(undefined))?.commentCount).toBe(0)
     })
 
-    it('reads junk as 0 and still maps the page', async () => {
+    it('leaves the count out when Jira sent no comment field, as every recording before it', async () => {
+      const mapped = await mapWith(undefined)
+      expect(mapped).toMatchObject({ key: 'PSAPAC-3117' })
+      expect(mapped).not.toHaveProperty('commentCount')
+    })
+
+    it('leaves the count out for junk and still maps the page', async () => {
       for (const junk of [null, 'many', { total: 'many' }, { total: -1 }, { total: 1.5 }, []]) {
-        expect(await mapWith(junk)).toMatchObject({ key: 'PSAPAC-3117', commentCount: 0 })
+        const mapped = await mapWith(junk)
+        expect(mapped).toMatchObject({ key: 'PSAPAC-3117' })
+        expect(mapped).not.toHaveProperty('commentCount')
       }
+    })
+
+    it('asks Jira for the comment field only when told to', async () => {
+      const without = serveSearch()
+      await searchIssues(client, { pageSize: 10 })
+      expect(without[0]?.fields).not.toContain('comment')
+
+      const withComments = serveSearch()
+      await searchIssues(client, { pageSize: 10, comments: true })
+      expect(withComments[0]?.fields).toContain('comment')
+      expect(withComments[0]?.fields.filter((f) => f !== 'comment')).toEqual(without[0]?.fields)
     })
   })
 
@@ -330,15 +347,10 @@ describe('searchIssues', () => {
     const body = requests[0]
     expect(body?.maxResults).toBe(10)
     expect(body?.fields).toEqual(
-      expect.arrayContaining([
-        ...Object.values(IDS),
-        'summary',
-        'timetracking',
-        'parent',
-        'comment',
-      ]),
+      expect.arrayContaining([...Object.values(IDS), 'summary', 'timetracking', 'parent']),
     )
     expect(body?.fields).not.toContain('description')
+    expect(body?.fields).not.toContain('comment')
     expect(body?.jql).toBe('project = "PSAPAC" AND statusCategory != Done ORDER BY key DESC')
   })
 
@@ -475,7 +487,8 @@ describe('getIssue', () => {
     expect(paths).toHaveLength(1)
     expect(paths[0]).toMatch(/^\/rest\/api\/3\/issue\/PSAPAC-3066\?fields=summary,/)
     expect(paths[0]).toContain(',customfield_14849,')
-    expect(paths[0]).toMatch(/,description,subtasks$/)
+    // A single read always asks for the comment count.
+    expect(paths[0]).toMatch(/,comment,description,subtasks$/)
     expect(issue).toMatchObject({
       key: 'PSAPAC-3066',
       summary: expect.any(String) as string,

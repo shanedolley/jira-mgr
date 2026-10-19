@@ -16,7 +16,7 @@ Core reads Jira entities and maps them to plain domain types. Everything else ab
 | `creator` | `creator`: `accountId` and `displayName`, `null` when empty |
 | `links` | `issuelinks`: per link the type name, the direction and the linked issue's key and status category |
 | `originalEstimateSeconds`, `remainingEstimateSeconds`, `timeSpentSeconds` | `timetracking` |
-| `commentCount` | `comment.total`; the comment bodies drop, and a missing or malformed field reads as `0` |
+| `commentCount` | `comment.total`, optional: present only when the read asked for the `comment` field (single-issue reads always do; searches and Sprint page reads only with `comments: true`); the comment bodies drop |
 | `dueDate` | `duedate` |
 | `customer`, `engagement` | The resolved custom fields, as `{ id, value }` |
 | `sprints` | The resolved Sprint field, as `{ id, name, state }`, `[]` when empty |

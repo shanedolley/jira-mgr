@@ -105,6 +105,8 @@ const FIRST_CREATED = 2000
 export interface FakeJiraCounts {
   /** Search pages served, per phase. */
   searches: { unresolved: number; done: number }
+  /** The Tree searches and Sprint page reads that asked for Jira's `comment` field. */
+  commentFieldReads: { search: number; sprint: number }
   /** Done pages requested before the unresolved phase had served its last page. */
   doneEarly: number
   /** Writes received: edits, transitions and sprint moves. */
@@ -729,6 +731,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   ]
   const counts: FakeJiraCounts = {
     searches: { unresolved: 0, done: 0 },
+    commentFieldReads: { search: 0, sprint: 0 },
     doneEarly: 0,
     edits: 0,
     applied: 0,
@@ -944,11 +947,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
 
   const withLinks = (target: RawIssue) => ({
     ...target,
-    fields: {
-      ...target.fields,
-      issuelinks: issuelinksOf(target.key),
-      comment: commentFieldOf(target.key),
-    },
+    fields: { ...target.fields, issuelinks: issuelinksOf(target.key) },
+  })
+
+  /** The issue with Jira's `comment` field, which it sends only when the request names it. */
+  const withComment = <T extends RawIssue>(target: T) => ({
+    ...target,
+    fields: { ...target.fields, comment: commentFieldOf(target.key) },
   })
 
   const detail = (target: RawIssue) => ({
@@ -1099,7 +1104,12 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       return json({ total: fields.length, fields })
     }
     if (method === 'POST' && path === '/rest/api/3/search/jql') {
-      const search = body() as { jql: string; maxResults: number; nextPageToken?: string }
+      const search = body() as {
+        jql: string
+        maxResults: number
+        nextPageToken?: string
+        fields?: string[]
+      }
       if (search.jql.includes('currentUser()')) {
         counts.inbox.searches++
         const found = issues
@@ -1160,6 +1170,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         return json({ errorMessages: ['The fake failed this page.'] }, 500)
       }
       counts.searches[phase]++
+      const asked = search.fields?.includes('comment') === true
+      if (asked) counts.commentFieldReads.search++
       const matching = issues
         .filter((i) => (i.fields.status.statusCategory.key === 'done') === (phase === 'done'))
         .sort((a, b) => keyNumber(b.key) - keyNumber(a.key))
@@ -1167,7 +1179,10 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       const end = start + search.maxResults
       if (phase === 'unresolved' && end >= matching.length) unresolvedComplete = true
       return json({
-        issues: matching.slice(start, end).map(withLinks),
+        issues: matching
+          .slice(start, end)
+          .map(withLinks)
+          .map((i) => (asked ? withComment(i) : i)),
         isLast: end >= matching.length,
         nextPageToken: String(end),
       })
@@ -1200,14 +1215,15 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       )
       const startAt = Number(url.searchParams.get('startAt') ?? '0')
       const maxResults = Number(url.searchParams.get('maxResults') ?? '50')
+      const asked = url.searchParams.get('fields')?.split(',').includes('comment') === true
+      if (asked) counts.commentFieldReads.sprint++
       return json({
         startAt,
         maxResults,
         total: inSprint.length,
-        issues: inSprint.slice(startAt, startAt + maxResults).map((i) => ({
-          ...i,
-          fields: { ...i.fields, comment: commentFieldOf(i.key) },
-        })),
+        issues: inSprint
+          .slice(startAt, startAt + maxResults)
+          .map((i) => (asked ? withComment(i) : i)),
       })
     }
     const sprintMove = /^\/rest\/agile\/1\.0\/sprint\/(\d+)\/issue$/.exec(path)

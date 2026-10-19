@@ -86,7 +86,8 @@ const jiraFields = z.object({
     })
     .nullish(),
   duedate: z.string().nullish(),
-  // Only the total counts: the comment bodies drop here. Missing or junk reads as none.
+  // Only the total counts: the comment bodies drop here. Jira sends the field only when asked, and
+  // a missing or malformed one reads as none.
   comment: z
     .object({ total: z.number().int().min(0) })
     .nullish()
@@ -172,7 +173,7 @@ export function issueSchema(ids: FieldIds) {
       remainingEstimateSeconds: f.timetracking?.remainingEstimateSeconds ?? null,
       timeSpentSeconds: f.timetracking?.timeSpentSeconds ?? null,
       timeRemainingHours: f.timeRemaining ?? null,
-      commentCount: f.comment?.total ?? 0,
+      ...(f.comment == null ? {} : { commentCount: f.comment.total }),
       created: f.created,
       updated: f.updated,
     }))

@@ -233,12 +233,16 @@ describe('the Comments slot', () => {
   })
 
   it('states the number in its name, with the exact count past 99', () => {
+    expect(commentsName(undefined)).toBe('Comments')
     expect(commentsName(0)).toBe('No comments')
     expect(commentsName(1)).toBe('1 comment')
     expect(commentsName(3)).toBe('3 comments')
     expect(slot({ commentCount: 3 })).toContain('aria-label="3 comments"')
     expect(slot({ commentCount: 120 })).toContain('aria-label="120 comments"')
     expect(slot({ commentCount: 0 })).toContain('aria-label="No comments"')
+    // Until a load that asked for the count lands, the slot claims no number.
+    expect(slot({})).toContain('aria-label="Comments"')
+    expect(slot({})).not.toContain('data-badge')
   })
 
   it('is a row-read target in the Tree and a button on the Sprint page', () => {

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { IssueDetail } from '@jira-mgr/core/issue'
 
 import type { Display, Toggles, TreeLevel } from '../../shared/ipc'
-import { doneKey, issueDetailKey, unresolvedKey } from './optimistic'
+import { doneKey, issueDetailKey, sprintKey, unresolvedKey } from './optimistic'
 import {
   attachmentsKey,
   clearAccountData,
@@ -245,6 +245,41 @@ describe('displayMutation', () => {
 
     await expect.poll(() => client.getQueryData(displayKey)).toEqual(stored)
     unsubscribe()
+  })
+})
+
+describe('displayMutation and the comment count', () => {
+  const off: Display = { properties: ['updated'], order: 'key', direction: 'desc' }
+  const on: Display = { ...off, properties: ['updated', 'comments'] }
+
+  /** The query keys the write marked stale, from a client that holds data under each. */
+  async function invalidatedBy(before: Display, after: Display): Promise<string[]> {
+    const client = new QueryClient()
+    client.setQueryData(displayKey, before)
+    const keys = {
+      unresolved: unresolvedKey,
+      done: doneKey,
+      sprint: [...sprintKey, 5],
+      other: meKey,
+    }
+    for (const key of Object.values(keys)) client.setQueryData(key, [])
+    await new MutationObserver(
+      client,
+      displayMutation(client, () => Promise.resolve(after)),
+    ).mutate(after)
+    return Object.entries(keys)
+      .filter(([, key]) => client.getQueryState(key)?.isInvalidated === true)
+      .map(([name]) => name)
+  }
+
+  it('reloads the issue lists and the Sprint pages once Comments turns on', async () => {
+    expect(await invalidatedBy(off, on)).toEqual(['unresolved', 'done', 'sprint'])
+  })
+
+  it('reloads nothing when Comments stays on, stays off or turns off', async () => {
+    expect(await invalidatedBy(on, { ...on, order: 'due' })).toEqual([])
+    expect(await invalidatedBy(off, { ...off, order: 'due' })).toEqual([])
+    expect(await invalidatedBy(on, off)).toEqual([])
   })
 })
 

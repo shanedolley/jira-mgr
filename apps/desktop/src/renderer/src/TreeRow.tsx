@@ -100,7 +100,7 @@ export function rowName(
           const value = timeValue(issue, property)
           return value === null ? [] : [`${TIME_NAMES[property].toLowerCase()} ${value}`]
         }),
-        ...(properties.includes('comments') && issue.commentCount > 0
+        ...(properties.includes('comments') && (issue.commentCount ?? 0) > 0
           ? [commentsName(issue.commentCount)]
           : []),
         ...(progress === undefined ? [] : [progressText(progress)]),
@@ -510,7 +510,8 @@ export function TimeCell({
 
 /**
  * The Comments property in a fixed slot: a chat bubble with the issue's comment count as a badge on
- * its top right, the bubble alone at 0. A click opens the Comments modal. On the Sprint page the
+ * its top right, the bubble alone at 0 and while the count is not loaded (the loads ask Jira for it
+ * only while this property is on). A click opens the Comments modal. On the Sprint page the
  * slot is a button beside the row's own (Slot, which Enter and Space press natively). In the Tree
  * the row reads the click as it reads the Logged slot's (`data-edit`): it activates the row and
  * opens no Peek, and a Shift+click checks a range instead.
@@ -538,7 +539,7 @@ export function CommentsCell({ issue, always }: { issue: Issue; always: boolean 
       >
         <path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2Z" />
       </svg>
-      {count > 0 && (
+      {count !== undefined && count > 0 && (
         <span
           data-badge="comments"
           className="absolute -right-2 -top-0.5 min-w-3.5 rounded-full bg-line px-1 text-center text-[10px] font-medium leading-3.5 tabular-nums text-ink"

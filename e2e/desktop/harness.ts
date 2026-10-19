@@ -20,6 +20,7 @@ export const TOKEN = 'good-token'
 /** Counters the fake Jira in the app's main process keeps. */
 export interface Counts {
   searches: { unresolved: number; done: number }
+  commentFieldReads: { search: number; sprint: number }
   doneEarly: number
   /** Writes received: edits, transitions, sprint moves, creates and deletes. */
   edits: number

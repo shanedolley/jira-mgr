@@ -114,7 +114,6 @@ const ISSUE = {
   remainingEstimateSeconds: 14400,
   timeSpentSeconds: 14400,
   timeRemainingHours: null,
-  commentCount: 3,
   created: '2026-09-28T01:02:03.000Z',
   updated: '2026-10-06T23:10:00.000Z',
 } as const
@@ -442,9 +441,11 @@ export const COMMANDS = [
       },
     ],
     output: {
-      summary: 'The issue, its description as ADF and as Markdown, its subtasks and its URL.',
+      summary:
+        'The issue, its description as ADF and as Markdown, its subtasks, its URL and its `commentCount`. Only a single-issue read carries `commentCount`: `issue list` and `issue tree` do not ask Jira for it.',
       example: {
         ...ISSUE,
+        commentCount: 3,
         description: ADF,
         descriptionMarkdown: 'Checked.',
         subtasks: [{ key: 'PSAPAC-13', summary: 'Write the tests', status: 'To Do' }],
@@ -531,6 +532,7 @@ export const COMMANDS = [
         'The new issue, read back after the create: the same object as `jm issue get`. It shows the issue as Jira returned it straight after the create. On PSAPAC an automation rule can change the estimates, labels, Customer, parent and sprint within about 10 seconds, so run `jm issue get <key>` after that to see the final values.',
       example: {
         ...ISSUE,
+        commentCount: 3,
         description: ADF,
         descriptionMarkdown: 'Checked.',
         subtasks: [],

@@ -7,7 +7,7 @@ import type { HttpClient } from '@jira-mgr/core/http'
 import { writeFields, writeSettings } from '@jira-mgr/core/state'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createBackend } from './backend'
+import { createBackend, type ProgressSender } from './backend'
 
 const SITE = 'https://team.atlassian.net'
 
@@ -260,6 +260,58 @@ describe('sprints', () => {
     const error = await failure(createBackend({ http }).setSprint({ key: 'OTHER-5', sprintId: 5 }))
     expect(error).toMatchObject({ code: 'validation_failed' })
     expect(requests).toEqual([])
+  })
+})
+
+describe('the comment count', () => {
+  const sprintRoute = ({ path }: Request) =>
+    path === '/rest/agile/1.0/sprint/5'
+      ? { id: 5, name: 'Sprint 5', state: 'active' }
+      : { total: 0, issues: [] }
+  const searchRoute = () => ({ issues: [], isLast: true })
+  const progress: ProgressSender = {
+    sendProgress: () => undefined,
+    sendBatchProgress: () => undefined,
+    isOpen: () => true,
+    sendLateRead: () => undefined,
+  }
+
+  const fieldsOfSprint = (requests: Request[]) =>
+    new URL(requests.find((r) => r.path.includes('/issue?'))?.path ?? '', SITE).searchParams
+      .get('fields')
+      ?.split(',') ?? []
+  const fieldsOfSearch = (requests: Request[]) => (requests[0]?.body as { fields: string[] }).fields
+
+  it('is left out of the Tree load and the Sprint page read while the Comments property is off', async () => {
+    const search = routedHttp(searchRoute)
+    await createBackend({ http: search.http }).listIssues(
+      { phase: 'unresolved', loadId: 1 },
+      progress,
+    )
+    expect(fieldsOfSearch(search.requests)).not.toContain('comment')
+
+    const sprint = routedHttp(sprintRoute)
+    await createBackend({ http: sprint.http }).getSprint({ id: 5 })
+    expect(fieldsOfSprint(sprint.requests)).not.toContain('comment')
+  })
+
+  it('is asked for by the Tree load and the Sprint page read while the saved display shows it', async () => {
+    await writeSettings({
+      siteUrl: SITE,
+      projectKey: 'PSAPAC',
+      email: 'me@example.com',
+      display: { properties: ['updated', 'comments'] },
+    })
+    const search = routedHttp(searchRoute)
+    await createBackend({ http: search.http }).listIssues(
+      { phase: 'unresolved', loadId: 1 },
+      progress,
+    )
+    expect(fieldsOfSearch(search.requests)).toContain('comment')
+
+    const sprint = routedHttp(sprintRoute)
+    await createBackend({ http: sprint.http }).getSprint({ id: 5 })
+    expect(fieldsOfSprint(sprint.requests)).toContain('comment')
   })
 })
 

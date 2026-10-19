@@ -63,6 +63,9 @@ test('the Comments chip is off by default and, once on, every issue row shows a 
   await showEverything(window)
   await expect(item(/PSAPAC-1,/)).toBeVisible()
   await expect(item(/PSAPAC-1,/).locator('[data-prop=comments]')).toHaveCount(0)
+  // The unresolved phase has loaded, and it did not ask Jira for the comment field.
+  await expect.poll(async () => (await counts(app)).searches.unresolved).toBeGreaterThan(0)
+  expect((await counts(app)).commentFieldReads).toEqual({ search: 0, sprint: 0 })
   await window.getByRole('button', { name: 'Display', exact: true }).click()
   const chip = window
     .getByRole('group', { name: 'Display properties', exact: true })
@@ -72,6 +75,8 @@ test('the Comments chip is off by default and, once on, every issue row shows a 
   await expect(chip).toHaveAttribute('aria-pressed', 'true')
   await window.keyboard.press('Escape')
 
+  // Turning the property on reloads the list with the field, and the counts arrive.
+  await expect.poll(async () => (await counts(app)).commentFieldReads.search).toBeGreaterThan(0)
   // The icon alone at 0, the number from 1, "99+" from 100; an Epic shows the slot like any issue.
   await expect(slot(/PSAPAC-4,/)).toHaveAttribute('aria-label', 'No comments')
   await expect(badge(/PSAPAC-4,/)).toHaveCount(0)
@@ -83,6 +88,35 @@ test('the Comments chip is off by default and, once on, every issue row shows a 
   await expect(badge(/PSAPAC-21,/)).toHaveText('99+')
   await expect(slot(/PSAPAC-10,/)).toHaveAttribute('aria-label', 'No comments')
   await expect(item(/PSAPAC-1,/)).toHaveAttribute('aria-label', /, 2 comments/)
+})
+
+test('the Sprint page asks for the comment field only while the property is on', async () => {
+  await joinSprint(app, ['PSAPAC-3'], 5)
+  await logIn(window)
+  await expect(item(/PSAPAC-10,/)).toBeVisible()
+  const openSprint = async () => {
+    await window
+      .getByRole('navigation', { name: 'Main' })
+      .getByRole('region', { name: 'Sprints' })
+      .getByRole('button', { name: /^Current/ })
+      .click()
+    await expect(sprintRow('PSAPAC-3')).toBeVisible()
+  }
+  await openSprint()
+  expect((await counts(app)).commentFieldReads.sprint).toBe(0)
+  await expect(sprintRow('PSAPAC-3').locator('[data-prop=comments]')).toHaveCount(0)
+  await window.keyboard.press('Escape')
+  await expect(sprintPage()).toHaveCount(0)
+
+  await window.getByRole('button', { name: 'Display', exact: true }).click()
+  await window
+    .getByRole('group', { name: 'Display properties', exact: true })
+    .getByRole('button', { name: 'Comments', exact: true })
+    .click()
+  await window.keyboard.press('Escape')
+  await openSprint()
+  await expect.poll(async () => (await counts(app)).commentFieldReads.sprint).toBeGreaterThan(0)
+  await expect(sprintRow('PSAPAC-3').getByRole('button', { name: 'No comments' })).toBeVisible()
 })
 
 test('a click on the icon opens the modal on that issue and opens no Peek', async () => {
