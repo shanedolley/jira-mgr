@@ -57,10 +57,11 @@ const TIME_NAMES: Record<TimeProperty, string> = {
 const isTime = (property: RowProperty): property is TimeProperty => property in TIME_NAMES
 
 /**
- * The accessible name of a row, in one format per kind. An issue's name ends with what the row
- * shows only as a glyph, a pill or a column: its open blockers, its priority when not Medium, its
- * due date and time values when their properties are on, and its children's progress. The rest of
- * the contents are presentation only.
+ * The accessible name of a row, in one format per kind. An issue's name lists its key, type,
+ * status, summary and assignee, then what the row shows only as a glyph, a pill or a column: the
+ * Customer mismatch, context, open blockers, its priority when not Medium, the properties that are
+ * on in Column order (start, due, sprint, comments and the time values), and its children's
+ * progress. The rest of the contents are presentation only.
  */
 export function rowName(
   row: Row,
@@ -820,7 +821,11 @@ function Content({
           <Pick property="status" title="Change status">
             <StatusDot status={issue.status} />
           </Pick>
-          <span className="tree-key w-[5.5rem] min-w-fit shrink-0 text-xs font-[450] tabular-nums text-muted">
+          <span
+            data-key
+            title="Peek"
+            className="tree-key w-[5.5rem] min-w-fit shrink-0 cursor-pointer text-xs font-[450] tabular-nums text-muted"
+          >
             {issue.key}
           </span>
           <span
@@ -887,6 +892,7 @@ interface TreeRowProps {
     onChevron: boolean,
     select: 'toggle' | 'range' | undefined,
     detail: number,
+    peek: boolean,
   ) => void
   /**
    * The issue a double-click opens, set by a first click: the row's issue, or `null` for a header,
@@ -991,7 +997,13 @@ export const TreeRow = memo(function TreeRow({
               : togglesCheck(event)
                 ? 'toggle'
                 : undefined
-        onClick(row.id, target.closest('[data-chevron]') !== null, select, event.detail)
+        onClick(
+          row.id,
+          target.closest('[data-chevron]') !== null,
+          select,
+          event.detail,
+          target.closest('[data-key]') !== null,
+        )
         if (row.kind !== 'issue') return
         if (
           summaryClick({

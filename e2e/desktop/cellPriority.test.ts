@@ -433,7 +433,7 @@ test('holds its layout with a wide font: the Sprint page slot keeps 16px, clears
     [...page.querySelectorAll('li[data-issue-key]')].map((row) => {
       const slot = row.querySelector('[data-slot=priority]')?.getBoundingClientRect()
       const button = row.querySelector('[data-pick=priority]')?.getBoundingClientRect()
-      const key = row.querySelector('span.font-mono')?.getBoundingClientRect()
+      const key = row.querySelector('.sprint-key')?.getBoundingClientRect()
       return {
         key: row.getAttribute('data-issue-key'),
         width: slot?.width,
@@ -469,7 +469,7 @@ const rowFit = () =>
   sprintPage().evaluate((page) =>
     [...page.querySelectorAll('li[data-issue-key]')].map((row) => {
       const summary = row.querySelector('[data-summary]')?.getBoundingClientRect()
-      const key = row.querySelector('span.font-mono')?.getBoundingClientRect()
+      const key = row.querySelector('.sprint-key')?.getBoundingClientRect()
       // The assignee slot, which holds an unassigned row's dotted circle too: only a person's avatar carries `data-avatar`.
       const avatar = row.querySelector('[data-pick=assignee]')?.getBoundingClientRect()
       const slots = [...row.querySelectorAll('[data-props] > [data-prop]')]

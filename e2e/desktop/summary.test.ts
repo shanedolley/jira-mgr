@@ -40,8 +40,6 @@ const text = () => row().getByText('Migrate the dashboards')
 
 /** Where on a summary the pointer lands: on its text, which the Peek's narrowing leaves in the Tree. */
 const ON_TEXT = { x: 20, y: 8 }
-/** Where on a Sprint page row's button the pointer lands over the issue key, which takes no click of its own. */
-const ON_KEY = { x: 60, y: 16 }
 
 const writes = async () => (await counts(app)).edits
 const lastBody = async () => (await counts(app)).editBodies.at(-1)
@@ -106,7 +104,7 @@ test('Enter saves at once, records an undo and returns focus to the Tree', async
 
 test('a double-click on blank row space opens the page and no editor', async () => {
   await select()
-  await row().locator('.tree-key').dblclick()
+  await row().getByRole('img').first().dblclick()
   await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
   await window.waitForTimeout(900)
   await expect(dialog()).toHaveCount(0)
@@ -116,7 +114,8 @@ test('a click on blank row space opens no editor and no Peek, and activates noth
   await select()
   await item(/PSAPAC-3,/).hover()
   await item(/PSAPAC-3,/)
-    .locator('.tree-key')
+    .getByRole('img')
+    .first()
     .click()
   await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
   await window.waitForTimeout(900)
@@ -225,8 +224,8 @@ test('the Sprint page edits a summary from a click on it, and opens an issue fro
   await expect(summary).toBeFocused()
   await settle(1)
 
-  // A double-click on the row's blank space, over its key, opens the issue.
-  await listed.dblclick({ position: ON_KEY })
+  // A double-click on the key peeks the issue with its first click and opens the page.
+  await sprintPage().getByRole('button', { name: 'Peek PSAPAC-4' }).dblclick()
   await expect(issuePage()).toBeVisible()
   await expect(dialog()).toHaveCount(0)
 })

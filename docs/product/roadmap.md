@@ -67,7 +67,7 @@ Stories #126 to #151 came from the [UX review and Linear gap analysis](../discov
 | #140, #141, #142, #145 | Tree quick actions; issue actions in the palette; description and attachments in the create dialog; sub-issues from the issue page |
 | #150, #151 | Epic progress, the Epics table and the Customers page; a layout for narrow windows |
 | #143 | Select and edit several issues at once. Core batch module and the desktop selection, bulk bar and batch undo built |
-| #199 to #202 | Hide done hides every Done issue; sub-issue progress on Story, Task and Bug rows, not Epics; a double-click on blank row space opens the issue page (#299 removed the click that opened the Peek); estimate, time logged and a worklog chart on the Peek and the issue page |
+| #199 to #202 | Hide done hides every Done issue; sub-issue progress on Story, Task and Bug rows, not Epics; a double-click on blank row space opens the issue page (#299 moved the Peek from a click on the row to a click on its key); estimate, time logged and a worklog chart on the Peek and the issue page |
 | #209, #212 | The Tree opens at a level that persists across launches; an app icon of its own |
 | #216, #217, #220, #221, #222 | Logging work from the Time tracking header; the Hold and On Hold status drawn as a dashed To Do ring at 30% opacity, with every field of the row faded to match; Time left shown as a duration; a Parent picker wide enough to read a summary; ascending or descending order per view, with Key ordering by key alone and a Status order |
 | #219, #224, #237 | The create dialog sets Start date and Due date, `C` creates under the hovered or selected issue, and a new issue is assigned to the current user by default |

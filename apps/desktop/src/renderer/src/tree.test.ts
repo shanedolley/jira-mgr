@@ -923,6 +923,27 @@ describe('clickRow', () => {
     expect(clickRow(rows, open, 'i:P-4', false)).toBe(open)
   })
 
+  it('a click on the key activates the issue and opens the Peek on it, as o does', () => {
+    const on = clickRow(rows, state('i:P-2'), 'i:P-4', false, undefined, true)
+    expect(on).toMatchObject({ activeId: 'i:P-4', peekOpen: true })
+  })
+
+  it('a Cmd+click or Shift+click on the key checks instead of peeking', () => {
+    const on = clickRow(rows, state('i:P-2'), 'i:P-4', false, 'toggle', true)
+    expect(on).toMatchObject({ peekOpen: false })
+    expect([...on.checked]).toEqual(['P-4'])
+  })
+
+  it('a Cmd+click on the key of a context row, which cannot be checked, does not peek', () => {
+    const context = rows.map((r) =>
+      r.id === 'i:P-4' && r.kind === 'issue' ? { ...r, node: { ...r.node, contextOnly: true } } : r,
+    )
+    const idle = state('i:P-2')
+    expect(clickRow(context, idle, 'i:P-4', false, 'toggle', true)).toMatchObject({
+      peekOpen: false,
+    })
+  })
+
   it('does nothing for a row no longer shown', () => {
     const idle = state('i:P-2')
     expect(clickRow(rows, idle, 'i:gone', false)).toBe(idle)

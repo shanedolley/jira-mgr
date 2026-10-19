@@ -431,7 +431,7 @@ test('holds its layout with a wide font: the list fits the window and the Sprint
   const overlaps = await sprintPage().evaluate((page) =>
     [...page.querySelectorAll('li[data-issue-key]')].flatMap((row) => {
       const button = row.querySelector('[data-pick=status]')
-      const key = row.querySelector('span.font-mono')
+      const key = row.querySelector('.sprint-key')
       if (button === null || key === null) return ['row without its parts']
       return button.getBoundingClientRect().right > key.getBoundingClientRect().left + 0.5
         ? [row.getAttribute('data-issue-key') ?? '']
