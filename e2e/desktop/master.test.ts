@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, releaseDone } from './harness.js'
+import { counts, launch, logIn, refuseNextBulk, releaseDone, releaseEdit } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -197,4 +197,20 @@ test('the master writes nothing to Jira', async () => {
   const sent = await counts(app)
   expect(sent.edits).toBe(0)
   expect(sent.bulk).toHaveLength(0)
+})
+
+test('the master is disabled while a batch runs', async () => {
+  await openBulk()
+  await check(1)
+  await master().click()
+  await refuseNextBulk(app)
+  await bar().getByRole('button', { name: 'Status' }).click()
+  await window.getByRole('option', { name: 'In Progress' }).click()
+  await expect(bar()).toContainText('Updating 0 of 12')
+  await expect(master()).toBeDisabled()
+  for (let settled = 1; settled <= 12; settled++) {
+    await expect.poll(async () => (await counts(app)).edits).toBeGreaterThanOrEqual(settled)
+    await releaseEdit(app)
+  }
+  await expect(bar()).not.toContainText('Updating')
 })
