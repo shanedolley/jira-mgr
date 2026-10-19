@@ -127,8 +127,8 @@ export function UserMenu({
         style={{ anchorName: anchor }}
         className={
           compact
-            ? 'mt-auto mb-3 grid size-7 place-items-center rounded-md hover:bg-hover'
-            : 'flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover'
+            ? 'btn btn-icon btn-ghost mt-auto mb-3'
+            : 'btn btn-ghost w-full min-w-0 justify-start'
         }
       >
         <Avatar person={person} />
