@@ -120,6 +120,14 @@ test('follows the system theme and lets the toggle override it', async () => {
     'true',
   )
 
+  // The choices are icons: no visible words, each named by its tooltip.
+  await expect(theme).toHaveText('')
+  for (const name of ['System', 'Light', 'Dark']) {
+    const button = theme.getByRole('button', { name })
+    await expect(button).toHaveAttribute('title', name)
+    await expect(button.locator('svg')).toBeVisible()
+  }
+
   // Forcing a theme beats the system setting.
   await theme.getByRole('button', { name: 'Light' }).click()
   expect(await attribute()).toBe('light')

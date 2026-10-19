@@ -123,6 +123,20 @@ describe.each<Theme>(['light', 'dark'])('%s theme tokens', (theme) => {
     expect(contrast(token('danger', theme), token('selected', theme))).toBeGreaterThanOrEqual(4.5)
   })
 
+  it('keeps the theme icons at 3:1 on the sidebar: muted at rest and on hover, ink when pressed', () => {
+    const cases = [
+      ['muted', 'sidebar'],
+      ['ink', 'hover'],
+      ['ink', 'selected'],
+    ] as const
+    for (const [icon, surface] of cases) {
+      expect(
+        contrast(token(icon, theme), token(surface, theme)),
+        `${icon} on ${surface}`,
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+
   it('keeps the grey type icon (--type-rest) at 3:1 on every row background', () => {
     for (const surface of ROW_SURFACES) {
       expect(

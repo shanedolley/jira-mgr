@@ -7,6 +7,10 @@ export const TRASH = 'M3.5 4.5h9M6.5 4.5v-1h3v1M5 4.5l.5 8h5l.5-8'
 export const SIDEBAR = 'M2.5 3.5h11v9h-11zM6 3.5v9'
 export const INBOX = 'M2.5 9.5v3h11v-3M2.5 9.5 4 4h8l1.5 5.5M2.5 9.5h3.5l.5 1.5h3l.5-1.5h3.5'
 export const LIST = 'M5.5 4.5h8M5.5 8h8M5.5 11.5h8M2.5 4.5h.01M2.5 8h.01M2.5 11.5h.01'
+export const MONITOR = 'M2.5 3h11v7.5h-11zM8 10.5V13M5.5 13h5'
+export const SUN =
+  'M5.5 8a2.5 2.5 0 1 0 5 0 2.5 2.5 0 1 0-5 0M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1'
+export const MOON = 'M13 9.5A5.5 5.5 0 0 1 6.5 3a5.5 5.5 0 1 0 6.5 6.5z'
 
 export function Icon({ path, className = 'size-3.5' }: { path: string; className?: string }) {
   return (
