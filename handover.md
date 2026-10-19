@@ -155,9 +155,9 @@ GitHub issues on `shanedolley/jira-mgr` track the work (Q43). Milestones Core (1
 |---|---|---|---|
 | Open | 12 (#255, #278, #299, #300, #301, #304 to #310) | `gh issue list --state open --limit 300` | 2026-10-19 17:28 AEST |
 | Closed | 106 (118 issues in all, #9 to #310) | `gh issue list --state all --limit 400` | 2026-10-19 17:28 AEST |
-| In progress | 0 | `--label status:in-progress --state open` | 2026-10-19 17:28 AEST |
-| In HIL Review | 11: #278, #299, #300, #301, #304 to #310 | `--label status:hil-review --state open` | 2026-10-19 17:28 AEST |
-| With `question` | 11, the same issues | `--label question --state open` | 2026-10-19 17:28 AEST |
+| In progress | 0 | `--label status:in-progress --state open` | 2026-10-19 17:32 AEST |
+| In HIL Review | 11: #278, #299, #300, #301, #304 to #310 | `--label status:hil-review --state open` | 2026-10-19 17:32 AEST |
+| With `question` | 11, the same issues | `--label question --state open` | 2026-10-19 17:32 AEST |
 | Open pull requests | 2: the Dependabot majors #235 and #236; 204 pull requests in all states, 198 merged, 4 closed unmerged (#3, #6, #208, #234), the highest #322 | `gh pr list --state open`, `--state all --limit 400` | 2026-10-19 17:28 AEST |
 | Milestones | Core 0 open and 13 closed, CLI 0 and 10, Desktop 0 and 51 (so #216 to #310 carry none, except #254, which carries Desktop) | `gh api 'repos/shanedolley/jira-mgr/milestones?state=all'` | 2026-10-19 17:28 AEST |
 
