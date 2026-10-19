@@ -36,9 +36,10 @@ async function open() {
 /** The row of one field in the main list. A held count follows the name. */
 const row = (name: string) => menu().getByRole('button', { name: new RegExp(`^${name}( \\d+)?$`) })
 
-/** The submenu of one field's values. */
 /** The search box of one submenu, by its accessible name. */
 const search = (label: string) => window.getByLabel(label, { exact: true })
+
+/** The submenu of one field's values. */
 
 const submenu = (name: string) => menu().getByRole('group', { name, exact: true })
 
@@ -439,30 +440,51 @@ async function narrowWindow(height: number) {
 
 test('a submenu flips to the left at the window edge and stays inside the window', async () => {
   await open()
-  await narrowWindow(560)
-  const inside = await window.evaluate(() => ({
-    w: globalThis.innerWidth,
-    h: globalThis.innerHeight,
-  }))
-  await toggle('Filter').click()
-  const main = await box(menu())
-
   // The Tree is under 700px here, so the Filter button shows its icon only.
-  await row('Status').click()
-  const first = await box(submenu('Status'))
-  expect(first.x + first.width).toBeLessThanOrEqual(main.x + 6)
-  expect(first.x).toBeGreaterThanOrEqual(0)
+  for (const height of [520, 700]) {
+    await narrowWindow(height)
+    const inside = await window.evaluate(() => ({
+      w: globalThis.innerWidth,
+      h: globalThis.innerHeight,
+    }))
+    await toggle('Filter').click()
+    const main = await box(menu())
 
-  // The last field sits at the foot of the list, so its submenu moves up to stay in the window.
-  await menu().evaluate((el) => {
-    el.scrollTop = el.scrollHeight
-  })
-  await row('Sprint').click()
-  const last = await box(submenu('Sprint'))
-  expect(last.y).toBeGreaterThanOrEqual(0)
-  expect(last.y + last.height).toBeLessThanOrEqual(inside.h)
-  expect(last.x + last.width).toBeLessThanOrEqual(inside.w)
-  expect(last.x).toBeGreaterThanOrEqual(0)
+    // From the top field to the last, which sits at the foot of the list: the submenu never covers
+    // the menu, and its whole box stays in the window.
+    for (const field of ['Status', 'Due date', 'Customer', 'Engagement', 'Epic', 'Sprint']) {
+      await row(field).click()
+      const side = await box(submenu(field))
+      const at = `${field} at ${String(height)}px`
+      expect(side.x + side.width <= main.x + 6 || side.x >= main.x + main.width - 6, at).toBe(true)
+      expect(side.x, at).toBeGreaterThanOrEqual(0)
+      expect(side.x + side.width, at).toBeLessThanOrEqual(inside.w)
+      expect(side.y, at).toBeGreaterThanOrEqual(0)
+      expect(side.y + side.height, at).toBeLessThanOrEqual(inside.h)
+      // Narrower than the field's right side, so it opened on the left.
+      expect(side.x + side.width, at).toBeLessThanOrEqual(main.x + 6)
+    }
+    await closeMenus()
+  }
+})
+
+test('a submenu closes when another field takes focus, and a search box keeps it against the pointer', async () => {
+  await open()
+  await toggle('Filter').click()
+  await row('Priority').hover()
+  await expect(submenu('Priority')).toBeVisible()
+  await row('Status').focus()
+  await expect(submenu('Priority')).not.toBeVisible()
+
+  // Typing in the Status search box keeps its submenu while the pointer rests on another field.
+  await row('Status').click()
+  await expect(search('Search Status')).toBeFocused()
+  await row('Type').hover()
+  await window.waitForTimeout(400)
+  await expect(submenu('Status')).toBeVisible()
+  await expect(submenu('Type')).not.toBeVisible()
+  await window.keyboard.type('prog')
+  await expect(submenu('Status').getByRole('checkbox')).toHaveCount(1)
 })
 
 test('the field list does not wrap in a wide font, and the submenu takes the menu colours', async () => {

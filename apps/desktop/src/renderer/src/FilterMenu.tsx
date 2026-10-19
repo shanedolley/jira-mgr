@@ -168,10 +168,26 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
    */
   function dwell(event: PointerEvent<HTMLButtonElement>) {
     if (event.movementX === 0 && event.movementY === 0) return
+    // Typing in a search box keeps its submenu, however the pointer drifts over the list.
+    const focused = document.activeElement
+    if (
+      focused instanceof HTMLInputElement &&
+      focused.type === 'text' &&
+      focused.closest('[popover]') !== buttonRef.current?.closest('[popover]')
+    )
+      return
     window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => {
       show(false)
     }, HOVER_MS)
+  }
+
+  /** A field takes focus, so another field's submenu, opened by the pointer, closes. */
+  function closeOthers() {
+    const menu = buttonRef.current?.closest('[popover]')
+    for (const other of menu?.querySelectorAll<HTMLElement>('[popover]:popover-open') ?? []) {
+      if (other !== popoverRef.current) other.hidePopover()
+    }
   }
 
   function onRowKey(event: KeyboardEvent<HTMLButtonElement>) {
@@ -190,7 +206,6 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
     const at = rows.indexOf(event.currentTarget)
     const next = rows[at + (event.key === 'ArrowDown' ? 1 : -1)]
     if (next === undefined) return
-    popoverRef.current?.hidePopover()
     next.focus()
   }
 
@@ -249,6 +264,7 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
           show(true)
         }}
         onKeyDown={onRowKey}
+        onFocus={closeOthers}
         onPointerMove={dwell}
         onPointerLeave={() => {
           window.clearTimeout(timer.current)
@@ -279,13 +295,18 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
         aria-label={label}
         onToggle={onToggle}
         onKeyDown={onSubmenuKey}
-        // Opens to the right, level with the row, and flips to the left against the window's edge.
+        // Opens to the right, level with the row. Against the window's right edge it flips to the left,
+        // against the foot it flips above the row, and at the corner it does both. Half the window's
+        // height always fits above or below the row, so the list scrolls inside it instead.
         style={{
           positionAnchor: anchorOf(uid),
-          positionTryFallbacks: 'flip-block, flip-inline',
+          positionTryFallbacks: 'flip-inline, flip-block, flip-block flip-inline',
+          maxHeight: 'calc(50vh - 1rem)',
           ...SUBMENU,
+          // No upward offset: a flip would turn it into a downward one, past the window's foot.
+          margin: '0 0 0 4px',
         }}
-        className="menu w-64"
+        className="menu flex-col w-64 [&:popover-open]:flex"
       >
         <input
           ref={searchRef}
@@ -298,7 +319,7 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
           onChange={(event) => {
             setQuery(event.target.value)
           }}
-          className="mb-1 h-8 w-full rounded-md border border-field-border bg-canvas px-2 placeholder:text-muted"
+          className="mb-1 h-8 w-full shrink-0 rounded-md border border-field-border bg-canvas px-2 placeholder:text-muted"
         />
         {hasNot(field) && (
           <div role="group" aria-label={`${label} operator`} className="flex gap-1 px-2 pb-1">
@@ -317,7 +338,7 @@ function FilterField({ field, filters, choices, onFilters }: FieldProps) {
             ))}
           </div>
         )}
-        <ul className="max-h-56 overflow-y-auto pb-1">
+        <ul className="min-h-0 max-h-56 overflow-y-auto pb-1">
           {listed.map((choice) => (
             <li key={choice.value}>
               <label className="flex h-7 cursor-default items-center gap-2 rounded px-2 hover:bg-hover">
