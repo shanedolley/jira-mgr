@@ -558,8 +558,6 @@ export function Shell({ session }: { session: Session }) {
    * active row would write itself back over the hover.
    */
   function hover(id: string) {
-    // With focus on the page body no letter would reach the Tree, so hovering takes it there.
-    if (document.activeElement === document.body) treeRef.current?.focus({ preventScroll: true })
     flushSync(() => {
       setEnterPending(false)
       setTrack((t) => ({ ...t, activeId: id }))

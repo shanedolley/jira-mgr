@@ -362,6 +362,8 @@ export function IssueTree({
     pointer.current = now
     // A cell editor, picker or menu holds the row it opened on, so the pointer passing over others moves nothing.
     if (!moved || document.querySelector(':popover-open') !== null) return
+    // With focus on the page body no letter would reach the Tree, so the pointer over it takes focus there.
+    if (document.activeElement === document.body) treeRef.current?.focus({ preventScroll: true })
     const next = hoverRow(rows, state, rowIdOf(event))
     if (next === null) return
     // The row is under the pointer already, so the view must not scroll it into place.

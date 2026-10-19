@@ -463,6 +463,8 @@ export function SprintPage({
     const moved = pointerMoved(pointer.current, now)
     pointer.current = now
     if (!moved || document.querySelector(':popover-open') !== null) return
+    // With focus on the page body no key would reach the page, so the pointer over it takes focus there.
+    if (document.activeElement === document.body) pageRef.current?.focus({ preventScroll: true })
     const row = event.target instanceof Element ? event.target.closest('[data-issue-key]') : null
     const key = row instanceof HTMLElement ? row.dataset.issueKey : undefined
     // Flushed at once, so a key pressed right after the move acts on this row.

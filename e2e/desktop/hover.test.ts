@@ -209,6 +209,22 @@ test('hovering a row when focus is on the page body lets o peek it, with no focu
   await expect(four()).toHaveAttribute('aria-selected', 'true')
 })
 
+test('hovering the same row again after focus left for the page body lets o peek it', async () => {
+  await open()
+  await four().hover()
+  await expect(four()).toHaveAttribute('data-active', 'true')
+  // A click on empty canvas, which sends focus to the body.
+  await window.mouse.click(2, 2)
+  await window.evaluate(() => {
+    ;(document.activeElement as HTMLElement | null)?.blur()
+  })
+  await expect(tree()).not.toBeFocused()
+  // Back onto the row that is already active: the row does not change, the focus must still come.
+  await four().hover()
+  await window.keyboard.press('o')
+  await expect(peeked('Migrate the dashboards')).toBeVisible()
+})
+
 test('with focus inside the Peek, o and Shift+O act on the hovered row', async () => {
   await open()
   await four().hover()
@@ -415,6 +431,19 @@ test.describe('the Sprint page', () => {
 
     await listed('PSAPAC-4').dblclick({ position: ON_KEY })
     await expect(issuePage().getByRole('heading', { name: 'Migrate the dashboards' })).toBeVisible()
+  })
+
+  test('hovering a row after focus left for the page body lets o peek it', async () => {
+    await openSprint()
+    await li('PSAPAC-4').hover()
+    await window.evaluate(() => {
+      ;(document.activeElement as HTMLElement | null)?.blur()
+    })
+    await expect(sprintPage()).not.toBeFocused()
+    await window.mouse.move(2, 2)
+    await li('PSAPAC-4').hover()
+    await window.keyboard.press('o')
+    await expect(peek()).toBeVisible()
   })
 
   test('Esc closes the Peek beside the page first, and a second Esc closes the page', async () => {
