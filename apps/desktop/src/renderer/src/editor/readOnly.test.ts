@@ -71,6 +71,13 @@ describe('tableRows', () => {
 })
 
 describe('inlineShape', () => {
+  it('reads a date node as its UTC day in any zone', () => {
+    const midnight = String(Date.UTC(2026, 9, 19))
+    expect(inlineShape({ type: 'date', attrs: { timestamp: midnight } }).text).toBe(
+      formatDate('2026-10-19'),
+    )
+  })
+
   it('labels a mention, emoji, date, status and inlineCard', () => {
     expect(inlineShape({ type: 'mention', attrs: { id: 'u1', text: '@Cy Young' } })).toEqual({
       kind: 'mention',

@@ -32,10 +32,10 @@ describe('sidebarSprints', () => {
 })
 
 describe('formatDay', () => {
-  it('shows a sprint date as a short local day', () => {
-    const local = new Date(2026, 9, 5, 23, 30)
-    expect(formatDay(local.toISOString())).toBe(formatDate(local.toISOString()))
-    expect(formatDay(new Date(2020, 9, 5, 12).toISOString())).toBe("5 Oct '20")
+  it('shows the date part of the timestamp, as the sprint labels do', () => {
+    // 14:00Z is already the 19th in Sydney, but the sprint ends on the 18th.
+    expect(formatDay('2026-10-18T14:00:00Z')).toBe(formatDate('2026-10-18'))
+    expect(formatDay('2020-10-05T23:32:56.296Z')).toBe("5 Oct '20")
   })
 
   it('says Not set for an undated sprint', () => {

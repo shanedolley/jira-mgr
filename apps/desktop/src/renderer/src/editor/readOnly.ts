@@ -46,10 +46,13 @@ function attrText(node: AdfNode): string {
   }
 }
 
-/** A `date` node's day, such as `19 Oct`. `timestamp` is milliseconds since the epoch, as a string. */
+/**
+ * A `date` node's day, such as `19 Oct`. Its `timestamp` (milliseconds since the epoch, as a string)
+ * is UTC midnight, so the day is the UTC date, as Jira shows it.
+ */
 export function dateText(node: AdfNode): string {
   const stamp = Number(node.attrs?.timestamp)
-  return Number.isFinite(stamp) ? formatDate(new Date(stamp).toISOString()) : ''
+  return Number.isFinite(stamp) ? formatDate(new Date(stamp).toISOString().slice(0, 10)) : ''
 }
 
 /** One line of text for each text block inside `node`, in document order. */

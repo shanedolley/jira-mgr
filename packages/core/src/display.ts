@@ -136,7 +136,7 @@ export interface SprintLabelInput {
  * of the timestamp, not the local day: PSAPAC sprints end at 14:00Z, which is 19 Oct in Sydney, but
  * the sprint is named "to 18 Oct".
  */
-function dayOf(timestamp: string | null | undefined): string | null {
+export function dayOf(timestamp: string | null | undefined): string | null {
   const day = timestamp?.slice(0, 10)
   if (day === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null
   const month = Number(day.slice(5, 7))
