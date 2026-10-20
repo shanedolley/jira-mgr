@@ -4,7 +4,7 @@ import type { DeleteIssueArgs } from '../../shared/ipc'
 import { LoadError } from './LoadError'
 import { Modal } from './Modal'
 import { StatusDot } from './StatusDot'
-import { useIssueDetail } from './queries'
+import { useIssueDetails } from './queries'
 
 /** Children named in the dialog before "and N more". */
 const SHOWN_CHILDREN = 5
@@ -12,36 +12,51 @@ const SHOWN_CHILDREN = 5
 const plural = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`
 
 interface DeleteIssueDialogProps {
-  issue: Issue
-  /** Every loaded issue, which says what children the issue has besides its subtasks. */
+  /** The issues to delete: the one the menu or Peek names, or the checked set. */
+  targets: readonly Issue[]
+  /** Every loaded issue, which says what children the issues have besides their subtasks. */
   issues: readonly Issue[]
   onCancel: () => void
-  /** The user confirmed. The caller sends it and closes the dialog. */
-  onConfirm: (args: DeleteIssueArgs) => void
+  /** The user confirmed. The caller sends them and closes the dialog. */
+  onConfirm: (args: DeleteIssueArgs[]) => void
   returnFocus: () => void
 }
 
 /**
- * The delete confirmation (Q9). It reads the issue afresh and lists every subtask Jira deletes
+ * The delete confirmation (Q9). It reads each issue afresh and lists every subtask Jira deletes
  * with it, since Jira deletes subtasks only when told to. Cancel has focus, so Enter never
- * deletes, and the destructive button names what goes: the issue alone, or the issue and its
+ * deletes, and the destructive button names what goes: the issues alone, or the issues and their
  * subtasks. Child issues that are not subtasks, such as an Epic's Stories, are not deleted, and
- * the dialog says they lose their parent.
+ * the dialog says they lose their parent. Several targets (the checked set, #339) list the issues
+ * too, and a checked subtask is listed once, as an issue.
  */
 export function DeleteIssueDialog({
-  issue,
+  targets,
   issues,
   onCancel,
   onConfirm,
   returnFocus,
 }: DeleteIssueDialogProps) {
-  const detail = useIssueDetail(issue.key)
-  const subtasks = detail.data?.subtasks ?? []
-  // The read must be fresh: a subtask added a moment ago has to be in the list the user confirms.
-  const ready = detail.data !== undefined && !detail.isFetching
+  const details = useIssueDetails(targets.map((t) => t.key))
+  const [only] = targets
+  const many = targets.length > 1
+  const checked = new Set(targets.map((t) => t.key))
+  const failed = details.find((d) => d.isError && d.data === undefined)
+  // The reads must be fresh: a subtask added a moment ago has to be in the list the user confirms.
+  const ready = details.every((d) => d.data !== undefined && !d.isFetching)
+  const subtasks = [
+    ...new Map(
+      details
+        .flatMap((d) => d.data?.subtasks ?? [])
+        .filter((s) => !checked.has(s.key))
+        .map((s) => [s.key, s]),
+    ).values(),
+  ]
   const children = issues
-    .filter((i) => i.parentKey === issue.key && !i.issueType.subtask)
+    .filter((i) => i.parentKey !== null && checked.has(i.parentKey))
+    .filter((i) => !i.issueType.subtask && !checked.has(i.key))
     .sort((a, b) => a.key.localeCompare(b.key, 'en', { numeric: true }))
+  const them = many ? 'them' : 'it'
 
   return (
     <Modal
@@ -52,16 +67,32 @@ export function DeleteIssueDialog({
     >
       <div className="space-y-3 p-5">
         <h2 id="delete-title" className="text-base font-semibold">
-          Delete {issue.key}?
+          {many ? `Delete ${plural(targets.length, 'issue')}?` : `Delete ${only?.key ?? ''}?`}
         </h2>
-        <p className="break-words">{issue.summary}</p>
-        <p className="text-muted">Jira deletes it permanently. This cannot be undone.</p>
+        {many ? (
+          <ul
+            aria-label="Issues to delete"
+            className="max-h-48 divide-y divide-line overflow-y-auto rounded-md border border-line"
+          >
+            {targets.map((target) => (
+              <li key={target.key} className="flex h-8 items-center gap-3 px-3">
+                <span className="w-20 shrink-0 font-mono text-xs text-muted">{target.key}</span>
+                <span className="min-w-0 flex-1 truncate">{target.summary}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="break-words">{only?.summary}</p>
+        )}
+        <p className="text-muted">Jira deletes {them} permanently. This cannot be undone.</p>
 
-        {detail.isError && detail.data === undefined ? (
+        {failed !== undefined ? (
           <LoadError
             what="the subtasks"
-            error={detail.error}
-            onRetry={() => void detail.refetch()}
+            error={failed.error}
+            onRetry={() => {
+              for (const detail of details) void detail.refetch()
+            }}
           />
         ) : !ready ? (
           <p role="status" className="text-muted">
@@ -69,9 +100,9 @@ export function DeleteIssueDialog({
           </p>
         ) : (
           subtasks.length > 0 && (
-            <section aria-label="Subtasks deleted with it" className="space-y-1">
+            <section aria-label={`Subtasks deleted with ${them}`} className="space-y-1">
               <p className="font-medium">
-                {plural(subtasks.length, 'subtask')} will be deleted with it:
+                {plural(subtasks.length, 'subtask')} will be deleted with {them}:
               </p>
               <ul className="max-h-48 divide-y divide-line overflow-y-auto rounded-md border border-line">
                 {subtasks.map((subtask) => (
@@ -92,7 +123,7 @@ export function DeleteIssueDialog({
           <section aria-label="Child issues that stay" className="space-y-1">
             <p className="font-medium">
               {plural(children.length, 'child issue')} stay{children.length === 1 ? 's' : ''} and
-              lose{children.length === 1 ? 's' : ''} this parent:
+              lose{children.length === 1 ? 's' : ''} {many ? 'their' : 'this'} parent:
             </p>
             <ul className="space-y-0.5 text-muted">
               {children.slice(0, SHOWN_CHILDREN).map((child) => (
@@ -117,17 +148,17 @@ export function DeleteIssueDialog({
             type="button"
             disabled={!ready}
             onClick={() => {
-              onConfirm({
-                key: issue.key,
-                deleteSubtasks: subtasks.length > 0,
-                subtasks: subtasks.map((s) => s.key),
-              })
+              onConfirm(
+                targets.map((target, at) => {
+                  const own = (details[at]?.data?.subtasks ?? []).map((s) => s.key)
+                  return { key: target.key, deleteSubtasks: own.length > 0, subtasks: own }
+                }),
+              )
             }}
             className="btn btn-danger"
           >
-            {subtasks.length > 0
-              ? `Delete issue and ${plural(subtasks.length, 'subtask')}`
-              : 'Delete issue'}
+            {many ? `Delete ${plural(targets.length, 'issue')}` : 'Delete issue'}
+            {subtasks.length > 0 && ` and ${plural(subtasks.length, 'subtask')}`}
           </button>
         </div>
       </div>

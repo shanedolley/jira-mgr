@@ -503,7 +503,7 @@ export function applyCreated(client: QueryClient, created: CreatedIssue): void {
   applyFreshIssue(client, created.issue)
 }
 
-interface DeleteRollback {
+export interface DeleteRollback {
   /** The issues taken out, with the phase each came from. */
   removed: { phase: IssuePhase; issue: Issue }[]
   /** Children that kept existing and lost their parent with it. */
@@ -513,12 +513,63 @@ interface DeleteRollback {
 }
 
 /**
+ * Takes `gone` out of every list that holds it and detaches the children of `key`, which stay
+ * without a parent as Jira leaves them. Only the caches that hold a deleted issue are cancelled,
+ * so a delete never restarts a load of the other phase.
+ */
+export async function removeDeleted(
+  client: QueryClient,
+  key: string,
+  gone: ReadonlySet<string>,
+): Promise<DeleteRollback> {
+  const holders = PHASES.map(phaseKey).filter((queryKey) =>
+    client.getQueryData<Issue[]>(queryKey)?.some((i) => gone.has(i.key)),
+  )
+  await Promise.all(holders.map((queryKey) => client.cancelQueries({ queryKey })))
+  const removed: DeleteRollback['removed'] = []
+  const orphaned: string[] = []
+  for (const phase of PHASES) {
+    const issues = client.getQueryData<Issue[]>(phaseKey(phase))
+    if (issues === undefined) continue
+    for (const issue of issues) {
+      if (gone.has(issue.key)) removed.push({ phase, issue })
+      else if (issue.parentKey === key) orphaned.push(issue.key)
+    }
+    client.setQueryData<Issue[]>(
+      phaseKey(phase),
+      issues
+        .filter((i) => !gone.has(i.key))
+        .map((i) => (i.parentKey === key ? { ...i, parentKey: null } : i)),
+    )
+  }
+  return { removed, orphaned, parentKey: key }
+}
+
+/**
+ * Jira confirmed a delete that `removeDeleted` showed. A phase still on its first load may have
+ * paged past an issue no loaded list held, so it starts again. An issue that was in a loaded list
+ * cannot be in the phase still loading.
+ */
+export function confirmDeleted(
+  client: QueryClient,
+  gone: ReadonlySet<string>,
+  rollback: DeleteRollback,
+): void {
+  invalidateSprints(client)
+  const found = new Set(rollback.removed.map((r) => r.issue.key))
+  if ([...gone].every((k) => found.has(k))) return
+  for (const queryKey of PHASES.map(phaseKey)) {
+    if (client.getQueryData(queryKey) === undefined && client.isFetching({ queryKey }) > 0) {
+      void client.cancelQueries({ queryKey }).then(() => client.invalidateQueries({ queryKey }))
+    }
+  }
+}
+
+/**
  * A delete that shows at once. The issue, and the subtasks the user chose to delete with it, leave
  * every list; the children that stay lose their parent, as Jira does for an Epic. A refusal puts
- * every one back. Only the caches that hold a deleted issue are cancelled, so a delete never
- * restarts a load of the other phase. Nothing is read afterwards: the next focus refetch reconciles
- * the unresolved list, and a phase still on its first load starts again once a delete of an issue
- * no loaded list held succeeds.
+ * every one back. Nothing is read afterwards: the next focus refetch reconciles the unresolved
+ * list (see `removeDeleted` and `confirmDeleted`).
  */
 export function deleteMutation(
   client: QueryClient,
@@ -526,42 +577,10 @@ export function deleteMutation(
 ): MutationOptions<DeletedIssue, JiraMgrError, DeleteIssueArgs, DeleteRollback> {
   return {
     mutationFn: send,
-    async onMutate({ key, deleteSubtasks, subtasks }) {
-      const gone = new Set([key, ...(deleteSubtasks ? subtasks : [])])
-      const holders = PHASES.map(phaseKey).filter((queryKey) =>
-        client.getQueryData<Issue[]>(queryKey)?.some((i) => gone.has(i.key)),
-      )
-      await Promise.all(holders.map((queryKey) => client.cancelQueries({ queryKey })))
-      const removed: DeleteRollback['removed'] = []
-      const orphaned: string[] = []
-      for (const phase of PHASES) {
-        const issues = client.getQueryData<Issue[]>(phaseKey(phase))
-        if (issues === undefined) continue
-        for (const issue of issues) {
-          if (gone.has(issue.key)) removed.push({ phase, issue })
-          else if (issue.parentKey === key) orphaned.push(issue.key)
-        }
-        client.setQueryData<Issue[]>(
-          phaseKey(phase),
-          issues
-            .filter((i) => !gone.has(i.key))
-            .map((i) => (i.parentKey === key ? { ...i, parentKey: null } : i)),
-        )
-      }
-      return { removed, orphaned, parentKey: key }
-    },
+    onMutate: ({ key, deleteSubtasks, subtasks }) =>
+      removeDeleted(client, key, new Set([key, ...(deleteSubtasks ? subtasks : [])])),
     onSuccess(_data, { key, deleteSubtasks, subtasks }, rollback) {
-      invalidateSprints(client)
-      // A phase still on its first load may have paged past an issue no loaded list held, so it
-      // starts again. An issue that was in a loaded list cannot be in the phase still loading.
-      const found = new Set(rollback.removed.map((r) => r.issue.key))
-      const unseen = [key, ...(deleteSubtasks ? subtasks : [])].some((k) => !found.has(k))
-      if (!unseen) return
-      for (const queryKey of PHASES.map(phaseKey)) {
-        if (client.getQueryData(queryKey) === undefined && client.isFetching({ queryKey }) > 0) {
-          void client.cancelQueries({ queryKey }).then(() => client.invalidateQueries({ queryKey }))
-        }
-      }
+      confirmDeleted(client, new Set([key, ...(deleteSubtasks ? subtasks : [])]), rollback)
     },
     onError(_error, _args, rollback) {
       if (rollback === undefined) return

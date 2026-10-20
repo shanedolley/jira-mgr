@@ -336,6 +336,8 @@ export interface BatchProgress {
   batchId: number
   done: number
   total: number
+  /** A delete run only: the issue just deleted, with its Subtasks. Absent when that issue failed. */
+  deleted?: DeletedIssue
 }
 
 export interface KeyArgs {
@@ -389,6 +391,18 @@ export interface DeleteIssueArgs {
 export interface DeletedIssue {
   key: string
   deletedSubtasks: string[]
+}
+
+/** Several deletes in one run. Progress arrives as `BATCH_PROGRESS_EVENT` under `batchId`. */
+export interface DeleteIssuesArgs {
+  batchId: number
+  items: DeleteIssueArgs[]
+}
+
+/** The issues a run deleted, in the order it deleted them, and the ones it could not. A failure never throws. */
+export interface DeleteIssuesOutcome {
+  deleted: DeletedIssue[]
+  failed: { key: string; reason: string }[]
 }
 
 export interface SetStatusArgs {
@@ -502,6 +516,8 @@ export interface IpcContract {
   'issues:create': { args: CreateIssueArgs; result: CreatedIssue }
   /** Permanent. Refuses to cascade to subtasks the user was not shown. */
   'issues:delete': { args: DeleteIssueArgs; result: DeletedIssue }
+  /** Permanent. Deletes the issues one at a time, lowest level first, and goes on past a failure. */
+  'issues:deleteMany': { args: DeleteIssuesArgs; result: DeleteIssuesOutcome }
   /** Active and future sprints of the project's board, or every sprint with `all`. */
   'sprints:list': { args: { all: boolean }; result: SprintOption[] }
   /** One sprint with its issues and their counts, for the Sprint page. Read-only. */
@@ -581,6 +597,7 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'issues:setSprint': true,
   'issues:create': true,
   'issues:delete': true,
+  'issues:deleteMany': true,
   'sprints:list': true,
   'sprints:get': true,
   'users:search': true,

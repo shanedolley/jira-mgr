@@ -167,7 +167,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Lets the window move by its sidebar header, where the macOS traffic lights sit. */
+/* Lets the window move by a header: the sidebar's, where the macOS traffic lights sit, and the main ones. */
 .app-drag {
   -webkit-app-region: drag;
 }

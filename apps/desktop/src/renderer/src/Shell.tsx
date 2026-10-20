@@ -87,6 +87,7 @@ import { rowDomId } from './TreeRow'
 import { TreeToolbar, activeToggleNames } from './TreeToolbar'
 import { ViewsList } from './ViewsList'
 import { ViewTabs } from './ViewTabs'
+import { deletedNotice } from './batch'
 import {
   createContext,
   deleteFailureNotes,
@@ -114,6 +115,7 @@ import {
   useBatch,
   useCustomers,
   useDeleteIssue,
+  useDeleteIssues,
   useEditIssue,
   useDoneIssues,
   useLoadedCount,
@@ -163,6 +165,8 @@ type Overview = 'epics' | 'customers'
 /** The right-click menu: where it opened and the row to return focus to. */
 interface MenuState {
   key: string
+  /** Opened on a checked row while two or more are checked: the menu is for the whole set. */
+  bulk: boolean
   x: number
   y: number
   /** A submenu to open at once, for `Shift+D` and its kin. */
@@ -353,7 +357,7 @@ export function Shell({ session }: { session: Session }) {
   >(null)
   // The issue whose delete modal is open, held whole: the lists may not hold it (a Done parent
   // opened from a page before Done loads) or may drop it while the modal is open.
-  const [deleting, setDeleting] = useState<Issue | null>(null)
+  const [deleting, setDeleting] = useState<Issue[] | null>(null)
   // The issue whose summary modal is open, held whole for the same reason: a Sprint page's issue may not be in the lists.
   const [renaming, setRenaming] = useState<Issue | null>(null)
   // The right-click menu: the issue it acts on, where it opened, an item to open at once, and the
@@ -400,6 +404,8 @@ export function Shell({ session }: { session: Session }) {
   // A created issue to make active once its row exists.
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const deleteIssue = useDeleteIssue()
+  const deleteRun = useDeleteIssues()
+  const deleteRunning = deleteRun.progress !== null
   const editIssue = useEditIssue()
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
@@ -1040,7 +1046,14 @@ export function Shell({ session }: { session: Session }) {
     open?: MenuItemId,
   ) {
     const rect = row.getBoundingClientRect()
-    openMenu({ key, x: point?.x ?? rect.left + 48, y: point?.y ?? rect.bottom, open, row })
+    // A checked row of a checked set speaks for the set, and only a plain open does (a key that names a submenu is for the row).
+    const bulk =
+      open === undefined &&
+      !listCovered &&
+      !deleteRunning &&
+      checkedIssues.length > 1 &&
+      checkedIssues.some((i) => i.key === key)
+    openMenu({ key, bulk, x: point?.x ?? rect.left + 48, y: point?.y ?? rect.bottom, open, row })
   }
 
   /** Closes the menu and puts focus back on the row it came from. */
@@ -1120,6 +1133,7 @@ export function Shell({ session }: { session: Session }) {
 
   /** An item of the right-click menu that is not a submenu. The menu closes first, so a dialog finds the Tree's focus to return to. */
   function runMenuAction(action: MenuAction, issue: Issue) {
+    const bulk = menuRef.current?.bulk === true
     closeMenu()
     const { key } = issue
     switch (action) {
@@ -1150,7 +1164,7 @@ export function Shell({ session }: { session: Session }) {
         window.open(issueUrl(session.siteUrl, key), '_blank', 'noopener,noreferrer')
         break
       case 'delete':
-        setDeleting(issue)
+        askDelete(bulk ? checkedIssues : [issue])
         break
     }
   }
@@ -1462,8 +1476,52 @@ export function Shell({ session }: { session: Session }) {
     setToasts((held) => held.filter((toast) => toast.id !== id))
   }
 
-  /** Sends the delete the moment the user confirms; the lists already show it gone. */
-  function confirmDelete(args: DeleteIssueArgs) {
+  /** Opens the delete dialog, unless a run is deleting: its progress is one at a time. */
+  function askDelete(targets: Issue[]) {
+    if (deleteRunning) {
+      notify({ title: 'A delete is already running', notes: [], warned: false })
+      return
+    }
+    setDeleting(targets)
+  }
+
+  const deleteOne = (issue: Issue) => {
+    askDelete([issue])
+  }
+
+  /** Sends the deletes the moment the user confirms. One shows gone at once; several leave as each succeeds. */
+  function confirmDelete(items: DeleteIssueArgs[]) {
+    const [only] = items
+    if (items.length > 1 || only === undefined) {
+      confirmDeleteMany(items)
+      return
+    }
+    confirmDeleteOne(only)
+  }
+
+  /** Deletes the checked set lowest level first. Each row leaves the Tree when its delete succeeds. */
+  function confirmDeleteMany(items: DeleteIssueArgs[]) {
+    setDeleting(null)
+    deleteRun
+      .run(items, (gone) => {
+        setPageKey((held) => (held !== null && gone.has(held) ? null : held))
+      })
+      .then(
+        (outcome) => {
+          notify(deletedNotice(outcome))
+        },
+        (failure: unknown) => {
+          notify({
+            title: 'Could not delete the issues',
+            notes: [failure instanceof Error ? failure.message : 'The delete failed.'],
+            warned: true,
+          })
+        },
+      )
+  }
+
+  /** Sends one delete the moment the user confirms; the lists already show it gone. */
+  function confirmDeleteOne(args: DeleteIssueArgs) {
     const gone = new Set([args.key, ...(args.deleteSubtasks ? args.subtasks : [])])
     setDeleting(null)
     if (pageKey !== null && gone.has(pageKey)) setPageKey(null)
@@ -1788,6 +1846,10 @@ export function Shell({ session }: { session: Session }) {
           run={batch.run}
           onNotice={notify}
           onClear={clearChecked}
+          onDelete={() => {
+            askDelete(checkedIssues)
+          }}
+          deleting={deleteRun.progress}
         />
         <p role="status" className="sr-only">
           {loadStatus}
@@ -1806,7 +1868,7 @@ export function Shell({ session }: { session: Session }) {
           inView={peekedNode !== undefined}
           onClose={closePeek}
           onOpenPage={setPageKey}
-          onDelete={setDeleting}
+          onDelete={deleteOne}
           onTimer={pressTimer}
           onCopy={copyIssue}
           onEditingChange={(editing) => {
@@ -1901,7 +1963,7 @@ export function Shell({ session }: { session: Session }) {
             }}
             onOpen={setPageKey}
             onOpenSprint={openSprint}
-            onDelete={setDeleting}
+            onDelete={deleteOne}
             pageRef={pageRef}
             onNotice={notify}
             onTimer={pressTimer}
@@ -1954,6 +2016,8 @@ export function Shell({ session }: { session: Session }) {
           x={menu.x}
           y={menu.y}
           open={menu.open}
+          selected={menu.bulk ? checkedIssues.length : undefined}
+          canDelete={!deleteRunning}
           onRun={(action) => {
             runMenuAction(action, menuIssue)
           }}
@@ -1962,7 +2026,7 @@ export function Shell({ session }: { session: Session }) {
       )}
       {deleting !== null && (
         <DeleteIssueDialog
-          issue={deleting}
+          targets={deleting}
           issues={issues}
           onCancel={() => {
             setDeleting(null)

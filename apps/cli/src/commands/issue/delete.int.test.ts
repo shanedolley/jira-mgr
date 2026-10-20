@@ -31,6 +31,144 @@ function serveDelete(options: { subtasks?: boolean } = {}) {
 
 const del = (...args: string[]) => ['issue', 'delete', KEY, ...args]
 
+/** The recorded issue as another key and type level, with no subtasks. */
+function issueAt(key: string, hierarchyLevel: number) {
+  const fixture = recorded() as { fields: { issuetype: object } }
+  return {
+    ...fixture,
+    key,
+    fields: {
+      ...fixture.fields,
+      issuetype: { ...fixture.fields.issuetype, hierarchyLevel, subtask: hierarchyLevel < 0 },
+      subtasks: [],
+    },
+  }
+}
+
+const EPIC = 'PSAPAC-3001'
+const STORY = 'PSAPAC-3002'
+const SUBTASK = 'PSAPAC-3003'
+const LEVELS: Record<string, number> = { [EPIC]: 1, [STORY]: 0, [SUBTASK]: -1 }
+
+/** Serves an Epic, a Story and a Subtask, and answers a DELETE with `answer` (no content by default). */
+function serveSet(answer?: (key: string) => Response | undefined) {
+  return serveWrites({
+    respond: ({ method, path }) => {
+      const key = /issue\/(PSAPAC-\d+)/.exec(path)?.[1] ?? ''
+      if (LEVELS[key] === undefined) return undefined
+      return method === 'GET' ? Response.json(issueAt(key, LEVELS[key])) : answer?.(key)
+    },
+  })
+}
+
+const deleted = (requests: { method: string; path: string }[]) =>
+  requests.filter((r) => r.method === 'DELETE').map((r) => r.path.split('?')[0]?.split('/').at(-1))
+
+describe('jm issue delete with several keys', () => {
+  const all = ['issue', 'delete', EPIC, STORY, SUBTASK, '--confirm']
+
+  it('deletes the subtask, then the story, then the epic, and lists them in that order', async () => {
+    const { requests } = serveSet()
+    const { code, data, f } = await runJson(all)
+    expect(code).toBe(0)
+    expect(data).toEqual({
+      deleted: [
+        { key: SUBTASK, deletedSubtasks: [] },
+        { key: STORY, deletedSubtasks: [] },
+        { key: EPIC, deletedSubtasks: [] },
+      ],
+      failed: [],
+    })
+    expect(deleted(requests)).toEqual([SUBTASK, STORY, EPIC])
+    expect(f.stderr).toBe(`Deleted ${SUBTASK}\nDeleted ${STORY}\nDeleted ${EPIC}\n`)
+  })
+
+  it('goes on after a refusal, names the failed key and exits with its code', async () => {
+    const { requests } = serveSet((key) =>
+      key === STORY
+        ? Response.json({ errorMessages: ['No permission'] }, { status: 403 })
+        : undefined,
+    )
+    const { code, data } = await runJson(all)
+    expect(code).toBe(4)
+    expect(data).toEqual({
+      deleted: [
+        { key: SUBTASK, deletedSubtasks: [] },
+        { key: EPIC, deletedSubtasks: [] },
+      ],
+      failed: [
+        { key: STORY, error: { code: 'permission_denied', message: expect.any(String) as string } },
+      ],
+    })
+    expect(deleted(requests)).toEqual([SUBTASK, STORY, EPIC])
+  })
+
+  it('with --with-subtasks lists the Subtasks that went with each issue', async () => {
+    serveSet()
+    const { code, data } = await runJson([
+      'issue',
+      'delete',
+      EPIC,
+      KEY,
+      '--confirm',
+      '--with-subtasks',
+    ])
+    expect(code).toBe(0)
+    // The Story goes before the Epic, and takes its recorded Subtask along.
+    expect(data).toEqual({
+      deleted: [
+        { key: KEY, deletedSubtasks: ['PSAPAC-3122'] },
+        { key: EPIC, deletedSubtasks: [] },
+      ],
+      failed: [],
+    })
+  })
+
+  it('names each key on stderr as it settles, so a Ctrl-C part way still says what went', async () => {
+    const controller = new AbortController()
+    const { requests } = serveSet((key) => {
+      if (key === EPIC) controller.abort()
+      return undefined
+    })
+    const { code, f } = await runJson(all, undefined, { signal: controller.signal })
+    expect(code).toBe(130)
+    expect(f.stdout).toBe('')
+    expect(f.stderr).toBe(`Deleted ${SUBTASK}\nDeleted ${STORY}\n`)
+    // Ctrl-C landed while the Epic's delete was in flight, so it is the one key not reported.
+    expect(deleted(requests)).toEqual([SUBTASK, STORY, EPIC])
+  })
+
+  it('prints each key to stderr and the count on a terminal, failures too', async () => {
+    serveSet((key) =>
+      key === EPIC ? Response.json({ errorMessages: ['boom'] }, { status: 500 }) : undefined,
+    )
+    const tty = await runTty(all)
+    expect(tty.code).toBe(5)
+    expect(tty.f.stdout).toBe('Deleted 2 issues, 1 failed\n')
+    const lines = tty.f.stderr.split('\n')
+    expect(lines.slice(0, 2)).toEqual([`Deleted ${SUBTASK}`, `Deleted ${STORY}`])
+    expect(lines[2]).toMatch(new RegExp(`^Could not delete ${EPIC}: `))
+  })
+
+  it('refuses without --confirm, or with a key outside the project, before any request', async () => {
+    const { requests } = serveSet()
+    const bare = await runJson(['issue', 'delete', EPIC, STORY])
+    expect(bare.code).toBe(2)
+    expect(bare.error?.message).toBe(`Deleting ${EPIC}, ${STORY} is permanent. Pass --confirm.`)
+    const foreign = await runJson(['issue', 'delete', EPIC, 'OTHER-1', '--confirm'])
+    expect(foreign.code).toBe(2)
+    expect(requests).toEqual([])
+  })
+
+  it('counts a repeated key once and keeps the one-key output', async () => {
+    const { requests } = serveSet()
+    const { code, data } = await runJson(['issue', 'delete', EPIC, EPIC, '--confirm'])
+    expect(code).toBe(0)
+    expect(data).toEqual({ key: EPIC, deletedSubtasks: [] })
+    expect(deleted(requests)).toEqual([EPIC])
+  })
+})
+
 describe('jm issue delete', () => {
   it('without --confirm exits 2 and sends no request', async () => {
     const { requests, meta } = serveDelete()

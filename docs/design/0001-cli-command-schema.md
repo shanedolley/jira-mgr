@@ -77,7 +77,7 @@ interface CommandSpec {
   output: { summary: string; example: unknown }                  // example is the data JSON carries
   exits?: readonly { code: ErrorCode; when: string }[]           // command-specific cases only
   writes: readonly ('jira' | 'state' | 'keychain')[]             // [] for a read
-  calls: readonly string[]               // '@jira-mgr/core/write#deleteIssue'
+  calls: readonly string[]               // '@jira-mgr/core/write#deleteIssues'
 }
 
 const NOUNS: Record<string, string>     // noun to summary, for `jm issue --help`
@@ -161,12 +161,12 @@ Output times follow core: UTC ISO strings in JSON, and local `YYYY-MM-DD HH:mm` 
     "commands": [
       {
         "id": "issue delete",
-        "usage": "jm issue delete <key> [--confirm] [--with-subtasks]",
+        "usage": "jm issue delete <keys...> [--confirm] [--with-subtasks]",
         "summary": "...", "description": "...",
         "args": [], "options": [], "examples": [],
         "output": { "summary": "...", "example": { "key": "PSAPAC-12", "deletedSubtasks": [] } },
         "exits": [{ "code": "validation_failed", "exit": 2, "when": "--confirm is missing" }],
-        "writes": ["jira"], "calls": ["@jira-mgr/core/write#deleteIssue"]
+        "writes": ["jira"], "calls": ["@jira-mgr/core/state#assertInProject", "@jira-mgr/core/write#deleteIssues"]
       }
     ]
   }
@@ -248,6 +248,7 @@ Type pads to 7 characters and status to the longest status shown. A context-only
 ### Safety
 
 - **Delete.** `jm issue delete <key>` without `--confirm` exits 2 before any request: `Deleting PSAPAC-12 is permanent. Pass --confirm.` With `--confirm`, it reads the issue's subtasks through `getIssue`. With subtasks and no `--with-subtasks`, it exits 2 with `PSAPAC-12 has subtasks PSAPAC-13, PSAPAC-14. Pass --with-subtasks to delete them too.` and `details.subtasks`. Otherwise it calls `deleteIssue` with `deleteSubtasks` set to whether the flag was given (Q9).
+  *Amended 2026-10-20, build of #339.* The command takes several keys (`<keys...>`) and calls core's `deleteIssues`, which reads each issue and deletes them one at a time, lowest level first (Subtasks, then Stories, Tasks and Bugs, then Epics). Every key is checked against the project and `--confirm` before any request. One key keeps its output and exit codes. Several keys return `{ deleted: [{ key, deletedSubtasks }], failed: [{ key, error: { code, message } }] }`, `deleted` in the order they were deleted; a failed key does not stop the rest, and the exit code is the first failure's (0 when none failed). Each key goes to stderr as it settles ("Deleted KEY ...", "Could not delete KEY: message"), so a Ctrl-C part way still says what went; a terminal then prints only "Deleted N issues, M failed" on stdout. A key repeated counts once.
 - **No other guard** (Q3 a). Every other command, status changes included, runs for any caller. Comment, worklog, link and attachment deletes need no `--confirm`.
 - **Token.** No flag carries the token, since argv shows in `ps`. `jm auth login` reads it from a hidden TTY prompt, or from stdin with `--token-stdin`.
 - **Prompts.** Only `jm auth login` prompts, and only on a TTY, for a missing site, project, email or token. Every other command exits 2 naming the missing value, on a TTY or not. This replaces the CLI README's rule that every command prompts.
@@ -297,7 +298,7 @@ Every command also takes `--json`. Types follow the value types table. `R` marks
 | `jm issue get <key>` | none | `search#getIssue`, `adf#adfToMarkdown` | none | `Issue` plus `description` (ADF or null), `descriptionMarkdown`, `subtasks: { key, summary, status }[]`, `url` |
 | `jm issue create` | `--type <enum: Epic Story Task Bug Subtask>` (default Story); R `--summary <text>`; R `--customer <name-or-id>`; R `--engagement <name-or-id>`; `--parent <key>`; `--description <markdown>` \| `--description-file <file>` \| `--adf <file>`; `--assignee <me\|account-id\|query>`; `--priority <name-or-id>`; repeatable `--label <text>`; `--start <date>`; `--due <date>`; `--estimate <duration>`; `--time-remaining <number>` | `write#createIssue`, `search#getIssue`, `lookups#getFieldOptions`, `lookups#searchAssignableUsers`, `adf#markdownToAdf` | jira | As `jm issue get`, read back after the create |
 | `jm issue edit <key>` | `--summary`; the three description inputs or `--clear-description`; clearable `--assignee`, `--start`, `--due`, `--time-remaining`; `--priority`; repeatable `--label` (replaces), conflicting with repeatable `--add-label` and `--remove-label`; `--parent <key>` (the CLI does not copy Customer or Engagement from the new parent; Q16's question is the app's dialog); `--customer`; `--engagement`; `--estimate <duration>`; `--type <enum: Story Task Bug>` (only a Story, Task or Bug can change, read through `getIssue` first) | `search#getIssue` (for `--type`), `write#editIssue` and the create lookups | jira | `{ key, changed: string[] }` (the option names sent, each once: `label` stands for `--label`, `--add-label` and `--remove-label`, and `description` for the four description options) |
-| `jm issue delete <key>` | `--confirm`; `--with-subtasks` | `search#getIssue`, `write#deleteIssue` | jira | `{ key, deletedSubtasks: string[] }` |
+| `jm issue delete <keys...>` | `--confirm`; `--with-subtasks` | `state#assertInProject`, `write#deleteIssues` | jira | `{ key, deletedSubtasks: string[] }`, or with several keys `{ deleted, failed }` |
 
 *Amended 2026-10-09, #67 (approved on #27):* `issue create` reads the new issue back through `createIssue`, which returns it, so `data` is the object `issue get` returns and shows what the PSAPAC automation changed. If the read fails after the create, the command exits 5 with `jira_error`, a message that says the issue exists, and `details: { key, id }`. No new error code. `createIssue` takes `{ signal }` and the handler passes `ctx.signal`, so Ctrl-C during the read-back wraps the abort in that same error and `run` prints it to stderr before exiting 130, which keeps the key. A Ctrl-C before the POST creates nothing and prints nothing. The settle wait in `run` covers a command that writes `state` and a handler that sets `settlesOnInterrupt` (only `issue create`). It does not cover other Jira writes: most pass no signal, so their request would run to the end and the wait would only delay the exit. Passing a signal through the other writes is a later change. `settlesOnInterrupt` lives on the handler, not the spec, so it is not in `jm help --json`.
 

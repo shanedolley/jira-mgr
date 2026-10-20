@@ -6,7 +6,7 @@ import { getFieldIds } from './fields.js'
 import type { HttpClient } from './http.js'
 import { SWAPPABLE_TYPES, type Issue } from './issue.js'
 import { getIssue, type IssueDetail } from './search.js'
-import { readSettings, type FieldIds } from './state.js'
+import { assertInProject, readSettings, type FieldIds } from './state.js'
 import { duration, issueKey, parseInput } from './validate.js'
 
 const ISSUE_TYPES = ['Epic', 'Story', 'Task', 'Bug', 'Subtask'] as const
@@ -207,6 +207,134 @@ export async function deleteIssue(
     'DELETE',
     `/rest/api/3/issue/${issueKeyValue}?deleteSubtasks=${String(deleteSubtasks)}`,
   )
+}
+
+/** One issue of a `deleteIssues` run. */
+export interface DeleteRequest {
+  key: string
+  /** Whether Jira deletes the issue's Subtasks with it. A Subtask left over refuses the delete. */
+  deleteSubtasks: boolean
+  /** The Subtasks the caller showed the user. A Subtask outside the list refuses the delete. */
+  shown?: readonly string[]
+}
+
+/** An issue a run deleted, with the Subtasks that went with it. */
+export interface DeletedKeys {
+  key: string
+  deletedSubtasks: string[]
+}
+
+/** An issue a run could not delete. */
+export interface DeleteFailure {
+  key: string
+  error: JiraMgrError
+}
+
+export interface DeleteReport {
+  /** In the order the run deleted them. */
+  deleted: DeletedKeys[]
+  failed: DeleteFailure[]
+}
+
+export interface DeleteOptions {
+  /** Ends the advice a refusal for Subtasks gives: "<key> has subtasks A, B. <hint>". */
+  subtaskHint: string
+  /** Called as each issue settles: its `deleted` entry when it went, else the `error` that stopped it. */
+  onSettled?: (settled: {
+    done: number
+    total: number
+    key: string
+    deleted: DeletedKeys | null
+    error: JiraMgrError | null
+  }) => void
+  signal?: AbortSignal
+}
+
+const asError = (error: unknown): JiraMgrError =>
+  error instanceof JiraMgrError
+    ? error
+    : new JiraMgrError('internal', error instanceof Error ? error.message : String(error), {
+        cause: error,
+      })
+
+/**
+ * Deletes the issues one at a time, lowest level first: Subtasks, then Stories, Tasks and Bugs,
+ * then Epics (`issueType.hierarchyLevel` ascending), so a child goes before its parent. Within a
+ * level the order given holds. Every issue is read first, for its level and its Subtasks, and a
+ * Subtask that an earlier delete of the run removed no longer counts. An issue that fails, from
+ * the project guard to Jira's refusal, is reported and the run goes on.
+ */
+export async function deleteIssues(
+  http: HttpClient,
+  requests: readonly DeleteRequest[],
+  options: DeleteOptions,
+): Promise<DeleteReport> {
+  const { subtaskHint, onSettled, signal } = options
+  const unique = requests.filter((r, at) => requests.findIndex((o) => o.key === r.key) === at)
+  const report: DeleteReport = { deleted: [], failed: [] }
+  let done = 0
+  const settle = (key: string, deleted: DeletedKeys | null, error: JiraMgrError | null) => {
+    done += 1
+    onSettled?.({ done, total: unique.length, key, deleted, error })
+  }
+  const fail = (key: string, cause: unknown) => {
+    const error = asError(cause)
+    report.failed.push({ key, error })
+    settle(key, null, error)
+  }
+
+  const read: { request: DeleteRequest; level: number; subtasks: string[] }[] = []
+  for (const request of unique) {
+    try {
+      await assertInProject(request.key)
+      const issue = await getIssue(http, request.key, { signal })
+      read.push({
+        request,
+        level: issue.issueType.hierarchyLevel,
+        subtasks: issue.subtasks.map((s) => s.key),
+      })
+    } catch (error) {
+      if (signal?.aborted === true) throw error
+      fail(request.key, error)
+    }
+  }
+
+  const gone = new Set<string>()
+  // `sort` is stable, so equal levels keep the order given.
+  for (const { request, subtasks } of read.sort((a, b) => a.level - b.level)) {
+    const { key, deleteSubtasks, shown } = request
+    signal?.throwIfAborted()
+    try {
+      // A Subtask this run deleted is gone, so it neither blocks the parent nor goes with it.
+      const keys = subtasks.filter((k) => !gone.has(k))
+      if (keys.length > 0 && !deleteSubtasks) {
+        throw new JiraMgrError(
+          'validation_failed',
+          `${key} has subtasks ${keys.join(', ')}. ${subtaskHint}`,
+          { details: { subtasks: keys } },
+        )
+      }
+      const unseen = keys.filter((k) => !(shown ?? keys).includes(k))
+      if (deleteSubtasks && unseen.length > 0) {
+        throw new JiraMgrError(
+          'validation_failed',
+          `${key} has new subtasks ${unseen.join(', ')}. Review the list and delete again.`,
+          { details: { subtasks: keys } },
+        )
+      }
+      await deleteIssue(http, key, { deleteSubtasks })
+      const deleted = { key, deletedSubtasks: deleteSubtasks ? keys : [] }
+      for (const k of [key, ...deleted.deletedSubtasks]) gone.add(k)
+      // A Subtask that failed on its own but went with its parent is gone, so it is not a failure.
+      report.failed = report.failed.filter((f) => !deleted.deletedSubtasks.includes(f.key))
+      report.deleted.push(deleted)
+      settle(key, deleted, null)
+    } catch (error) {
+      if (signal?.aborted === true) throw error
+      fail(key, error)
+    }
+  }
+  return report
 }
 
 const transitionsResponse = z.object({

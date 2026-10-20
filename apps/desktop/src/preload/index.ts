@@ -41,8 +41,8 @@ const api = {
   },
   onBatchProgress(listener) {
     const forward = (_event: unknown, progress: unknown) => {
-      const { batchId, done, total } = progress as BatchProgress
-      listener({ batchId, done, total })
+      const { batchId, done, total, deleted } = progress as BatchProgress
+      listener({ batchId, done, total, ...(deleted !== undefined && { deleted }) })
     }
     ipcRenderer.on(BATCH_PROGRESS_EVENT, forward)
     return () => {

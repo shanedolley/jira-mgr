@@ -224,6 +224,10 @@ export interface BulkBarProps {
   onNotice: Notify
   /** Unchecks every issue. */
   onClear: () => void
+  /** Asks to delete the checked issues, which opens the confirmation. Without it the Actions menu has no Delete (the Sprint page). */
+  onDelete?: () => void
+  /** The running delete's progress, or `null` between deletes. */
+  deleting?: { done: number; total: number } | null
 }
 
 /**
@@ -232,13 +236,23 @@ export interface BulkBarProps {
  * an action, so another can follow. While a batch runs the count reads its progress and the
  * actions wait, since a second batch over the same issues would race the first.
  */
-export function BulkBar({ checked, all, me, progress, run, onNotice, onClear }: BulkBarProps) {
+export function BulkBar({
+  checked,
+  all,
+  me,
+  progress,
+  run,
+  onNotice,
+  onClear,
+  onDelete,
+  deleting = null,
+}: BulkBarProps) {
   const menuId = useId()
   const menu = useRef<HTMLDivElement>(null)
   const [busy, setBusy] = useState(false)
   const inFlight = useRef(false)
   if (checked.length === 0) return null
-  const running = busy || progress !== null
+  const running = busy || progress !== null || deleting !== null
 
   function apply(action: BulkAction, stay = false) {
     // The ref answers a second click in the same tick, before `busy` has rendered.
@@ -277,9 +291,11 @@ export function BulkBar({ checked, all, me, progress, run, onNotice, onClear }: 
       className="absolute bottom-4 left-1/2 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-lg border border-line bg-panel py-1.5 pl-3 pr-1.5 shadow-[0_8px_24px_oklch(0_0_0/0.18)]"
     >
       <span aria-live="polite" className="min-w-[7.5rem] truncate tabular-nums">
-        {progress === null
-          ? `${String(checked.length)} selected`
-          : `Updating ${String(progress.done)} of ${String(progress.total)}`}
+        {deleting !== null
+          ? `Deleting ${String(deleting.done)} of ${String(deleting.total)}`
+          : progress === null
+            ? `${String(checked.length)} selected`
+            : `Updating ${String(progress.done)} of ${String(progress.total)}`}
       </span>
       <StatusChoice {...shared} variant="chip" />
       <button
@@ -309,6 +325,22 @@ export function BulkBar({ checked, all, me, progress, run, onNotice, onClear }: 
         <PriorityChoice {...shared} variant="row" />
         <SprintChoice {...shared} variant="row" />
         <CustomerChoice {...shared} variant="row" />
+        {onDelete !== undefined && (
+          <>
+            <div role="separator" className="my-1 h-px bg-line" />
+            <button
+              type="button"
+              disabled={running}
+              onClick={() => {
+                menu.current?.hidePopover()
+                onDelete()
+              }}
+              className="menu-item text-danger"
+            >
+              Delete
+            </button>
+          </>
+        )}
       </div>
       <button
         type="button"

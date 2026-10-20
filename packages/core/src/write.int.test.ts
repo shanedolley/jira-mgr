@@ -13,6 +13,7 @@ import { writeFields, writeSettings } from './state.js'
 import {
   createIssue,
   deleteIssue,
+  deleteIssues,
   editIssue,
   listTransitions,
   transitionIssue,
@@ -594,6 +595,204 @@ describe('deleteIssue', () => {
 
     expect(error.code).toBe('validation_failed')
     expect(error.message).toContain('has subtasks')
+  })
+})
+
+describe('deleteIssues', () => {
+  /** The recorded issue under another key, type level and Subtasks. */
+  function issueAt(key: string, hierarchyLevel: number, subtasks: string[] = []) {
+    const recorded = loadFixture('issue-psapac-3066') as {
+      fields: { issuetype: object; subtasks: object[] }
+    }
+    const [subtask] = recorded.fields.subtasks
+    return {
+      ...recorded,
+      key,
+      fields: {
+        ...recorded.fields,
+        issuetype: { ...recorded.fields.issuetype, hierarchyLevel, subtask: hierarchyLevel < 0 },
+        subtasks: subtasks.map((k) => ({ ...subtask, key: k })),
+      },
+    }
+  }
+
+  const EPIC = issueAt('PSAPAC-3001', 1)
+  const STORY = issueAt('PSAPAC-3002', 0, ['PSAPAC-3003'])
+  const SUBTASK = issueAt('PSAPAC-3003', -1)
+  const issues = new Map([EPIC, STORY, SUBTASK].map((i) => [i.key, i]))
+
+  /** Serves the reads from `issues` and answers a DELETE with `answer`, which defaults to no content. */
+  function serveIssues(answer: (key: string) => Response = noContent) {
+    return serve(({ method, path }) => {
+      const key = /issue\/(PSAPAC-\d+)/.exec(path)?.[1] ?? ''
+      if (method === 'DELETE') return answer(key)
+      const found = issues.get(key)
+      return found === undefined
+        ? HttpResponse.json({ errorMessages: ['Issue does not exist'] }, { status: 404 })
+        : HttpResponse.json(found)
+    })
+  }
+
+  const deletes = (requests: Recorded[]) =>
+    requests
+      .filter((r) => r.method === 'DELETE')
+      .map((r) => r.path.replace('/rest/api/3/issue/', ''))
+
+  const hint = { subtaskHint: 'Pass --with-subtasks.' }
+
+  it('deletes the Subtask, then its Story, then the Epic, whatever order they are given in', async () => {
+    const requests = serveIssues()
+
+    const report = await deleteIssues(
+      client,
+      [
+        { key: 'PSAPAC-3001', deleteSubtasks: false },
+        { key: 'PSAPAC-3002', deleteSubtasks: true, shown: ['PSAPAC-3003'] },
+        { key: 'PSAPAC-3003', deleteSubtasks: false },
+      ],
+      hint,
+    )
+
+    expect(deletes(requests)).toEqual([
+      'PSAPAC-3003?deleteSubtasks=false',
+      'PSAPAC-3002?deleteSubtasks=true',
+      'PSAPAC-3001?deleteSubtasks=false',
+    ])
+    // The checked Subtask went on its own, so the Story took none with it.
+    expect(report.deleted).toEqual([
+      { key: 'PSAPAC-3003', deletedSubtasks: [] },
+      { key: 'PSAPAC-3002', deletedSubtasks: [] },
+      { key: 'PSAPAC-3001', deletedSubtasks: [] },
+    ])
+    expect(report.failed).toEqual([])
+  })
+
+  it('takes an unchecked Subtask with its parent', async () => {
+    const requests = serveIssues()
+
+    const report = await deleteIssues(
+      client,
+      [{ key: 'PSAPAC-3002', deleteSubtasks: true, shown: ['PSAPAC-3003'] }],
+      hint,
+    )
+
+    expect(deletes(requests)).toEqual(['PSAPAC-3002?deleteSubtasks=true'])
+    expect(report.deleted).toEqual([{ key: 'PSAPAC-3002', deletedSubtasks: ['PSAPAC-3003'] }])
+  })
+
+  it('keeps going after a refusal and reports each issue as it settles', async () => {
+    serveIssues((key) =>
+      key.startsWith('PSAPAC-3003')
+        ? HttpResponse.json({ errorMessages: ['No permission'] }, { status: 403 })
+        : noContent(),
+    )
+    const settled: unknown[] = []
+
+    const report = await deleteIssues(
+      client,
+      [
+        { key: 'PSAPAC-3001', deleteSubtasks: false },
+        { key: 'PSAPAC-3003', deleteSubtasks: false },
+      ],
+      { ...hint, onSettled: (s) => settled.push(s) },
+    )
+
+    expect(report.failed.map((f) => [f.key, f.error.code])).toEqual([
+      ['PSAPAC-3003', 'permission_denied'],
+    ])
+    expect(report.deleted.map((d) => d.key)).toEqual(['PSAPAC-3001'])
+    expect(settled).toEqual([
+      {
+        done: 1,
+        total: 2,
+        key: 'PSAPAC-3003',
+        deleted: null,
+        error: expect.objectContaining({ code: 'permission_denied' }) as unknown,
+      },
+      {
+        done: 2,
+        total: 2,
+        key: 'PSAPAC-3001',
+        deleted: { key: 'PSAPAC-3001', deletedSubtasks: [] },
+        error: null,
+      },
+    ])
+  })
+
+  it('does not report a Subtask as failed when its parent then takes it along', async () => {
+    serveIssues((key) =>
+      key.startsWith('PSAPAC-3003')
+        ? HttpResponse.json({ errorMessages: ['No permission'] }, { status: 403 })
+        : noContent(),
+    )
+
+    const report = await deleteIssues(
+      client,
+      [
+        { key: 'PSAPAC-3003', deleteSubtasks: false },
+        { key: 'PSAPAC-3002', deleteSubtasks: true, shown: ['PSAPAC-3003'] },
+      ],
+      hint,
+    )
+
+    // The Subtask's own delete was refused, but the Story's cascade removed it.
+    expect(report.deleted).toEqual([{ key: 'PSAPAC-3002', deletedSubtasks: ['PSAPAC-3003'] }])
+    expect(report.failed).toEqual([])
+  })
+
+  it('fails an issue outside the project and one with Subtasks it was not told to delete', async () => {
+    const requests = serveIssues()
+
+    const report = await deleteIssues(
+      client,
+      [
+        { key: 'OTHER-1', deleteSubtasks: false },
+        { key: 'PSAPAC-3002', deleteSubtasks: false },
+        { key: 'PSAPAC-3002', deleteSubtasks: false },
+        { key: 'PSAPAC-3001', deleteSubtasks: true, shown: [] },
+      ],
+      hint,
+    )
+
+    expect(report.failed.map((f) => [f.key, f.error.message])).toEqual([
+      ['OTHER-1', 'OTHER-1 is not in PSAPAC. jm manages the PSAPAC project only.'],
+      ['PSAPAC-3002', 'PSAPAC-3002 has subtasks PSAPAC-3003. Pass --with-subtasks.'],
+    ])
+    // The repeated key counts once, and the Epic has nothing new.
+    expect(report.deleted.map((d) => d.key)).toEqual(['PSAPAC-3001'])
+    expect(deletes(requests)).toEqual(['PSAPAC-3001?deleteSubtasks=true'])
+    expect(requests.some((r) => r.path.includes('OTHER-1'))).toBe(false)
+  })
+
+  it('refuses a Subtask the caller did not show', async () => {
+    const requests = serveIssues()
+
+    const report = await deleteIssues(
+      client,
+      [{ key: 'PSAPAC-3002', deleteSubtasks: true, shown: [] }],
+      hint,
+    )
+
+    expect(report.failed[0]?.error.message).toBe(
+      'PSAPAC-3002 has new subtasks PSAPAC-3003. Review the list and delete again.',
+    )
+    expect(deletes(requests)).toEqual([])
+  })
+
+  it('fails an issue that does not exist and deletes the rest', async () => {
+    serveIssues()
+
+    const report = await deleteIssues(
+      client,
+      [
+        { key: 'PSAPAC-9999', deleteSubtasks: false },
+        { key: 'PSAPAC-3001', deleteSubtasks: false },
+      ],
+      hint,
+    )
+
+    expect(report.failed.map((f) => [f.key, f.error.code])).toEqual([['PSAPAC-9999', 'not_found']])
+    expect(report.deleted.map((d) => d.key)).toEqual(['PSAPAC-3001'])
   })
 })
 

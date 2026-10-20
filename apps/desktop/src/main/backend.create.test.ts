@@ -445,3 +445,51 @@ describe('deleteIssue', () => {
     expect(requests).toEqual([])
   })
 })
+
+describe('deleteIssues', () => {
+  const reads: Respond = ({ method }) =>
+    method === 'GET' ? rawIssue('PSAPAC-12', ['PSAPAC-13']) : undefined
+
+  function sender() {
+    const sent: unknown[] = []
+    const to: ProgressSender = {
+      sendProgress: () => undefined,
+      sendBatchProgress: (p) => sent.push(p),
+      isOpen: () => true,
+      sendLateRead: () => undefined,
+    }
+    return { sent, to }
+  }
+
+  it('sends a progress event as each issue settles and reports the one it refused', async () => {
+    const { http, requests } = routedHttp(reads)
+    const { sent, to } = sender()
+    const result = await createBackend({ http }).deleteIssues(
+      {
+        batchId: 4,
+        items: [
+          { key: 'OTHER-5', deleteSubtasks: false, subtasks: [] },
+          { key: 'PSAPAC-12', deleteSubtasks: true, subtasks: ['PSAPAC-13'] },
+        ],
+      },
+      to,
+    )
+
+    expect(result.deleted).toEqual([{ key: 'PSAPAC-12', deletedSubtasks: ['PSAPAC-13'] }])
+    expect(result.failed).toEqual([
+      { key: 'OTHER-5', reason: expect.stringContaining('OTHER-5 is not in') as string },
+    ])
+    expect(sent).toEqual([
+      { batchId: 4, done: 1, total: 2 },
+      {
+        batchId: 4,
+        done: 2,
+        total: 2,
+        deleted: { key: 'PSAPAC-12', deletedSubtasks: ['PSAPAC-13'] },
+      },
+    ])
+    expect(requests.filter((r) => r.method === 'DELETE').map((r) => r.path)).toEqual([
+      '/rest/api/3/issue/PSAPAC-12?deleteSubtasks=true',
+    ])
+  })
+})

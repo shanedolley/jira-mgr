@@ -73,7 +73,7 @@ import {
 import { assertTimeable } from '@jira-mgr/core/timer-calc'
 import {
   createIssue,
-  deleteIssue,
+  deleteIssues,
   editIssue,
   listTransitions,
   transitionIssue,
@@ -93,6 +93,8 @@ import type {
   CreateViewArgs,
   CurrentUser,
   DeleteIssueArgs,
+  DeleteIssuesArgs,
+  DeleteIssuesOutcome,
   DeletedIssue,
   Display,
   DeleteViewArgs,
@@ -165,6 +167,9 @@ export interface ProgressSender {
  */
 export const LATE_READ_MS = 10_000
 
+/** What a refusal for Subtasks the caller did not ask to delete tells the user to do. */
+const SUBTASK_HINT = 'Delete them too, or move them first.'
+
 /** Everything the renderer can ask of Jira, in terms of core. The token never leaves this module. */
 export interface Backend {
   getSession(): Promise<SessionState>
@@ -231,6 +236,12 @@ export interface Backend {
   createIssue(args: CreateIssueArgs, progress?: ProgressSender): Promise<CreatedIssue>
   /** Deletes an issue, and its subtasks only when asked and only the ones the caller was shown. */
   deleteIssue(args: DeleteIssueArgs): Promise<DeletedIssue>
+  /**
+   * Deletes the issues through core's `deleteIssues`: one at a time, lowest level first, each with
+   * the single delete's guards. A failed issue is reported and the run goes on. Progress arrives
+   * as a `BatchProgress` per issue settled, carrying the issue just deleted.
+   */
+  deleteIssues(args: DeleteIssuesArgs, progress: ProgressSender): Promise<DeleteIssuesOutcome>
   listSprints(args: { all: boolean }): Promise<SprintOption[]>
   /** A sprint with its issues and their counts. It reads only, so it needs no project guard. */
   getSprint(args: { id: number }): Promise<SprintReport>
@@ -774,27 +785,47 @@ export function createBackend(deps: BackendDeps = {}): Backend {
       return { key, issue, warning }
     },
     async deleteIssue({ key, deleteSubtasks, subtasks: shown }) {
-      await assertInProject(key)
-      // Read now, not from what the user saw: a subtask added since must not go unseen.
-      const keys = (await getIssue(http, key)).subtasks.map((s) => s.key)
-      if (keys.length > 0 && !deleteSubtasks) {
-        throw new JiraMgrError(
-          'validation_failed',
-          `${key} has subtasks ${keys.join(', ')}. Delete them too, or move them first.`,
-          { details: { subtasks: keys } },
+      const { deleted, failed } = await deleteIssues(http, [{ key, deleteSubtasks, shown }], {
+        subtaskHint: SUBTASK_HINT,
+      })
+      const [first] = failed
+      if (first !== undefined) throw first.error
+      return deleted[0] ?? { key, deletedSubtasks: [] }
+    },
+    async deleteIssues({ batchId, items }, progress) {
+      const controller = new AbortController()
+      batches.add(controller)
+      try {
+        const { deleted, failed } = await deleteIssues(
+          http,
+          items.map(({ key, deleteSubtasks, subtasks }) => ({
+            key,
+            deleteSubtasks,
+            shown: subtasks,
+          })),
+          {
+            subtaskHint: SUBTASK_HINT,
+            signal: controller.signal,
+            onSettled: ({ done, total, deleted: gone }) => {
+              if (progress.isOpen()) {
+                progress.sendBatchProgress({
+                  batchId,
+                  done,
+                  total,
+                  ...(gone !== null && { deleted: gone }),
+                })
+              }
+            },
+          },
         )
+        // A reason crosses IPC inside a result, not as an error, so it loses the request here.
+        return {
+          deleted,
+          failed: failed.map(({ key, error }) => ({ key, reason: desktopMessage(error.message) })),
+        }
+      } finally {
+        batches.delete(controller)
       }
-      const unseen = keys.filter((k) => !shown.includes(k))
-      if (deleteSubtasks && unseen.length > 0) {
-        throw new JiraMgrError(
-          'validation_failed',
-          `${key} has new subtasks ${unseen.join(', ')}. Review the list and delete again.`,
-          { details: { subtasks: keys } },
-        )
-      }
-      await deleteIssue(http, key, { deleteSubtasks })
-      // Any subtask was refused above unless the caller asked to cascade, so `keys` is what goes.
-      return { key, deletedSubtasks: keys }
     },
     async listSprints({ all }) {
       const board = await findBoard(http)

@@ -171,7 +171,7 @@ async function execute(argv: readonly string[], io: Io, deps: Deps): Promise<num
     return fail(toFailure(error, argv), error, io, json, flagged)
   }
   if (text !== '') io.stdout.write(text.endsWith('\n') ? text : `${text}\n`)
-  return 0
+  return handler.exitCode?.(data) ?? 0
 }
 
 function fail(failure: ErrorBody, error: unknown, io: Io, json: boolean, flagged: boolean): number {

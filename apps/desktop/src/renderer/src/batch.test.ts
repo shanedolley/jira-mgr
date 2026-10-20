@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assigneeAction,
   customerAction,
+  deletedNotice,
   issues,
   labelAction,
   namedKeys,
@@ -43,6 +44,45 @@ describe('namedKeys', () => {
   it('names five of more, and counts the rest', () => {
     expect(namedKeys(keys(6))).toBe('P-1, P-2, P-3, P-4, P-5 and 1 more')
     expect(namedKeys(keys(12))).toBe('P-1, P-2, P-3, P-4, P-5 and 7 more')
+  })
+})
+
+describe('deletedNotice', () => {
+  it('counts the issues that went, and the subtasks that went with them', () => {
+    expect(
+      deletedNotice({
+        deleted: [
+          { key: 'P-1', deletedSubtasks: ['P-2', 'P-3'] },
+          { key: 'P-4', deletedSubtasks: [] },
+        ],
+        failed: [],
+      }),
+    ).toEqual({ title: 'Deleted 2 issues', notes: ['2 subtasks went with them.'], warned: false })
+    expect(deletedNotice({ deleted: [{ key: 'P-1', deletedSubtasks: [] }], failed: [] })).toEqual({
+      title: 'Deleted 1 issue',
+      notes: [],
+      warned: false,
+    })
+  })
+
+  it('names every issue that stayed with its reason, and stays until dismissed', () => {
+    expect(
+      deletedNotice({
+        deleted: [{ key: 'P-1', deletedSubtasks: [] }],
+        failed: [
+          { key: 'P-2', reason: 'You cannot delete this issue.' },
+          { key: 'P-3', reason: 'P-3 no longer exists in Jira' },
+        ],
+      }),
+    ).toEqual({
+      title: 'Could not delete 2 issues',
+      notes: [
+        'Deleted 1 of 3.',
+        'P-2: You cannot delete this issue.',
+        'P-3: P-3 no longer exists in Jira.',
+      ],
+      warned: true,
+    })
   })
 })
 

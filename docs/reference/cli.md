@@ -823,23 +823,23 @@ Calls:
 ### jm issue delete
 
 ```
-jm issue delete <key> [--confirm] [--with-subtasks]
+jm issue delete <keys...> [--confirm] [--with-subtasks]
 ```
 
-Deletes the issue for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too.
+Deletes the issues for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too. Several keys are deleted one at a time, lowest level first: subtasks, then stories, tasks and bugs, then epics. A key that fails does not stop the rest, and the command exits with the code of the first failure. With several keys each one prints to stderr as it settles, so Ctrl-C part way still shows what went.
 
 #### Arguments
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `key` | issue-key | yes | The issue key. |
+| `keys...` | issue-key | yes | The issue keys. |
 
 #### Options
 
 | Flag | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `--confirm` | boolean | no |  | Confirm the permanent delete. |
-| `--with-subtasks` | boolean | no |  | Delete the issue's subtasks too. |
+| `--with-subtasks` | boolean | no |  | Delete the issues' subtasks too. |
 
 #### Examples
 
@@ -853,9 +853,14 @@ jm issue delete PSAPAC-12 --confirm
 jm issue delete PSAPAC-12 --confirm --with-subtasks
 ```
 
+```sh
+# Delete an epic, a story and its subtask, subtask first.
+jm issue delete PSAPAC-10 PSAPAC-12 PSAPAC-13 --confirm --with-subtasks
+```
+
 #### Output
 
-The deleted key and the subtasks deleted with it.
+With one key, the deleted key and the subtasks deleted with it. With several, `deleted` lists those entries in the order they were deleted and `failed` lists each key that failed with its `error` (`code` and `message`).
 
 ```json
 {
@@ -872,9 +877,9 @@ The deleted key and the subtasks deleted with it.
 
 | Exit | Code | When |
 |---|---|---|
-| 2 | `validation_failed` | `--confirm` is missing, the issue has subtasks and `--with-subtasks` is missing, or the key is outside the project in settings. |
+| 2 | `validation_failed` | `--confirm` is missing, an issue has subtasks and `--with-subtasks` is missing, or a key is outside the project in settings. |
 | 4 | `permission_denied` | No project is set in settings. |
-| 3 | `not_found` | The issue does not exist. |
+| 3 | `not_found` | An issue does not exist. |
 
 #### Effects
 
@@ -882,8 +887,8 @@ Writes: jira.
 
 Calls:
 
-- `@jira-mgr/core/search#getIssue`
-- `@jira-mgr/core/write#deleteIssue`
+- `@jira-mgr/core/state#assertInProject`
+- `@jira-mgr/core/write#deleteIssues`
 
 ## status
 
