@@ -239,12 +239,13 @@ export interface DeleteReport {
 export interface DeleteOptions {
   /** Ends the advice a refusal for Subtasks gives: "<key> has subtasks A, B. <hint>". */
   subtaskHint: string
-  /** Called as each issue settles, deleted or failed, with the issue's `deleted` entry when it went. */
+  /** Called as each issue settles: its `deleted` entry when it went, else the `error` that stopped it. */
   onSettled?: (settled: {
     done: number
     total: number
     key: string
     deleted: DeletedKeys | null
+    error: JiraMgrError | null
   }) => void
   signal?: AbortSignal
 }
@@ -272,13 +273,14 @@ export async function deleteIssues(
   const unique = requests.filter((r, at) => requests.findIndex((o) => o.key === r.key) === at)
   const report: DeleteReport = { deleted: [], failed: [] }
   let done = 0
-  const settle = (key: string, deleted: DeletedKeys | null) => {
+  const settle = (key: string, deleted: DeletedKeys | null, error: JiraMgrError | null) => {
     done += 1
-    onSettled?.({ done, total: unique.length, key, deleted })
+    onSettled?.({ done, total: unique.length, key, deleted, error })
   }
-  const fail = (key: string, error: unknown) => {
-    report.failed.push({ key, error: asError(error) })
-    settle(key, null)
+  const fail = (key: string, cause: unknown) => {
+    const error = asError(cause)
+    report.failed.push({ key, error })
+    settle(key, null, error)
   }
 
   const read: { request: DeleteRequest; level: number; subtasks: string[] }[] = []
@@ -323,8 +325,10 @@ export async function deleteIssues(
       await deleteIssue(http, key, { deleteSubtasks })
       const deleted = { key, deletedSubtasks: deleteSubtasks ? keys : [] }
       for (const k of [key, ...deleted.deletedSubtasks]) gone.add(k)
+      // A Subtask that failed on its own but went with its parent is gone, so it is not a failure.
+      report.failed = report.failed.filter((f) => !deleted.deletedSubtasks.includes(f.key))
       report.deleted.push(deleted)
-      settle(key, deleted)
+      settle(key, deleted, null)
     } catch (error) {
       if (signal?.aborted === true) throw error
       fail(key, error)

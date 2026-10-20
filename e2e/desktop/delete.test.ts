@@ -396,3 +396,33 @@ test('keeps the single-row menu for one checked row, and a Cancel changes nothin
   expect((await counts(app)).edits).toBe(before.edits)
   await expect(checkedRows()).toHaveCount(2)
 })
+
+test('offers no second delete while a run is deleting', async () => {
+  await open()
+  await check(/PSAPAC-4,/, /PSAPAC-12,/)
+  await bar().getByRole('button', { name: 'Actions', exact: true }).click()
+  await bar().getByRole('button', { name: 'Delete', exact: true }).click()
+  const before = await counts(app)
+  await bulkDialog(2).getByRole('button', { name: 'Delete 2 issues', exact: true }).click()
+  // The first delete is on the wire, held by the fake.
+  await arrives(before.edits + 1)
+
+  // A checked row gets the single-row menu, without Delete.
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+  await expect(menu()).toHaveAccessibleName('Actions for PSAPAC-4')
+  await expect(menu().getByRole('menuitem', { name: 'Delete', exact: true })).toHaveCount(0)
+  await window.keyboard.press('Escape')
+  await expect(menu()).toHaveCount(0)
+
+  // The Peek's Delete button says why it does nothing.
+  await peekRow(item(/PSAPAC-1,/))
+  await peek().getByRole('button', { name: 'Delete' }).click()
+  await expect(notices(window).getByText('A delete is already running')).toBeVisible()
+  await expect(window.getByRole('dialog')).toHaveCount(0)
+
+  await releaseEdit(app)
+  await arrives(before.edits + 2)
+  await releaseEdit(app)
+  await expect(toast()).toContainText('Deleted 2 issues')
+  expect((await counts(app)).edits).toBe(before.edits + 2)
+})

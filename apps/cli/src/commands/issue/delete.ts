@@ -19,6 +19,9 @@ const renderDeleted = ({ key, deletedSubtasks }: DeletedKeys) =>
     ? `Deleted ${stripControl(key)}`
     : `Deleted ${stripControl(key)} and its subtasks ${stripControl(deletedSubtasks.join(', '))}`
 
+const failedLine = (key: string, message: string) =>
+  `Could not delete ${stripControl(key)}: ${stripControl(message)}`
+
 /**
  * `jm issue delete <key>...`: needs `--confirm`, and `--with-subtasks` when an issue has subtasks.
  * Several keys are deleted lowest level first, and a failed key does not stop the rest.
@@ -37,7 +40,17 @@ export const del: Handler<SpecOf<'issue delete'>, DeletedKeys | Summary> = {
     const { deleted, failed } = await deleteIssues(
       ctx.http(),
       unique.map((key) => ({ key, deleteSubtasks: withSubtasks })),
-      { subtaskHint: 'Pass --with-subtasks to delete them too.', signal: ctx.signal },
+      {
+        subtaskHint: 'Pass --with-subtasks to delete them too.',
+        signal: ctx.signal,
+        // Several keys report each one as it settles, so a Ctrl-C part way still says what went.
+        onSettled: ({ key, deleted, error }) => {
+          if (unique.length === 1) return
+          const line =
+            deleted === null ? failedLine(key, error?.message ?? '') : renderDeleted(deleted)
+          ctx.io.stderr.write(`${line}\n`)
+        },
+      },
     )
     // One key keeps its own output and exit code: its failure is the command's.
     const [only] = deleted
@@ -53,15 +66,10 @@ export const del: Handler<SpecOf<'issue delete'>, DeletedKeys | Summary> = {
     }
   },
 
+  // Each key already went to stderr as it settled, so several keys print only the count.
   render: (data) =>
     isSummary(data)
-      ? [
-          ...data.deleted.map(renderDeleted),
-          ...data.failed.map(
-            ({ key, error }) =>
-              `Could not delete ${stripControl(key)}: ${stripControl(error.message)}`,
-          ),
-        ].join('\n')
+      ? `Deleted ${String(data.deleted.length)} issues${data.failed.length === 0 ? '' : `, ${String(data.failed.length)} failed`}`
       : renderDeleted(data),
 
   // The first failure's code stands for the run, so a script can tell not found from forbidden.

@@ -77,7 +77,7 @@ interface CommandSpec {
   output: { summary: string; example: unknown }                  // example is the data JSON carries
   exits?: readonly { code: ErrorCode; when: string }[]           // command-specific cases only
   writes: readonly ('jira' | 'state' | 'keychain')[]             // [] for a read
-  calls: readonly string[]               // '@jira-mgr/core/write#deleteIssue'
+  calls: readonly string[]               // '@jira-mgr/core/write#deleteIssues'
 }
 
 const NOUNS: Record<string, string>     // noun to summary, for `jm issue --help`
@@ -166,7 +166,7 @@ Output times follow core: UTC ISO strings in JSON, and local `YYYY-MM-DD HH:mm` 
         "args": [], "options": [], "examples": [],
         "output": { "summary": "...", "example": { "key": "PSAPAC-12", "deletedSubtasks": [] } },
         "exits": [{ "code": "validation_failed", "exit": 2, "when": "--confirm is missing" }],
-        "writes": ["jira"], "calls": ["@jira-mgr/core/write#deleteIssue"]
+        "writes": ["jira"], "calls": ["@jira-mgr/core/state#assertInProject", "@jira-mgr/core/write#deleteIssues"]
       }
     ]
   }
@@ -248,7 +248,7 @@ Type pads to 7 characters and status to the longest status shown. A context-only
 ### Safety
 
 - **Delete.** `jm issue delete <key>` without `--confirm` exits 2 before any request: `Deleting PSAPAC-12 is permanent. Pass --confirm.` With `--confirm`, it reads the issue's subtasks through `getIssue`. With subtasks and no `--with-subtasks`, it exits 2 with `PSAPAC-12 has subtasks PSAPAC-13, PSAPAC-14. Pass --with-subtasks to delete them too.` and `details.subtasks`. Otherwise it calls `deleteIssue` with `deleteSubtasks` set to whether the flag was given (Q9).
-  *Amended 2026-10-20, build of #339.* The command takes several keys (`<keys...>`) and calls core's `deleteIssues`, which reads each issue and deletes them one at a time, lowest level first (Subtasks, then Stories, Tasks and Bugs, then Epics). Every key is checked against the project and `--confirm` before any request. One key keeps its output and exit codes. Several keys return `{ deleted: [{ key, deletedSubtasks }], failed: [{ key, error: { code, message } }] }`, `deleted` in the order they were deleted; a failed key does not stop the rest, and the exit code is the first failure's (0 when none failed). A key repeated counts once.
+  *Amended 2026-10-20, build of #339.* The command takes several keys (`<keys...>`) and calls core's `deleteIssues`, which reads each issue and deletes them one at a time, lowest level first (Subtasks, then Stories, Tasks and Bugs, then Epics). Every key is checked against the project and `--confirm` before any request. One key keeps its output and exit codes. Several keys return `{ deleted: [{ key, deletedSubtasks }], failed: [{ key, error: { code, message } }] }`, `deleted` in the order they were deleted; a failed key does not stop the rest, and the exit code is the first failure's (0 when none failed). Each key goes to stderr as it settles ("Deleted KEY ...", "Could not delete KEY: message"), so a Ctrl-C part way still says what went; a terminal then prints only "Deleted N issues, M failed" on stdout. A key repeated counts once.
 - **No other guard** (Q3 a). Every other command, status changes included, runs for any caller. Comment, worklog, link and attachment deletes need no `--confirm`.
 - **Token.** No flag carries the token, since argv shows in `ps`. `jm auth login` reads it from a hidden TTY prompt, or from stdin with `--token-stdin`.
 - **Prompts.** Only `jm auth login` prompts, and only on a TTY, for a missing site, project, email or token. Every other command exits 2 naming the missing value, on a TTY or not. This replaces the CLI README's rule that every command prompts.

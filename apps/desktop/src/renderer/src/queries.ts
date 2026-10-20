@@ -13,7 +13,7 @@ import {
   type MutationOptions,
   type QueryClient,
 } from '@tanstack/react-query'
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 import type {
   BatchProgress,
@@ -562,11 +562,15 @@ export function useDeleteIssue() {
 export function useDeleteIssues() {
   const client = useQueryClient()
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  // Two runs would share `progress`, and the bar shows one.
+  const running = useRef(false)
   const run = useCallback(
     async (
       items: DeleteIssueArgs[],
       onGone: (gone: ReadonlySet<string>) => void,
     ): Promise<DeleteIssuesOutcome> => {
+      if (running.current) throw new Error('A delete is already running.')
+      running.current = true
       const batchId = lastBatchId++
       setProgress({ done: 0, total: items.length })
       const stop = window.jm.onBatchProgress((next) => {
@@ -584,6 +588,7 @@ export function useDeleteIssues() {
         return await call('issues:deleteMany', { batchId, items })
       } finally {
         stop()
+        running.current = false
         setProgress(null)
       }
     },

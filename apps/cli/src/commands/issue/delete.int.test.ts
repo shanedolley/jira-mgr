@@ -80,7 +80,7 @@ describe('jm issue delete with several keys', () => {
       failed: [],
     })
     expect(deleted(requests)).toEqual([SUBTASK, STORY, EPIC])
-    expect(f.stderr).toBe('')
+    expect(f.stderr).toBe(`Deleted ${SUBTASK}\nDeleted ${STORY}\nDeleted ${EPIC}\n`)
   })
 
   it('goes on after a refusal, names the failed key and exits with its code', async () => {
@@ -103,14 +103,51 @@ describe('jm issue delete with several keys', () => {
     expect(deleted(requests)).toEqual([SUBTASK, STORY, EPIC])
   })
 
-  it('prints each key on a terminal, failures too', async () => {
+  it('with --with-subtasks lists the Subtasks that went with each issue', async () => {
+    serveSet()
+    const { code, data } = await runJson([
+      'issue',
+      'delete',
+      EPIC,
+      KEY,
+      '--confirm',
+      '--with-subtasks',
+    ])
+    expect(code).toBe(0)
+    // The Story goes before the Epic, and takes its recorded Subtask along.
+    expect(data).toEqual({
+      deleted: [
+        { key: KEY, deletedSubtasks: ['PSAPAC-3122'] },
+        { key: EPIC, deletedSubtasks: [] },
+      ],
+      failed: [],
+    })
+  })
+
+  it('names each key on stderr as it settles, so a Ctrl-C part way still says what went', async () => {
+    const controller = new AbortController()
+    const { requests } = serveSet((key) => {
+      if (key === EPIC) controller.abort()
+      return undefined
+    })
+    const { code, f } = await runJson(all, undefined, { signal: controller.signal })
+    expect(code).toBe(130)
+    expect(f.stdout).toBe('')
+    expect(f.stderr).toBe(`Deleted ${SUBTASK}\nDeleted ${STORY}\n`)
+    // Ctrl-C landed while the Epic's delete was in flight, so it is the one key not reported.
+    expect(deleted(requests)).toEqual([SUBTASK, STORY, EPIC])
+  })
+
+  it('prints each key to stderr and the count on a terminal, failures too', async () => {
     serveSet((key) =>
       key === EPIC ? Response.json({ errorMessages: ['boom'] }, { status: 500 }) : undefined,
     )
     const tty = await runTty(all)
     expect(tty.code).toBe(5)
-    expect(tty.lines.slice(0, 2)).toEqual([`Deleted ${SUBTASK}`, `Deleted ${STORY}`])
-    expect(tty.lines[2]).toMatch(new RegExp(`^Could not delete ${EPIC}: `))
+    expect(tty.f.stdout).toBe('Deleted 2 issues, 1 failed\n')
+    const lines = tty.f.stderr.split('\n')
+    expect(lines.slice(0, 2)).toEqual([`Deleted ${SUBTASK}`, `Deleted ${STORY}`])
+    expect(lines[2]).toMatch(new RegExp(`^Could not delete ${EPIC}: `))
   })
 
   it('refuses without --confirm, or with a key outside the project, before any request', async () => {

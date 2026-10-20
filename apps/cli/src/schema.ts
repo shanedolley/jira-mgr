@@ -674,7 +674,7 @@ export const COMMANDS = [
     path: ['issue', 'delete'],
     summary: 'Delete issues permanently',
     description:
-      'Deletes the issues for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too. Several keys are deleted one at a time, lowest level first: subtasks, then stories, tasks and bugs, then epics. A key that fails does not stop the rest, and the command exits with the code of the first failure.',
+      'Deletes the issues for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too. Several keys are deleted one at a time, lowest level first: subtasks, then stories, tasks and bugs, then epics. A key that fails does not stop the rest, and the command exits with the code of the first failure. With several keys each one prints to stderr as it settles, so Ctrl-C part way still shows what went.',
     args: [{ name: 'keys', type: 'issue-key', variadic: true, description: 'The issue keys.' }],
     options: [
       { name: 'confirm', type: 'boolean', description: 'Confirm the permanent delete.' },

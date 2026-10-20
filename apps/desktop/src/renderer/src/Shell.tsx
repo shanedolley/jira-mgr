@@ -405,6 +405,7 @@ export function Shell({ session }: { session: Session }) {
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   const deleteIssue = useDeleteIssue()
   const deleteRun = useDeleteIssues()
+  const deleteRunning = deleteRun.progress !== null
   const editIssue = useEditIssue()
   const treeRef = useRef<HTMLDivElement>(null)
   const peekRef = useRef<HTMLElement>(null)
@@ -1049,6 +1050,7 @@ export function Shell({ session }: { session: Session }) {
     const bulk =
       open === undefined &&
       !listCovered &&
+      !deleteRunning &&
       checkedIssues.length > 1 &&
       checkedIssues.some((i) => i.key === key)
     openMenu({ key, bulk, x: point?.x ?? rect.left + 48, y: point?.y ?? rect.bottom, open, row })
@@ -1162,7 +1164,7 @@ export function Shell({ session }: { session: Session }) {
         window.open(issueUrl(session.siteUrl, key), '_blank', 'noopener,noreferrer')
         break
       case 'delete':
-        setDeleting(bulk ? checkedIssues : [issue])
+        askDelete(bulk ? checkedIssues : [issue])
         break
     }
   }
@@ -1474,8 +1476,17 @@ export function Shell({ session }: { session: Session }) {
     setToasts((held) => held.filter((toast) => toast.id !== id))
   }
 
+  /** Opens the delete dialog, unless a run is deleting: its progress is one at a time. */
+  function askDelete(targets: Issue[]) {
+    if (deleteRunning) {
+      notify({ title: 'A delete is already running', notes: [], warned: false })
+      return
+    }
+    setDeleting(targets)
+  }
+
   const deleteOne = (issue: Issue) => {
-    setDeleting([issue])
+    askDelete([issue])
   }
 
   /** Sends the deletes the moment the user confirms. One shows gone at once; several leave as each succeeds. */
@@ -1836,7 +1847,7 @@ export function Shell({ session }: { session: Session }) {
           onNotice={notify}
           onClear={clearChecked}
           onDelete={() => {
-            setDeleting(checkedIssues)
+            askDelete(checkedIssues)
           }}
           deleting={deleteRun.progress}
         />
@@ -2006,6 +2017,7 @@ export function Shell({ session }: { session: Session }) {
           y={menu.y}
           open={menu.open}
           selected={menu.bulk ? checkedIssues.length : undefined}
+          canDelete={!deleteRunning}
           onRun={(action) => {
             runMenuAction(action, menuIssue)
           }}

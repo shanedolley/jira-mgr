@@ -20,7 +20,7 @@ pnpm -s jm --version
 - Every command accepts `--json`. Its output shape is a public contract: change it additively.
 - Only `jm auth login` prompts, and only on a terminal. Every other command exits 2 naming the missing value, so scripts and agents never hang.
 - Markdown is the input format for descriptions. `--description-file` and `--adf` take a path or `-` for stdin, read only a regular file of at most 1 MiB, and `--adf` is validated as ADF before anything is sent. At most one description input is allowed.
-- `jm issue delete <key>...` needs `--confirm`, and `--with-subtasks` when an issue has subtasks. Both checks run before any delete request. Several keys are deleted lowest level first, a failed key does not stop the rest, and the command exits with the first failure's code (`handler.exitCode`).
+- `jm issue delete <key>...` needs `--confirm`, and `--with-subtasks` when an issue has subtasks. Both checks run before any delete request. Several keys are deleted lowest level first, a failed key does not stop the rest, and the command exits with the first failure's code (`handler.exitCode`). With several keys each one prints to stderr as it settles.
 - The CLI calls `@jira-mgr/core` and nothing else. Business rules live there.
 - `src/schema.ts` is the one definition of every command. `--help`, `jm help --json` and `docs/reference/cli.md` all derive from it. A command with no handler in `src/commands/index.ts` stays hidden. Change the schema, then run `pnpm docs:reference`.
 - tsup bundles `@jira-mgr/core` and `zod` into the binary, because they sit in `devDependencies`. Runtime dependencies stay external.

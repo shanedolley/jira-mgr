@@ -826,7 +826,7 @@ Calls:
 jm issue delete <keys...> [--confirm] [--with-subtasks]
 ```
 
-Deletes the issues for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too. Several keys are deleted one at a time, lowest level first: subtasks, then stories, tasks and bugs, then epics. A key that fails does not stop the rest, and the command exits with the code of the first failure.
+Deletes the issues for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too. Several keys are deleted one at a time, lowest level first: subtasks, then stories, tasks and bugs, then epics. A key that fails does not stop the rest, and the command exits with the code of the first failure. With several keys each one prints to stderr as it settles, so Ctrl-C part way still shows what went.
 
 #### Arguments
 

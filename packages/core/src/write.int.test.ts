@@ -702,14 +702,42 @@ describe('deleteIssues', () => {
     ])
     expect(report.deleted.map((d) => d.key)).toEqual(['PSAPAC-3001'])
     expect(settled).toEqual([
-      { done: 1, total: 2, key: 'PSAPAC-3003', deleted: null },
+      {
+        done: 1,
+        total: 2,
+        key: 'PSAPAC-3003',
+        deleted: null,
+        error: expect.objectContaining({ code: 'permission_denied' }) as unknown,
+      },
       {
         done: 2,
         total: 2,
         key: 'PSAPAC-3001',
         deleted: { key: 'PSAPAC-3001', deletedSubtasks: [] },
+        error: null,
       },
     ])
+  })
+
+  it('does not report a Subtask as failed when its parent then takes it along', async () => {
+    serveIssues((key) =>
+      key.startsWith('PSAPAC-3003')
+        ? HttpResponse.json({ errorMessages: ['No permission'] }, { status: 403 })
+        : noContent(),
+    )
+
+    const report = await deleteIssues(
+      client,
+      [
+        { key: 'PSAPAC-3003', deleteSubtasks: false },
+        { key: 'PSAPAC-3002', deleteSubtasks: true, shown: ['PSAPAC-3003'] },
+      ],
+      hint,
+    )
+
+    // The Subtask's own delete was refused, but the Story's cascade removed it.
+    expect(report.deleted).toEqual([{ key: 'PSAPAC-3002', deletedSubtasks: ['PSAPAC-3003'] }])
+    expect(report.failed).toEqual([])
   })
 
   it('fails an issue outside the project and one with Subtasks it was not told to delete', async () => {

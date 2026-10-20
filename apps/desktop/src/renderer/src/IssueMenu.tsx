@@ -217,6 +217,8 @@ interface IssueMenuProps {
   open?: MenuItemId
   /** The size of the checked set when the menu speaks for it: it offers Delete alone. */
   selected?: number
+  /** False while a delete run is going, which leaves Delete out. */
+  canDelete?: boolean
   /** Runs an item that is not a submenu. The menu has closed first. */
   onRun: (action: MenuAction) => void
   /** Escape, a click outside or a finished action closed it. */
@@ -236,13 +238,14 @@ export function IssueMenu({
   y,
   open,
   selected,
+  canDelete = true,
   onRun,
   onClose,
 }: IssueMenuProps) {
   const element = useRef<HTMLDivElement>(null)
   const items: MenuItem[] =
     selected === undefined
-      ? menuItems(issue)
+      ? menuItems(issue).filter((item) => canDelete || item.id !== 'delete')
       : [{ id: 'delete', label: `Delete ${String(selected)} issues`, key: undefined, group: 0 }]
 
   // Shown, then moved so the whole menu is inside the window.
