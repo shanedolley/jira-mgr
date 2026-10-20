@@ -377,6 +377,31 @@ test('deletes from the bulk bar, goes on past a refusal and keeps the failed row
   await expect(bar()).toContainText('1 selected')
 })
 
+test('closes the Peek of a checked issue when the bulk delete removes it', async () => {
+  await open()
+  await check(/PSAPAC-12,/, /PSAPAC-4,/)
+  await peekRow(item(/PSAPAC-4,/))
+  await expect(peek()).toBeVisible()
+  await expect(peek().getByText('PSAPAC-4')).toBeVisible()
+
+  await bar().getByRole('button', { name: 'Actions', exact: true }).click()
+  await bar().getByRole('button', { name: 'Delete', exact: true }).click()
+  const before = await counts(app)
+  await bulkDialog(2).getByRole('button', { name: 'Delete 2 issues', exact: true }).click()
+
+  // The Subtask goes first.
+  expect(await arrives(before.edits + 1)).toMatchObject({ delete: 'PSAPAC-12' })
+  await releaseEdit(app)
+  await expect(item(/PSAPAC-12,/)).toHaveCount(0)
+  // The Peek shows PSAPAC-4, which is still there, so it stays.
+  await expect(peek()).toBeVisible()
+  expect(await arrives(before.edits + 2)).toMatchObject({ delete: 'PSAPAC-4' })
+  await releaseEdit(app)
+  await expect(item(/PSAPAC-4,/)).toHaveCount(0)
+  await expect(peek()).toHaveCount(0)
+  await expect(window.getByText('This issue is no longer available.')).toHaveCount(0)
+})
+
 test('keeps the single-row menu for one checked row, and a Cancel changes nothing', async () => {
   await open()
   await check(/PSAPAC-4,/)

@@ -33,7 +33,7 @@ If you copy the app from another Mac or a download, macOS quarantines it and ref
 xattr -dr com.apple.quarantine /Applications/jira-mgr.app
 ```
 
-The login screen asks for the Jira site, project key, email and API token.
+The login screen asks for the Jira site, project key, email and API token. The site starts as `https://engineering-collibra.atlassian.net` unless the app already saved one, and you can change it. **Create new token →** under the token field opens Atlassian's API token page in your default browser.
 
 ## Share with Another Mac
 

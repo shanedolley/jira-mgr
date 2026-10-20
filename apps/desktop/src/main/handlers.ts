@@ -20,6 +20,7 @@ import {
   IMAGE_LIMIT_BYTES,
   IMAGE_TYPES,
 } from '../shared/ipc'
+import { API_TOKEN_URL } from '../shared/links'
 import type {
   AddAttachmentArgs,
   AddCommentArgs,
@@ -435,6 +436,7 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'session:get': z.undefined(),
   'session:login': loginArgs,
   'session:logout': z.undefined(),
+  'shell:openTokenPage': z.undefined(),
   'issues:list': listIssuesArgs,
   'issues:searchText': searchTextArgs,
   'issues:setSummary': setSummaryArgs,
@@ -540,6 +542,7 @@ export function createHandlers(
   log: (line: string) => void = (line) => {
     console.error(line)
   },
+  openExternal: (url: string) => void = () => undefined,
 ): Handlers {
   function handle<C extends Channel>(
     channel: C,
@@ -579,6 +582,10 @@ export function createHandlers(
     'session:get': handle('session:get', () => backend.getSession()),
     'session:login': handle('session:login', (args) => backend.login(args)),
     'session:logout': handle('session:logout', () => backend.logout()),
+    'shell:openTokenPage': handle('shell:openTokenPage', () => {
+      openExternal(API_TOKEN_URL)
+      return Promise.resolve(null)
+    }),
     'issues:list': handle('issues:list', (args, progress) => backend.listIssues(args, progress)),
     'issues:searchText': handle('issues:searchText', (args) => backend.searchText(args)),
     'issues:setSummary': handle('issues:setSummary', async (args) => {

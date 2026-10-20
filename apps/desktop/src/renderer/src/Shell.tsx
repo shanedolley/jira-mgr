@@ -1476,6 +1476,12 @@ export function Shell({ session }: { session: Session }) {
     setToasts((held) => held.filter((toast) => toast.id !== id))
   }
 
+  // A bulk delete reports each issue after the render that confirmed it, so it reads the open Peek's issue here.
+  const openPeekKey = useRef<string | null>(null)
+  useEffect(() => {
+    openPeekKey.current = peekOpen ? peekedKey : null
+  })
+
   /** Opens the delete dialog, unless a run is deleting: its progress is one at a time. */
   function askDelete(targets: Issue[]) {
     if (deleteRunning) {
@@ -1505,6 +1511,8 @@ export function Shell({ session }: { session: Session }) {
     deleteRun
       .run(items, (gone) => {
         setPageKey((held) => (held !== null && gone.has(held) ? null : held))
+        const shown = openPeekKey.current
+        if (shown !== null && gone.has(shown)) closePeek()
       })
       .then(
         (outcome) => {

@@ -192,9 +192,10 @@ test.describe('button system', () => {
     await expectSystem('inbox', 1)
   })
 
-  test('the login button is 28px high with a 6px radius', async () => {
+  test('the login button is 28px high with a 6px radius, and Create new token is a .btn too', async () => {
     await expect(window.getByRole('button', { name: 'Log in' })).toBeVisible()
-    await expectSystem('login', 1)
+    await expect(window.getByRole('button', { name: 'Create new token →' })).toBeVisible()
+    await expectSystem('login', 2)
   })
 
   test('every button in the list, the Peek, the menus and the dialogs is 24 or 28px with a 6px radius', async () => {
