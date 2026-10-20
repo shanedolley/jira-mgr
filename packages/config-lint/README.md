@@ -4,4 +4,4 @@
 
 The root `package.json` points Prettier at `@jira-mgr/config-lint/prettier`. `pnpm format` writes and `pnpm format:check` verifies. `.prettierignore` skips `docs/`, root Markdown files and `.github/`.
 
-Linting is not here. Oxlint reads the root `.oxlintrc.json`, and `pnpm lint` runs it over the whole repository with type-aware rules. Every TypeScript file must belong to a `tsconfig`, because those rules read it. A suppression is `// eslint-disable-next-line <rule> -- <reason>` or `// oxlint-disable-next-line <rule> -- <reason>`; Oxlint honours both.
+Linting is not here. Oxlint reads the root `.oxlintrc.json`, and `pnpm lint` runs it over the whole repository with type-aware rules. A suppression is `// eslint-disable-next-line <rule> -- <reason>` or `// oxlint-disable-next-line <rule> -- <reason>`; Oxlint honours both.

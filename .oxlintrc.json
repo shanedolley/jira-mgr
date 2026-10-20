@@ -15,7 +15,8 @@
     ".serena/"
   ],
   "options": {
-    "typeAware": true
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "warn"
   },
   "settings": {
     "react": {
