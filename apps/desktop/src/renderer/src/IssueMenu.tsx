@@ -215,6 +215,8 @@ interface IssueMenuProps {
   y: number
   /** An item to open at once, for a key that names one, such as `Shift+D`. */
   open?: MenuItemId
+  /** The size of the checked set when the menu speaks for it: it offers Delete alone. */
+  selected?: number
   /** Runs an item that is not a submenu. The menu has closed first. */
   onRun: (action: MenuAction) => void
   /** Escape, a click outside or a finished action closed it. */
@@ -226,9 +228,22 @@ interface IssueMenuProps {
  * press outside, with the pickers' own lists as its submenus, so every edit is the one the page
  * makes. Arrows move, Right or Enter opens a submenu, Left closes it, and a listed key runs its item.
  */
-export function IssueMenu({ issue, issues, me, x, y, open, onRun, onClose }: IssueMenuProps) {
+export function IssueMenu({
+  issue,
+  issues,
+  me,
+  x,
+  y,
+  open,
+  selected,
+  onRun,
+  onClose,
+}: IssueMenuProps) {
   const element = useRef<HTMLDivElement>(null)
-  const items = menuItems(issue)
+  const items: MenuItem[] =
+    selected === undefined
+      ? menuItems(issue)
+      : [{ id: 'delete', label: `Delete ${String(selected)} issues`, key: undefined, group: 0 }]
 
   // Shown, then moved so the whole menu is inside the window.
   useLayoutEffect(() => {
@@ -406,12 +421,21 @@ export function IssueMenu({ issue, issues, me, x, y, open, onRun, onClose }: Iss
     <div
       ref={element}
       role="menu"
-      aria-label={`Actions for ${issue.key}`}
+      aria-label={
+        selected === undefined
+          ? `Actions for ${issue.key}`
+          : `Actions for ${String(selected)} issues`
+      }
       popover="manual"
       tabIndex={-1}
       onKeyDown={onKeyDown}
       className="context-menu"
     >
+      {selected !== undefined && (
+        <div aria-hidden className="px-3 py-1.5 text-xs font-medium text-muted">
+          {selected} issues
+        </div>
+      )}
       {items.map((item, at) => (
         <Fragment key={item.id}>
           {at > 0 && items[at - 1]?.group !== item.group && (

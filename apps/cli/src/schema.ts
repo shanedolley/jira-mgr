@@ -672,13 +672,13 @@ export const COMMANDS = [
   },
   {
     path: ['issue', 'delete'],
-    summary: 'Delete an issue permanently',
+    summary: 'Delete issues permanently',
     description:
-      'Deletes the issue for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too.',
-    args: [{ name: 'key', type: 'issue-key', description: 'The issue key.' }],
+      'Deletes the issues for good. `--confirm` is required. An issue with subtasks needs `--with-subtasks`, which deletes them too. Several keys are deleted one at a time, lowest level first: subtasks, then stories, tasks and bugs, then epics. A key that fails does not stop the rest, and the command exits with the code of the first failure.',
+    args: [{ name: 'keys', type: 'issue-key', variadic: true, description: 'The issue keys.' }],
     options: [
       { name: 'confirm', type: 'boolean', description: 'Confirm the permanent delete.' },
-      { name: 'with-subtasks', type: 'boolean', description: "Delete the issue's subtasks too." },
+      { name: 'with-subtasks', type: 'boolean', description: "Delete the issues' subtasks too." },
     ],
     examples: [
       {
@@ -689,21 +689,26 @@ export const COMMANDS = [
         command: 'jm issue delete PSAPAC-12 --confirm --with-subtasks',
         description: 'Delete an issue and its subtasks.',
       },
+      {
+        command: 'jm issue delete PSAPAC-10 PSAPAC-12 PSAPAC-13 --confirm --with-subtasks',
+        description: 'Delete an epic, a story and its subtask, subtask first.',
+      },
     ],
     output: {
-      summary: 'The deleted key and the subtasks deleted with it.',
+      summary:
+        'With one key, the deleted key and the subtasks deleted with it. With several, `deleted` lists those entries in the order they were deleted and `failed` lists each key that failed with its `error` (`code` and `message`).',
       example: { key: 'PSAPAC-12', deletedSubtasks: ['PSAPAC-13'] },
     },
     exits: [
       {
         code: 'validation_failed',
-        when: '`--confirm` is missing, the issue has subtasks and `--with-subtasks` is missing, or the key is outside the project in settings.',
+        when: '`--confirm` is missing, an issue has subtasks and `--with-subtasks` is missing, or a key is outside the project in settings.',
       },
       { code: 'permission_denied', when: 'No project is set in settings.' },
-      { code: 'not_found', when: 'The issue does not exist.' },
+      { code: 'not_found', when: 'An issue does not exist.' },
     ],
     writes: ['jira'],
-    calls: ['@jira-mgr/core/search#getIssue', '@jira-mgr/core/write#deleteIssue'],
+    calls: ['@jira-mgr/core/state#assertInProject', '@jira-mgr/core/write#deleteIssues'],
   },
 
   // status (L4)

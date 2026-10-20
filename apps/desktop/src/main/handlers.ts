@@ -34,6 +34,7 @@ import type {
   CreateIssueArgs,
   CreateViewArgs,
   DeleteIssueArgs,
+  DeleteIssuesArgs,
   DeleteViewArgs,
   Display,
   DownloadAttachmentArgs,
@@ -298,6 +299,11 @@ const deleteIssueArgs: z.ZodType<DeleteIssueArgs> = z.strictObject({
   subtasks: z.array(issueKey).max(MAX_FILTER_VALUES),
 })
 
+const deleteIssuesArgs: z.ZodType<DeleteIssuesArgs> = z.strictObject({
+  batchId: z.number().int().nonnegative(),
+  items: z.array(deleteIssueArgs).max(BATCH_MAX),
+})
+
 const sprintListArgs = z.strictObject({ all: z.boolean() })
 
 const sprintGetArgs = z.strictObject({ id: z.number().int().positive() })
@@ -458,6 +464,7 @@ export const argSchemas: { [C in Channel]: z.ZodType<ArgsOf<C>> } = {
   'issues:setSprint': setSprintArgs,
   'issues:create': createIssueArgs,
   'issues:delete': deleteIssueArgs,
+  'issues:deleteMany': deleteIssuesArgs,
   'sprints:list': sprintListArgs,
   'sprints:get': sprintGetArgs,
   'users:search': userSearchArgs,
@@ -631,6 +638,9 @@ export function createHandlers(
       backend.createIssue(args, progress),
     ),
     'issues:delete': handle('issues:delete', (args) => backend.deleteIssue(args)),
+    'issues:deleteMany': handle('issues:deleteMany', (args, progress) =>
+      backend.deleteIssues(args, progress),
+    ),
     'sprints:list': handle('sprints:list', (args) => backend.listSprints(args)),
     'sprints:get': handle('sprints:get', (args) => backend.getSprint(args)),
     'users:search': handle('users:search', (args) => backend.searchUsers(args)),

@@ -86,16 +86,16 @@ describe('jm help', () => {
 
   it('a command object carries its usage, arguments, examples, exits, writes and calls', async () => {
     const del = await richDoc('issue delete')
-    expect(del.usage).toBe('jm issue delete <key> [--confirm] [--with-subtasks]')
+    expect(del.usage).toBe('jm issue delete <keys...> [--confirm] [--with-subtasks]')
     expect(del.summary).toBeTruthy()
     expect(del.description).toBeTruthy()
     expect(del.args).toEqual([
       {
-        name: 'key',
+        name: 'keys',
         type: 'issue-key',
-        description: expect.stringContaining('issue key') as unknown,
+        description: expect.stringContaining('issue keys') as unknown,
         required: true,
-        variadic: false,
+        variadic: true,
         choices: null,
       },
     ])
@@ -114,6 +114,7 @@ describe('jm help', () => {
     expect(del.examples.map((e) => e.command)).toEqual([
       'jm issue delete PSAPAC-12 --confirm',
       'jm issue delete PSAPAC-12 --confirm --with-subtasks',
+      'jm issue delete PSAPAC-10 PSAPAC-12 PSAPAC-13 --confirm --with-subtasks',
     ])
     expect(del.output.example).toEqual({ key: 'PSAPAC-12', deletedSubtasks: ['PSAPAC-13'] })
     expect(del.exits).toEqual([
@@ -127,8 +128,8 @@ describe('jm help', () => {
     ])
     expect(del.writes).toEqual(['jira'])
     expect(del.calls).toEqual([
-      '@jira-mgr/core/search#getIssue',
-      '@jira-mgr/core/write#deleteIssue',
+      '@jira-mgr/core/state#assertInProject',
+      '@jira-mgr/core/write#deleteIssues',
     ])
   })
 

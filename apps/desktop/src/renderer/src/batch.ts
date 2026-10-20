@@ -3,6 +3,7 @@ import type { Issue } from '@jira-mgr/core'
 import {
   BATCH_MAX,
   type BatchChange,
+  type DeleteIssuesOutcome,
   type FieldChoice,
   type SprintOption,
   type StatusOption,
@@ -52,6 +53,33 @@ export function refusedBatchNotice(
     notes: [
       sentence(`Skipped ${namedKeys(refused.map(({ key }) => key))}`),
       ...(first === undefined ? [] : [sentence(`${first.key}: ${first.reason}`)]),
+    ],
+    warned: true,
+  }
+}
+
+/**
+ * The notice after a delete run. A clean run says how many issues went; a run with failures says
+ * how many went of the total, then names every issue that stayed with the reason, and stays until
+ * dismissed like any refusal.
+ */
+export function deletedNotice({ deleted, failed }: DeleteIssuesOutcome): Notice {
+  if (failed.length === 0) {
+    const subtasks = deleted.reduce((sum, d) => sum + d.deletedSubtasks.length, 0)
+    return {
+      title: `Deleted ${issues(deleted.length)}`,
+      notes:
+        subtasks === 0
+          ? []
+          : [`${String(subtasks)} ${subtasks === 1 ? 'subtask' : 'subtasks'} went with them.`],
+      warned: false,
+    }
+  }
+  return {
+    title: `Could not delete ${issues(failed.length)}`,
+    notes: [
+      `Deleted ${String(deleted.length)} of ${String(deleted.length + failed.length)}.`,
+      ...failed.map(({ key, reason }) => sentence(`${key}: ${reason}`)),
     ],
     warned: true,
   }

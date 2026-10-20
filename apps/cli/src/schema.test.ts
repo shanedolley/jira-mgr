@@ -99,7 +99,7 @@ describe('the command schema', () => {
 
   it('types a handler input from its spec', () => {
     type Del = InputOf<SpecOf<'issue delete'>>
-    expectTypeOf<Del['key']>().toEqualTypeOf<string>()
+    expectTypeOf<Del['keys']>().toEqualTypeOf<string[]>()
     expectTypeOf<Del['confirm']>().toEqualTypeOf<boolean>()
     expectTypeOf<Del['withSubtasks']>().toEqualTypeOf<boolean>()
     type Create = InputOf<SpecOf<'issue create'>>

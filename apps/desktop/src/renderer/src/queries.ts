@@ -7,6 +7,7 @@ import {
   queryOptions,
   useMutation,
   useMutationState,
+  useQueries,
   useQuery,
   useQueryClient,
   type MutationOptions,
@@ -17,6 +18,8 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import type {
   BatchProgress,
   CreateIssueArgs,
+  DeleteIssueArgs,
+  DeleteIssuesOutcome,
   EditIssueArgs,
   IssuePhase,
   IssuesProgress,
@@ -38,6 +41,7 @@ import { call } from './ipc'
 import {
   applyCreated,
   batchMutation,
+  confirmDeleted,
   deleteMutation,
   doneKey,
   issueDetailKey,
@@ -45,6 +49,7 @@ import {
   issueMutation,
   issuesKey,
   pendingFields,
+  removeDeleted,
   sprintKey,
   summaryMutation,
   unresolvedKey,
@@ -549,6 +554,44 @@ export function useDeleteIssue() {
   return useMutation(deleteMutation(client, (args) => call('issues:delete', args)))
 }
 
+/**
+ * Runs several deletes over `issues:deleteMany`. Each issue leaves the lists as its delete
+ * succeeds, and `onGone` hears the keys that left. `progress` holds the issues settled so far, or
+ * `null` between runs. There is no rollback: nothing is shown before Jira confirms.
+ */
+export function useDeleteIssues() {
+  const client = useQueryClient()
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const run = useCallback(
+    async (
+      items: DeleteIssueArgs[],
+      onGone: (gone: ReadonlySet<string>) => void,
+    ): Promise<DeleteIssuesOutcome> => {
+      const batchId = lastBatchId++
+      setProgress({ done: 0, total: items.length })
+      const stop = window.jm.onBatchProgress((next) => {
+        if (next.batchId !== batchId) return
+        setProgress({ done: next.done, total: next.total })
+        if (next.deleted === undefined) return
+        const gone = new Set([next.deleted.key, ...next.deleted.deletedSubtasks])
+        onGone(gone)
+        const { key } = next.deleted
+        void removeDeleted(client, key, gone).then((rollback) => {
+          confirmDeleted(client, gone, rollback)
+        })
+      })
+      try {
+        return await call('issues:deleteMany', { batchId, items })
+      } finally {
+        stop()
+        setProgress(null)
+      }
+    },
+    [client],
+  )
+  return { run, progress }
+}
+
 /** How a caller of `useIssueDetail` differs from the page's own read. */
 interface DetailOptions {
   /** False holds the read, while a copy already cached still shows. */
@@ -568,19 +611,29 @@ export function useIssueDetail(key: string | null, options: DetailOptions = {}) 
   const client = useQueryClient()
   const { enabled = true, ...rest } = options
   return useQuery({
-    queryKey: issueDetailKey(key ?? ''),
-    queryFn: async () => {
-      const issueKey = key ?? ''
-      const startedAt = Date.now()
-      const fresh = await call('issues:get', { key: issueKey })
-      const held = client.getQueryData<IssueDetail>(issueDetailKey(issueKey))
-      const updatedAt = client.getQueryState(issueDetailKey(issueKey))?.dataUpdatedAt ?? 0
-      const newer = isEditing(client, issueKey) || updatedAt > startedAt
-      return newer && held !== undefined ? held : fresh
-    },
+    ...issueDetailQuery(client, key ?? ''),
     enabled: key !== null && enabled,
     ...rest,
   })
+}
+
+/** The page's own read of `key`, which `useIssueDetail` and `useIssueDetails` share. */
+const issueDetailQuery = (client: QueryClient, issueKey: string) => ({
+  queryKey: issueDetailKey(issueKey),
+  queryFn: async () => {
+    const startedAt = Date.now()
+    const fresh = await call('issues:get', { key: issueKey })
+    const held = client.getQueryData<IssueDetail>(issueDetailKey(issueKey))
+    const updatedAt = client.getQueryState(issueDetailKey(issueKey))?.dataUpdatedAt ?? 0
+    const newer = isEditing(client, issueKey) || updatedAt > startedAt
+    return newer && held !== undefined ? held : fresh
+  },
+})
+
+/** `useIssueDetail` for several issues at once, in the order of `keys`. */
+export function useIssueDetails(keys: readonly string[]) {
+  const client = useQueryClient()
+  return useQueries({ queries: keys.map((key) => issueDetailQuery(client, key)) })
 }
 
 /** The statuses the issue can move to now, read when the status picker opens. */

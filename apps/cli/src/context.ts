@@ -75,6 +75,8 @@ export interface Handler<S extends CommandSpec = CommandSpec, T = unknown> {
   run(input: InputOf<S>, ctx: Context): Promise<T> | T
   /** The TTY form. An empty string prints nothing. */
   render(data: T, tty: Tty): string
+  /** The exit code after the result prints, for a command whose data can report a failure. Defaults to 0. */
+  exitCode?(data: T): number
   /**
    * Set when `run` throws a `JiraMgrError` that the person needs after Ctrl-C, such as the key of
    * an issue created but not read back. `run` then waits for the aborted call to settle and prints

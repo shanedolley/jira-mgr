@@ -82,6 +82,7 @@ function fakeBackend(overrides: Partial<Backend> = {}) {
     setSprint: record('setSprint', undefined),
     createIssue: record('createIssue', { key: 'PSAPAC-1', issue: null, warning: null }),
     deleteIssue: record('deleteIssue', { key: 'PSAPAC-1', deletedSubtasks: [] }),
+    deleteIssues: record('deleteIssues', { deleted: [], failed: [] }),
     listSprints: record('listSprints', []),
     getSprint: record('getSprint', {} as never),
     searchUsers: record('searchUsers', []),
@@ -446,6 +447,33 @@ describe('issues:delete', () => {
     const result = await createHandlers(backend)['issues:delete'](args, noProgress)
     expect(result).toMatchObject({ ok: true })
     expect(calls).toEqual([{ method: 'deleteIssue', args: [args] }])
+  })
+})
+
+describe('issues:deleteMany', () => {
+  const item = { key: 'PSAPAC-1', deleteSubtasks: false, subtasks: [] }
+
+  it.each([
+    ['no batch id', { items: [item] }],
+    ['a batch id that is not a whole number', { batchId: 1.5, items: [item] }],
+    ['no list of issues', { batchId: 1 }],
+    ['an issue with no cascade choice', { batchId: 1, items: [{ key: 'PSAPAC-1', subtasks: [] }] }],
+    ['a key that is not an issue key', { batchId: 1, items: [{ ...item, key: 'one' }] }],
+    ['an extra field', { batchId: 1, items: [item], force: true }],
+    ['no argument', undefined],
+  ])('refuses %s before the backend runs', async (_name, raw) => {
+    const { backend, calls } = fakeBackend()
+    const result = await createHandlers(backend)['issues:deleteMany'](raw, noProgress)
+    expect(result).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(calls).toEqual([])
+  })
+
+  it('passes the batch id and the issues, with the progress sender, to the backend', async () => {
+    const { backend, calls } = fakeBackend()
+    const args = { batchId: 3, items: [item, { ...item, key: 'PSAPAC-2' }] }
+    const result = await createHandlers(backend)['issues:deleteMany'](args, noProgress)
+    expect(result).toMatchObject({ ok: true })
+    expect(calls).toEqual([{ method: 'deleteIssues', args: [args, noProgress] }])
   })
 })
 
