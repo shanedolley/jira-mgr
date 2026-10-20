@@ -1,22 +1,7 @@
 # Lint Config
 
-`@jira-mgr/config-lint`, the shared ESLint flat config and the Prettier config.
-
-## ESLint
-
-The root `eslint.config.js` re-exports the config, and `pnpm lint` runs it over the whole repository. The config holds:
-
-- `@eslint/js` recommended rules
-- `typescript-eslint` strict and stylistic rules with type information, for `.ts` and `.tsx` files
-- React and React Hooks rules, for `.tsx` files
-- `@ts-ignore` banned; `@ts-expect-error` needs a description
-
-Every TypeScript file must belong to a `tsconfig`, because the type-aware rules read it.
-
-## Prettier
+`@jira-mgr/config-lint`, the shared Prettier config.
 
 The root `package.json` points Prettier at `@jira-mgr/config-lint/prettier`. `pnpm format` writes and `pnpm format:check` verifies. `.prettierignore` skips `docs/`, root Markdown files and `.github/`.
 
-## Versions
-
-ESLint stays on 9 until `eslint-plugin-react` supports the next major. This package keeps TypeScript `~6.0.0` for `typescript-eslint`; every other package is on `~7.0.2`.
+Linting is not here. Oxlint reads the root `.oxlintrc.json`, and `pnpm lint` runs it over the whole repository with type-aware rules. Every TypeScript file must belong to a `tsconfig`, because those rules read it. A suppression is `// eslint-disable-next-line <rule> -- <reason>` or `// oxlint-disable-next-line <rule> -- <reason>`; Oxlint honours both.

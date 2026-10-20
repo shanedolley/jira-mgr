@@ -1,12 +1,12 @@
 ---
-status: proposed
-date: 2026-10-19
+status: accepted
+date: 2026-10-20
 deciders: Shane Dolley
 ---
 
 # Adopt Oxlint, Keep Prettier and Vite
 
-jira-mgr lints with ESLint and formats with Prettier, both configured in `@jira-mgr/config-lint`. [Issue #255](https://github.com/shanedolley/jira-mgr/issues/255) asked whether Vite+ should replace them. The [trial](../discovery/2026-10-19-vite-plus-trial.md) recommends adopting Oxlint alone, as the standalone `oxlint` and `oxlint-tsgolint` packages, and keeping Prettier, Vite, Vitest, electron-vite and tsup as they are. **Shane decides.** Accepting this record adds two dev dependencies, `oxlint` and `oxlint-tsgolint`, which AGENTS.md puts under Ask First, so no adoption work merges before he approves them.
+jira-mgr lints with ESLint and formats with Prettier, both configured in `@jira-mgr/config-lint`. [Issue #255](https://github.com/shanedolley/jira-mgr/issues/255) asked whether Vite+ should replace them. The [trial](../discovery/2026-10-19-vite-plus-trial.md) recommends adopting Oxlint alone, as the standalone `oxlint` and `oxlint-tsgolint` packages, and keeping Prettier, Vite, Vitest, electron-vite and tsup as they are. Shane accepted option 2, Oxlint alone, on 2026-10-20, and approved the two new dev dependencies, `oxlint` and `oxlint-tsgolint`.
 
 ## Considered Options
 

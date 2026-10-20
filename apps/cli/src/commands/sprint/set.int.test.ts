@@ -79,7 +79,7 @@ describe('jm sprint set', () => {
     expect(error?.message).toMatch(
       /^No active or future sprint matches "Sprint 99"\. Choose one of: PS Sprint 36 \(05 Oct-18 Oct\) \(10170\), .* and \d+ more\.$/,
     )
-    const choices = (error?.details as { choices: { id: number }[] }).choices
+    const choices = (error?.details as { choices: { id: number }[] } | undefined)?.choices ?? []
     expect(choices[0]).toEqual({ id: ACTIVE, name: ACTIVE_NAME, state: 'active' })
     expect(choices.length).toBeGreaterThan(40)
     expect(calls(requests)).toEqual([BOARD, SPRINTS])
@@ -175,7 +175,7 @@ describe('jm sprint set', () => {
     const requests = serveExtras()
     const fifty = await runJson(['sprint', 'set', 'backlog', ...keys(50)])
     expect(fifty.code).toBe(0)
-    expect((requests[0]?.body as { issues: string[] }).issues).toHaveLength(50)
+    expect((requests[0]?.body as { issues: string[] } | undefined)?.issues).toHaveLength(50)
     const before = requests.length
     const over = await runJson(['sprint', 'set', 'current', ...keys(51)])
     expect(over.code).toBe(2)

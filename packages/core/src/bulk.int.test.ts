@@ -944,9 +944,9 @@ describe('runBatch review fixes', () => {
       { sleep: noSleep },
     )
 
-    const { selectedActions } = only(requests, BULK_FIELDS)[0]?.body as {
-      selectedActions: string[]
-    }
+    const selectedActions =
+      (only(requests, BULK_FIELDS)[0]?.body as { selectedActions: string[] } | undefined)
+        ?.selectedActions ?? []
     const offered = listed.fields.map(({ id }) => id)
     expect(selectedActions.length).toBe(5)
     for (const action of selectedActions) expect(offered).toContain(action)

@@ -121,7 +121,8 @@ function fakeJira(options: FakeOptions = {}) {
         return { enabled: true, uploadLimit: 100_000_000 }
       }
       if (method === 'POST' && path.endsWith('/attachments')) {
-        const file = (init?.body as FormData).get('file') as File
+        const file = (init?.body as FormData | undefined)?.get('file') as File | undefined
+        if (file === undefined) throw new Error('The upload carried no file part.')
         return [
           rawAttachment({
             id: '900',
@@ -269,7 +270,7 @@ describe('addImage', () => {
     const jira = fakeJira({ attachments: [] })
     const backend = createBackend({ http: jira.http })
     const { node } = await backend.addImage(args)
-    const mediaId = (node.content?.[0]?.attrs as { id: string }).id
+    const mediaId = (node.content?.[0]?.attrs as { id: string } | undefined)?.id ?? ''
     jira.requests.length = 0
     const image = await backend.image({ key: KEY, mediaId })
     expect(image.mimeType).toBe('image/png')

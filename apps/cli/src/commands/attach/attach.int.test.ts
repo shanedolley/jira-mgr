@@ -114,7 +114,9 @@ describe('jm attach add', () => {
     const path = join(dir, 'deep', 'x.md')
     await writeFile(path, '# x')
     await runJson(['attach', 'add', KEY, path])
-    expect(((requests[1]?.body as FormData).get('file') as File).name).toBe('x.md')
+    expect(
+      ((requests[1]?.body as FormData | undefined)?.get('file') as File | undefined)?.name,
+    ).toBe('x.md')
   })
 
   it('refuses a file over the site limit before any upload, with its size in the details', async () => {

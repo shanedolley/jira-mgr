@@ -352,8 +352,8 @@ function textSearchHttp() {
   const waiting: (() => void)[] = []
   const http: HttpClient = {
     request(_method, _path, options) {
-      const { jql } = options?.body as { jql: string }
-      requests.push({ jql, signal: options?.signal })
+      const body = options?.body as { jql: string } | undefined
+      requests.push({ jql: body?.jql ?? '', signal: options?.signal })
       return new Promise((resolve, reject) => {
         options?.signal?.addEventListener('abort', () => {
           reject(options.signal?.reason as Error)

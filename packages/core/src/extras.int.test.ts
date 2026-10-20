@@ -483,9 +483,9 @@ describe('attachments', () => {
     ])
     const upload = requests[1]
     expect(upload?.headers.get('x-atlassian-token')).toBe('no-check')
-    const file = (upload?.body as FormData).get('file') as File
-    expect(file.name).toBe('notes.txt')
-    expect(await file.text()).toBe('hello')
+    const file = (upload?.body as FormData | undefined)?.get('file') as File | undefined
+    expect(file?.name).toBe('notes.txt')
+    expect(await file?.text()).toBe('hello')
     expect(result.map((a) => a.id)).toEqual(['652124'])
   })
 
@@ -495,8 +495,8 @@ describe('attachments', () => {
       filename: 'a.png',
       content: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
     })
-    const file = (requests[1]?.body as FormData).get('file') as File
-    expect([file.name, file.size, file.type]).toEqual(['a.png', 3, 'image/png'])
+    const file = (requests[1]?.body as FormData | undefined)?.get('file') as File | undefined
+    expect([file?.name, file?.size, file?.type]).toEqual(['a.png', 3, 'image/png'])
   })
 
   it('refuses a file over the 100 MB limit from the recorded meta, sending nothing', async () => {
@@ -709,8 +709,8 @@ describe('attachment content', () => {
       content: PNG,
       contentType: 'image/png',
     })
-    const part = (requests[1]?.body as FormData).get('file') as File
-    expect([part.name, part.type]).toEqual(['shot.png', 'image/png'])
+    const part = (requests[1]?.body as FormData | undefined)?.get('file') as File | undefined
+    expect([part?.name, part?.type]).toEqual(['shot.png', 'image/png'])
     const bad = await failure(
       addAttachment(client, 'PSAPAC-3017', { filename: 'a', content: PNG, contentType: 'x' }),
     )

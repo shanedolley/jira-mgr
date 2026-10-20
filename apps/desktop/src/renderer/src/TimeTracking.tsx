@@ -103,6 +103,7 @@ function WorklogChart({
                   ))}
                 </div>
               </div>
+              {/* oxlint-disable-next-line react/purity -- `now` only picks the current bucket and every render may read it; a stale bucket after midnight heals on the next render */}
               <Bars bars={bucketWorklogs(list, period, new Date())} noun={shown?.noun ?? 'day'} />
             </>
           )

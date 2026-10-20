@@ -280,7 +280,8 @@ describe('the comment count', () => {
     new URL(requests.find((r) => r.path.includes('/issue?'))?.path ?? '', SITE).searchParams
       .get('fields')
       ?.split(',') ?? []
-  const fieldsOfSearch = (requests: Request[]) => (requests[0]?.body as { fields: string[] }).fields
+  const fieldsOfSearch = (requests: Request[]) =>
+    (requests[0]?.body as { fields: string[] } | undefined)?.fields
 
   it('is left out of the Tree load and the Sprint page read while the Comments property is off', async () => {
     const search = routedHttp(searchRoute)

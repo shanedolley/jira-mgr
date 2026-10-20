@@ -308,9 +308,9 @@ describe('attachments', () => {
     })
     expect(item.filename).toBe('new.zip')
     const upload = requests.find((r) => r.method === 'POST')
-    const file = (upload?.body as FormData).get('file') as File
-    expect(file.name).toBe('new.zip')
-    expect(file.type).toBe('application/zip')
+    const file = (upload?.body as FormData | undefined)?.get('file') as File | undefined
+    expect(file?.name).toBe('new.zip')
+    expect(file?.type).toBe('application/zip')
   })
 
   it('leaves the type undeclared when the browser reported none or an invalid one', async () => {

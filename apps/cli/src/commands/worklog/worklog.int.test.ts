@@ -117,7 +117,7 @@ describe('jm worklog add', () => {
   it('reads a local --started in the machine zone', async () => {
     const requests = serveExtras()
     await runJson(['worklog', 'add', KEY, '--time', '2h', '--started', '2026-10-06 09:00'])
-    const sent = (requests[0]?.body as { started: string }).started
+    const sent = (requests[0]?.body as { started: string } | undefined)?.started
     expect(sent).toBe(new Date(2026, 9, 6, 9, 0).toISOString().replace('Z', '+0000'))
   })
 

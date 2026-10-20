@@ -1482,7 +1482,11 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
     if (method === 'POST' && upload !== null) {
       const target = find(upload[1] ?? '')
       if (target === undefined) return json({ errorMessages: ['Issue does not exist.'] }, 404)
-      const file = (init?.body as FormData).get('file') as File
+      const form = init?.body
+      if (!(form instanceof FormData)) {
+        return json({ errorMessages: ['The upload carried no multipart body.'] }, 400)
+      }
+      const file = form.get('file') as File
       counts.uploads.push({
         key: target.key,
         filename: file.name,
