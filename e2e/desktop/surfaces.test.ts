@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { launch, logIn, peekRow } from './harness.js'
+import { counts, launch, logIn, peekRow } from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -228,6 +228,33 @@ test.describe('drop zone', () => {
 })
 
 test.describe('login', () => {
+  test('starts with the site filled in, and the user can still change it', async () => {
+    const site = window.getByLabel('Site URL')
+    await expect(site).toHaveValue('https://engineering-collibra.atlassian.net')
+    await site.fill('https://other.atlassian.net')
+    await expect(site).toHaveValue('https://other.atlassian.net')
+  })
+
+  test('Create new token asks main to open the token page, and only that page', async () => {
+    expect((await counts(app)).openExternal).toEqual([])
+    await window.getByRole('button', { name: 'Create new token →' }).click()
+    await expect
+      .poll(async () => (await counts(app)).openExternal)
+      .toEqual(['https://id.atlassian.com/manage-profile/security/api-tokens'])
+  })
+
+  test('a failed Create new token shows the reason in the form', async () => {
+    await app.evaluate(({ ipcMain }) => {
+      ipcMain.removeHandler('shell:openTokenPage')
+      ipcMain.handle('shell:openTokenPage', () => ({
+        ok: false,
+        error: { code: 'unknown', message: 'No browser' },
+      }))
+    })
+    await window.getByRole('button', { name: 'Create new token →' }).click()
+    await expect(window.getByRole('alert')).toHaveText('No browser')
+  })
+
   test('shows the mark, the Keychain hint and a 400px form on the canvas colour', async () => {
     await expect(window.getByRole('heading', { name: 'Log in to Jira' })).toBeVisible()
     await expect(window.locator('[data-login-mark]')).toHaveText('jm')

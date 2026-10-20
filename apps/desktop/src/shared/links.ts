@@ -26,6 +26,12 @@ export function externalUrl(raw: string): string | null {
   return `mailto:${url.pathname}${query === '' ? '' : `?${query}`}`
 }
 
+/** The site the login form starts with when settings hold none. */
+export const DEFAULT_SITE_URL = 'https://engineering-collibra.atlassian.net'
+
+/** Where an Atlassian account creates an API token. `shell:openTokenPage` opens this and nothing else. */
+export const API_TOKEN_URL = 'https://id.atlassian.com/manage-profile/security/api-tokens'
+
 /** Where Jira shows an issue: `/browse/<key>` on the logged-in site, under any path the site holds. */
 export function issueUrl(siteUrl: string, key: string): string {
   const base = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`

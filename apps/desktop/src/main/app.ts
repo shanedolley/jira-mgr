@@ -172,7 +172,9 @@ export function start(backend: Backend, options: StartOptions = {}): void {
   const hooks: WindowHooks = { ...nativeHooks() }
   if (options.openExternal !== undefined) hooks.openExternal = options.openExternal
   if (options.confirmQuit !== undefined) hooks.confirmQuit = options.confirmQuit
-  const handlers = createHandlers(backend)
+  const handlers = createHandlers(backend, undefined, (url) => {
+    hooks.openExternal(url)
+  })
   for (const channel of CHANNELS) {
     ipcMain.handle(channel, (event, raw: unknown) =>
       fromOurWindow(event)

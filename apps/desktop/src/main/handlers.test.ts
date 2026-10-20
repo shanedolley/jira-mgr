@@ -155,6 +155,24 @@ describe('argument validation', () => {
     expect(JSON.stringify(result)).not.toContain(TOKEN)
   })
 
+  it('opens the token page and nothing else, and refuses an address from the renderer', async () => {
+    const { backend } = fakeBackend()
+    const opened: string[] = []
+    const handlers = createHandlers(
+      backend,
+      () => undefined,
+      (url) => opened.push(url),
+    )
+    expect(await handlers['shell:openTokenPage'](undefined, noProgress)).toEqual({
+      ok: true,
+      data: null,
+    })
+    expect(opened).toEqual(['https://id.atlassian.com/manage-profile/security/api-tokens'])
+    const refused = await handlers['shell:openTokenPage']('https://evil.test/', noProgress)
+    expect(refused).toMatchObject({ ok: false, error: { code: 'validation_failed' } })
+    expect(opened).toHaveLength(1)
+  })
+
   it.each([
     ['a key that is not an issue key', { key: 'psapac-12', summary: 'x' }],
     ['a key with a path in it', { key: 'PSAPAC-12/../x', summary: 'x' }],

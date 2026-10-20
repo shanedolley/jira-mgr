@@ -1,6 +1,8 @@
 import { useState, type SyntheticEvent } from 'react'
 
 import type { Session } from '../../shared/ipc'
+import { DEFAULT_SITE_URL } from '../../shared/links'
+import { call } from './ipc'
 import { useLogin } from './queries'
 
 interface FieldProps {
@@ -33,12 +35,13 @@ function Field({ label, name, value, onChange, type = 'text', placeholder }: Fie
   )
 }
 
-/** Site, project, email and API token, as `jm auth login` asks for them. Settings fill what they hold. */
+/** Site, project, email and API token, as `jm auth login` asks for them. Settings fill what they hold, and the site otherwise starts as `DEFAULT_SITE_URL`. */
 export function LoginScreen({ prefill }: { prefill: Partial<Session> }) {
-  const [siteUrl, setSiteUrl] = useState(prefill.siteUrl ?? '')
+  const [siteUrl, setSiteUrl] = useState(prefill.siteUrl ?? DEFAULT_SITE_URL)
   const [projectKey, setProjectKey] = useState(prefill.projectKey ?? '')
   const [email, setEmail] = useState(prefill.email ?? '')
   const [token, setToken] = useState('')
+  const [tokenPageError, setTokenPageError] = useState<string | null>(null)
   const login = useLogin()
 
   function submit(event: SyntheticEvent) {
@@ -84,10 +87,26 @@ export function LoginScreen({ prefill }: { prefill: Partial<Session> }) {
           placeholder="PSAPAC"
         />
         <Field label="Email" name="email" type="email" value={email} onChange={setEmail} />
-        <Field label="API token" name="token" type="password" value={token} onChange={setToken} />
-        {login.isError && (
+        <div>
+          <Field label="API token" name="token" type="password" value={token} onChange={setToken} />
+          <button
+            type="button"
+            onClick={() => {
+              setTokenPageError(null)
+              call('shell:openTokenPage').catch((error: unknown) => {
+                setTokenPageError(
+                  error instanceof Error ? error.message : 'Could not open the token page.',
+                )
+              })
+            }}
+            className="btn btn-sm btn-ghost mt-1.5"
+          >
+            Create new token →
+          </button>
+        </div>
+        {(login.isError || tokenPageError !== null) && (
           <p role="alert" className="text-danger">
-            {login.error.message}
+            {login.isError ? login.error.message : tokenPageError}
           </p>
         )}
         <button type="submit" disabled={login.isPending} className="btn btn-primary w-full">

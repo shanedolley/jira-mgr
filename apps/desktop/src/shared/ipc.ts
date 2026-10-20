@@ -474,6 +474,8 @@ export interface IpcContract {
   'session:get': { args: undefined; result: SessionState }
   'session:login': { args: LoginArgs; result: SessionState }
   'session:logout': { args: undefined; result: SessionState }
+  /** Opens the page that creates an API token in the browser. It takes no address: main holds the one URL. */
+  'shell:openTokenPage': { args: undefined; result: null }
   /** `null` when a newer load of the same phase, or a logout, aborted this one. */
   'issues:list': { args: ListIssuesArgs; result: Issue[] | null }
   /** Project issues whose text fields hold `query`. `null` when a newer search, or a logout, aborted this one. */
@@ -568,6 +570,7 @@ const CHANNEL_TABLE: Record<Channel, true> = {
   'session:get': true,
   'session:login': true,
   'session:logout': true,
+  'shell:openTokenPage': true,
   'issues:list': true,
   'issues:searchText': true,
   'issues:setSummary': true,
