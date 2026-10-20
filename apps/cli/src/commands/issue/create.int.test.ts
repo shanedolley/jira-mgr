@@ -190,7 +190,7 @@ describe('jm issue create names', () => {
     expect(code).toBe(2)
     expect(error?.code).toBe('validation_failed')
     expect(error?.message).toMatch(/^No Customer matches "Nobody"\. Choose one of: .*BHP \(16120\)/)
-    expect((error?.details as { choices: unknown[] }).choices).toHaveLength(42)
+    expect((error?.details as { choices: unknown[] } | undefined)?.choices).toHaveLength(42)
     expect(requests).toEqual([])
   })
 

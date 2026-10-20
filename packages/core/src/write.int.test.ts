@@ -477,7 +477,8 @@ describe('editIssue', () => {
       await editIssue(client, 'PSAPAC-1', edits[type as keyof typeof edits])
       await editIssue(client, 'PSAPAC-1', { addLabels: ['a'], removeLabels: ['b'] })
 
-      const sent = Object.keys((requests[0]?.body as { fields: object }).fields)
+      const sent = Object.keys((requests[0]?.body as { fields: object } | undefined)?.fields ?? {})
+      expect(sent).not.toEqual([])
       for (const key of sent) expect(meta.fields[key]?.operations, key).toContain('set')
       // Each `update` operation (add, remove, edit) must be one the type's editmeta lists.
       for (const { body } of requests) {

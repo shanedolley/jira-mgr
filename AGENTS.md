@@ -61,7 +61,7 @@ Root `package.json` scripts are the source of truth.
 | `pnpm build` | Builds every package and app |
 | `pnpm dev` | Runs the desktop app in development |
 | `pnpm typecheck` | Type-checks the workspace |
-| `pnpm lint` | Runs ESLint |
+| `pnpm lint` | Runs Oxlint with type-aware rules |
 | `pnpm format` | Formats with Prettier |
 | `pnpm format:check` | Checks formatting without writing |
 | `pnpm test` | Runs the Vitest suites against the MSW fake |

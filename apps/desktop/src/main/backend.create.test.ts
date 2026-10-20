@@ -143,7 +143,7 @@ describe('createIssue', () => {
     const { http, requests } = routedHttp(accepts)
     await createBackend({ http }).createIssue(NEW)
 
-    const fields = (requests[0]?.body as { fields: object }).fields
+    const fields = (requests[0]?.body as { fields: object } | undefined)?.fields
     expect(fields).not.toHaveProperty('customfield_4')
     expect(fields).not.toHaveProperty('duedate')
   })

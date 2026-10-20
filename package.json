@@ -12,7 +12,7 @@
     "build": "pnpm -r build",
     "dev": "pnpm --filter @jira-mgr/desktop dev",
     "typecheck": "pnpm -r typecheck && tsc -p scripts",
-    "lint": "eslint .",
+    "lint": "oxlint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm -r test",
@@ -29,7 +29,8 @@
     "@jira-mgr/config-lint": "workspace:*",
     "@jira-mgr/config-ts": "workspace:*",
     "@types/node": "^26.6.4",
-    "eslint": "^9.39.0",
+    "oxlint": "^1.88.0",
+    "oxlint-tsgolint": "^7.0.2004",
     "prettier": "^3.9.0",
     "typescript": "~7.0.2"
   }

@@ -199,14 +199,14 @@ Adopt Oxlint alone, as standalone `oxlint` and `oxlint-tsgolint` dev dependencie
 
 ### Follow-Up Stories
 
-If Shane approves, file these. None is filed yet.
+Shane accepted Oxlint alone on 2026-10-20 ([ADR-0006](../adr/0006-adopt-oxlint-keep-prettier-and-vite.md)). Branch `255-oxlint` delivers items 1 to 4 below.
 
-1. **Config.** Add `oxlint` and `oxlint-tsgolint`; write the Oxlint config from the trial's `vite.config.ts` `lint` block as `oxlint.config.ts` or `.oxlintrc.json`; check every remaining ESLint rule option; set `pnpm lint` to `oxlint --type-aware`.
-2. **Triage.** Fix or justify the 18 `no-unsafe-optional-chaining` sites and the `purity` finding, then remove ESLint, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react`, `eslint-plugin-react-hooks`, `globals`, `eslint.config.js` and the TypeScript `~6.0.0` pin.
-3. **Local CI route.** Update `pnpm ci:local` and `.github/workflows/ci.yml` for the new `lint` command; run the route on the pushed head.
-4. **Docs.** Update `AGENTS.md` Commands, `ARCHITECTURE.md`, `docs/standards/dependencies.md` (Monorepo Tooling) and `packages/config-lint/README.md`, or delete the package and its README with it.
-5. **Close #235.** Close the `@eslint/js` 10 Dependabot pull request with a comment naming the story.
-6. **Revisit Oxfmt.** Reopen the question when Oxfmt leaves beta and matches Prettier on union types.
+1. **Config.** Delivered. Added `oxlint` and `oxlint-tsgolint`; wrote `.oxlintrc.json` from the trial's `lint` block; checked the remaining ESLint rule options; set `pnpm lint` to `oxlint`, with `options.typeAware` in the config.
+2. **Triage.** Delivered. Fixed the 18 `no-unsafe-optional-chaining` sites, justified the `purity` finding, and removed ESLint, its plugins, `eslint.config.js` and the TypeScript `~6.0.0` pin.
+3. **Local CI route.** Delivered. `pnpm ci:local` and `.github/workflows/ci.yml` call `pnpm lint`, so neither needed a command change; the route ran on the pushed head.
+4. **Docs.** Delivered. `AGENTS.md`, `ARCHITECTURE.md`, `docs/standards/dependencies.md` and the `packages/config-lint` README name Oxlint. The package stays for the Prettier config.
+5. **Close #235.** Moot once `@eslint/js` leaves. The orchestrator closes it after the merge.
+6. **Revisit Oxfmt.** Open. Reopen the question when Oxfmt leaves beta and matches Prettier on union types.
 
 ## Open Questions
 

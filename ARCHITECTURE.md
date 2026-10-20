@@ -18,7 +18,7 @@ clients:  apps/desktop (main + renderer)      apps/cli (jm)
 | `apps/cli/` | The `jm` command, built with tsup |
 | `packages/core/` | `@jira-mgr/core`: the Jira client, domain rules, saved views schema, error codes and ADF conversion |
 | `packages/config-ts/` | `@jira-mgr/config-ts`: base `tsconfig` files |
-| `packages/config-lint/` | `@jira-mgr/config-lint`: ESLint and Prettier config |
+| `packages/config-lint/` | `@jira-mgr/config-lint`: the Prettier config |
 | `e2e/` | End-to-end tests: the Electron app. CLI tests sit in `apps/cli/src/`, including smoke tests of the built binary |
 | `scripts/` | Repository automation |
 | `docs/` | Documentation, indexed in [docs/README.md](docs/README.md) |

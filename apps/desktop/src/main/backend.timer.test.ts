@@ -90,7 +90,7 @@ function fakeJira({ type = 'Story', refuse = false } = {}) {
       }
       if (method === 'POST' && path.includes('/worklog')) {
         if (refuse) return Promise.reject(new Error('Jira said no'))
-        const sent = (init?.body as { timeSpent: string }).timeSpent
+        const sent = (init?.body as { timeSpent: string } | undefined)?.timeSpent ?? ''
         return Promise.resolve(rawWorklog(sent))
       }
       return Promise.reject(new Error(`unexpected ${method} ${path}`))

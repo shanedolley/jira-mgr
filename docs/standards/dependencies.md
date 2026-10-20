@@ -22,6 +22,6 @@ Remove a dependency in the same pull request that stops using it.
 
 ## Monorepo Tooling
 
-Workspace tasks run through pnpm: root scripts call `pnpm -r` and `--filter`. Formatting uses Prettier and linting uses ESLint, both configured in `@jira-mgr/config-lint`.
+Workspace tasks run through pnpm: root scripts call `pnpm -r` and `--filter`. Formatting uses Prettier, configured in `@jira-mgr/config-lint`. Linting uses Oxlint with type-aware rules, configured in `.oxlintrc.json`.
 
 Turborepo joins when CI takes longer than ten minutes. It adds caching and affected-only runs on top of the same pnpm scripts with one `turbo.json`.
