@@ -18,13 +18,13 @@ Screenshots show sample data.
 
 ![Creating an issue: the New issue dialog, a summary, an Engagement and a priority, then Create issue](images/using-the-app/create.gif)
 
-## Change Details in the Tree
+## Edit in the Tree
 
 Click a status dot or an avatar on a row, then choose a value. Hover a row and press `S` for Status, `A` for Assignee or `P` for Priority.
 
 ![Changing a status from its dot and an assignee from its avatar](images/using-the-app/cell.gif)
 
-## Change Details in the Peek
+## Edit in the Peek
 
 Click a property in the Peek or on the issue page and choose a value. The change saves at once.
 
