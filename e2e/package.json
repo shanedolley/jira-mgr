@@ -11,8 +11,8 @@
   "devDependencies": {
     "@jira-mgr/config-ts": "workspace:*",
     "@playwright/test": "^1.64.0",
-    "@types/node": "^26.6.4",
-    "electron": "^44.7.0",
+    "@types/node": "^26.6.5",
+    "electron": "^44.7.2",
     "typescript": "~7.0.2"
   }
 }
