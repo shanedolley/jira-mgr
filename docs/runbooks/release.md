@@ -10,7 +10,7 @@ Every package carries one version, and a release is a GitHub Release with the no
 
 1. `git switch main && git pull --ff-only`, then `git status --short` prints nothing.
 2. Every merged pull request since the last tag carries a type label: `enhancement`, `bug` or `documentation`. [`.github/release.yml`](../../.github/release.yml) groups the generated notes by it. An unlabelled pull request lands under "Other changes".
-3. Pick the next version `x.y.z` and note the previous tag with `git describe --tags --abbrev=0`.
+3. Pick the next version `x.y.z`. After the first release, note the previous tag with `git describe --tags --abbrev=0`. The first release has no previous tag.
 
 ## Fix
 
@@ -19,7 +19,7 @@ Every package carries one version, and a release is a GitHub Release with the no
 3. Sign and notarise the app, then staple it, per [Share with Another Mac](../how-to/install-desktop-app.md#share-with-another-mac). This step needs Shane's Developer ID identity and the `jira-mgr-notary` Keychain profile.
 4. Zip the stapled app: `ditto -c -k --keepParent jira-mgr.app jira-mgr-<version>-arm64.zip`.
 5. Tag the merge commit and push the tag: `git tag vx.y.z <merge commit>`, then `git push origin vx.y.z`.
-6. Create the draft: `gh release create vx.y.z jira-mgr-<version>-arm64.zip --draft --generate-notes --notes-start-tag <previous tag> --title vx.y.z`. For hand-written notes, pass `--notes-file <file>` in place of `--generate-notes`.
+6. Create the draft: `gh release create vx.y.z jira-mgr-<version>-arm64.zip --draft --generate-notes --notes-start-tag <previous tag> --title vx.y.z`. On the first release, omit `--notes-start-tag` and pass `--notes-file <file>` in place of `--generate-notes`. For hand-written notes later, do the same.
 7. Shane reviews the draft and publishes it.
 
 ## Verify
