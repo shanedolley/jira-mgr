@@ -39,7 +39,7 @@ The first runs the Vitest unit tests. `pnpm e2e` builds the app and drives it wi
 pnpm --filter @jira-mgr/desktop build
 ```
 
-This writes `apps/desktop/out`. It builds two main-process entries: `index`, the app, and `e2e`, the test entry. `pnpm package` assembles the unsigned `.app` and fails when the e2e entry or fake code is inside ([Install the desktop app](install-desktop-app.md)).
+This writes `apps/desktop/out`. It builds two main-process entries: `index`, the app, and `e2e`, the test entry. `pnpm package` assembles the `.app`, signed ad hoc, and fails when the e2e entry or fake code is inside ([Install the desktop app](install-desktop-app.md)).
 
 ## Where Code Goes
 

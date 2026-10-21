@@ -43,5 +43,5 @@ jira-mgr holds one secret, the Atlassian API token, and reads one project's issu
 ## Out of Scope
 
 - Malware running as the user. It can run `/usr/bin/security`, as core does, and read the state files.
-- An unsigned build. Version 1 has no code signing or auto-update, so a build is as trustworthy as the machine that made it ([Install the desktop app](../how-to/install-desktop-app.md)).
+- A local build. `pnpm package` signs ad hoc, so a build is as trustworthy as the machine that made it. A release is notarised by hand, and the app has no auto-update ([Install the desktop app](../how-to/install-desktop-app.md), [Release a Version](../runbooks/release.md)).
 - Another user of the same Atlassian account.

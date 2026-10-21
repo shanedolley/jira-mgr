@@ -23,7 +23,7 @@ Decisions sit in [docs/adr](../adr/README.md), and the grilling that produced th
 
 ## Out of Scope
 
-These stay out of version 1: board view, sprint lifecycle, offline edits, a macOS menu bar timer item, general desktop notifications (timer reminders are in v1), @mentions, code signing and auto-update, issue restriction, watchers, issue history, story points, flagged, fix versions, Team, Partner, Contacts and reporter. The grilling record lists the reasons.
+These stay out of version 1: board view, sprint lifecycle, offline edits, a macOS menu bar timer item, general desktop notifications (timer reminders are in v1), @mentions, signing in the build (a release is notarised by hand) and auto-update, issue restriction, watchers, issue history, story points, flagged, fix versions, Team, Partner, Contacts and reporter. The grilling record lists the reasons.
 
 ## Open Questions
 
