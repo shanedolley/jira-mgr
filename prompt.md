@@ -51,7 +51,7 @@ Comment on the issue: the question, each option with its cost and what it buys, 
 - Any write to live Jira (PSAPAC): creating, editing, transitioning or deleting issues, comments, worklogs, links or attachments. Tests never write. Re-running the write section of [the L7 runbook](docs/runbooks/l7-smoke-check.md) needs Shane present.
 - Running `jm` by hand without `JM_STATE_DIR` set to a scratch folder. The real state folder holds Shane's timer and views.
 - Merging a Dependabot major version bump.
-- Code signing, notarisation, or anything that costs money, unless Shane orders it (he did on 2026-10-16 and 2026-10-21).
+- Code signing, notarisation, or anything that costs money.
 - Changing an accepted ADR's decision; write a new ADR instead.
 
 ## Skills
