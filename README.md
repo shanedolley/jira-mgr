@@ -10,7 +10,7 @@ The Core, CLI and Desktop milestones are built: every `jm` command works, and th
 
 ## Stack
 
-TypeScript on Node 24 in a pnpm monorepo. Electron with electron-vite, React, Tailwind and TanStack Query for the app. Commander and tsup for the CLI. Vitest and Playwright for tests. macOS only, built locally and unsigned.
+TypeScript on Node 24 in a pnpm monorepo. Electron with electron-vite, React, Tailwind and TanStack Query for the app. Commander and tsup for the CLI. Vitest and Playwright for tests. macOS only, built locally: `pnpm package` signs ad hoc, and a copy for another Mac is signed and notarised by hand ([Share with Another Mac](docs/how-to/install-desktop-app.md#share-with-another-mac)).
 
 ## Commands
 
