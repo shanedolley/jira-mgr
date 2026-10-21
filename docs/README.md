@@ -10,7 +10,7 @@ Docs follow [Diataxis](https://diataxis.fr/): each page is one kind (tutorial, h
 | [Architecture](architecture/README.md) | Explanation | How the system fits together, and why |
 | [ADRs](adr/README.md) | Decision | Architecture decision records, superseded rather than edited |
 | [Design](design/README.md) | Design | Numbered design docs, written before a large feature is built |
-| [Runbooks](runbooks/README.md) | How-to | Steps for token and Jira problems |
+| [Runbooks](runbooks/README.md) | How-to | Steps for token and Jira problems, and for releasing a version |
 | [Standards](standards/README.md) | Reference | Rules for code, git, testing, review and docs |
 | [Security](security/README.md) | Explanation | Threat model for the API token and the Jira connection |
 | [Product](product/README.md) | Reference | The roadmap, requirements and acceptance criteria |

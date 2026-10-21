@@ -9,3 +9,4 @@ Steps to follow under pressure: one file per problem or chore, started from [the
 | [`token-rejected.md`](token-rejected.md) | Jira answers 401 or 403, or no one is logged in |
 | [`rate-limited.md`](rate-limited.md) | Jira answers 429 and the app or CLI stalls |
 | [`stale-field-ids.md`](stale-field-ids.md) | Customer, Engagement or Sprint writes fail after a Jira admin changes the project's fields |
+| [`release.md`](release.md) | Shipping a version: bump, package, notarise, tag and draft the GitHub Release |

@@ -2409,7 +2409,7 @@ The help document, or one command object when a command is named.
 {
   "data": {
     "name": "jm",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "globalOptions": [],
     "exitCodes": [],
     "commands": []

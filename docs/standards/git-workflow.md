@@ -62,6 +62,6 @@ lockf /tmp/jira-mgr-e2e.lock pnpm e2e --workers=1
 
 ## Versioning
 
-Nothing is published, and every package stays at `0.0.0`. These are public contracts from the first release of the CLI: the `--json` output, the exit codes, `jm help --json`, the saved views file and the settings file shape. Change them additively; a break needs a `BREAKING CHANGE:` footer and a migration note.
+Every package carries one version, set in a single pull request and released through GitHub Releases ([runbook](../runbooks/release.md)). Give each pull request one type label (`enhancement`, `bug` or `documentation`) so the generated release notes sort it. These are public contracts from 1.0.0: the `--json` output, the exit codes, `jm help --json`, the saved views file and the settings file shape. Change them additively; a break needs a `BREAKING CHANGE:` footer and a migration note.
 
 The exports of `@jira-mgr/core` are internal to the repository and may change with their callers in the same pull request.
