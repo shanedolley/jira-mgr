@@ -441,7 +441,10 @@ describe('error mapping', () => {
             controller.enqueue(new TextEncoder().encode('{'))
           },
         })
-        return new HttpResponse(stream, { headers: { 'Content-Type': 'application/json' } })
+        // msw 3 emulates a socket, so a body shorter than Content-Length is what keeps it open.
+        return new HttpResponse(stream, {
+          headers: { 'Content-Type': 'application/json', 'Content-Length': '100' },
+        })
       }),
     )
     const error = await rejection(
@@ -462,7 +465,10 @@ describe('error mapping', () => {
             }, 10)
           },
         })
-        return new HttpResponse(stream, { headers: { 'Content-Type': 'application/json' } })
+        // msw 3 emulates a socket, so a body shorter than Content-Length is what keeps it open.
+        return new HttpResponse(stream, {
+          headers: { 'Content-Type': 'application/json', 'Content-Length': '100' },
+        })
       }),
     )
     const error = await rejection(client().api.request('GET', '/rest/api/3/myself'))
@@ -673,9 +679,12 @@ describe('bytes and media ids', () => {
     const body = spyOnBody()
     server.use(
       http.get(CONTENT, () => {
+        // Finite: msw 3 drains the stream without backpressure.
+        let chunks = 0
         const stream = new ReadableStream<Uint8Array>({
           pull(controller) {
             controller.enqueue(new Uint8Array(60))
+            if (++chunks === 5) controller.close()
           },
         })
         return new HttpResponse(stream)
