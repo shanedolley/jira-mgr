@@ -17,6 +17,6 @@
 }
 ```
 
-Add `types` for the globals a package needs, such as `node`. TypeScript 6 includes no ambient types by default.
+Add `types` for the globals a package needs, such as `node`. Since TypeScript 6, no ambient types are included by default.
 
 `tsc` only type checks here, because tsup, electron-vite and Vitest do the building.
