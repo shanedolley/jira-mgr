@@ -5,7 +5,7 @@ Recipes for one task each, for a reader who already knows the codebase.
 | Guide | Task |
 |---|---|
 | [`install-cli.md`](install-cli.md) | Build `jm` and link it with `npm link` |
-| [`install-desktop-app.md`](install-desktop-app.md) | Package the unsigned app, install it, open it, sign it for another Mac, find its state and uninstall it |
+| [`install-desktop-app.md`](install-desktop-app.md) | Download a release or package the app, install it, open it, sign it for another Mac, find its state and uninstall it |
 | [`run-tests.md`](run-tests.md) | Run each test suite and debug a failure |
 | [`refresh-fixtures.md`](refresh-fixtures.md) | Record PSAPAC response bodies as they are and update the MSW fake |
 | [`run-live-tests.md`](run-live-tests.md) | Run the read-only PSAPAC tests with `JM_LIVE_JIRA=1` |

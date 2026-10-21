@@ -1,6 +1,16 @@
 # Install the Desktop App
 
-Build the app on your Mac, copy it to Applications and open it. The app is unsigned, never downloaded and never updated: rebuild and copy again to upgrade.
+Download a signed release, or build the app on your Mac. The app never updates itself: install a newer release, or rebuild and copy again, to upgrade.
+
+## Download a Release
+
+Needs an Apple silicon Mac on macOS 13 or later.
+
+1. Download `jira-mgr-<version>-arm64.zip` from the [releases page](https://github.com/shanedolley/jira-mgr/releases).
+2. Unzip it and move `jira-mgr.app` to `/Applications/` (or `~/Applications/` for yourself only).
+3. Open it from Finder or Spotlight. The release is signed and notarised, so Gatekeeper opens it with no prompt.
+
+To upgrade, quit the app and move a newer release over the old one.
 
 ## Build
 
@@ -25,9 +35,9 @@ Use `~/Applications/` to install for yourself only. To upgrade, quit the app, ru
 
 ## First Launch
 
-Open it from Finder or Spotlight. A locally built app carries no quarantine flag, so Gatekeeper does not check it and no prompt appears. The build signs the app ad hoc, with no identity, which is what lets it run on Apple silicon.
+Open it from Finder or Spotlight. A downloaded release is notarised and opens with no prompt. A locally built app carries no quarantine flag, so Gatekeeper does not check it and no prompt appears. The build signs the app ad hoc, with no identity, which is what lets it run on Apple silicon.
 
-If you copy the app from another Mac or a download, macOS quarantines it and refuses to open it. Right-click the app, choose Open, then Open again; or clear the flag:
+If you copy an ad hoc build from another Mac, macOS quarantines it and refuses to open it. Right-click the app, choose Open, then Open again; or clear the flag:
 
 ```
 xattr -dr com.apple.quarantine /Applications/jira-mgr.app
