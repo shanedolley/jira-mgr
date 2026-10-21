@@ -4,7 +4,7 @@ Docs follow [Diataxis](https://diataxis.fr/): each page is one kind (tutorial, h
 
 | Folder | Kind | Holds |
 |---|---|---|
-| [Tutorials](tutorials/README.md) | Tutorial | Learning by doing: the first run of the CLI and an agent session |
+| [Tutorials](tutorials/README.md) | Tutorial | Learning by doing: the first run of the CLI, an agent session and a tour of the desktop app |
 | [How-to](how-to/README.md) | How-to | Task recipes: install, test and develop; add a command or a shortcut |
 | [Reference](reference/README.md) | Reference | CLI commands, error codes, configuration, shortcuts |
 | [Architecture](architecture/README.md) | Explanation | How the system fits together, and why |
