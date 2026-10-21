@@ -40,6 +40,7 @@ pnpm -s jm -- --help # the built CLI
 ## Documentation
 
 - [Documentation index](docs/README.md)
+- [Using the desktop app](docs/tutorials/using-the-app.md), a visual tour
 - [Standards](docs/standards/README.md), starting with the [git workflow](docs/standards/git-workflow.md) and [code review](docs/standards/code-review.md)
 - [Domain terms](CONTEXT.md)
 - [Contributing](CONTRIBUTING.md), and [AGENTS.md](AGENTS.md) for agent contributors
