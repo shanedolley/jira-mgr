@@ -18,6 +18,7 @@ export type ActionId =
   | 'labels'
   | 'sprint'
   | 'logWork'
+  | 'worklogs'
   | 'subIssue'
   | 'copyKey'
   | 'copyLink'
@@ -41,6 +42,7 @@ export const ISSUE_ACTIONS: readonly IssueAction[] = [
   { id: 'labels', label: 'Add labels', allowed: always },
   { id: 'sprint', label: 'Set sprint', allowed: (i) => propertyRules(i.issueType).sprint },
   { id: 'logWork', label: 'Log work', allowed: (i) => propertyRules(i.issueType).estimates },
+  { id: 'worklogs', label: 'Worklogs', allowed: (i) => propertyRules(i.issueType).estimates },
   { id: 'subIssue', label: 'Create sub-issue', allowed: (i) => fitsParent('Subtask', i) },
   { id: 'copyKey', label: 'Copy key', allowed: always },
   { id: 'copyLink', label: 'Copy link', allowed: always },

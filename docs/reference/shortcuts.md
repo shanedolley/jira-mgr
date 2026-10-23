@@ -58,7 +58,8 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 |---|---|
 | `C` | Create an issue under the active (hovered) issue: a Story under an Epic, a Subtask under a Story, Task or Bug or beside a Subtask |
 | `T` | Start or stop the timer on the active issue |
-| `W` | Open the Log work modal for the active issue. An Epic has no worklog, so `W` does nothing there. A click on a row's Logged slot, the menu's Log work and the palette's Log work open the same modal |
+| `Shift+T` | Open the Log work modal for the active issue. An Epic has no worklog, so `Shift+T` does nothing there. A click on a row's Logged slot, the menu's Log work and the palette's Log work open the same modal |
+| `W` | Open the Worklogs modal for the active issue: every worklog, newest start first, with the total logged. An Epic has no worklog, so `W` does nothing there. `Shift+W` does the same. The menu's Worklogs and the palette's Worklogs open the same modal |
 
 ## Click on a row
 
@@ -126,7 +127,9 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Sub-issue form, anywhere in the form | `Esc` | Close the form and stay on the page; ignored while the Subtasks are being created |
 | Any form: Log work, the worklog add and edit rows, the link add row, the timer stop and switch dialog, Edit summary, the login screen | `Cmd+Enter` | Submit as the form's button does, from any field; nothing while the button is disabled or a save runs, and nothing when an open picker or menu in the form takes the key |
 | Log work modal | `Enter` | Save the worklog from the Time spent field |
-| Log work modal | `Esc` | Close the modal with no write and return focus |
+| Log work modal | `Esc` | Close the modal with no write and return focus; from the Worklogs modal, focus returns to its Log work button |
+| Worklogs modal | `Shift+T` | Open the Log work form over the list, as the Log work button does; not in a field |
+| Worklogs modal | `Esc` | Close the list and return focus |
 | Summary and property fields | `Enter` | Save |
 | Summary and property fields | `Esc` | Cancel the edit |
 

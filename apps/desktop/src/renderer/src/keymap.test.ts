@@ -24,11 +24,11 @@ const SCOPE = '[data-key-scope]'
 const scoped = inside(SCOPE)
 
 describe('the letter shortcuts', () => {
-  it('map C, T, W, S, A, L, P, E, I, Y, U and F, and with Shift T, W, A, L, I, Y, U and F alike', () => {
+  it('map C, T, W, S, A, L, P, E, I, Y, U and F, and with Shift W, A, L, I, Y, U and F alike', () => {
     const expected = {
       c: 'create',
       t: 'timer',
-      w: 'logWork',
+      w: 'worklogs',
       s: 'status',
       a: 'assignee',
       l: 'labels',
@@ -43,13 +43,20 @@ describe('the letter shortcuts', () => {
       expect(resolveKey(key(letter), scoped)).toBe(command)
       // A Caps Lock letter arrives uppercase with no Shift.
       expect(resolveKey(key(letter.toUpperCase()), scoped)).toBe(command)
-      if ('cpes'.includes(letter)) continue
+      if ('cpest'.includes(letter)) continue
       expect(resolveKey(key(letter.toUpperCase(), { shiftKey: true }), scoped)).toBe(command)
     }
   })
 
-  it('map Shift+S, Shift+D, Shift+P, Shift+E and Shift+C to start date, due date, parent, estimate and sprint, never to S, D, P, E or C', () => {
-    const expected = { s: 'startDate', d: 'dueDate', p: 'parent', e: 'estimate', c: 'sprint' }
+  it('map Shift+S, Shift+D, Shift+P, Shift+E, Shift+C and Shift+T to start date, due date, parent, estimate, sprint and Log work, never to S, D, P, E, C or T', () => {
+    const expected = {
+      s: 'startDate',
+      d: 'dueDate',
+      p: 'parent',
+      e: 'estimate',
+      c: 'sprint',
+      t: 'logWork',
+    }
     for (const [letter, command] of Object.entries(expected)) {
       expect(resolveKey(key(letter.toUpperCase(), { shiftKey: true }), scoped)).toBe(command)
       expect(resolveKey(key(letter.toLowerCase(), { shiftKey: true }), scoped)).toBe(command)
@@ -332,7 +339,9 @@ describe('keyOf', () => {
     expect(keyOf('copyKey')).toBe('Y')
     expect(keyOf('copyLink')).toBe('U')
     expect(keyOf('filterMenu')).toBe('F')
-    expect(keyOf('logWork')).toBe('W')
+    expect(keyOf('timer')).toBe('T')
+    expect(keyOf('worklogs')).toBe('W')
+    expect(keyOf('logWork')).toBe('Shift+T')
     expect(keyOf('startDate')).toBe('Shift+S')
     expect(keyOf('dueDate')).toBe('Shift+D')
     expect(keyOf('parent')).toBe('Shift+P')

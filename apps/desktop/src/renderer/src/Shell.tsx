@@ -138,6 +138,7 @@ import { NotifyContext, type Notify } from './notify'
 import { applyUnaskedRead } from './optimistic'
 import { describeEdit, isBatch, isOrder, reversible, undoStack, type StackEntry } from './undo'
 import { useUndo } from './useUndo'
+import { WorklogsModal } from './WorklogsModal'
 import {
   ancestorIds,
   levelCollapsed,
@@ -378,6 +379,8 @@ export function Shell({ session }: { session: Session }) {
   const [logging, setLogging] = useState<Issue | null>(null)
   // The issue the Comments modal is open on.
   const [commenting, setCommenting] = useState<Issue | null>(null)
+  // The issue the Worklogs modal is open on. Log work opens over it and leaves it open.
+  const [worklogging, setWorklogging] = useState<Issue | null>(null)
   const timerQuery = useTimer()
   const startTimer = useStartTimer()
   const client = useQueryClient()
@@ -1123,6 +1126,14 @@ export function Shell({ session }: { session: Session }) {
     if (row !== undefined) setTrack((held) => ({ ...held, activeId: row.id }))
     setCommenting(issue)
   }
+  // `W`, the menu and the palette open the Worklogs modal the same way.
+  function openWorklogs(issue: Issue) {
+    const row = listCovered
+      ? undefined
+      : rows.find((r) => r.kind === 'issue' && r.node.issue.key === issue.key)
+    if (row !== undefined) setTrack((held) => ({ ...held, activeId: row.id }))
+    setWorklogging(issue)
+  }
   const openCommentsRef = useRef(openComments)
   useEffect(() => {
     openCommentsRef.current = openComments
@@ -1142,6 +1153,9 @@ export function Shell({ session }: { session: Session }) {
         break
       case 'logWork':
         openLog(issue)
+        break
+      case 'worklogs':
+        openWorklogs(issue)
         break
       case 'comments':
         openComments(issue)
@@ -1207,6 +1221,9 @@ export function Shell({ session }: { session: Session }) {
         break
       case 'logWork':
         openLog(issue)
+        break
+      case 'worklogs':
+        openWorklogs(issue)
         break
       case 'copyKey':
         copyIssue(key, 'key')
@@ -1355,14 +1372,16 @@ export function Shell({ session }: { session: Session }) {
           timing !== null ||
           // `logging` is set exactly while the modal renders: `loggedIssue` falls back to it.
           logging !== null ||
-          commenting !== null
+          commenting !== null ||
+          worklogging !== null
         )
           return
-        if (command === 'logWork') {
+        if (command === 'logWork' || command === 'worklogs') {
           const issue = issues.find((i) => i.key === key)
-          if (issue === undefined || !allows(issue, 'logWork')) return
+          if (issue === undefined || !allows(issue, command)) return
           event.preventDefault()
-          openLog(issue)
+          if (command === 'logWork') openLog(issue)
+          else openWorklogs(issue)
           return
         }
         if (
@@ -1666,6 +1685,7 @@ export function Shell({ session }: { session: Session }) {
   const treeTop = useTreeTop(listRef, peekOpen)
   const loggingIssue = loggedIssue(issues, logging)
   const commentingIssue = loggedIssue(issues, commenting)
+  const worklogsIssue = loggedIssue(issues, worklogging)
   const layout = (
     <div
       style={
@@ -2048,6 +2068,19 @@ export function Shell({ session }: { session: Session }) {
           issue={loggingIssue}
           onClose={() => {
             setLogging(null)
+          }}
+          returnFocus={restoreFocus}
+        />
+      )}
+      {worklogsIssue !== null && (
+        <WorklogsModal
+          issue={worklogsIssue}
+          me={meQuery.data}
+          onClose={() => {
+            setWorklogging(null)
+          }}
+          onLogWork={() => {
+            openLog(worklogsIssue)
           }}
           returnFocus={restoreFocus}
         />

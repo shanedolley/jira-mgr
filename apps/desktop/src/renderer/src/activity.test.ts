@@ -11,6 +11,7 @@ import {
   linkChoices,
   linkPhrase,
   looksLikeKey,
+  newestFirst,
   readWorklogForm,
   safeMarkdown,
   textFromAdf,
@@ -197,6 +198,19 @@ describe('worklog form', () => {
     expect(
       totalSpent([{ timeSpentSeconds: 3600 }, { timeSpentSeconds: 1800 }] as WorklogItem[]),
     ).toBe(5400)
+  })
+
+  it('orders worklogs newest start first across time zones, keeping Jira order for equal starts', () => {
+    const at = (id: string, started: string) => ({ id, started }) as WorklogItem
+    const list = [
+      at('a', '2026-10-20T09:00:00.000+1000'),
+      at('b', '2026-10-21T09:00:00.000+1000'),
+      // 23:30Z on the 20th is later than b's 23:00Z, though its text sorts before b's.
+      at('c', '2026-10-20T23:30:00.000+0000'),
+      at('d', '2026-10-21T09:00:00.000+1000'),
+    ]
+    expect(newestFirst(list).map((w) => w.id)).toEqual(['c', 'b', 'd', 'a'])
+    expect(list.map((w) => w.id)).toEqual(['a', 'b', 'c', 'd'])
   })
 
   it('writes a local input time', () => {

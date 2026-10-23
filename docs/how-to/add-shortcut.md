@@ -8,7 +8,7 @@ For a key that opens one more property picker of the active issue:
 
 1. **Name the key.** Add an entry to `PROPERTY_KEYS` in `apps/desktop/src/renderer/src/keymap.ts`. Its name joins the `Command` type.
 
-2. **Map the letter.** Add `['x', 'yourCommand']` to the `LETTERS` map in the same file. Pick a letter no other shortcut uses. The Tree owns `J`, `K`, the arrows, `Space` and `Enter` (`tree.ts`), and the keymap owns `C`, `T`, `W`, `S`, `A`, `L`, `P`, `E`, `I`, `Y`, `U`, `F`, `/`, `?`, `Shift+S`, `Shift+D`, `Shift+P`, `Shift+E`, `Shift+C`, `Shift+F10`, `Cmd+K`, `Cmd+Z` and `Esc`. A Shift letter goes in `SHIFT_LETTERS` instead, and its `PROPERTY_KEYS` entry reads `Shift+X`.
+2. **Map the letter.** Add `['x', 'yourCommand']` to the `LETTERS` map in the same file. Pick a letter no other shortcut uses. The Tree owns `J`, `K`, the arrows, `Space` and `Enter` (`tree.ts`), and the keymap owns `C`, `T`, `W`, `S`, `A`, `L`, `P`, `E`, `I`, `Y`, `U`, `F`, `/`, `?`, `Shift+T`, `Shift+S`, `Shift+D`, `Shift+P`, `Shift+E`, `Shift+C`, `Shift+F10`, `Cmd+K`, `Cmd+Z` and `Esc`. A Shift letter goes in `SHIFT_LETTERS` instead, and its `PROPERTY_KEYS` entry reads `Shift+X`.
 
 3. **Advertise it on the control.** Give the picker the same letter: `shortcut="X"` on a `Picker` (see `PropertyPickers.tsx`), or `aria-keyshortcuts="X"` on a button. `Shell.tsx` finds the control by that attribute and clicks it, so the shortcut opens the picker the mouse opens and no code is duplicated. The `Picker` also shows the letter as a keycap on hover and focus.
 

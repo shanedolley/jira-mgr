@@ -182,6 +182,8 @@ interface WorklogRowProps {
   onDone: () => void
   issueKey: string
   onNotice: (notice: Notice) => void
+  /** Runs when an action on the row ends and the control that had focus is about to go. */
+  onSettled?: () => void
 }
 
 function WorklogRow({
@@ -192,6 +194,7 @@ function WorklogRow({
   onDone,
   issueKey,
   onNotice,
+  onSettled,
 }: WorklogRowProps) {
   const [confirming, setConfirming] = useState(false)
   const edit = useEditWorklog(issueKey)
@@ -218,15 +221,20 @@ function WorklogRow({
             if (Object.keys(changes).length > 0) {
               await edit.mutateAsync({ worklogId: worklog.id, ...changes })
             }
+            onSettled?.()
             onDone()
           }}
-          onCancel={onDone}
+          onCancel={() => {
+            onSettled?.()
+            onDone()
+          }}
         />
       </li>
     )
   }
 
   function deleteWorklog() {
+    onSettled?.()
     setConfirming(false)
     remove.mutateAsync(worklog.id).catch((error: unknown) => {
       onNotice(
@@ -276,6 +284,7 @@ function WorklogRow({
             if (event.key !== 'Escape') return
             event.preventDefault()
             event.stopPropagation()
+            onSettled?.()
             setConfirming(false)
           }}
           className="flex flex-wrap items-center gap-2 text-xs"
@@ -288,6 +297,7 @@ function WorklogRow({
             type="button"
             autoFocus
             onClick={() => {
+              onSettled?.()
               setConfirming(false)
             }}
             className="btn btn-sm"
@@ -300,12 +310,52 @@ function WorklogRow({
   )
 }
 
+interface WorklogListProps extends WorklogsSectionProps {
+  worklogs: readonly WorklogItem[]
+  /** Extra classes on the `<ul>`, such as the ones that let a modal scroll it. */
+  className?: string
+  /** A modal sets this to take focus back from a row control that an action is about to remove. */
+  onSettled?: () => void
+}
+
+/** The rows of a worklog list, in the order given, with one row in edit at a time. */
+export function WorklogList({
+  worklogs,
+  issueKey,
+  me,
+  onNotice,
+  className = '',
+  onSettled,
+}: WorklogListProps) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  return (
+    <ul className={`divide-y divide-line ${className}`}>
+      {worklogs.map((worklog) => (
+        <WorklogRow
+          key={worklog.id}
+          worklog={worklog}
+          issueKey={issueKey}
+          mine={me !== undefined && worklog.author?.accountId === me.accountId}
+          editing={editingId === worklog.id}
+          onEdit={() => {
+            setEditingId(worklog.id)
+          }}
+          onDone={() => {
+            setEditingId(null)
+          }}
+          onNotice={onNotice}
+          onSettled={onSettled}
+        />
+      ))}
+    </ul>
+  )
+}
+
 /** The Worklogs section: who logged what, with add, edit and delete for the signed-in user's own. */
 export function WorklogsSection({ issueKey, me, onNotice }: WorklogsSectionProps) {
   const worklogs = useWorklogs(issueKey)
   const add = useAddWorklog(issueKey)
   const [adding, setAdding] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const total = worklogs.data === undefined ? null : totalSpent(worklogs.data)
   return (
     <Section
@@ -346,24 +396,7 @@ export function WorklogsSection({ issueKey, me, onNotice }: WorklogsSectionProps
           list.length === 0 ? (
             !adding && <p className="text-muted">No work logged</p>
           ) : (
-            <ul className="divide-y divide-line">
-              {list.map((worklog) => (
-                <WorklogRow
-                  key={worklog.id}
-                  worklog={worklog}
-                  issueKey={issueKey}
-                  mine={me !== undefined && worklog.author?.accountId === me.accountId}
-                  editing={editingId === worklog.id}
-                  onEdit={() => {
-                    setEditingId(worklog.id)
-                  }}
-                  onDone={() => {
-                    setEditingId(null)
-                  }}
-                  onNotice={onNotice}
-                />
-              ))}
-            </ul>
+            <WorklogList worklogs={list} issueKey={issueKey} me={me} onNotice={onNotice} />
           )
         }
       </QueryBody>

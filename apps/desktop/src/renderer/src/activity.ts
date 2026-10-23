@@ -183,6 +183,10 @@ export function readWorklogForm(
 export const totalSpent = (worklogs: readonly WorklogItem[]): number =>
   worklogs.reduce((sum, worklog) => sum + worklog.timeSpentSeconds, 0)
 
+/** The worklogs newest start first. Equal starts keep Jira's order, and the list passed in is left as it was. */
+export const newestFirst = (worklogs: readonly WorklogItem[]): WorklogItem[] =>
+  worklogs.toSorted((a, b) => Date.parse(b.started) - Date.parse(a.started))
+
 /** A byte count as people read it: "96.4 KB", "5.0 MB". */
 export function formatSize(bytes: number): string {
   if (bytes < 1000) return `${String(bytes)} B`

@@ -123,7 +123,8 @@ test('Cmd+K names the issue in context as a chip and lists its actions with thei
     ['Change priority', 'P'],
     ['Add labels', 'L'],
     ['Set sprint', '⇧C'],
-    ['Log work', 'W'],
+    ['Log work', '⇧T'],
+    ['Worklogs', 'W'],
     ['Create sub-issue', null],
     ['Copy key', 'Y'],
     ['Copy link', 'U'],
@@ -267,13 +268,14 @@ test('Create sub-issue opens the create modal as a Subtask under the issue', asy
   await expect(dialog().getByRole('textbox', { name: 'Description' })).toBeVisible()
 })
 
-test('an Epic is offered none of Set sprint, Log work and Create sub-issue', async () => {
+test('an Epic is offered none of Set sprint, Log work, Worklogs and Create sub-issue', async () => {
   await open()
   await select(/PSAPAC-10,/)
   await window.keyboard.press('Meta+k')
   await expect(action('Assign')).toBeVisible()
   await expect(action('Set sprint')).toHaveCount(0)
   await expect(action('Log work')).toHaveCount(0)
+  await expect(action('Worklogs')).toHaveCount(0)
   await expect(action('Create sub-issue')).toHaveCount(0)
 })
 
