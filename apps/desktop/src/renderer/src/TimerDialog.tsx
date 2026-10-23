@@ -8,6 +8,7 @@ import { adfFromText, formatWhen } from './activity'
 import type { Notice } from './create'
 import { Failure } from './Failure'
 import { Modal } from './Modal'
+import { submitOnModEnter } from './modEnter'
 import { FIELD } from './Section'
 import { formatClock } from './timer'
 import { useNow } from './TimerClock'
@@ -91,7 +92,12 @@ export function TimerDialog({ snapshot, to, onClose, onDone, returnFocus }: Time
       returnFocus={returnFocus}
       className="w-[min(28rem,calc(100vw-2rem))]"
     >
-      <form aria-label="Timer" onSubmit={log} className="space-y-3 p-5">
+      <form
+        aria-label="Timer"
+        onSubmit={log}
+        onKeyDown={submitOnModEnter}
+        className="space-y-3 p-5"
+      >
         <div className="space-y-0.5">
           <h2 id="timer-title" className="text-base font-semibold">
             {to === null ? `Stop the timer on ${timer.issueKey}` : `Switch to ${to.key}`}
