@@ -13,6 +13,7 @@ import {
 import { useAddLink, useLinks, useRemoveLink } from './activityQueries'
 import type { Notice } from './create'
 import { Icon, TRASH } from './Icon'
+import { submitOnModEnter } from './modEnter'
 import { AddAction, FIELD, QueryBody, Section } from './Section'
 
 interface LinksSectionProps {
@@ -60,7 +61,8 @@ function AddLinkForm({ issueKey, types, issues, onDone }: AddLinkFormProps) {
     }
   }
 
-  function onKeyDown(event: KeyboardEvent) {
+  function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    submitOnModEnter(event)
     if (event.key !== 'Escape') return
     event.preventDefault()
     event.stopPropagation()

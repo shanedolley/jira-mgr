@@ -2,6 +2,7 @@ import type { Issue } from '@jira-mgr/core'
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react'
 
 import { Modal } from './Modal'
+import { submitOnModEnter } from './modEnter'
 import { useAttempt } from './PropertyPickers'
 import { useSetSummary } from './queries'
 import { FIELD } from './Section'
@@ -66,7 +67,13 @@ export function SummaryDialog({ issue, onClose, returnFocus }: SummaryDialogProp
 
   return (
     <Modal titleId="summary-title" onClose={onClose} returnFocus={returnFocus}>
-      <form ref={form} aria-label="Edit summary" onSubmit={submit} className="space-y-3 p-5">
+      <form
+        ref={form}
+        aria-label="Edit summary"
+        onSubmit={submit}
+        onKeyDown={submitOnModEnter}
+        className="space-y-3 p-5"
+      >
         <h2 id="summary-title" className="text-base font-semibold">
           Edit summary
         </h2>

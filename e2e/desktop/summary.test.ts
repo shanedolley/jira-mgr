@@ -102,6 +102,18 @@ test('Enter saves at once, records an undo and returns focus to the Tree', async
   await settle(2)
 })
 
+test('Cmd+Enter, or Ctrl+Enter off macOS, saves as Enter does', async () => {
+  await select()
+  await text().click({ position: ON_TEXT })
+  await field().fill('Migrate the dashboards twice')
+  await window.keyboard.press('ControlOrMeta+Enter')
+
+  await expect(dialog()).toHaveCount(0)
+  await expect(row()).toHaveAccessibleName(/Migrate the dashboards twice/)
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { summary: 'Migrate the dashboards twice' } })
+})
+
 test('a double-click on blank row space opens the page and no editor', async () => {
   await select()
   await row().getByRole('img').first().dblclick()

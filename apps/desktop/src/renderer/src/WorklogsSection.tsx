@@ -21,6 +21,7 @@ import {
   type WorklogInput,
 } from './activityQueries'
 import type { Notice } from './create'
+import { submitOnModEnter } from './modEnter'
 import { AddAction, FIELD, QueryBody, Section } from './Section'
 
 interface WorklogsSectionProps {
@@ -88,7 +89,8 @@ export function WorklogFormRow({
     }
   }
 
-  function onKeyDown(event: KeyboardEvent) {
+  function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    submitOnModEnter(event)
     if (event.key !== 'Escape') return
     event.preventDefault()
     event.stopPropagation()

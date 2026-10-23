@@ -654,6 +654,24 @@ test.describe('links', () => {
     ).toBeVisible()
   })
 
+  test('Cmd+Enter, or Ctrl+Enter off macOS, adds the link once, even when pressed again while it saves', async () => {
+    await openEstimated()
+    await section('Links').getByRole('button', { name: 'Add link' }).click()
+    await form().getByLabel('Linked issue').fill('PSAPAC-2')
+    // The type select stays enabled while the link saves, so the second press reaches the form.
+    const type = form().getByLabel('Link type')
+    await type.focus()
+    await type.press('ControlOrMeta+Enter')
+    await expect.poll(writes).toBe(1)
+    await expect(form().getByRole('button', { name: 'Adding' })).toBeDisabled()
+    await type.press('ControlOrMeta+Enter')
+    await window.waitForTimeout(300)
+    expect(await writes()).toBe(1)
+    await releaseEdit(app)
+    await expect(form()).toHaveCount(0)
+    expect(await writes()).toBe(1)
+  })
+
   test('adds a link where this issue is blocked by the other, with the other as the blocker', async () => {
     await openEstimated()
     await addLink('is blocked by', 'PSAPAC-3')

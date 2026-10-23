@@ -3,6 +3,7 @@ import { useState, type SyntheticEvent } from 'react'
 import type { Session } from '../../shared/ipc'
 import { DEFAULT_SITE_URL } from '../../shared/links'
 import { call } from './ipc'
+import { submitOnModEnter } from './modEnter'
 import { useLogin } from './queries'
 
 interface FieldProps {
@@ -57,7 +58,11 @@ export function LoginScreen({ prefill }: { prefill: Partial<Session> }) {
   return (
     <main className="grid h-full place-items-center bg-canvas p-8">
       <div className="app-drag fixed inset-x-0 top-0 h-10" />
-      <form onSubmit={submit} className="w-full max-w-[25rem] space-y-4">
+      <form
+        onSubmit={submit}
+        onKeyDown={submitOnModEnter}
+        className="w-full max-w-[25rem] space-y-4"
+      >
         <header>
           <div className="mb-5 flex items-center gap-2.5">
             <span
