@@ -60,6 +60,16 @@ describe('the desktop name', () => {
     expect(script).toContain("const ID = 'au.com.koinon.jira-mgr'")
   })
 
+  it('pins userData at startup', () => {
+    const entry = readFileSync(join(__dirname, 'index.ts'), 'utf8')
+    expect(entry).toContain('pinUserData(app)')
+  })
+
+  it('gives the bundled package.json the product name', () => {
+    const script = readFileSync(join(root, 'scripts/package.ts'), 'utf8')
+    expect(script).toContain('productName: DISPLAY_NAME')
+  })
+
   it('titles the window', () => {
     const app = readFileSync(join(__dirname, 'app.ts'), 'utf8')
     expect(app).toContain('title: DESKTOP_NAME')
