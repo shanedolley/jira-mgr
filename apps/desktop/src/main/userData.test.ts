@@ -16,6 +16,7 @@ describe('pinUserData', () => {
 
   it('pins userData to the jira-mgr folder, whatever the app is called', () => {
     vi.stubEnv('JM_STATE_DIR', '')
+    vi.stubEnv('ELECTRON_RENDERER_URL', '')
     const setPath = vi.fn()
     pinUserData({ setPath })
     expect(setPath).toHaveBeenCalledWith(
@@ -26,9 +27,17 @@ describe('pinUserData', () => {
 
   it('lets JM_STATE_DIR win', () => {
     vi.stubEnv('JM_STATE_DIR', '/tmp/jm-test-state')
+    vi.stubEnv('ELECTRON_RENDERER_URL', '')
     const setPath = vi.fn()
     pinUserData({ setPath })
     expect(setPath).toHaveBeenCalledWith('userData', '/tmp/jm-test-state')
+  })
+
+  it('leaves `pnpm dev` alone', () => {
+    vi.stubEnv('ELECTRON_RENDERER_URL', 'http://localhost:5173')
+    const setPath = vi.fn()
+    pinUserData({ setPath })
+    expect(setPath).not.toHaveBeenCalled()
   })
 })
 

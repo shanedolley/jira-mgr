@@ -26,13 +26,11 @@ import type { Backend } from './backend'
 import { createHandlers } from './handlers'
 import { startReminders } from './reminders'
 import { isTrustedFrame } from './trust'
+import { devRendererUrl } from './userData'
 
 /** The one page a window loads: the dev server in development, the built file otherwise. */
 function rendererUrl(): string {
-  const dev = process.env.ELECTRON_RENDERER_URL
-  return dev !== undefined && dev !== ''
-    ? dev
-    : pathToFileURL(join(__dirname, '../renderer/index.html')).href
+  return devRendererUrl() ?? pathToFileURL(join(__dirname, '../renderer/index.html')).href
 }
 
 /** Only the main frame of one of our own windows, showing our own page, may call the backend. */
