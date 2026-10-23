@@ -165,8 +165,7 @@ Closed stories keep their evidence in the PR and the issue comments. Only carrie
 | #255 | Oxlint | [#344](https://github.com/shanedolley/jira-mgr/pull/344), [#345](https://github.com/shanedolley/jira-mgr/pull/345) | Lost rules and behaviours are in Traps. The Oxfmt revisit is an open decision |
 | #362 | Cmd+Enter | [#364](https://github.com/shanedolley/jira-mgr/pull/364) | Cmd+Enter runs the form's submit button even with focus on Discard or Cancel; the login screen takes the key; nothing happens while an input method composes. Not proved by hand: Ctrl+Enter on Windows or Linux |
 | #363 | Worklogs | [#365](https://github.com/shanedolley/jira-mgr/pull/365) | Menu order is Log work, Worklogs, Comments; Shift+W opens the modal as W does; the issue page's Worklogs section keeps Jira's order; focus starts on the modal's Log work button; the Sprint page has no Worklogs key |
-
-| #369 | Name the desktop app Jira Task Manager on macOS | [#371](https://github.com/shanedolley/jira-mgr/pull/371) | In HIL Review, not yet closed. The `userData` pin is skipped under `pnpm dev` (`ELECTRON_RENDERER_URL`). Not proved by eye (menu bar, Dock, Cmd+Tab, Finder, Spotlight, About) nor by a real upgrade. Lows: `userData.test.ts` asserts source text; `CONTEXT.md` has no entry for the desktop name. Open question: the login screen text "jira-mgr" (Open Stories) |
+| #369 | Name the desktop app Jira Task Manager on macOS | [#371](https://github.com/shanedolley/jira-mgr/pull/371) | In HIL Review, not yet closed. The `userData` pin is skipped under `pnpm dev` (`ELECTRON_RENDERER_URL`). Not proved by eye (menu bar, Dock, Cmd+Tab, Finder, Spotlight, About) nor by a real upgrade. Lows: `userData.test.ts` asserts source text; `CONTEXT.md` has no entry for the desktop name. Open question: the login screen text (Open Stories) |
 
 ## Built Before the Review Stories
 
