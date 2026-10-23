@@ -8,12 +8,19 @@ interface Press {
   metaKey?: boolean
   ctrlKey?: boolean
   defaultPrevented?: boolean
+  isComposing?: boolean
   /** `null` is a form with no submit button; otherwise whether the button is disabled. */
   disabled?: boolean | null
 }
 
 /** A key event on a form whose submit button is `disabled`, with the calls it received. */
-function press({ key = 'Enter', defaultPrevented = false, disabled = false, ...mods }: Press) {
+function press({
+  key = 'Enter',
+  defaultPrevented = false,
+  isComposing = false,
+  disabled = false,
+  ...mods
+}: Press) {
   const button = disabled === null ? null : { disabled }
   const form = { querySelector: vi.fn(() => button), requestSubmit: vi.fn() }
   const preventDefault = vi.fn()
@@ -23,6 +30,7 @@ function press({ key = 'Enter', defaultPrevented = false, disabled = false, ...m
     ctrlKey: false,
     defaultPrevented,
     preventDefault,
+    nativeEvent: { isComposing },
     currentTarget: form,
     ...mods,
   } as unknown as KeyboardEvent<HTMLFormElement>)
@@ -53,6 +61,11 @@ describe('submitOnModEnter', () => {
 
   it('submits nothing when a picker or menu has already taken the key', () => {
     const { form } = press({ metaKey: true, defaultPrevented: true })
+    expect(form.requestSubmit).not.toHaveBeenCalled()
+  })
+
+  it('submits nothing while an input method is composing', () => {
+    const { form } = press({ metaKey: true, isComposing: true })
     expect(form.requestSubmit).not.toHaveBeenCalled()
   })
 

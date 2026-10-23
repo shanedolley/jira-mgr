@@ -124,7 +124,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Create dialog, description | `Esc` | Close the dialog, as it does from the summary |
 | Sub-issue form (the page's Subtasks "+"), anywhere in the form | `Cmd+Enter` | Create one Subtask per line of the titles box |
 | Sub-issue form, anywhere in the form | `Esc` | Close the form and stay on the page; ignored while the Subtasks are being created |
-| Any form: Log work, the worklog add and edit rows, the timer stop and switch dialog, Edit summary, the login screen | `Cmd+Enter` | Submit as the form's button does, from any field; nothing while the button is disabled or a save runs, and nothing when an open picker or menu in the form takes the key |
+| Any form: Log work, the worklog add and edit rows, the link add row, the timer stop and switch dialog, Edit summary, the login screen | `Cmd+Enter` | Submit as the form's button does, from any field; nothing while the button is disabled or a save runs, and nothing when an open picker or menu in the form takes the key |
 | Log work modal | `Enter` | Save the worklog from the Time spent field |
 | Log work modal | `Esc` | Close the modal with no write and return focus |
 | Summary and property fields | `Enter` | Save |
