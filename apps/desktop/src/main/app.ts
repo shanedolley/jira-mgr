@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { APP_NAME } from '@jira-mgr/core'
+import { DESKTOP_NAME } from '@jira-mgr/core'
 import {
   app,
   BrowserWindow,
@@ -83,7 +83,7 @@ function createWindow(inactive: boolean, hooks: WindowHooks): void {
     height: 800,
     minWidth: 900,
     minHeight: 520,
-    title: APP_NAME,
+    title: DESKTOP_NAME,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

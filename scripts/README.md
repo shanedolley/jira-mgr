@@ -2,11 +2,11 @@
 
 Repository automation that root `package.json` scripts and the local CI route call.
 
-| Script             | Does                                                                                                  |
-| ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `jm.ts`            | Runs the built CLI for `pnpm jm`, dropping the `--` that pnpm forwards                                |
-| `gen-reference.ts` | Writes `docs/reference/cli.md` and `errors.md` from the built CLI's `help --json`                     |
-| `build-icon.ts`    | Renders `apps/desktop/build/icon.svg` to `icon.png` and `icon.icns` for `pnpm icon`, inside Electron  |
-| `package.ts`       | Assembles `apps/desktop/dist/jira-mgr.app` for `pnpm package` and checks it holds no e2e or fake code |
+| Script             | Does                                                                                                           |
+| ------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `jm.ts`            | Runs the built CLI for `pnpm jm`, dropping the `--` that pnpm forwards                                         |
+| `gen-reference.ts` | Writes `docs/reference/cli.md` and `errors.md` from the built CLI's `help --json`                              |
+| `build-icon.ts`    | Renders `apps/desktop/build/icon.svg` to `icon.png` and `icon.icns` for `pnpm icon`, inside Electron           |
+| `package.ts`       | Assembles `apps/desktop/dist/Jira Task Manager.app` for `pnpm package` and checks it holds no e2e or fake code |
 
 Write scripts in TypeScript and run them with `node`, which strips types natively. Each script exits non-zero on failure and prints what to do next. A script that grows options or a test suite becomes a package in `packages/`.

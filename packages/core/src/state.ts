@@ -20,7 +20,7 @@ import {
 import { JiraMgrError } from './errors.js'
 import { DATE_WINDOWS, FILTER_LIST_FIELDS, type FilterListField } from './view-filter.js'
 
-/** Non-secret state shared by the app and the CLI. Electron's default userData folder on macOS. */
+/** Non-secret state shared by the app and the CLI. The desktop app pins Electron's userData folder to it. */
 export function stateDir(): string {
   const override = process.env.JM_STATE_DIR
   if (override !== undefined && override !== '') return override

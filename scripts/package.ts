@@ -1,4 +1,4 @@
-// Assembles the unsigned local app at apps/desktop/dist/jira-mgr.app from Electron's prebuilt
+// Assembles the unsigned local app at apps/desktop/dist/Jira Task Manager.app from Electron's prebuilt
 // Electron.app and the desktop build in apps/desktop/out. Run it with `pnpm package`.
 import { execFileSync } from 'node:child_process'
 import {
@@ -16,7 +16,9 @@ import { fileURLToPath } from 'node:url'
 
 const desktop = fileURLToPath(new URL('../apps/desktop/', import.meta.url))
 const out = join(desktop, 'out')
-const target = join(desktop, 'dist', 'jira-mgr.app')
+// The name macOS shows. It must equal DESKTOP_NAME in packages/core/src/index.ts (a desktop test checks).
+const DISPLAY_NAME = 'Jira Task Manager'
+const target = join(desktop, 'dist', `${DISPLAY_NAME}.app`)
 const NAME = 'jira-mgr'
 const ICON = join(desktop, 'build', 'icon.icns')
 const ID = 'au.com.koinon.jira-mgr'
@@ -57,18 +59,22 @@ const { version } = JSON.parse(readFileSync(join(desktop, 'package.json'), 'utf8
 }
 writeFileSync(
   join(appDir, 'package.json'),
-  JSON.stringify({ name: NAME, version, main: './out/main/index.js' }, null, 2) + '\n',
+  JSON.stringify(
+    { name: NAME, productName: DISPLAY_NAME, version, main: './out/main/index.js' },
+    null,
+    2,
+  ) + '\n',
 )
 
 const plist = join(target, 'Contents', 'Info.plist')
 for (const [key, value] of [
-  ['CFBundleName', NAME],
-  ['CFBundleDisplayName', NAME],
+  ['CFBundleName', DISPLAY_NAME],
+  ['CFBundleDisplayName', DISPLAY_NAME],
   ['CFBundleIdentifier', ID],
   ['CFBundleShortVersionString', version],
   ['CFBundleVersion', version],
 ] as const) {
-  execFileSync('/usr/libexec/PlistBuddy', ['-c', `Set :${key} ${value}`, plist])
+  execFileSync('/usr/libexec/PlistBuddy', ['-c', `Set :${key} "${value}"`, plist])
 }
 // Replace Electron's icon with ours. The Finder and the Dock read it from the bundle.
 const resources = join(target, 'Contents', 'Resources')
