@@ -398,6 +398,7 @@ export function IssueMenu({
         return <RenameItem issue={issue} shortcut={item.key} onDone={onClose} />
       case 'open':
       case 'logWork':
+      case 'worklogs':
       case 'comments':
       case 'related':
       case 'copy':

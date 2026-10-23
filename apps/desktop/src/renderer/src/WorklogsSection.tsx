@@ -300,12 +300,48 @@ function WorklogRow({
   )
 }
 
+interface WorklogListProps extends WorklogsSectionProps {
+  worklogs: readonly WorklogItem[]
+  /** Extra classes on the `<ul>`, such as the ones that let a modal scroll it. */
+  className?: string
+}
+
+/** The rows of a worklog list, in the order given, with one row in edit at a time. */
+export function WorklogList({
+  worklogs,
+  issueKey,
+  me,
+  onNotice,
+  className = '',
+}: WorklogListProps) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  return (
+    <ul className={`divide-y divide-line ${className}`}>
+      {worklogs.map((worklog) => (
+        <WorklogRow
+          key={worklog.id}
+          worklog={worklog}
+          issueKey={issueKey}
+          mine={me !== undefined && worklog.author?.accountId === me.accountId}
+          editing={editingId === worklog.id}
+          onEdit={() => {
+            setEditingId(worklog.id)
+          }}
+          onDone={() => {
+            setEditingId(null)
+          }}
+          onNotice={onNotice}
+        />
+      ))}
+    </ul>
+  )
+}
+
 /** The Worklogs section: who logged what, with add, edit and delete for the signed-in user's own. */
 export function WorklogsSection({ issueKey, me, onNotice }: WorklogsSectionProps) {
   const worklogs = useWorklogs(issueKey)
   const add = useAddWorklog(issueKey)
   const [adding, setAdding] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const total = worklogs.data === undefined ? null : totalSpent(worklogs.data)
   return (
     <Section
@@ -346,24 +382,7 @@ export function WorklogsSection({ issueKey, me, onNotice }: WorklogsSectionProps
           list.length === 0 ? (
             !adding && <p className="text-muted">No work logged</p>
           ) : (
-            <ul className="divide-y divide-line">
-              {list.map((worklog) => (
-                <WorklogRow
-                  key={worklog.id}
-                  worklog={worklog}
-                  issueKey={issueKey}
-                  mine={me !== undefined && worklog.author?.accountId === me.accountId}
-                  editing={editingId === worklog.id}
-                  onEdit={() => {
-                    setEditingId(worklog.id)
-                  }}
-                  onDone={() => {
-                    setEditingId(null)
-                  }}
-                  onNotice={onNotice}
-                />
-              ))}
-            </ul>
+            <WorklogList worklogs={list} issueKey={issueKey} me={me} onNotice={onNotice} />
           )
         }
       </QueryBody>

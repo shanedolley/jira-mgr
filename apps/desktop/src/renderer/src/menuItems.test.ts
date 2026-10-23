@@ -25,6 +25,7 @@ const ALL = [
   'priority',
   'estimate',
   'logWork',
+  'worklogs',
   'comments',
   'related',
   'copy',
@@ -34,13 +35,15 @@ const ALL = [
 ]
 
 describe('the right-click menu items', () => {
-  it('list the 19 actions of a Story, Task or Bug in order', () => {
+  it('list the 20 actions of a Story, Task or Bug in order', () => {
     for (const type of ['Story', 'Task', 'Bug']) expect(ids(issue(type))).toEqual(ALL)
   })
 
-  it('drop what an Epic cannot take: sprint, parent, type, original estimate and log work', () => {
+  it('drop what an Epic cannot take: sprint, parent, type, original estimate, log work and worklogs', () => {
     expect(ids(issue('Epic'))).toEqual(
-      ALL.filter((id) => !['sprint', 'parent', 'type', 'estimate', 'logWork'].includes(id)),
+      ALL.filter(
+        (id) => !['sprint', 'parent', 'type', 'estimate', 'logWork', 'worklogs'].includes(id),
+      ),
     )
   })
 
@@ -65,7 +68,8 @@ describe('the right-click menu items', () => {
       labels: 'L',
       priority: 'P',
       estimate: 'Shift+E',
-      logWork: 'W',
+      logWork: 'Shift+T',
+      worklogs: 'W',
       comments: undefined,
       related: undefined,
       copy: undefined,

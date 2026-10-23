@@ -118,11 +118,11 @@ test('an empty Logged slot opens the modal too', async () => {
   await expect(modal('PSAPAC-13')).toBeVisible()
 })
 
-test('an Epic offers no target, and W does nothing on it', async () => {
+test('an Epic offers no target, and Shift+T does nothing on it', async () => {
   await open()
   await expect(slot(/PSAPAC-10,/)).toHaveCount(0)
   await prop(/PSAPAC-10,/, 'logged').click({ force: true })
-  await window.keyboard.press('w')
+  await window.keyboard.press('Shift+T')
   await expect(window.getByRole('dialog', { name: /^Log work on / })).toHaveCount(0)
 })
 
@@ -163,19 +163,19 @@ test('keeps the modal open with the text and the error when Jira refuses', async
   await expect(prop(/PSAPAC-4,/, 'logged')).toHaveText('Logged 30m')
 })
 
-test('W, the context menu and the palette open the same modal', async () => {
+test('Shift+T, the context menu and the palette open the same modal', async () => {
   await open()
   await peekRow(item(/PSAPAC-4,/))
   await expect(peek()).toBeVisible()
 
-  await window.keyboard.press('w')
+  await window.keyboard.press('Shift+T')
   await expect(modal('PSAPAC-4')).toBeVisible()
   await window.keyboard.press('Escape')
   await expect(modal('PSAPAC-4')).toHaveCount(0)
 
   await item(/PSAPAC-4,/).click({ button: 'right' })
   const entry = window.getByRole('menu').getByRole('menuitem', { name: 'Log work', exact: true })
-  await expect(entry).toHaveAttribute('aria-keyshortcuts', 'W')
+  await expect(entry).toHaveAttribute('aria-keyshortcuts', 'Shift+T')
   await entry.click()
   await expect(modal('PSAPAC-4')).toBeVisible()
   await expect(issuePage()).toHaveCount(0)
@@ -207,13 +207,13 @@ test('the Sprint page offers the same target, without opening the issue', async 
   await expect.poll(() => holdsFocus(sprintPage)).toBe(true)
 })
 
-test('W on the issue page logs work and returns focus to the page', async () => {
+test('Shift+T on the issue page logs work and returns focus to the page', async () => {
   await open()
   await peekRow(item(/PSAPAC-4,/))
   await window.keyboard.press('Enter')
   await expect(issuePage()).toBeVisible()
 
-  await window.keyboard.press('w')
+  await window.keyboard.press('Shift+T')
   await expect(modal('PSAPAC-4')).toBeVisible()
   await form('PSAPAC-4').getByLabel('Time spent').fill('15m')
   await form('PSAPAC-4').getByLabel('Time spent').press('Enter')

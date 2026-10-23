@@ -31,6 +31,7 @@ export type Command =
   | 'openPage'
   | 'create'
   | 'logWork'
+  | 'worklogs'
   | 'timer'
   | 'filter'
   | 'filterMenu'
@@ -82,7 +83,8 @@ export function keepsLetters(target: KeyTarget | null): boolean {
 
 /**
  * The letters that mean something else with Shift: start date, due date, parent, original
- * estimate and sprint. With Shift these five never fall through to `S`, `C`, `P` and `E`.
+ * estimate, sprint, the issue page and Log work. With Shift these never fall through to `S`, `D`,
+ * `P`, `E`, `C`, `O` and `T`.
  */
 const SHIFT_LETTERS = new Map<string, Command>([
   ['s', 'startDate'],
@@ -91,12 +93,13 @@ const SHIFT_LETTERS = new Map<string, Command>([
   ['e', 'estimate'],
   ['c', 'sprint'],
   ['o', 'openPage'],
+  ['t', 'logWork'],
 ])
 
 const LETTERS = new Map<string, Command>([
   ['c', 'create'],
   ['t', 'timer'],
-  ['w', 'logWork'],
+  ['w', 'worklogs'],
   ['s', 'status'],
   ['a', 'assignee'],
   ['l', 'labels'],

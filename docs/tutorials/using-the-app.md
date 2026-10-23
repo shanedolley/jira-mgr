@@ -42,7 +42,7 @@ Click a property in the Peek or on the issue page and choose a value. The change
 
 ## Log Time
 
-Hover a row and press `W`. Type the time, such as `1h 30m`, and press `Enter`.
+Hover a row and press `Shift+T`. Type the time, such as `1h 30m`, and press `Enter`. Press `W` to read the issue's worklogs, newest first.
 
 ![Logging 1h 30m on an issue and reading it in the Peek's Time tracking](images/using-the-app/log.gif)
 
@@ -61,7 +61,8 @@ Hover a row and press `T`. Press `T` again, or click **Stop** in the sidebar, th
 | `Shift+O` | Open the issue page |
 | `Esc` | Close the page or the Peek |
 | `S`, `A`, `P` | Change Status, Assignee, Priority |
-| `W` | Log work |
+| `Shift+T` | Log work |
+| `W` | List the issue's worklogs |
 | `T` | Start or stop the timer |
 | `?` | List every shortcut |
 

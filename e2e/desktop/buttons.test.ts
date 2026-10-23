@@ -316,6 +316,18 @@ test.describe('button system', () => {
     await expectSystem('timer dialog', 3)
   })
 
+  test('the Worklogs modal, its row buttons and its confirm follow the system', async () => {
+    await openLogged()
+    await window.keyboard.press('w')
+    const list = window.getByRole('dialog', { name: /^Worklogs on PSAPAC-2:/ })
+    await expect(list.getByRole('button', { name: 'Edit worklog' })).toBeVisible()
+    await expectSystem('worklogs modal', 5)
+
+    await list.getByRole('button', { name: 'Delete worklog' }).click()
+    await expect(list.getByRole('group', { name: 'Delete worklog' })).toBeVisible()
+    await expectSystem('worklogs confirm', 5)
+  })
+
   test('the Switch timer dialog keeps Cancel, Discard and Log inside it, unflagged and flagged', async () => {
     const plain = await openSwitchDialog(1)
     await expect(plain.getByRole('button', { name: 'Log and start PSAPAC-3' })).toBeVisible()

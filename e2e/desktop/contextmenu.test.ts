@@ -92,7 +92,8 @@ const ALL = [
   'Labels|L',
   'Priority|P',
   'Original estimate|⇧E',
-  'Log work|W',
+  'Log work|⇧T',
+  'Worklogs|W',
   'Comments|',
   'Related issues|',
   'Copy|',
@@ -242,7 +243,7 @@ test('opens on an Epics page row, listing what an Epic allows', async () => {
   await expect(epics).toBeVisible()
   await epics.getByRole('row', { name: /PSAPAC-10/ }).click({ button: 'right' })
   await expect(menu()).toHaveAccessibleName('Actions for PSAPAC-10')
-  // An Epic has no sprint, parent, type change, estimate or worklog.
+  // An Epic has no sprint, parent, type change, estimate, Log work or Worklogs.
   expect((await entries()).map((e) => e.split('|')[0])).toEqual([
     'View full screen',
     'Status',
