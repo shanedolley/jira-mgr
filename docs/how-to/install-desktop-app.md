@@ -6,11 +6,11 @@ Download a signed release, or build the app on your Mac. The app never updates i
 
 Needs an Apple silicon Mac on macOS 13 or later.
 
-1. Download `jira-mgr-<version>-arm64.zip` from the [releases page](https://github.com/shanedolley/jira-mgr/releases).
-2. Unzip it and move `jira-mgr.app` to `/Applications/` (or `~/Applications/` for yourself only).
+1. Download `jira-task-manager-<version>-arm64.zip` from the [releases page](https://github.com/shanedolley/jira-mgr/releases).
+2. Unzip it and move `Jira Task Manager.app` to `/Applications/` (or `~/Applications/` for yourself only).
 3. Open it from Finder or Spotlight. The release is signed and notarised, so Gatekeeper opens it with no prompt.
 
-To upgrade, quit the app and move a newer release over the old one.
+To upgrade, quit the app and move a newer release into `/Applications/`. Earlier releases installed `jira-mgr.app`: delete it, because the new bundle sits beside it and does not replace it. Your login, settings, saved views, timer and theme stay, since they live outside the bundle.
 
 ## Build
 
@@ -19,7 +19,7 @@ pnpm install --frozen-lockfile
 pnpm package
 ```
 
-`pnpm package` builds the desktop app and writes `apps/desktop/dist/jira-mgr.app` (about 290 MB, mostly Electron). The first run downloads Electron if it is not cached. The script fails when the app holds the e2e entry, fake Jira code or a `require` it cannot satisfy.
+`pnpm package` builds the desktop app and writes `apps/desktop/dist/Jira Task Manager.app` (about 290 MB, mostly Electron). The first run downloads Electron if it is not cached. The script fails when the app holds the e2e entry, fake Jira code or a `require` it cannot satisfy.
 
 macOS only. The script uses `ditto`, `PlistBuddy` and `codesign`.
 
@@ -28,10 +28,10 @@ The app's icon is `apps/desktop/build/icon.icns`, built from `apps/desktop/build
 ## Install
 
 ```
-cp -R apps/desktop/dist/jira-mgr.app /Applications/
+cp -R "apps/desktop/dist/Jira Task Manager.app" /Applications/
 ```
 
-Use `~/Applications/` to install for yourself only. To upgrade, quit the app, run `pnpm package` and copy again over the old one.
+Use `~/Applications/` to install for yourself only. To upgrade, quit the app, run `pnpm package` and copy again over the old one. If `jira-mgr.app` is still in `/Applications/`, delete it with `rm -rf /Applications/jira-mgr.app`.
 
 ## First Launch
 
@@ -40,7 +40,7 @@ Open it from Finder or Spotlight. A downloaded release is notarised and opens wi
 If you copy an ad hoc build from another Mac, macOS quarantines it and refuses to open it. Right-click the app, choose Open, then Open again; or clear the flag:
 
 ```
-xattr -dr com.apple.quarantine /Applications/jira-mgr.app
+xattr -dr com.apple.quarantine "/Applications/Jira Task Manager.app"
 ```
 
 The login screen asks for the Jira site, project key, email and API token. The site starts as `https://engineering-collibra.atlassian.net` unless the app already saved one, and you can change it. **Create new token →** under the token field opens Atlassian's API token page in your default browser.
@@ -64,10 +64,10 @@ The login screen asks for the Jira site, project key, email and API token. The s
    ```
 
 2. Sign inside-out, every time with `codesign --force --options runtime --timestamp --sign "<identity>"`: the dylibs under `Electron Framework.framework/Libraries`, `chrome_crashpad_handler`, Squirrel's `ShipIt`, each `.framework`, then each helper `.app` and the main app, those with `--entitlements entitlements.plist`.
-3. Zip the signed app: `ditto -c -k --keepParent jira-mgr.app submit.zip`.
+3. Zip the signed app: `ditto -c -k --keepParent "Jira Task Manager.app" submit.zip`.
 4. Store the credentials once: `xcrun notarytool store-credentials <profile> --apple-id <Apple ID> --team-id <team id>`, with the app-specific password when it asks.
 5. Submit: `xcrun notarytool submit submit.zip --keychain-profile <profile> --wait`. A 403 "A required agreement is missing or has expired" means the Account Holder must accept the updated Developer Program License Agreement at developer.apple.com/account.
-6. Staple and check: `xcrun stapler staple jira-mgr.app`, then `spctl --assess --type execute -vv jira-mgr.app`, which prints `source=Notarized Developer ID`.
+6. Staple and check: `xcrun stapler staple "Jira Task Manager.app"`, then `spctl --assess --type execute -vv "Jira Task Manager.app"`, which prints `source=Notarized Developer ID`.
 7. Zip the stapled app again with `ditto` and send that zip.
 
 ## Where Things Live
@@ -82,7 +82,7 @@ The app and the CLI share both. Because the token goes through Apple's `security
 ## Uninstall
 
 ```
-rm -rf /Applications/jira-mgr.app
+rm -rf "/Applications/Jira Task Manager.app"
 rm -rf "$HOME/Library/Application Support/jira-mgr"
 security delete-generic-password -s jira-mgr
 ```

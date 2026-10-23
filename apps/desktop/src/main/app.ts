@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { APP_NAME } from '@jira-mgr/core'
+import { DESKTOP_NAME } from '@jira-mgr/core'
 import {
   app,
   BrowserWindow,
@@ -26,13 +26,11 @@ import type { Backend } from './backend'
 import { createHandlers } from './handlers'
 import { startReminders } from './reminders'
 import { isTrustedFrame } from './trust'
+import { devRendererUrl } from './userData'
 
 /** The one page a window loads: the dev server in development, the built file otherwise. */
 function rendererUrl(): string {
-  const dev = process.env.ELECTRON_RENDERER_URL
-  return dev !== undefined && dev !== ''
-    ? dev
-    : pathToFileURL(join(__dirname, '../renderer/index.html')).href
+  return devRendererUrl() ?? pathToFileURL(join(__dirname, '../renderer/index.html')).href
 }
 
 /** Only the main frame of one of our own windows, showing our own page, may call the backend. */
@@ -83,7 +81,7 @@ function createWindow(inactive: boolean, hooks: WindowHooks): void {
     height: 800,
     minWidth: 900,
     minHeight: 520,
-    title: APP_NAME,
+    title: DESKTOP_NAME,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
