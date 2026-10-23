@@ -199,6 +199,48 @@ test('Edit and Delete work on your own rows only, as on the issue page', async (
   await expect(list('PSAPAC-2')).toContainText('Logged 30m')
 })
 
+test('focus stays in the modal after Keep, an edit Cancel and a Delete, so Shift+T and Esc still work', async () => {
+  await open(/PSAPAC-2,/)
+  await window.keyboard.press('w')
+  const own = () => rows('PSAPAC-2').nth(1)
+  const inside = () =>
+    list('PSAPAC-2').evaluate((dialog) => dialog.contains(document.activeElement))
+
+  await own().getByRole('button', { name: 'Delete worklog' }).click()
+  await list('PSAPAC-2').getByRole('button', { name: 'Keep' }).click()
+  await expect.poll(inside).toBe(true)
+
+  await own().getByRole('button', { name: 'Edit worklog' }).click()
+  await list('PSAPAC-2').getByRole('button', { name: 'Cancel' }).click()
+  await expect.poll(inside).toBe(true)
+
+  await own().getByRole('button', { name: 'Delete worklog' }).click()
+  await list('PSAPAC-2').getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect.poll(writes).toBe(1)
+  await releaseEdit(app)
+  await expect(rows('PSAPAC-2')).toHaveCount(1)
+  await expect.poll(inside).toBe(true)
+
+  await window.keyboard.press('Shift+T')
+  await expect(logModal('PSAPAC-2')).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(logModal('PSAPAC-2')).toHaveCount(0)
+  await expect(list('PSAPAC-2')).toBeVisible()
+  await window.keyboard.press('Escape')
+  await expect(list('PSAPAC-2')).toHaveCount(0)
+})
+
+test('Shift+T in an edit row keeps its letter for the field and opens no form', async () => {
+  await open(/PSAPAC-2,/)
+  await window.keyboard.press('w')
+  await rows('PSAPAC-2').nth(1).getByRole('button', { name: 'Edit worklog' }).click()
+  const comment = list('PSAPAC-2').getByRole('form', { name: 'Edit worklog' }).getByLabel('Comment')
+  await comment.focus()
+  await window.keyboard.press('Shift+T')
+  await expect(comment).toHaveValue('Set up the modelT')
+  await expect(logModal('PSAPAC-2')).toHaveCount(0)
+})
+
 test('Shift+T logs work and t still starts the timer', async () => {
   await open()
   await window.keyboard.press('Shift+T')

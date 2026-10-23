@@ -1,6 +1,6 @@
 import type { Issue } from '@jira-mgr/core'
 import { formatEstimate } from '@jira-mgr/core/issue'
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useId, useRef, useState, type KeyboardEvent } from 'react'
 
 import type { CurrentUser } from '../../shared/ipc'
 import { newestFirst, totalSpent } from './activity'
@@ -41,6 +41,7 @@ export function WorklogsModal({ issue, me, onClose, onLogWork, returnFocus }: Wo
   const titleId = useId()
   const worklogs = useWorklogs(issue.key)
   const [notice, setNotice] = useState<Notice | null>(null)
+  const logButton = useRef<HTMLButtonElement | null>(null)
   const total = worklogs.data === undefined ? 0 : totalSpent(worklogs.data)
   return (
     <Modal
@@ -75,6 +76,11 @@ export function WorklogsModal({ issue, me, onClose, onLogWork, returnFocus }: Wo
                 issueKey={issue.key}
                 me={me}
                 onNotice={setNotice}
+                // A row's Delete, Keep, Save or Cancel unmounts the control that had focus, which
+                // would drop it to the page body and strand `Shift+T` and `Esc`.
+                onSettled={() => {
+                  logButton.current?.focus()
+                }}
                 className="min-h-0 overflow-y-auto"
               />
             )
@@ -93,7 +99,10 @@ export function WorklogsModal({ issue, me, onClose, onLogWork, returnFocus }: Wo
             type="button"
             // Not `autoFocus`: showModal() runs after this mounts and focuses the element with the
             // `autofocus` attribute, else the first control, which here is a row's Edit button.
-            ref={(button) => button?.setAttribute('autofocus', '')}
+            ref={(button) => {
+              logButton.current = button
+              button?.setAttribute('autofocus', '')
+            }}
             aria-keyshortcuts={keyOf('logWork')}
             onClick={onLogWork}
             className="btn btn-primary"

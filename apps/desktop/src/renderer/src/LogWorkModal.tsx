@@ -13,7 +13,7 @@ interface LogWorkModalProps {
 }
 
 /**
- * The modal behind the Logged slot, `W`, the menu's Log work and the palette's: the Peek's worklog
+ * The modal behind the Logged slot, `Shift+T`, the menu's Log work and the palette's: the Peek's worklog
  * form in a dialog. It closes once Jira has the worklog and the issue is read again, so the row's
  * Logged, Remaining and Remaining % are already new. A refusal keeps it open with the text typed.
  */
