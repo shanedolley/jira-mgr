@@ -258,7 +258,8 @@ test.describe('login', () => {
   test('shows the mark, the Keychain hint and a 400px form on the canvas colour', async () => {
     await expect(window.getByRole('heading', { name: 'Log in to Jira' })).toBeVisible()
     await expect(window.locator('[data-login-mark]')).toHaveText('jm')
-    await expect(window.getByText('jira-mgr', { exact: true })).toBeVisible()
+    await expect(window.getByText('Jira Task Manager', { exact: true })).toBeVisible()
+    await expect(window.getByText('jira-mgr', { exact: true })).toHaveCount(0)
     await expect(window.getByText('The token stays in your macOS Keychain.')).toBeVisible()
 
     const form = await window.locator('form').boundingBox()

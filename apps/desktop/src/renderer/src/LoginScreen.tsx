@@ -72,7 +72,7 @@ export function LoginScreen({ prefill }: { prefill: Partial<Session> }) {
             >
               jm
             </span>
-            <span className="text-[15px] font-semibold">jira-mgr</span>
+            <span className="text-[15px] font-semibold">Jira Task Manager</span>
           </div>
           <h1 className="text-xl font-semibold tracking-tight">Log in to Jira</h1>
           <p className="mt-1 text-muted">The token stays in your macOS Keychain.</p>
