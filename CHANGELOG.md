@@ -11,7 +11,8 @@
 
 - The desktop app is now `Jira Task Manager.app`, replacing `jira-mgr.app`. Its window, menu bar, Dock name and login screen read "Jira Task Manager", and the release zip is `jira-task-manager-<version>-arm64.zip`. Delete the old `jira-mgr.app` when you upgrade; your login, settings, saved views, timer and theme carry over ([upgrade notes](docs/how-to/install-desktop-app.md#download-a-release)). The `jm` CLI keeps its name. [#371](https://github.com/shanedolley/jira-mgr/pull/371), [#376](https://github.com/shanedolley/jira-mgr/pull/376), issues [#369](https://github.com/shanedolley/jira-mgr/issues/369) and [#375](https://github.com/shanedolley/jira-mgr/issues/375)
 - Log work moves from `W` to `Shift+T`. Lowercase `t` still starts and stops the timer. [#365](https://github.com/shanedolley/jira-mgr/pull/365)
+- Updated the dependencies the app ships with: Electron from 44.7.0 to 44.7.2, Tiptap from 3.31.4 to 3.32.0, TanStack Query from 5.104.1 to 5.104.2, marked from 18.1.0 to 18.1.1 and zod from 4.6.5 to 4.6.7. [#351](https://github.com/shanedolley/jira-mgr/pull/351)
 
-## [1.0.0] - 2026-10-21
+## [1.0.0] - 2026-10-22
 
 First release: see the [v1.0.0 release](https://github.com/shanedolley/jira-mgr/releases/tag/v1.0.0).
