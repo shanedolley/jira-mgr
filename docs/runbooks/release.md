@@ -14,12 +14,12 @@ Every package carries one version, and a release is a GitHub Release with the no
 
 ## Fix
 
-1. In one pull request, set `"version"` to `x.y.z` in every `package.json` (`apps/cli`, `apps/desktop`, `packages/core`, `packages/config-lint`, `packages/config-ts`, `e2e`) and in the example in `apps/cli/src/schema.ts`. Run `pnpm docs:reference`, then merge per [git workflow](../standards/git-workflow.md).
+1. In one pull request, set `"version"` to `x.y.z` in every `package.json` (`apps/cli`, `apps/desktop`, `packages/core`, `packages/config-lint`, `packages/config-ts`, `e2e`) and in the example in `apps/cli/src/schema.ts`. Add the version's section to [`CHANGELOG.md`](../../CHANGELOG.md). Run `pnpm docs:reference`, then merge per [git workflow](../standards/git-workflow.md).
 2. On `main` at the merge commit, run `pnpm package`. It writes `apps/desktop/dist/Jira Task Manager.app`, signed ad hoc.
 3. Sign and notarise the app, then staple it, per [Share with Another Mac](../how-to/install-desktop-app.md#share-with-another-mac). This step needs Shane's Developer ID identity and the `jira-mgr-notary` Keychain profile.
 4. Zip the stapled app: `ditto -c -k --keepParent "Jira Task Manager.app" jira-task-manager-<version>-arm64.zip`.
 5. Tag the merge commit and push the tag: `git tag vx.y.z <merge commit>`, then `git push origin vx.y.z`.
-6. Create the draft: `gh release create vx.y.z jira-task-manager-<version>-arm64.zip --draft --generate-notes --notes-start-tag <previous tag> --title vx.y.z`. On the first release, omit `--notes-start-tag` and pass `--notes-file <file>` in place of `--generate-notes`. For hand-written notes later, do the same.
+6. Create the draft: `gh release create vx.y.z jira-task-manager-<version>-arm64.zip --draft --generate-notes --notes-start-tag <previous tag> --title vx.y.z`. On the first release, omit `--notes-start-tag` and pass `--notes-file <file>` in place of `--generate-notes`. For hand-written notes, or to publish the version's `CHANGELOG.md` section, do the same.
 7. Shane reviews the draft and publishes it.
 
 ## Verify
