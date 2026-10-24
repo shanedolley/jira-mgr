@@ -70,6 +70,8 @@ interface FakeJira {
   releaseUnresolved: () => void
   failRead: () => void
   failTransitions: () => void
+  holdTransitions: () => void
+  releaseTransitions: () => void
   holdTextSearch: () => void
   releaseTextSearch: () => void
   dropIssue: (key: string) => void
@@ -384,6 +386,18 @@ export const setEstimate = (app: ElectronApplication, key: string, estimate: num
     },
     [key, estimate],
   )
+
+/** Holds each read of an issue's transitions until `releaseTransitions`, so a test sees the Status list still loading. */
+export const holdTransitions = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.holdTransitions()
+  })
+
+/** Answers the held transition reads and stops holding. */
+export const releaseTransitions = (app: ElectronApplication) =>
+  app.evaluate(() => {
+    ;(globalThis as unknown as WithFake).__fakeJira.releaseTransitions()
+  })
 
 /** Holds each comment and link list read until `releaseReads`, so a test sees the page before a refetch lands. */
 export const holdReads = (app: ElectronApplication) =>

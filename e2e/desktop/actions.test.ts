@@ -6,12 +6,14 @@ import { expect, test, type ElectronApplication, type Page } from '@playwright/t
 
 import {
   counts,
+  holdTransitions,
   launch,
   logIn,
   notices,
   peekRow,
   refuseNextEdit,
   releaseEdit,
+  releaseTransitions,
   SITE,
 } from './harness.js'
 
@@ -308,6 +310,25 @@ test('a click on a status dot opens its Status list beside the dot, not the Peek
   await expect(item(/PSAPAC-3,/)).toHaveAttribute('data-active', 'true')
 
   await window.keyboard.press('2')
+  await settle(before + 1)
+  await expect(item(/PSAPAC-3,/)).not.toHaveAccessibleName(/To Do/)
+  await expect(tree()).toBeFocused()
+})
+
+test('a digit pressed while the Status list is still loading chooses once it loads', async () => {
+  // The list opens at once and reads the transitions after: a digit that lands first found no option and was lost.
+  await open()
+  await holdTransitions(app)
+  const before = await writes()
+
+  await item(/PSAPAC-3,/)
+    .getByTitle('Change status')
+    .click()
+  await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
+  await expect(window.getByText('Loading statuses')).toBeVisible()
+  await window.keyboard.press('2')
+  await releaseTransitions(app)
+
   await settle(before + 1)
   await expect(item(/PSAPAC-3,/)).not.toHaveAccessibleName(/To Do/)
   await expect(tree()).toBeFocused()

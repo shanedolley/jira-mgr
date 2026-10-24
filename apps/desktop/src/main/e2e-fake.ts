@@ -650,6 +650,9 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   failRead: () => void
   /** Makes the next read of an issue's transitions answer 500. */
   failTransitions: () => void
+  /** Holds each read of an issue's transitions until `releaseTransitions`. */
+  holdTransitions: () => void
+  releaseTransitions: () => void
   /** Makes the next read of any issue's comments answer `status`. */
   failComments: (status: 404 | 500) => void
   /** Holds each `text ~` search until `releaseTextSearch` or until the app aborts it. */
@@ -877,6 +880,8 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
   const heldText: (() => void)[] = []
   let readsHeld = false
   const heldReads: (() => void)[] = []
+  let transitionsHeld = false
+  const heldTransitions: (() => void)[] = []
   /** Waits while `holdReads` is on, so a test sees the page before a refetch lands. */
   const holdRead = async () => {
     if (readsHeld) await new Promise<void>((resolve) => heldReads.push(resolve))
@@ -1344,6 +1349,7 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
       // Transition ids differ from status ids, as they do in the real project.
       const open = Object.values(STATUSES).filter((s) => s.id !== target.fields.status.id)
       if (method === 'GET') {
+        if (transitionsHeld) await new Promise<void>((resolve) => heldTransitions.push(resolve))
         if (failNextTransitions) {
           failNextTransitions = false
           return json({ errorMessages: ['The fake failed this lookup.'] }, 500)
@@ -1965,6 +1971,13 @@ export function createFakeJira(options: FakeJiraOptions = {}): {
         ...(timeSpentSeconds !== undefined && { timeSpentSeconds }),
       }
       touch(target)
+    },
+    holdTransitions: () => {
+      transitionsHeld = true
+    },
+    releaseTransitions: () => {
+      transitionsHeld = false
+      for (const release of heldTransitions.splice(0)) release()
     },
     holdReads: () => {
       readsHeld = true
