@@ -11,7 +11,7 @@
 ## Supply Chain
 
 - `pnpm-lock.yaml` is committed, and the local CI route installs with `--frozen-lockfile`.
-- pnpm refuses versions published less than seven days ago (`minimumReleaseAge`). Dependabot waits the same seven days.
+- pnpm refuses versions published less than seven days ago (`minimumReleaseAge`). Dependabot waits the same seven days. To let one version in early on Shane's order, list that exact version in `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` (`'<package>@<version>'`), with a comment naming the order and the date to remove it. Never lower `minimumReleaseAge`.
 - pnpm blocks install scripts by default. Allow one package at a time in `onlyBuiltDependencies`, with the reason in the pull request. esbuild has an entry for its binary. Electron has no install script and downloads its binary on first use, so run `pnpm --filter @jira-mgr/e2e exec install-electron` before e2e when the dist is missing.
 
 ## Updates
