@@ -19,14 +19,14 @@ Every package carries one version, and a release is a GitHub Release with the no
 3. Sign and notarise the app, then staple it, per [Share with Another Mac](../how-to/install-desktop-app.md#share-with-another-mac). This step needs Shane's Developer ID identity and the `jira-mgr-notary` Keychain profile.
 4. Zip the stapled app: `ditto -c -k --keepParent "Jira Task Manager.app" jira-task-manager-<version>-arm64.zip`.
 5. Tag the merge commit and push the tag: `git tag vx.y.z <merge commit>`, then `git push origin vx.y.z`.
-6. Create the draft: `gh release create vx.y.z jira-task-manager-<version>-arm64.zip --draft --generate-notes --notes-start-tag <previous tag> --title vx.y.z`. On the first release, omit `--notes-start-tag` and pass `--notes-file <file>` in place of `--generate-notes`. For hand-written notes, or to publish the version's `CHANGELOG.md` section, do the same.
+6. Create the draft: `gh release create vx.y.z jira-task-manager-<version>-arm64.zip --draft --generate-notes --notes-start-tag <previous tag> --title vx.y.z`. On the first release, omit `--notes-start-tag` and pass `--notes-file <file>` in place of `--generate-notes`. To publish the version's `CHANGELOG.md` section, or hand-written notes, pass `--notes-file <file>` in place of `--generate-notes`; for the changelog, the file holds the section's body without its `## [x.y.z] - date` heading, since the release title already names the version.
 7. Shane reviews the draft and publishes it.
 
 ## Verify
 
 1. `spctl --assess --type execute -vv "Jira Task Manager.app"` prints `source=Notarized Developer ID`.
 2. `/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "Jira Task Manager.app/Contents/Info.plist"` prints `x.y.z`.
-3. `jm --version` prints `x.y.z`.
+3. `pnpm build`, then `pnpm -s jm -- --version` prints `x.y.z`. `pnpm package` builds only the desktop app, so the CLI's `dist` is stale until `pnpm build` runs.
 4. The draft release lists the zip and the grouped notes.
 
 ## Follow Up
