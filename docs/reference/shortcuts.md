@@ -114,7 +114,7 @@ A letter acts only when pressed alone, not held, not typed into a field, picker,
 | Pickers | `Up`, `Down` | Move the highlight |
 | Pickers without a search field | `Home`, `End` | First or last option; in a searchable picker they move the caret |
 | Pickers | `Enter` | Choose the highlighted option |
-| Status and Priority pickers | `1` to `9` | Choose the numbered option; the keycap on each option shows its number |
+| Status and Priority pickers | `1` to `9` | Choose the numbered option; the keycap on each option shows its number. A digit pressed while the options still load waits and chooses when they arrive |
 
 ## Dialogs and fields
 
