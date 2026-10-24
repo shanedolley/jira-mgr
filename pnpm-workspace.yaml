@@ -7,6 +7,10 @@ packages:
 # See docs/standards/dependencies.md.
 minimumReleaseAge: 10080
 
+# Lets @mswjs/interceptors 0.45.9 in early for #352 by Shane's order of 2026-10-24. Remove after 2026-10-25.
+minimumReleaseAgeExclude:
+  - '@mswjs/interceptors@0.45.9'
+
 # Run install scripts only for these. Electron has none: it downloads its binary on first use.
 onlyBuiltDependencies:
   - esbuild
