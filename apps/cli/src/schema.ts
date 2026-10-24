@@ -1317,7 +1317,7 @@ export const COMMANDS = [
     ],
     output: {
       summary: 'The help document, or one command object when a command is named.',
-      example: { name: 'jm', version: '1.0.0', globalOptions: [], exitCodes: [], commands: [] },
+      example: { name: 'jm', version: '1.0.1', globalOptions: [], exitCodes: [], commands: [] },
     },
     exits: [{ code: 'validation_failed', when: 'The named command does not exist.' }],
     writes: [],
