@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -60,6 +61,8 @@ export interface PickerProps {
   multiple?: boolean
   /** The first nine options answer to the keys 1 to 9, shown as keycaps. Not with `searchable`, where digits type. */
   numbered?: boolean
+  /** The options are still loading, so a digit pressed now waits for them, whatever it names. */
+  pending?: boolean
   /** Shows a search field. Without `onQuery`, the picker filters the options by label itself. */
   searchable?: boolean
   /** Remote search: told each query, while the caller supplies the options that match. */
@@ -178,6 +181,7 @@ export function Picker({
   selected,
   multiple = false,
   numbered = false,
+  pending = false,
   searchable = false,
   onQuery,
   create,
@@ -208,6 +212,8 @@ export function Picker({
   const triggerRef = givenTriggerRef ?? ownTriggerRef
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  // The place of a digit pressed while the options were loading; the options' arrival chooses it.
+  const queuedDigit = useRef<number | null>(null)
 
   const text = query.trim()
   const listed =
@@ -276,6 +282,7 @@ export function Picker({
     }
     setOpen(false)
     onOpenChange?.(false)
+    queuedDigit.current = null
     setQuery('')
     onQuery?.('')
     const focused = document.activeElement
@@ -304,6 +311,16 @@ export function Picker({
     }
   }
 
+  const chooseQueued = useEffectEvent(() => {
+    const place = queuedDigit.current
+    queuedDigit.current = null
+    const option = place === null ? undefined : visible[place]
+    if (option !== undefined) choose(option.id)
+  })
+  useEffect(() => {
+    if (!pending) chooseQueued()
+  }, [pending])
+
   function move(step: number) {
     if (visible.length === 0) return
     const next = Math.min(visible.length - 1, Math.max(0, activeIndex + step))
@@ -325,8 +342,12 @@ export function Picker({
       !event.altKey
     ) {
       event.preventDefault()
-      const option = visible[Number(event.key) - 1]
-      if (option !== undefined) choose(option.id)
+      // While loading, even a digit that names a listed option waits: the first option is the current value, which cannot be chosen yet.
+      if (pending) queuedDigit.current = Number(event.key) - 1
+      else {
+        const option = visible[Number(event.key) - 1]
+        if (option !== undefined) choose(option.id)
+      }
       return
     }
     switch (event.key) {

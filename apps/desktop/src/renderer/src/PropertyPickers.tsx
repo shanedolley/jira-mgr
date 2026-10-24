@@ -177,6 +177,7 @@ export function StatusPicker({ issue, menu, cell }: PickerProps) {
       options={options}
       selected={[issue.status.id]}
       numbered
+      pending={transitions.isPending}
       onSelect={choose}
       onOpenChange={setOpen}
       note={
@@ -274,6 +275,7 @@ export function PriorityPicker({ issue, menu, cell }: PickerProps) {
       }))}
       selected={issue.priority === null ? [] : [issue.priority.id]}
       numbered
+      pending={priorities.isPending}
       onSelect={choose}
       onOpenChange={setOpen}
       note={
