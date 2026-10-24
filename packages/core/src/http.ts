@@ -92,17 +92,18 @@ const defaultSleep = (ms: number, signal?: AbortSignal) => delay(ms, undefined, 
 
 /** Reads the body, giving up when `signal` fires even if the transport never errors the stream. */
 function readText(response: Response, signal: AbortSignal): Promise<string> {
-  return Promise.race([
-    response.text(),
-    new Promise<never>((_, reject) => {
-      // A DOMException is an Error at run time; the lib types lag.
-      const abort = () => {
-        reject(signal.reason as Error)
-      }
-      if (signal.aborted) abort()
-      signal.addEventListener('abort', abort, { once: true })
-    }),
-  ])
+  let abort = () => undefined
+  const aborted = new Promise<never>((_, reject) => {
+    // A DOMException is an Error at run time; the lib types lag.
+    abort = () => {
+      reject(signal.reason as Error)
+    }
+    if (signal.aborted) abort()
+    signal.addEventListener('abort', abort, { once: true })
+  })
+  return Promise.race([response.text(), aborted]).finally(() => {
+    signal.removeEventListener('abort', abort)
+  })
 }
 
 const tooLarge = (maxBytes: number) =>

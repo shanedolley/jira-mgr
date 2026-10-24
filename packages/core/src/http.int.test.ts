@@ -42,6 +42,7 @@ async function rejection(promise: Promise<unknown>): Promise<JiraMgrError> {
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
@@ -452,6 +453,30 @@ describe('error mapping', () => {
     )
     expect(error.code).toBe('jira_error')
     expect(error.message).toContain('did not finish within')
+  })
+
+  it('gives up on a body whose stream ignores the abort, at the timeout and at the caller', async () => {
+    // A transport that never errors the stream: only readText's own race can end the read.
+    const stalled = () =>
+      Promise.resolve(
+        new Response(new ReadableStream({ pull: () => new Promise(() => undefined) })),
+      )
+    vi.stubGlobal('fetch', stalled)
+    const timedOut = await rejection(
+      client({ timeoutMs: 50 }).api.request('GET', '/rest/api/3/myself'),
+    )
+    expect(timedOut.message).toContain('did not finish within')
+
+    const reason = new Error('stop')
+    const controller = new AbortController()
+    setTimeout(() => {
+      controller.abort(reason)
+    }, 10)
+    await expect(
+      client({ timeoutMs: 5000 }).api.request('GET', '/rest/api/3/myself', {
+        signal: controller.signal,
+      }),
+    ).rejects.toBe(reason)
   })
 
   it('maps a body that breaks mid-stream to jira_error', async () => {
