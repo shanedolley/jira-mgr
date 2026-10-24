@@ -285,7 +285,9 @@ test('a key move of a name does not blink the header', async () => {
   await open()
   await leave()
   await name('labels').focus()
-  await expect.poll(() => opacityOf(name('sprint'))).toBeCloseTo(HOLD_OPACITY, 2)
+  // Exact, not toBeCloseTo: the 100ms fade in reads 0.295 (inside its 0.005 tolerance) for a frame
+  // before it lands on 0.3, and the first sample below would take that tail for a dip (#382).
+  await expect.poll(() => opacityOf(name('sprint'))).toBe(HOLD_OPACITY)
   await window.evaluate(() => {
     const w = globalThis as unknown as { lows: number[] }
     w.lows = []
