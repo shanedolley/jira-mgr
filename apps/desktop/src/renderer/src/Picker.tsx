@@ -61,7 +61,7 @@ export interface PickerProps {
   multiple?: boolean
   /** The first nine options answer to the keys 1 to 9, shown as keycaps. Not with `searchable`, where digits type. */
   numbered?: boolean
-  /** The options are still loading, so a digit pressed now waits for them instead of finding none. */
+  /** The options are still loading, so a digit pressed now waits for them, whatever it names. */
   pending?: boolean
   /** Shows a search field. Without `onQuery`, the picker filters the options by label itself. */
   searchable?: boolean
@@ -342,9 +342,12 @@ export function Picker({
       !event.altKey
     ) {
       event.preventDefault()
-      const option = visible[Number(event.key) - 1]
-      if (option !== undefined) choose(option.id)
-      else if (pending) queuedDigit.current = Number(event.key) - 1
+      // While loading, even a digit that names a listed option waits: the first option is the current value, which cannot be chosen yet.
+      if (pending) queuedDigit.current = Number(event.key) - 1
+      else {
+        const option = visible[Number(event.key) - 1]
+        if (option !== undefined) choose(option.id)
+      }
       return
     }
     switch (event.key) {

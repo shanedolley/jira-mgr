@@ -334,6 +334,26 @@ test('a digit pressed while the Status list is still loading chooses once it loa
   await expect(tree()).toBeFocused()
 })
 
+test('digit 1 pressed while the Status list is loading waits too, and moves an In Progress issue', async () => {
+  // While loading, the first option is the current status. Choosing it closed the list with no write.
+  await open()
+  await holdTransitions(app)
+  const before = await writes()
+  await expect(item(/PSAPAC-4,/)).toHaveAccessibleName(/, In Progress,/)
+
+  await item(/PSAPAC-4,/)
+    .getByTitle('Change status')
+    .click()
+  await expect(window.getByRole('listbox', { name: 'Status' })).toBeFocused()
+  await expect(window.getByText('Loading statuses')).toBeVisible()
+  await window.keyboard.press('1')
+  await releaseTransitions(app)
+
+  await settle(before + 1)
+  await expect(item(/PSAPAC-4,/)).not.toHaveAccessibleName(/, In Progress,/)
+  await expect(tree()).toBeFocused()
+})
+
 test('the + on a Customer header opens create with that Customer, without toggling the group', async () => {
   await open()
   const header = item(/^Beta Ltd, 5 issues$/)
