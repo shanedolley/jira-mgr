@@ -20,7 +20,7 @@ Every package carries one version, and a release is a GitHub Release with the no
 4. Zip the stapled app: `ditto -c -k --keepParent "Jira Task Manager.app" jira-task-manager-<version>-arm64.zip`.
 5. Tag the merge commit and push the tag: `git tag vx.y.z <merge commit>`, then `git push origin vx.y.z`.
 6. Create the draft: `gh release create vx.y.z jira-task-manager-<version>-arm64.zip --draft --generate-notes --notes-start-tag <previous tag> --title vx.y.z`. On the first release, omit `--notes-start-tag` and pass `--notes-file <file>` in place of `--generate-notes`. To publish the version's `CHANGELOG.md` section, or hand-written notes, pass `--notes-file <file>` in place of `--generate-notes`; for the changelog, the file holds the section's body without its `## [x.y.z] - date` heading, since the release title already names the version.
-7. Shane reviews the draft and publishes it.
+7. Shane reviews the draft and publishes that draft: `gh release edit vx.y.z --draft=false`, or the Publish button on the draft. A new release for the same tag carries no asset and ships with no download.
 
 ## Verify
 
