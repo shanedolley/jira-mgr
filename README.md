@@ -1,49 +1,106 @@
-# jira-mgr
+# Jira Task Manager
 
-jira-mgr is a Linear-style desktop app and an agent-friendly command line for one Jira project, PSAPAC on `engineering-collibra.atlassian.net`. The app groups issues by Customer and Epic, opens issues as full pages, and answers to single-key shortcuts. A timer logs worklogs from elapsed time, started with `T` in the app or `jm timer start`. The `jm` command offers the same operations to people and agents, with JSON output when piped.
+[![Latest release](https://img.shields.io/github/v/release/shanedolley/jira-mgr?label=release)](https://github.com/shanedolley/jira-mgr/releases/latest)
+![Platform: macOS, Apple silicon](https://img.shields.io/badge/platform-macOS%20(Apple%20silicon)-lightgrey)
+![Licence: proprietary](https://img.shields.io/badge/licence-proprietary-blue)
 
-The Electron app and the CLI share one TypeScript core that holds the Jira client and the domain rules. Both call Jira directly: there is no server and no local replica.
+Jira at the speed of a keyboard. Jira Task Manager is a fast, Linear-style desktop app for macOS that shows your issues as one tree grouped by Customer and Epic, and lets you open, edit, bulk edit and time them without leaving the keys. Its companion command line, `jm`, gives people and AI agents the same operations with JSON output. Both share one TypeScript core and talk straight to Jira: no server, no sync service and no local copy of your data.
 
-## Status
+![The Issues screen: the sidebar, the issue tree grouped by Customer and Epic, and the New issue button](docs/tutorials/images/using-the-app/overview.png)
 
-The Core, CLI and Desktop milestones are built: every `jm` command works, and the app covers the shell, issue tree, issue page, create and delete, keyboard, saved views, packaging, the description editor, activity, the timer, click-to-edit summary, issue type icons and profile images (see the [roadmap](docs/product/roadmap.md)). The decisions are in the [product grilling](docs/discovery/2026-10-07-product-grilling.md) and the [ADRs](docs/adr/README.md). A UX review and a Linear gap analysis filed the follow-up stories #126 to #151 ([review decisions](docs/discovery/2026-10-10-review-decisions.md)). The app has since gained field contrast, keyboard basics, toolbar pickers, the `?` shortcut list, a page type scale, status glyphs, the dialog scrim and login screen, the create chip strip with a description and attachments, toasts with pending edits, the properties sidebar, one button system, Jira text search and issue actions in the palette, quick actions in the Tree, more filters, Tree row properties and ordering, blocked and blocking pills, sub-issues from the issue page, saved views that update, duplicate and reorder, an Inbox, a Sprint page, Epic progress with an Epics table and a Customers page, and a layout that fits narrow windows. Checking several issues and editing them in one batch from a bulk bar (#143) followed, then Hide done for every Done issue, sub-issue progress on issues, a double-click to the issue page, time tracking on the Peek and the issue page (#199 to #202), a Tree that opens at a remembered level (#209), an app icon of its own (#212), the Hold and On Hold status as a row with every field faded (#217), a wider Parent picker (#221), ascending or descending order per view (#222), Time left shown as a duration (#220), logging work from the Time tracking header (#216), a Start date and Due date in the create dialog (#219), a create under the hovered or selected issue (#224), a new issue assigned to you by default (#237), a right-click menu of issue actions (#238), a Manual order that you set by dragging rows (#223), the time estimate, Logged and Remaining as Display properties (#254), a muted row summary (#266), an original estimate you edit in its row (#276), a Log work modal from the Logged slot (#277), a summary you edit in a modal (#278), the sprint shown as its number, with its dates in the sprint menu (#274 and #273), a status you change from its dot (#267), an assignee, priority, labels, sprint, due date and start date you change from their row cells (#268, #269, #272, #273, #270 and #271), Sprint page rows whose controls sit beside the button that opens the issue (#279) column headers you drag to resize the Display properties (#275) and cell editors that take focus as soon as they open (#295). The 2026-10-19 batch followed: the hovered row as the active row, with `o` to peek and `O` to open (#299), only checked rows drawn as selected with a master checkbox (#300), Display columns you drag into a new order (#301), Cmd+click and Shift+click to check issues on the Tree and the Sprint page (#304), a Filter menu whose values open in a submenu (#305), a Priority column you can turn off (#306), column names that show only while the header is hovered (#307), theme choices as icons (#308), search in the shortcuts dialog (#309) and a comment count that opens the comments in a modal (#310). Shane approved all but #299, #304 and #310 on 2026-10-19 and sent those three back. Their reworks merged the same day with two new stories: a click on an issue key opens the Peek (#299), a Shift+click checks every issue in its range (#304), only the comment list scrolls in the Comments modal (#310), Log out and the theme choice sit in a user menu on the sidebar avatar (#325) and dates read as `19 Oct`, with `'25` outside the current year (#326). Shane approved all five at 21:16 to 21:18 AEST that day. The window then moves by the blank space in the Issues and Inbox headers, as it already did by the sidebar header (#334, which Shane approved on 2026-10-20). Several checked issues delete at once, lowest level first, from the context menu or the bulk bar, and `jm issue delete` takes several keys (#339, which Shane approved on 2026-10-20). The login screen starts with the Jira site filled in and links to the Atlassian page that creates an API token (#340, which Shane approved the same day). Work is tracked in GitHub issues on [shanedolley/jira-mgr](https://github.com/shanedolley/jira-mgr).
+## Highlights
 
-## Stack
+**Find your way fast**
 
-TypeScript on Node 24 in a pnpm monorepo. Electron with electron-vite, React, Tailwind and TanStack Query for the app. Commander and tsup for the CLI. Vitest and Playwright for tests. macOS only. Download the signed, notarised app from the [releases page](https://github.com/shanedolley/jira-mgr/releases) ([Download a Release](docs/how-to/install-desktop-app.md#download-a-release)), or build it locally: `pnpm package` signs ad hoc, and a copy for another Mac is signed and notarised by hand ([Share with Another Mac](docs/how-to/install-desktop-app.md#share-with-another-mac)). [CHANGELOG.md](CHANGELOG.md) lists what each version changed.
+- An issue tree grouped by Customer and Epic, with sub-issues, progress and Hide done.
+- Saved views, filters, ascending or descending order per view and a Manual order you set by dragging rows.
+- A command palette on `Cmd+K` that searches issues and Jira text, and runs any issue action.
+- Single-key shortcuts for the common moves. Press `?` to list them all.
+- An Inbox, a Sprint page, an Epics table with progress and a Customers page.
 
-## Commands
+**Work without opening anything**
+
+- Change Status, Assignee, Priority, Labels, Sprint, Start date, Due date and the original estimate from the row itself, by click or key.
+- Choose which Display columns each row shows, resize them and drag them into your order.
+- Peek at an issue beside the list, or open it as a full page with a properties sidebar.
+- Check several issues for a bulk edit or a bulk delete, by checkbox, `Cmd+click` or `Shift+click`.
+
+**Write and track**
+
+- A rich description editor that round-trips Jira's format and embeds images you drop or paste into it, and an issue page that attaches any file you drop on it.
+- Comments, links, attachments and worklogs on the issue page.
+- A timer that logs a worklog from the elapsed time (`T`), and a Log work dialog (`Shift+T`).
+- Light and dark themes.
+
+**Built for agents too**
+
+- `jm` covers issues, comments, worklogs, links, attachments, sprints, saved views and the timer.
+- It prints a table on a terminal and one JSON value when piped or given `--json`, with fixed exit codes and error codes.
+- `jm help --json` describes every command to an agent.
+
+## Install the App
+
+You need an Apple silicon Mac on macOS 13 or later.
+
+1. Open the [latest release](https://github.com/shanedolley/jira-mgr/releases/latest) and download `jira-task-manager-<version>-arm64.zip`.
+2. Unzip it and drag `Jira Task Manager.app` into Applications.
+3. Open it. The release is signed and notarised, so macOS opens it with no warning.
+
+On first launch the login screen asks for four things:
+
+- Your Jira site address.
+- The project key to work in.
+- Your Atlassian account email.
+- An [Atlassian API token](https://id.atlassian.com/manage-profile/security/api-tokens). The login screen links to the page that creates one.
+
+The app keeps the token in its own macOS Keychain item. It never updates itself: install a newer release over the old one to upgrade. The [install guide](docs/how-to/install-desktop-app.md) covers upgrades, where your data lives and uninstalling.
+
+## Install the CLI
+
+The CLI builds from source and needs Node 24 and pnpm 10:
+
+```
+pnpm install --frozen-lockfile
+pnpm build
+cd apps/cli && npm link
+jm auth login
+```
+
+The app and the CLI share one login. See [Install the CLI](docs/how-to/install-cli.md) and the [CLI reference](docs/reference/cli.md).
+
+## Jira Requirements
+
+The app works on one Jira project at a time. It was built around a project that tracks work by customer, and it finds these custom fields by name at login:
+
+- Customer
+- Engagement
+- Sprint
+- Start date
+
+Each name must appear once on the project's create screens. Login fails with a message that names the field when one is missing or ambiguous, and a settings file override is the way past it ([ADR-0004](docs/adr/0004-custom-fields-resolved-by-name.md)). Without Customer and Engagement the grouped tree has little to show, so the full experience needs a project that uses them.
+
+## Build From Source
+
+You need Node 24 and pnpm 10.
 
 ```
 pnpm install
-pnpm dev          # desktop app in development
-pnpm build
-pnpm test
-pnpm -s jm -- --help # the built CLI
+pnpm dev       # run the desktop app in development
+pnpm build     # build every package and app
+pnpm test      # run the unit tests against a fake Jira
+pnpm package   # build Jira Task Manager.app, signed ad hoc
 ```
 
-[AGENTS.md](AGENTS.md) lists every root script.
-
-## Repository Map
-
-| Path | Holds |
-|---|---|
-| `apps/desktop/` | The Electron app, renderer included |
-| `apps/cli/` | The `jm` command |
-| `packages/` | Shared code: `core`, `config-ts`, `config-lint` |
-| `e2e/` | End-to-end tests |
-| `scripts/` | Repository automation |
-| `docs/` | Architecture, ADRs, standards, tutorials, how-to guides, reference |
-
-[ARCHITECTURE.md](ARCHITECTURE.md) maps every folder to its purpose.
+[AGENTS.md](AGENTS.md) lists every script.
 
 ## Documentation
 
 - [Documentation index](docs/README.md)
-- [Using the desktop app](docs/tutorials/using-the-app.md), a visual tour
-- [Standards](docs/standards/README.md), starting with the [git workflow](docs/standards/git-workflow.md) and [code review](docs/standards/code-review.md)
-- [Domain terms](CONTEXT.md)
-- [Contributing](CONTRIBUTING.md), and [AGENTS.md](AGENTS.md) for agent contributors
+- [Using the desktop app](docs/tutorials/using-the-app.md), a tour with screenshots
+- [Shortcuts](docs/reference/shortcuts.md)
+- [Changelog](CHANGELOG.md) and [roadmap](docs/product/roadmap.md)
+- [Architecture](ARCHITECTURE.md) and [domain terms](CONTEXT.md)
+- [Contributing](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for agent contributors
 - [Security](SECURITY.md)
 
 ## Licence
