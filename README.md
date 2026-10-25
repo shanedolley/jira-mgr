@@ -27,7 +27,7 @@ Jira at the speed of a keyboard. Jira Task Manager is a fast, Linear-style deskt
 
 **Write and track**
 
-- A rich description editor that round-trips Jira's format and takes images and file attachments by drag and drop.
+- A rich description editor that round-trips Jira's format and embeds images you drop or paste into it, and an issue page that attaches any file you drop on it.
 - Comments, links, attachments and worklogs on the issue page.
 - A timer that logs a worklog from the elapsed time (`T`), and a Log work dialog (`Shift+T`).
 - Light and dark themes.
