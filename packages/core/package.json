@@ -38,7 +38,7 @@
     "@types/node": "^26.6.5",
     "msw": "^3.0.3",
     "typescript": "~7.0.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "marked": "^18.1.1",
