@@ -19,7 +19,7 @@
     "@jira-mgr/config-ts": "workspace:*",
     "@jira-mgr/core": "workspace:*",
     "@types/node": "^26.6.5",
-    "tsup": "^8.5.0",
+    "tsup": "^9.0.0",
     "typescript": "~7.0.2",
     "vitest": "^5.0.4",
     "zod": "^4.6.7"
