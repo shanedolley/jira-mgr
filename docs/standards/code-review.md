@@ -6,7 +6,7 @@
 2. Fill in the template: what changed, why, how you tested it, and the `Refs` line.
 3. Review your own diff before asking anyone else. Remove debug output, commented-out code and unrelated changes.
 4. Keep it small: one self-contained concern, with its tests. Around 100 changed lines is a good size and 1,000 is too big, excluding generated files.
-5. A reviewer other than the builder reviews it: Shane, or a review agent that did not write the change. An agent never reviews its own work, and a human reviews any change to authentication or token handling.
+5. A reviewer other than the builder reviews it: Shane, or a review agent that did not write the change. An agent never reviews its own work.
 6. The reviewer approves once the change improves the code's health, even if it is not perfect, and prefixes optional suggestions with `Nit:`. The author answers every other comment with a fix or a reply.
 7. Squash-merge once the local CI route passes and review approves (see [Git Workflow](git-workflow.md)).
 
