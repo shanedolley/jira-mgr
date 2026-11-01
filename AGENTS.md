@@ -35,7 +35,6 @@ Before changing an area, read its standard from [docs/standards](docs/standards/
 
 - Changing a public contract: CLI `--json` output, exit codes, `jm help --json`, the saved views file, the settings file shape or the error codes.
 - Adding a runtime dependency, a workspace package or a top-level folder.
-- Changing authentication or token handling.
 - A decision that is hard to reverse, surprising without context and the result of a real trade-off: it needs an ADR in `docs/adr/`.
 
 ## Never
