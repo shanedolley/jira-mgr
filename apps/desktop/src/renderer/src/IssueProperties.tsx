@@ -4,6 +4,7 @@ import { formatEstimate, parseEstimate, propertyRules } from '@jira-mgr/core/iss
 import {
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -182,6 +183,8 @@ export function TextField({
       // An unreadable date keeps its field and its message, so the Enter goes no further.
       if (!commit()) event.stopPropagation()
     } else if (event.key === 'Escape') {
+      // A date with nothing to abandon lets Esc go on, to the page or the Peek, as if the field had no focus.
+      if (isDate && draft === shown && !unread) return
       // The page's own Esc is for leaving, and this one only abandons the edit.
       event.stopPropagation()
       sent.current = null
@@ -202,6 +205,8 @@ export function TextField({
         label={label}
         anchor={suggestUnder}
         aria-keyshortcuts={shortcut}
+        // Marks a field whose Esc goes on to the page or the Peek when it has nothing to abandon.
+        data-esc-passes
         maxLength={maxLength ?? 100}
         data-autofocus={autofocus || undefined}
         placeholder={placeholder}
@@ -265,6 +270,65 @@ export function TextField({
       </div>
       {invalid && hint !== undefined && <p className="px-2 text-xs text-danger">{hint}</p>}
     </>
+  )
+}
+
+const DATES = {
+  startDate: { name: 'Start date', placeholder: 'Set start date' },
+  dueDate: { name: 'Due date', placeholder: 'Set due date' },
+} as const
+
+/**
+ * The Start date or Due date field of an issue, which saves through the issue's own write path.
+ * The issue page and the Peek both draw it, so a date has one editor.
+ */
+export function IssueDate({
+  issue,
+  which,
+  shortcut,
+}: {
+  issue: Issue
+  which: keyof typeof DATES
+  /** The key that focuses the field, for a surface where one does. */
+  shortcut?: string
+}) {
+  const change = useIssueChange(issue)
+  const { name, placeholder } = DATES[which]
+  const value = issue[which] ?? ''
+  const wrap = useRef<HTMLDivElement>(null)
+  const held = useRef(false)
+  // A saved date remounts the field (the key below), which drops focus to the page. Put it back
+  // when the field held it, so Enter or a click on the suggestion leaves the user in the field.
+  useLayoutEffect(() => {
+    const box = wrap.current
+    if (held.current && box !== null && !box.contains(document.activeElement)) {
+      box.querySelector('input')?.focus()
+    }
+  }, [value])
+  return (
+    <div
+      ref={wrap}
+      onFocus={() => {
+        held.current = true
+      }}
+      onBlur={(event) => {
+        // A field removed with focus on it blurs while detached; that is not the user leaving.
+        if (event.target.isConnected) held.current = false
+      }}
+    >
+      <TextField
+        key={value}
+        label={name}
+        shortcut={shortcut}
+        type="date"
+        placeholder={placeholder}
+        value={value}
+        onCommit={(draft) => {
+          const day = draft === '' ? null : draft
+          change(name, { [which]: day }, { [which]: day })
+        }}
+      />
+    </div>
   )
 }
 
@@ -418,42 +482,10 @@ export function IssueProperties({ issue, issues, me, onOpenSprint }: IssueProper
 
       <Group title="Dates and time">
         <Row name="Start date" field="startDate" pending={pending.has('startDate')}>
-          <TextField
-            key={issue.startDate ?? ''}
-            label="Start date"
-            shortcut="Shift+S"
-            type="date"
-            placeholder="Set start date"
-            value={issue.startDate ?? ''}
-            onCommit={(draft) => {
-              change(
-                'Start date',
-                { startDate: draft === '' ? null : draft },
-                {
-                  startDate: draft === '' ? null : draft,
-                },
-              )
-            }}
-          />
+          <IssueDate issue={issue} which="startDate" shortcut="Shift+S" />
         </Row>
         <Row name="Due date" field="dueDate" pending={pending.has('dueDate')}>
-          <TextField
-            key={issue.dueDate ?? ''}
-            label="Due date"
-            shortcut="Shift+D"
-            type="date"
-            placeholder="Set due date"
-            value={issue.dueDate ?? ''}
-            onCommit={(draft) => {
-              change(
-                'Due date',
-                { dueDate: draft === '' ? null : draft },
-                {
-                  dueDate: draft === '' ? null : draft,
-                },
-              )
-            }}
-          />
+          <IssueDate issue={issue} which="dueDate" shortcut="Shift+D" />
         </Row>
         {rules.estimates && (
           <>

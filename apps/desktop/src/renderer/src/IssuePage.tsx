@@ -242,11 +242,12 @@ export function IssuePage({
 
   function onKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== 'Escape' || event.defaultPrevented) return
-    // Esc inside a picker, a field, an editor or a dialog belongs to that control.
+    // Esc inside a picker, a field, an editor or a dialog belongs to that control. A date field
+    // with an edit to abandon stops the Esc itself, so one that arrives here has none.
     const target = event.target as Element
     if (
       target.closest(
-        '[popover], dialog, input, textarea, select, [contenteditable="true"], [role="alertdialog"]',
+        '[popover], dialog, input:not([data-esc-passes]), textarea, select, [contenteditable="true"], [role="alertdialog"]',
       ) !== null
     ) {
       return

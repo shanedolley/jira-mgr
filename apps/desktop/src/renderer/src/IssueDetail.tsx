@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode, type RefObject } from 'react'
 import type { CurrentUser } from '../../shared/ipc'
 import { CustomerMismatch, useMatchCustomer, type Mismatch } from './CustomerMismatch'
 import { blockText } from './editor/readOnly'
+import { IssueDate } from './IssueProperties'
 import { AssigneePicker, LabelsPicker, PriorityPicker, StatusPicker } from './PropertyPickers'
 import { useIssueDetail, usePendingFields } from './queries'
 import { Spinner } from './Spinner'
@@ -23,6 +24,7 @@ function Property({
   name,
   readOnly = false,
   first = false,
+  grows = false,
   field,
   pending = false,
   children,
@@ -35,18 +37,24 @@ function Property({
   pending?: boolean
   /** The first read-only row: the gap that sets it apart from the editable ones. */
   first?: boolean
+  /**
+   * A field that says why it saved nothing under itself, so the row grows to hold the message and
+   * does not clip it. The label keeps a 32px line and the field a 2px margin, so the label stays
+   * level with the field when the row grows.
+   */
+  grows?: boolean
   children: ReactNode
 }) {
   return (
     <div
       data-field={field}
-      className={`grid h-8 grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-1 ${first ? 'mt-2' : ''}`}
+      className={`grid ${grows ? 'min-h-8 items-start' : 'h-8 items-center'} grid-cols-[6.5rem_minmax(0,1fr)] gap-1 ${first ? 'mt-2' : ''}`}
     >
-      <dt className="truncate px-2 text-muted">{name}</dt>
+      <dt className={`truncate px-2 text-muted ${grows ? 'leading-8' : ''}`}>{name}</dt>
       <dd
         aria-busy={pending || undefined}
         data-pending={pending || undefined}
-        className={`min-w-0 truncate ${readOnly ? 'px-2' : ''}`}
+        className={`min-w-0 ${grows ? 'py-0.5' : 'truncate'} ${readOnly ? 'px-2' : ''}`}
       >
         {children}
         {pending && <Spinner />}
@@ -220,6 +228,12 @@ function PeekIssue({
         <Property name="Labels" field="labels" pending={pending.has('labels')}>
           <LabelsPicker issue={issue} issues={issues} />
         </Property>
+        <Property name="Start date" field="startDate" grows pending={pending.has('startDate')}>
+          <IssueDate issue={issue} which="startDate" />
+        </Property>
+        <Property name="Due date" field="dueDate" grows pending={pending.has('dueDate')}>
+          <IssueDate issue={issue} which="dueDate" />
+        </Property>
         <Property name="Type" readOnly first>
           {issue.issueType.name}
         </Property>
@@ -268,7 +282,8 @@ function PeekIssue({
 
 /**
  * The space-bar preview: summary, key, a 3-line read-only description, status, type, people,
- * Customer and Engagement. The summary edits in place, Start timer follows the `T` rule (never on
+ * Customer and Engagement. Start date and Due date follow Labels and are the page's own date
+ * fields. The summary edits in place, Start timer follows the `T` rule (never on
  * an Epic), a mismatch offers its one-click fix, and Open goes to the full page. Status,
  * Assignee, Priority and Labels are the page's own pickers. The Tree's `A` and `L` open them here
  * (D7) without leaving the list; `S` and `P` open the cell editor beside the row instead.

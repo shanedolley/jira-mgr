@@ -1391,7 +1391,7 @@ export function Shell({ session }: { session: Session }) {
           command === 'estimate' ||
           command === 'sprint'
         ) {
-          // Only the issue page has these fields. From the Tree the key opens the menu on that submenu.
+          // Only the issue page focuses these fields; the Peek's two date fields have no key. From the Tree the key opens the menu on that submenu.
           const issue = issues.find((i) => i.key === key)
           if (issue === undefined || !allows(issue, command)) return
           event.preventDefault()
