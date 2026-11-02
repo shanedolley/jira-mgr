@@ -54,22 +54,24 @@ test('the Peek spaces its property rows 32px apart, with an 8px gap before the r
     'Assignee',
     'Priority',
     'Labels',
+    'Start date',
+    'Due date',
     'Type',
     'Customer',
     'Engagement',
     'Updated',
   ])
   const steps = rows.slice(1).map((row, i) => row.y - (rows[i]?.y ?? 0))
-  // Labels to Type crosses the gap between the editable rows and the read-only ones.
-  expect(steps).toEqual([32, 32, 32, 40, 32, 32, 32])
+  // Due date to Type crosses the gap between the editable rows and the read-only ones.
+  expect(steps).toEqual([32, 32, 32, 32, 32, 40, 32, 32, 32])
 })
 
-test('the Peek shows a chevron on editable rows only', async () => {
+test('the Peek shows a chevron on its pickers only, not on the date fields or the read-only rows', async () => {
   await open()
   await peekRow(item(/PSAPAC-4,/))
   const rows = peek().locator('dl[data-issue] > div')
-  await expect(rows).toHaveCount(8)
-  for (const [i, chevron] of [1, 1, 1, 1, 0, 0, 0, 0].entries()) {
+  await expect(rows).toHaveCount(10)
+  for (const [i, chevron] of [1, 1, 1, 1, 0, 0, 0, 0, 0, 0].entries()) {
     await expect(rows.nth(i).locator('[data-chevron]')).toHaveCount(chevron)
   }
 })

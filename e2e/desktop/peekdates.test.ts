@@ -76,6 +76,8 @@ async function seedStart() {
   await window.keyboard.type('1 Dec 2026')
   await window.keyboard.press('Enter')
   await settle(first + 1)
+  // Jira's answer and the reads after it can each redraw the field, so let them land first.
+  await window.waitForTimeout(500)
 }
 
 const pending = (name: Name) => row(name).locator('dd')
@@ -192,9 +194,12 @@ for (const name of Object.keys(FIELDS) as Name[]) {
     }
     const before = await writes()
 
-    await field(name).focus()
-    await window.keyboard.press('Backspace')
-    await expect(field(name)).toHaveValue('')
+    await expect(async () => {
+      await field(name).focus()
+      await window.keyboard.press('ControlOrMeta+a')
+      await window.keyboard.press('Backspace')
+      await expect(field(name)).toHaveValue('', { timeout: 1000 })
+    }).toPass()
     await window.keyboard.press('Enter')
 
     await settle(before + 1)
