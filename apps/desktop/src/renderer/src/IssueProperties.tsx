@@ -1,10 +1,9 @@
 import type { Issue } from '@jira-mgr/core'
-import { describeDate, parseDateInput } from '@jira-mgr/core/dates'
+import { describeDate, formatDay, parseDateInput } from '@jira-mgr/core/dates'
 import { formatEstimate, parseEstimate, propertyRules } from '@jira-mgr/core/issue'
 import {
   useEffect,
   useEffectEvent,
-  useId,
   useRef,
   useState,
   type KeyboardEvent,
@@ -12,6 +11,7 @@ import {
 } from 'react'
 
 import type { CurrentUser, FieldChoice } from '../../shared/ipc'
+import { DateInput } from './DateInput'
 import { Reason } from './Failure'
 import { Picker, type PickerOption } from './Picker'
 import {
@@ -96,6 +96,10 @@ interface TextFieldProps {
   commitOnUnmount?: boolean
   /** Called with a date draft that cannot be read when the field unmounts, so the user hears that nothing saved. */
   onUnreadable?: (draft: string) => void
+  /** Called after Tab or a click on a date suggestion has saved, as Enter would end an edit. */
+  onPick?: (input: HTMLInputElement) => void
+  /** A date's suggestion goes under the element with this CSS anchor name, not under the field. */
+  suggestUnder?: string
 }
 
 /** A field that edits locally and saves on Enter or when focus leaves, and reverts on Esc. */
@@ -113,42 +117,49 @@ export function TextField({
   autofocus = false,
   commitOnUnmount = false,
   onUnreadable,
+  onPick,
+  suggestUnder,
 }: TextFieldProps) {
-  const [draft, setDraft] = useState(value)
+  const isDate = type === 'date'
+  const today = useToday()
+  // A date shows as the field reads it back, `10 Nov`, and not as the `YYYY-MM-DD` it holds.
+  const shown = isDate && value !== '' ? formatDay(value, today) : value
+  const [draft, setDraft] = useState(shown)
   // Whether the last attempt to save a date found a phrase it could not read.
   const [unread, setUnread] = useState(false)
   // Jira's answer replaces what was typed, adjusting state during render as React advises.
-  const [seen, setSeen] = useState(value)
-  if (seen !== value) {
-    setSeen(value)
-    setDraft(value)
+  const [seen, setSeen] = useState(shown)
+  if (seen !== shown) {
+    setSeen(shown)
+    setDraft(shown)
     setUnread(false)
   }
-  const invalid = draft !== value && !valid(draft)
+  const invalid = draft !== shown && !valid(draft)
   // The draft last sent. Jira's answer lands a render later, and until it does `draft` still
   // differs from `value`, so Enter followed at once by leaving the field would send it twice.
   const sent = useRef<string | null>(null)
+  // The day that draft meant. A click, a blur and an unmount can each carry a different text for
+  // the same day, so a day goes out once.
+  const sentDay = useRef<string | null>(null)
 
-  const isDate = type === 'date'
-  const today = useToday()
-  const noteId = useId()
-
-  /** Saves the draft if it changed. False when a date draft cannot be read, so the draft stays. */
-  function commit(closing = false): boolean {
-    if (draft === value || draft === sent.current) return true
-    if (!valid(draft)) return true
+  /** Saves the text if it changed. False when a date cannot be read, so the draft stays. */
+  function commit(closing = false, text = draft): boolean {
+    if (text === shown || text === sent.current) return true
+    if (!valid(text)) return true
     // An emptied date field clears the date.
-    const day = !isDate ? draft : draft.trim() === '' ? '' : parseDateInput(draft, today)
+    const day = !isDate ? text : text.trim() === '' ? '' : parseDateInput(text, today)
     if (day === null) {
       setUnread(true)
-      if (closing) onUnreadable?.(draft)
+      if (closing) onUnreadable?.(text)
       return false
     }
+    if (day === sentDay.current) return true
     if (day === value) {
-      setDraft(value)
+      setDraft(shown)
       return true
     }
-    sent.current = draft
+    sent.current = text
+    sentDay.current = day
     onCommit(day)
     return true
   }
@@ -174,16 +185,58 @@ export function TextField({
       // The page's own Esc is for leaving, and this one only abandons the edit.
       event.stopPropagation()
       sent.current = null
+      sentDay.current = null
       setUnread(false)
-      setDraft(value)
+      setDraft(shown)
     }
   }
 
   // The day the draft means, shown before it saves so a misread phrase is caught.
   const meant =
-    isDate && !unread && draft !== value && draft.trim() !== ''
+    isDate && !unread && draft !== shown && draft.trim() !== ''
       ? parseDateInput(draft, today)
       : null
+  if (isDate) {
+    return (
+      <DateInput
+        label={label}
+        anchor={suggestUnder}
+        aria-keyshortcuts={shortcut}
+        maxLength={maxLength ?? 100}
+        data-autofocus={autofocus || undefined}
+        placeholder={placeholder}
+        value={draft}
+        unread={unread}
+        // Text that already reads as the replacement has nothing left to offer.
+        suggestion={
+          meant === null || formatDay(meant, today) === draft
+            ? null
+            : { label: describeDate(meant), text: formatDay(meant, today) }
+        }
+        onChange={(text) => {
+          sent.current = null
+          sentDay.current = null
+          setUnread(false)
+          setDraft(text)
+        }}
+        onAccept={(text, how, input) => {
+          setDraft(text)
+          // Tab would leave the field and save through its blur, but a cell editor may swallow
+          // that blur (Tab to Clear), so the accept saves here, once, whichever follows. An
+          // editor that ends with the accept keeps Tab from moving focus on, as Enter does.
+          const saved = commit(false, text)
+          if (saved) onPick?.(input)
+          return how === 'tab' && saved && onPick !== undefined
+        }}
+        onBlur={() => {
+          commit()
+        }}
+        onKeyDown={onKeyDown}
+        noteClassName="block px-2 text-xs"
+        className={`${FIELD} aria-invalid:border-danger`}
+      />
+    )
+  }
   return (
     <>
       <div className="relative">
@@ -191,13 +244,11 @@ export function TextField({
         <input
           type="text"
           autoComplete="off"
-          spellCheck={isDate ? false : undefined}
           aria-label={label}
           aria-keyshortcuts={shortcut}
-          maxLength={maxLength ?? (isDate ? 100 : undefined)}
+          maxLength={maxLength}
           data-autofocus={autofocus || undefined}
-          aria-invalid={invalid || unread || undefined}
-          aria-describedby={isDate ? noteId : undefined}
+          aria-invalid={invalid || undefined}
           placeholder={placeholder}
           value={draft}
           onChange={(event) => {
@@ -213,16 +264,6 @@ export function TextField({
         />
       </div>
       {invalid && hint !== undefined && <p className="px-2 text-xs text-danger">{hint}</p>}
-      {isDate && (
-        // Mounted before it has anything to say, so a screen reader announces what arrives.
-        <p
-          id={noteId}
-          aria-live="polite"
-          className={`px-2 text-xs empty:hidden ${unread ? 'text-danger' : 'text-muted'}`}
-        >
-          {unread ? 'Could not read the date' : meant === null ? '' : describeDate(meant)}
-        </p>
-      )}
     </>
   )
 }

@@ -1,11 +1,10 @@
 import type { Issue } from '@jira-mgr/core'
-import { describeDate, parseDateInput } from '@jira-mgr/core/dates'
+import { describeDate, formatDay, parseDateInput } from '@jira-mgr/core/dates'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import type { EditorDoc } from '@jira-mgr/core/adf'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -33,6 +32,7 @@ import { LabelDot, PriorityBars } from './Glyphs'
 import { Icon, TRASH } from './Icon'
 import { Modal } from './Modal'
 import { ParentPrompt } from './ParentPrompt'
+import { DateInput } from './DateInput'
 import { Picker, type PickerOption } from './Picker'
 import {
   describeCreated,
@@ -126,6 +126,15 @@ const DATE_FIELDS: readonly DateField[] = ['startDate', 'dueDate']
 const DATE_TEXT_MAX = 100
 const DATE_NAMES: Record<DateField, string> = { startDate: 'Start date', dueDate: 'Due date' }
 
+/** The chips' text for a draft's days: `10 Nov` for a day, and nothing for none. */
+const dateTexts = (
+  draft: Pick<CreateDraft, DateField>,
+  today: string,
+): Record<DateField, string> => ({
+  startDate: draft.startDate === '' ? '' : formatDay(draft.startDate, today),
+  dueDate: draft.dueDate === '' ? '' : formatDay(draft.dueDate, today),
+})
+
 /** A chip's property name, muted before its value. */
 const ChipName = ({ children }: { children: string }) => (
   <span className="shrink-0 text-muted">{children}</span>
@@ -196,13 +205,10 @@ export function CreateIssueDialog({
   const engagementTrigger = useRef<HTMLButtonElement>(null)
   const estimateRef = useRef<HTMLInputElement>(null)
   const dateRefs = useRef<Partial<Record<DateField, HTMLInputElement | null>>>({})
+  const today = useToday()
   // What was typed in each date chip. The draft holds the day it means, or '' while it means none.
-  const [dateText, setDateText] = useState<Record<DateField, string>>(() => ({
-    startDate: draft.startDate,
-    dueDate: draft.dueDate,
-  }))
+  const [dateText, setDateText] = useState<Record<DateField, string>>(() => dateTexts(draft, today))
   // The date chips whose text could not be read when focus left them.
-  const noteIds: Record<DateField, string> = { startDate: useId(), dueDate: useId() }
   const [unreadDates, setUnreadDates] = useState<ReadonlySet<DateField>>(new Set())
   const rules = typeRules(draft.type)
 
@@ -421,7 +427,7 @@ export function CreateIssueDialog({
       // The dates stay for the next issue, so the chips keep showing them.
       const next = nextDraft(sent)
       setDraft(next)
-      setDateText({ startDate: next.startDate, dueDate: next.dueDate })
+      setDateText(dateTexts(next, today))
       setUnreadDates(new Set())
       setFiles([])
       setTouched(false)
@@ -530,7 +536,6 @@ export function CreateIssueDialog({
   }
 
   // Sprint
-  const today = useToday()
   const sprintList = shownSprints(sprints.data ?? [], allSprints)
   const sprintOptions: PickerOption[] = [
     { id: NONE, label: 'Backlog' },
@@ -734,33 +739,34 @@ export function CreateIssueDialog({
                 {DATE_FIELDS.map((field) => {
                   const shown = unreadDates.has(field)
                   const day = draft[field]
-                  const preview =
-                    shown && unreadDate(field)
-                      ? 'Could not read the date'
-                      : day !== '' && dateText[field].trim() !== day
-                        ? describeDate(day)
-                        : ''
+                  const replacement = day === '' ? '' : formatDay(day, today)
                   return (
                     <label
                       key={field}
                       className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${shown ? 'border-danger' : 'border-field-border'}`}
                     >
                       <ChipName>{field === 'startDate' ? 'Start' : 'Due'}</ChipName>
-                      <input
+                      <DateInput
                         ref={(el) => {
                           dateRefs.current[field] = el
                         }}
-                        type="text"
-                        autoComplete="off"
-                        spellCheck={false}
                         maxLength={DATE_TEXT_MAX}
                         placeholder="None"
-                        aria-label={DATE_NAMES[field]}
-                        aria-invalid={shown || undefined}
-                        aria-describedby={noteIds[field]}
+                        label={DATE_NAMES[field]}
                         value={dateText[field]}
-                        onChange={(event) => {
-                          typeDate(field, event.target.value)
+                        unread={shown && unreadDate(field)}
+                        // Text that already reads as the replacement has nothing left to offer.
+                        suggestion={
+                          day !== '' && replacement !== dateText[field]
+                            ? { label: describeDate(day), text: replacement }
+                            : null
+                        }
+                        onChange={(text) => {
+                          typeDate(field, text)
+                        }}
+                        onAccept={(text) => {
+                          typeDate(field, text)
+                          return false
                         }}
                         onBlur={() => {
                           markUnread(field, unreadDate(field))
@@ -779,15 +785,9 @@ export function CreateIssueDialog({
                             markUnread(field, true)
                           }
                         }}
+                        noteClassName="px-0"
                         className="field-sizing-content min-w-16 max-w-40 bg-transparent focus-visible:outline-none"
                       />
-                      <span
-                        id={noteIds[field]}
-                        aria-live="polite"
-                        className={`empty:hidden ${shown ? 'text-danger' : 'text-muted'}`}
-                      >
-                        {preview}
-                      </span>
                     </label>
                   )
                 })}

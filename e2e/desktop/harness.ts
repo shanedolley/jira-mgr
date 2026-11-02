@@ -509,3 +509,28 @@ export const inboxWatch = (app: ElectronApplication, key: string) =>
   app.evaluate((_electron, name) => {
     ;(globalThis as unknown as WithFake).__fakeJira.inboxWatch(name)
   }, key)
+
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
+
+/**
+ * A day (`YYYY-MM-DD`) as a date field shows it: `24 Dec` in the year of `now`, and `24 Dec 2027`
+ * in another. `now` is the real clock unless the test fixed the app's.
+ */
+export function dayText(day: string, now: Date = new Date()): string {
+  const [year = '', month = '', date = ''] = day.split('-')
+  const short = `${String(Number(date))} ${MONTH_NAMES[Number(month) - 1] ?? ''}`
+  return Number(year) === now.getFullYear() ? short : `${short} ${year}`
+}

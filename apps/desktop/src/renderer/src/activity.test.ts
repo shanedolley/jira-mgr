@@ -1,5 +1,5 @@
 import type { AdfDoc } from '@jira-mgr/core/adf'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import type { LinkItem, LinkTypeItem, WorklogItem } from '../../shared/ipc'
 import {
@@ -12,8 +12,12 @@ import {
   linkPhrase,
   looksLikeKey,
   newestFirst,
+  readStarted,
   readWorklogForm,
   safeMarkdown,
+  startedParts,
+  startedText,
+  startedValue,
   textFromAdf,
   toInputTime,
   totalSpent,
@@ -263,5 +267,73 @@ describe('formatSize', () => {
     [2_500_000_000, '2.5 GB'],
   ])('%i bytes is %s', (bytes, text) => {
     expect(formatSize(bytes)).toBe(text)
+  })
+})
+
+describe('Started field', () => {
+  const today = '2026-11-02'
+  const zone = process.env.TZ
+
+  afterEach(() => {
+    if (zone === undefined) delete process.env.TZ
+    else process.env.TZ = zone
+  })
+
+  it('shows a date as 10 Nov and a date with a time as 10 Nov, 14:30', () => {
+    expect(startedText('2026-11-10', today)).toBe('10 Nov')
+    expect(startedText('2026-11-10T14:30', today)).toBe('10 Nov, 14:30')
+    expect(startedText('2027-11-10T09:05', today)).toBe('10 Nov 2027, 09:05')
+    expect(startedText('', today)).toBe('')
+  })
+
+  it('splits a form value into day and time, and joins it again', () => {
+    expect(startedParts('2026-11-10')).toEqual({ day: '2026-11-10', time: null })
+    expect(startedParts('2026-11-10T14:30')).toEqual({ day: '2026-11-10', time: '14:30' })
+    expect(startedParts('10 Nov')).toBeNull()
+    for (const value of ['2026-11-10', '2026-11-10T14:30']) {
+      expect(startedValue(startedParts(value) ?? { day: '', time: null })).toBe(value)
+    }
+  })
+
+  it('stores a phrase as the value the native input held', () => {
+    expect(readStarted('yesterday 2pm', today, null, null)).toEqual({
+      day: '2026-11-01',
+      time: '14:00',
+    })
+    expect(readStarted('yesterday', today, '15:45', null)).toEqual({
+      day: '2026-11-01',
+      time: '15:45',
+    })
+    // A new worklog holds a date alone, which logs at the time of day it is submitted.
+    expect(readStarted('yesterday', today, null, null)).toEqual({ day: '2026-11-01', time: null })
+  })
+
+  it.each(['Australia/Sydney', 'America/Los_Angeles', 'UTC', 'Pacific/Auckland'])(
+    'keeps the local time of a phrase through the request to Jira in %s',
+    (zoneName) => {
+      process.env.TZ = zoneName
+      const read = readStarted('yesterday 2pm', today, null, null)
+      const request = readWorklogForm(
+        { timeSpent: '1h', started: startedValue(read ?? { day: '', time: null }), comment: '' },
+        false,
+        new Date(2026, 10, 2, 9, 30),
+      )
+      expect(request.ok).toBe(true)
+      if (!request.ok) return
+      // The instant is UTC, and the same wall time comes back out of it in local time.
+      expect(request.started).toBe(new Date(2026, 10, 1, 14, 0).toISOString())
+      expect(toInputTime(request.started ?? '')).toBe('2026-11-01T14:00')
+    },
+  )
+
+  it('sends the same started for a phrase as for the same date and time typed whole', () => {
+    const typed = readWorklogForm({ timeSpent: '1h', started: '2026-11-01T14:00', comment: '' })
+    const phrase = readStarted('1 Nov, 14:00', today, null, null)
+    const read = readWorklogForm({
+      timeSpent: '1h',
+      started: startedValue(phrase ?? { day: '', time: null }),
+      comment: '',
+    })
+    expect(read).toEqual(typed)
   })
 })

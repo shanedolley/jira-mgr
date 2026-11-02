@@ -97,7 +97,7 @@ The Worklogs section lists each worklog as one line: author, "logged 1h 30m", th
 | Field | Control | Rule |
 |---|---|---|
 | Time spent | text | A duration as typed (`1h 15m`, `1.25 hours`, `90m`), read by `parseDuration` and sent as a Jira duration. An unreadable one shows an error under the field and sends nothing |
-| Started | `date` on add, `datetime-local` on edit | Add defaults to today and starts at that day's time of day when logged; edit keeps its full start. Sent as an instant. Core formats it for Jira |
+| Started | A `DateInput` text field: `10 Nov` on add, `10 Nov, 14:30` on edit (#405) | Add defaults to today and starts at that day's time of day when logged; edit keeps its full start. Sent as an instant. Core formats it for Jira |
 | Comment | text | Optional; one paragraph of ADF. An empty comment sends none |
 
 **adjustEstimate.** Core always sends `adjustEstimate=auto` on add, edit and delete (Q11), so the remaining estimate falls by the time logged, moves by the difference on an edit, and returns on a delete. The form says "Reduces Time remaining by the time logged" and offers no other mode: Q11 chose (a), not (c). The live PSAPAC rule keeps Time remaining (h) equal to the remaining estimate (handover Traps), so after any worklog write the page reads the issue once (`issues:get`) and takes the fresh issue through `applyFreshIssue`, which moves the sidebar's estimate and Time remaining. No list is reloaded.

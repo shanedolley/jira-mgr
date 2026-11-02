@@ -167,7 +167,7 @@ test('sets a due date from the menu with one write', async () => {
   await item(/PSAPAC-4,/).click({ button: 'right' })
 
   await entry('Due date').click()
-  const due = menu().getByRole('textbox', { name: 'Due date' })
+  const due = menu().getByRole('combobox', { name: 'Due date' })
   await expect(due).toBeFocused()
   await due.fill('2026-12-24')
   await window.keyboard.press('Enter')
@@ -182,7 +182,7 @@ test('sets a due date from the menu with a date phrase and keeps the menu open o
   await item(/PSAPAC-4,/).click({ button: 'right' })
 
   await entry('Due date').click()
-  const due = menu().getByRole('textbox', { name: 'Due date' })
+  const due = menu().getByRole('combobox', { name: 'Due date' })
   await due.fill('whenever')
   await window.keyboard.press('Enter')
   await expect(menu()).toBeVisible()
@@ -199,14 +199,46 @@ test('sets a due date from the menu with a date phrase and keeps the menu open o
   expect(await lastBody()).toEqual({ fields: { duedate: '2026-12-24' } })
 })
 
+test('the menu date field suggests the day: a click on it saves and closes the menu', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+  await entry('Due date').click()
+  const due = menu().getByRole('combobox', { name: 'Due date' })
+  await due.fill('next tuesday')
+  await expect(menu().getByRole('option')).toHaveText('Tue 10 Nov 2026')
+  await menu().getByRole('option').click()
+
+  await expect(menu()).toHaveCount(0)
+  await settle(1)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2026-11-10' } })
+})
+
+test('Tab in the menu date field replaces the text, saves it and leaves the menu', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+  await entry('Due date').click()
+  await menu().getByRole('combobox', { name: 'Due date' }).fill('in 3 days')
+  await expect(menu().getByRole('option')).toHaveText('Thu 5 Nov 2026')
+  await window.keyboard.press('Tab')
+
+  await expect(menu()).toHaveCount(0)
+  await settle(1)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2026-11-05' } })
+})
+
 test('Esc in the date field abandons the edit and returns to the menu', async () => {
   await open()
   await item(/PSAPAC-4,/).click({ button: 'right' })
   await entry('Due date').click()
-  await menu().getByRole('textbox', { name: 'Due date' }).fill('2026-12-24')
+  await menu().getByRole('combobox', { name: 'Due date' }).fill('2026-12-24')
 
+  // The first Esc closes the suggestion and keeps the text; the second abandons the edit.
   await window.keyboard.press('Escape')
-  await expect(menu().getByRole('textbox', { name: 'Due date' })).toBeHidden()
+  await expect(menu().getByRole('combobox', { name: 'Due date' })).toHaveValue('2026-12-24')
+  await window.keyboard.press('Escape')
+  await expect(menu().getByRole('combobox', { name: 'Due date' })).toBeHidden()
   await expect(menu()).toBeVisible()
   await expect(entry('Due date')).toBeFocused()
   await window.waitForTimeout(200)
@@ -363,7 +395,7 @@ test('Shift+S, Shift+D, Shift+P, Shift+E and Shift+C open start date, due date, 
 
   await window.keyboard.press('Shift+S')
   await expect(menu()).toBeVisible()
-  await expect(menu().getByRole('textbox', { name: 'Start date' })).toBeFocused()
+  await expect(menu().getByRole('combobox', { name: 'Start date' })).toBeFocused()
   await window.keyboard.press('Escape')
   await window.keyboard.press('Escape')
   await expect(menu()).toHaveCount(0)
@@ -371,7 +403,7 @@ test('Shift+S, Shift+D, Shift+P, Shift+E and Shift+C open start date, due date, 
 
   await window.keyboard.press('Shift+D')
   await expect(menu()).toBeVisible()
-  await expect(menu().getByRole('textbox', { name: 'Due date' })).toBeFocused()
+  await expect(menu().getByRole('combobox', { name: 'Due date' })).toBeFocused()
   await window.keyboard.press('Escape')
   await window.keyboard.press('Escape')
   await expect(menu()).toHaveCount(0)
@@ -661,13 +693,12 @@ for (const [name, field] of [
     await open()
     await item(/PSAPAC-4,/).click({ button: 'right' })
     await entry(name).click()
-    const input = menu().getByRole('textbox', { name: field })
+    const input = menu().getByRole(field.endsWith('date') ? 'combobox' : 'textbox', {
+      name: field,
+    })
     await expect(input).toBeFocused()
 
-    // A date field steps through its day, month and year first, so tab until focus has left it.
-    for (let step = 0; step < 4 && (await menu().count()) > 0; step++) {
-      await window.keyboard.press('Tab')
-    }
+    await window.keyboard.press('Tab')
     await expect(menu()).toHaveCount(0)
     expect(await writes()).toBe(0)
   })

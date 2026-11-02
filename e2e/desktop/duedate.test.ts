@@ -41,7 +41,7 @@ const peek = () => window.getByRole('complementary', { name: 'Peek' })
 const displayButton = () => window.getByRole('button', { name: 'Display', exact: true })
 /** The editor, drawn by the cell editor against the clicked slot. */
 const editor = () => window.getByRole('dialog', { name: 'Due date' })
-const field = () => editor().getByRole('textbox')
+const field = () => editor().getByRole('combobox')
 
 /** PSAPAC-11 has no due date; PSAPAC-40 is overdue (2020-01-02). */
 const EMPTY = /PSAPAC-11,/
@@ -232,6 +232,139 @@ test('a popover closed on a phrase it cannot read sends nothing and says so in a
   expect(await writes()).toBe(before)
 })
 
+const suggestion = () => editor().getByRole('option')
+
+test('a phrase shows a suggestion under the field, and Tab replaces the text with the date and saves it', async () => {
+  // Monday 2 November 2026, in the app's local time (TZ is UTC).
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('next tuesday')
+  await expect(field()).toHaveAttribute('aria-expanded', 'true')
+  await expect(editor().getByRole('listbox')).toBeVisible()
+  await expect(suggestion()).toHaveText('Tue 10 Nov 2026')
+  expect(await writes()).toBe(before)
+
+  await window.keyboard.press('Tab')
+  // Tab ends the edit as Enter does, and the editor reopens on the replaced text.
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2026-11-10')
+  await slot(EMPTY).click()
+  await expect(field()).toHaveValue('10 Nov')
+  await expect(suggestion()).toHaveCount(0)
+})
+
+test('a click on the suggestion replaces the text, saves it and closes the editor', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('1 year')
+  await expect(suggestion()).toHaveText('Tue 2 Nov 2027')
+  await suggestion().click()
+
+  await expect(editor()).toHaveCount(0)
+  await expect(slot(EMPTY)).toHaveAttribute('title', 'Due 2027-11-02 (Shift+D)')
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2027-11-02')
+
+  // The editor shows the date as `d mmm yyyy` for another year, and it reads back as that day.
+  await slot(EMPTY).click()
+  await expect(field()).toHaveValue('2 Nov 2027')
+  await expect(suggestion()).toHaveCount(0)
+})
+
+/** The edit requests the fake received so far, whether or not it has answered them. */
+const bodies = async () => (await counts(app)).editBodies
+
+test('Tab in a cell that already holds a date saves the accepted day with one write and closes the editor', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  // PSAPAC-40 is due 2 Jan 2020, so its editor also holds a Clear button after the field.
+  await slot(FILLED).click()
+  await field().fill('next tuesday')
+  await expect(suggestion()).toHaveText('Tue 10 Nov 2026')
+  await window.keyboard.press('Tab')
+
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  // Nothing more arrives after the first write.
+  await window.waitForTimeout(500)
+  expect((await bodies()).slice(before)).toEqual([{ fields: { duedate: '2026-11-10' } }])
+  expect((await fieldsOf(app, 'PSAPAC-40'))?.duedate).toBe('2026-11-10')
+})
+
+test('Tab in an empty cell editor saves once and closes the editor', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('in 3 days')
+  await window.keyboard.press('Tab')
+
+  await expect(editor()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await settle(before + 1)
+  await window.waitForTimeout(500)
+  expect((await bodies()).slice(before)).toEqual([{ fields: { duedate: '2026-11-05' } }])
+})
+
+test('a click on the suggestion in a cell editor sends one write, not one for each blur and unmount', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('1 year')
+  await suggestion().click()
+
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  await window.waitForTimeout(500)
+  expect((await bodies()).slice(before)).toEqual([{ fields: { duedate: '2027-11-02' } }])
+})
+
+test('Esc closes the suggestion and keeps the text, and a second Esc leaves with nothing sent', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('tomorrow')
+  await expect(suggestion()).toHaveText('Tue 3 Nov 2026')
+  await window.keyboard.press('Escape')
+
+  await expect(suggestion()).toHaveCount(0)
+  await expect(field()).toHaveAttribute('aria-expanded', 'false')
+  await expect(editor()).toBeVisible()
+  await expect(field()).toBeFocused()
+  await expect(field()).toHaveValue('tomorrow')
+
+  // Typing brings it back.
+  await field().fill('tomorrow ')
+  await expect(suggestion()).toHaveText('Tue 3 Nov 2026')
+
+  await window.keyboard.press('Escape')
+  await window.keyboard.press('Escape')
+  await expect(editor()).toHaveCount(0)
+  expect(await writes()).toBe(before)
+})
+
+test('a text that cannot be read has no suggestion', async () => {
+  await open()
+  await slot(EMPTY).click()
+  await field().fill('whenever')
+  await expect(suggestion()).toHaveCount(0)
+  await expect(field()).toHaveAttribute('aria-expanded', 'false')
+})
+
 const refusal = () => notices(window).getByText('Due date not changed')
 
 test('Clear, Esc on Clear and Esc in the field drop an unreadable phrase without a toast', async () => {
@@ -296,6 +429,10 @@ test('Esc drops a typed date: nothing is sent and the slot is as it was', async 
 
   await slot(EMPTY).click()
   await field().fill('2099-01-01')
+  // The first Esc closes the suggestion and keeps the text. The second drops the draft.
+  await window.keyboard.press('Escape')
+  await expect(editor()).toBeVisible()
+  await expect(field()).toHaveValue('2099-01-01')
   await window.keyboard.press('Escape')
 
   await expect(editor()).toHaveCount(0)
@@ -310,7 +447,7 @@ test('Clear removes the date', async () => {
   await expect(slot(FILLED)).toHaveAttribute('data-tone', 'overdue')
 
   await slot(FILLED).click()
-  await expect(field()).toHaveValue('2020-01-02')
+  await expect(field()).toHaveValue('2 Jan 2020')
   await editor().getByRole('button', { name: 'Clear' }).click()
 
   await expect(editor()).toHaveCount(0)
@@ -401,6 +538,29 @@ test('holds its layout with a wide font: the slot keeps its width and the editor
   })
   expect(fits).toEqual({ inside: true, clipped: false })
   expect(await width(EMPTY)).toBe(before)
+
+  // The suggestion is drawn whole inside the window, outside the editor's own box, and does not
+  // cover the editor's field.
+  await field().fill('wednesday')
+  await expect(suggestion()).toBeVisible()
+  const option = await suggestion().evaluate((el) => {
+    const popup = el.parentElement?.getBoundingClientRect()
+    const box = el.getBoundingClientRect()
+    return {
+      inside:
+        box.left >= 0 && box.right <= globalThis.innerWidth && box.bottom <= globalThis.innerHeight,
+      wrapped: box.height > 40,
+      popupTop: popup?.top ?? 0,
+      scrolls: el.parentElement
+        ? el.parentElement.scrollWidth > el.parentElement.clientWidth
+        : true,
+    }
+  })
+  const input = await field().boundingBox()
+  expect(option.inside).toBe(true)
+  expect(option.wrapped).toBe(false)
+  expect(option.scrolls).toBe(false)
+  expect(option.popupTop).toBeGreaterThanOrEqual((input?.y ?? 0) + (input?.height ?? 0))
 })
 
 test('a Sprint page slot opens the editor, saves a date and returns focus to the slot, without opening the issue', async () => {
