@@ -69,6 +69,24 @@ async function settle(expected: number) {
   await expect.poll(async () => (await counts(app)).applied).toBe(expected)
 }
 
+const pending = (name: Name) => row(name).locator('dd')
+
+/**
+ * Waits until the app has stopped reading from Jira. A read that lands after a write can redraw a
+ * field with the date it held before, for a moment, and an Esc pressed then abandons that draft.
+ */
+async function quiet() {
+  const reads = async () => {
+    const c = await counts(app)
+    return c.searches.unresolved + c.searches.done + c.issueReads.length
+  }
+  let last = -1
+  for (let now = await reads(); now !== last; now = await reads()) {
+    last = now
+    await window.waitForTimeout(400)
+  }
+}
+
 /** The fake seeds no start date, so a test of a filled Start date gives PSAPAC-40 one through the Peek. */
 async function seedStart() {
   const first = await writes()
@@ -76,11 +94,10 @@ async function seedStart() {
   await window.keyboard.type('1 Dec 2026')
   await window.keyboard.press('Enter')
   await settle(first + 1)
-  // Jira's answer and the reads after it can each redraw the field, so let them land first.
-  await window.waitForTimeout(500)
+  await expect(pending('Start date')).not.toHaveAttribute('data-pending', 'true')
+  await expect(field('Start date')).toHaveValue('1 Dec')
+  await quiet()
 }
-
-const pending = (name: Name) => row(name).locator('dd')
 
 for (const name of Object.keys(FIELDS) as Name[]) {
   const { jira } = FIELDS[name]
@@ -164,13 +181,24 @@ for (const name of Object.keys(FIELDS) as Name[]) {
     await window.keyboard.press('Enter')
     await expect(row(name)).toContainText('Could not read the date')
     expect(await writes()).toBe(before)
-    // The message is drawn whole in the row, not clipped by it.
+    // The message is drawn whole in the row, not clipped by it, and the label stays level with the field.
     const fits = await row(name).evaluate((el) => {
       const note = el.querySelector('[aria-live]')?.getBoundingClientRect()
       const box = el.getBoundingClientRect()
-      return note !== undefined && note.bottom <= box.bottom + 0.5 && note.height > 0
+      const label = el.querySelector('dt')?.getBoundingClientRect()
+      const input = el.querySelector('input')?.getBoundingClientRect()
+      return {
+        noteInside: note !== undefined && note.bottom <= box.bottom + 0.5 && note.height > 0,
+        grown: box.height > 32,
+        levelOffset:
+          label === undefined || input === undefined
+            ? 99
+            : Math.abs(label.top + label.height / 2 - (input.top + input.height / 2)),
+      }
     })
-    expect(fits).toBe(true)
+    expect(fits.noteInside).toBe(true)
+    expect(fits.grown).toBe(true)
+    expect(fits.levelOffset).toBeLessThanOrEqual(1)
   })
 
   test(`${name}: letters typed in the field reach no shortcut, and Esc leaves the Peek open`, async () => {
@@ -187,6 +215,31 @@ for (const name of Object.keys(FIELDS) as Name[]) {
     await expect(peek()).toBeVisible()
   })
 
+  test(`${name}: Esc with nothing to abandon closes the Peek, as it does outside the field`, async () => {
+    await open(EMPTY)
+    const first = await writes()
+
+    // A saved date leaves focus in the field, and the next Esc is the Peek's.
+    await field(name).click()
+    await window.keyboard.type('2 Feb 2027')
+    await window.keyboard.press('Enter')
+    await settle(first + 1)
+    await quiet()
+    await expect(field(name)).toBeFocused()
+    await window.keyboard.press('Escape')
+    await expect(peek()).toHaveCount(0)
+
+    // So is the Esc after a draft was abandoned: the first drops the draft, the second closes.
+    await peekRow(item(EMPTY))
+    await expect(peek()).toBeVisible()
+    await field(name).focus()
+    await window.keyboard.type('jkosdyu')
+    await window.keyboard.press('Escape')
+    await expect(peek()).toBeVisible()
+    await window.keyboard.press('Escape')
+    await expect(peek()).toHaveCount(0)
+  })
+
   test(`${name}: an emptied field clears the date`, async () => {
     await open(FILLED)
     if (name === 'Start date') {
@@ -194,6 +247,8 @@ for (const name of Object.keys(FIELDS) as Name[]) {
     }
     const before = await writes()
 
+    // The optimistic patch redraws the field (its `key` is the date) about 15ms after Enter, and
+    // a key that lands in that window hits the node the redraw replaces, so retry the clearing.
     await expect(async () => {
       await field(name).focus()
       await window.keyboard.press('ControlOrMeta+a')
@@ -221,6 +276,16 @@ for (const name of Object.keys(FIELDS) as Name[]) {
     const alert = notices(window).getByRole('alert')
     await expect(alert).toContainText(`${name} not changed`)
     await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
+    // One write went out, and the issue holds no date: the fake refused it.
+    await window.waitForTimeout(300)
+    expect(await writes()).toBe(before + 1)
+    expect((await bodies()).slice(before)).toHaveLength(1)
+    expect((await fieldsOf(app, 'PSAPAC-11'))?.[jira]).toBeNull()
+    // The patch is rolled back, so the saved date is not shown. Whether the field then reads empty
+    // or keeps the typed phrase depends on whether the patch redrew it before the rollback did,
+    // as on the issue page; either way the date is not kept.
+    await expect.poll(() => field(name).inputValue()).toMatch(/^(|next tuesday)$/)
+    await expect(pending(name)).not.toHaveAttribute('data-pending', 'true')
   })
 }
 
@@ -243,6 +308,7 @@ for (const wide of [false, true]) {
         content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
       })
     }
+    // 720px is below the app's minWidth of 900, as a 1440px window at 200% zoom is, so it is stricter than a plain resize.
     await resize(720)
     await window.mouse.move(2, 2)
     await item(EMPTY).hover({ position: { x: 100, y: 10 } })
@@ -281,6 +347,8 @@ for (const wide of [false, true]) {
       expect(found.option.left).toBeGreaterThanOrEqual(0)
       expect(found.option.right).toBeLessThanOrEqual(found.windowWidth)
       expect(found.option.top).toBeGreaterThanOrEqual(found.input.bottom)
+      expect(found.clipped).toBe(false)
+      expect(found.clipped).toBe(false)
       expect(found.option.height).toBeLessThanOrEqual(40)
       expect(found.scrolls).toBe(false)
       await window.keyboard.press('Escape')

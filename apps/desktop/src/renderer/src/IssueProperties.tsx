@@ -183,6 +183,8 @@ export function TextField({
       // An unreadable date keeps its field and its message, so the Enter goes no further.
       if (!commit()) event.stopPropagation()
     } else if (event.key === 'Escape') {
+      // A date with nothing to abandon lets Esc go on, to the page or the Peek, as if the field had no focus.
+      if (isDate && draft === shown && !unread) return
       // The page's own Esc is for leaving, and this one only abandons the edit.
       event.stopPropagation()
       sent.current = null
@@ -203,6 +205,8 @@ export function TextField({
         label={label}
         anchor={suggestUnder}
         aria-keyshortcuts={shortcut}
+        // Marks a field whose Esc goes on to the page or the Peek when it has nothing to abandon.
+        data-esc-passes
         maxLength={maxLength ?? 100}
         data-autofocus={autofocus || undefined}
         placeholder={placeholder}

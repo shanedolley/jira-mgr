@@ -321,6 +321,16 @@ describe('Esc', () => {
     }
   })
 
+  it('goes on from a date field that has nothing to abandon, unless a popover or dialog holds it', () => {
+    const date = inside('input', '[role="combobox"]', '[data-esc-passes]')
+    expect(resolveKey(key('Escape'), date)).toBe('escape')
+    expect(resolveKey(key('Escape', { defaultPrevented: true }), date)).toBeNull()
+    expect(resolveKey(key('Escape'), inside('input', '[data-esc-passes]', '[popover]'))).toBeNull()
+    expect(resolveKey(key('Escape'), inside('input', '[data-esc-passes]', 'dialog'))).toBeNull()
+    // Only Esc: a letter typed in the field is still the field's.
+    expect(resolveKey(key('j'), inside('input', '[data-esc-passes]', SCOPE))).toBeNull()
+  })
+
   it('skips an Esc the Tree or the page already handled', () => {
     expect(resolveKey(key('Escape', { defaultPrevented: true }), nowhere)).toBeNull()
   })

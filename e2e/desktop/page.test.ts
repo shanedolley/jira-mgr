@@ -69,6 +69,22 @@ async function openPage(row: RegExp, title: string) {
 const writes = async () => (await counts(app)).edits
 const lastBody = async () => (await counts(app)).editBodies.at(-1)
 
+/**
+ * Waits until the app has stopped reading from Jira. A read that lands after a write can redraw a
+ * field with the date it held before, for a moment, and an Esc pressed then abandons that draft.
+ */
+async function quiet() {
+  const reads = async () => {
+    const c = await counts(app)
+    return c.searches.unresolved + c.searches.done + c.issueReads.length
+  }
+  let last = -1
+  for (let now = await reads(); now !== last; now = await reads()) {
+    last = now
+    await window.waitForTimeout(400)
+  }
+}
+
 /** Waits for the write to arrive, then lets the fake Jira answer it. */
 async function settle(expected: number) {
   await expect.poll(writes).toBe(expected)
@@ -571,6 +587,30 @@ test('saves a date when focus leaves the field, clears it, and abandons an edit 
   await window.keyboard.press('Enter')
   await settle(3)
   expect(await lastBody()).toEqual({ fields: { customfield_4: '2026-10-12' } })
+})
+
+test('one Esc in a date field with nothing to abandon leaves the page, after a saved date and on a fresh field', async () => {
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  const due = props().getByLabel('Due date')
+
+  // Typed key by key, as a person does, then saved with Enter: focus stays in the field.
+  await due.click()
+  await window.keyboard.type('2 Feb 2027')
+  await window.keyboard.press('Enter')
+  await settle(1)
+  await quiet()
+  await expect(due).toHaveValue(dayText('2027-02-02'))
+  await expect(due).toBeFocused()
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
+
+  // A field focused and left as it was has nothing to abandon either.
+  await peekRow(item(/PSAPAC-4,/))
+  await window.keyboard.press('Enter')
+  await expect(heading('Migrate the dashboards')).toBeVisible()
+  await props().getByLabel('Start date').focus()
+  await window.keyboard.press('Escape')
+  await expect(issuePage()).toHaveCount(0)
 })
 
 test('sends a date once when Enter is followed at once by leaving the field', async () => {

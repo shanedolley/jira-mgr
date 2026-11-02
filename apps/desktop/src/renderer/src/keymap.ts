@@ -82,6 +82,14 @@ export function keepsLetters(target: KeyTarget | null): boolean {
 }
 
 /**
+ * Whether the target is a date field that lets Esc go on. Such a field stops an Esc it needs for
+ * its own edit, so one that arrives has nothing to abandon, and outside a popover or dialog it
+ * acts as if the field had no focus: the Peek closes.
+ */
+const passesEsc = (target: KeyTarget | null) =>
+  inside(target, '[data-esc-passes]') && !inside(target, '[popover], dialog')
+
+/**
  * The letters that mean something else with Shift: start date, due date, parent, original
  * estimate, sprint, the issue page and Log work. With Shift these never fall through to `S`, `D`,
  * `P`, `E`, `C`, `O` and `T`.
@@ -146,7 +154,8 @@ export function resolveKey(event: KeyEvent, target: KeyTarget | null): Command |
     if (key === 'z') return keepsLetters(target) ? null : 'undo'
     return null
   }
-  if (event.repeat || keepsLetters(target)) return null
+  if (event.repeat) return null
+  if (keepsLetters(target) && !(key === 'escape' && passesEsc(target))) return null
   if (key === 'escape') return 'escape'
   if (key === '/') return 'filter'
   if (key === '?') return 'help'
