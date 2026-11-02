@@ -8,6 +8,9 @@ import { useNotify } from './notify'
 import { useIssueChange } from './PropertyPickers'
 import { datePatch } from './properties'
 
+/** The draft as the toast quotes it: at most 40 characters. */
+const quoted = (draft: string) => (draft.length > 40 ? `${draft.slice(0, 40)}...` : draft)
+
 interface DateEditorProps {
   issue: Issue
   /** The date the editor sets: the due date or the start date. */
@@ -69,7 +72,7 @@ export function DateEditor({ issue, field, label, cell }: DateEditorProps) {
             if (!cleared.current) {
               notify({
                 title: `${label} not changed`,
-                notes: [`Could not read "${draft}" as a date.`],
+                notes: [`Could not read "${quoted(draft)}" as a date.`],
                 warned: true,
               })
             }

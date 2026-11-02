@@ -59,6 +59,11 @@ describe('parseDateInput', () => {
     ['1 year', '2028-02-29', '2029-02-28'],
     ['2 years', '2028-02-29', '2030-02-28'],
     ['1 month', '2026-11-30', '2026-12-30'],
+    ['1 month from now', '2027-01-31', '2027-02-28'],
+    ['in 1 month 3 days', '2027-01-31', '2027-03-03'],
+    ['in 1 month 1 week', '2027-01-31', '2027-03-07'],
+    ['last year', '2028-02-29', '2027-02-28'],
+    ['1 year ago', '2028-02-29', '2027-02-28'],
   ])('stops %s from %s at the end of a shorter month: %s', (text, today, day) => {
     expect(parseDateInput(text, today)).toBe(day)
   })
@@ -71,6 +76,28 @@ describe('parseDateInput', () => {
     ['thurs', '2026-11-05'],
   ])('reads the weekday %s as the next one, %s', (text, day) => {
     expect(parseDateInput(text, MONDAY)).toBe(day)
+  })
+
+  it.each([
+    ['mon.', '2026-11-09'],
+    ['wed.', '2026-11-04'],
+    ['tue.', '2026-11-03'],
+  ])('reads the abbreviated weekday %s as %s', (text, day) => {
+    expect(parseDateInput(text, MONDAY)).toBe(day)
+  })
+
+  it('reads a month name with a stop as the month', () => {
+    expect(parseDateInput('march.', MONDAY)).toBe(parseDateInput('march', MONDAY))
+  })
+
+  it('leaves a day of a month phrase alone', () => {
+    expect(parseDateInput('5th of next month', '2027-01-31')).not.toBe('2027-02-28')
+  })
+
+  // Chrono maps a two-digit or 00xx year itself. Pinned so an upgrade cannot change it silently.
+  it('reads the year of 10/11/0050 as 2050 and of 1/1/99 as 1999', () => {
+    expect(parseDateInput('10/11/0050', MONDAY)).toBe('2050-11-10')
+    expect(parseDateInput('1/1/99', MONDAY)).toBe('1999-01-01')
   })
 
   it('reads the day of a leap year', () => {

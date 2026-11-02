@@ -232,6 +232,50 @@ test('a popover closed on a phrase it cannot read sends nothing and says so in a
   expect(await writes()).toBe(before)
 })
 
+const refusal = () => notices(window).getByText('Due date not changed')
+
+test('Clear, Esc on Clear and Esc in the field drop an unreadable phrase without a toast', async () => {
+  await open()
+  const before = await writes()
+
+  // Esc in the field.
+  await slot(EMPTY).click()
+  await field().fill('whenever')
+  await window.keyboard.press('Escape')
+  await expect(editor()).toHaveCount(0)
+
+  // Esc on Clear.
+  await slot(FILLED).click()
+  await field().fill('whenever')
+  await editor().getByRole('button', { name: 'Clear' }).focus()
+  await window.keyboard.press('Escape')
+  await expect(editor()).toHaveCount(0)
+  expect(await writes()).toBe(before)
+
+  // Clear itself.
+  await slot(FILLED).click()
+  await field().fill('whenever')
+  await editor().getByRole('button', { name: 'Clear' }).click()
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-40'))?.duedate).toBeNull()
+  await expect(refusal()).toHaveCount(0)
+})
+
+test('a readable phrase closed by a press outside the editor saves and raises no toast', async () => {
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('24/12/2099')
+  await item(/PSAPAC-10,/).click({ position: { x: 40, y: 8 } })
+
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2099-12-24')
+  await expect(refusal()).toHaveCount(0)
+})
+
 test('Esc drops a typed date: nothing is sent and the slot is as it was', async () => {
   await open()
   const before = await writes()

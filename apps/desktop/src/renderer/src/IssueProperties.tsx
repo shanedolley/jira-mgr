@@ -194,7 +194,7 @@ export function TextField({
           spellCheck={isDate ? false : undefined}
           aria-label={label}
           aria-keyshortcuts={shortcut}
-          maxLength={maxLength}
+          maxLength={maxLength ?? (isDate ? 100 : undefined)}
           data-autofocus={autofocus || undefined}
           aria-invalid={invalid || unread || undefined}
           aria-describedby={isDate ? noteId : undefined}

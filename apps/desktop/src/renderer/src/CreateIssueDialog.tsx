@@ -122,6 +122,8 @@ const REQUIRED = 'Required'
 
 type DateField = 'startDate' | 'dueDate'
 const DATE_FIELDS: readonly DateField[] = ['startDate', 'dueDate']
+/** The longest phrase a date chip takes. */
+const DATE_TEXT_MAX = 100
 const DATE_NAMES: Record<DateField, string> = { startDate: 'Start date', dueDate: 'Due date' }
 
 /** A chip's property name, muted before its value. */
@@ -751,6 +753,7 @@ export function CreateIssueDialog({
                         type="text"
                         autoComplete="off"
                         spellCheck={false}
+                        maxLength={DATE_TEXT_MAX}
                         placeholder="None"
                         aria-label={DATE_NAMES[field]}
                         aria-invalid={shown || undefined}
@@ -761,6 +764,15 @@ export function CreateIssueDialog({
                         }}
                         onBlur={() => {
                           markUnread(field, unreadDate(field))
+                        }}
+                        onKeyDown={(event) => {
+                          // Create is disabled while the phrase is unreadable, so Enter would submit nothing.
+                          if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
+                            if (unreadDate(field)) {
+                              event.preventDefault()
+                              markUnread(field, true)
+                            }
+                          }
                         }}
                         className="field-sizing-content min-w-16 max-w-40 bg-transparent focus-visible:outline-none"
                       />

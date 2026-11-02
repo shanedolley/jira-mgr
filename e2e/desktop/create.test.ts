@@ -439,17 +439,25 @@ test('the date chips stay inside the dialog in a wide font', async () => {
   await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
+  const measure = () =>
+    dialog().evaluate((el) => {
+      const right = el.getBoundingClientRect().right
+      const outside = [...el.querySelectorAll('label:has(input[aria-label$=" date"]) *')].filter(
+        (child) => child.getBoundingClientRect().right > right + 1,
+      )
+      return { overflow: el.scrollWidth - el.clientWidth, outside: outside.length }
+    })
   await dialog().getByLabel('Start date').fill('2026-10-01')
   await dialog().getByLabel('Due date').fill('2026-10-14')
+  expect(await measure()).toEqual({ overflow: 0, outside: 0 })
 
-  const box = await dialog().evaluate((el) => {
-    const right = el.getBoundingClientRect().right
-    const outside = [...el.querySelectorAll('label:has(input[aria-label$=" date"]) *')].filter(
-      (child) => child.getBoundingClientRect().right > right + 1,
-    )
-    return { overflow: el.scrollWidth - el.clientWidth, outside: outside.length }
-  })
-  expect(box).toEqual({ overflow: 0, outside: 0 })
+  // With a phrase and its preview, and with a phrase the chip could not read.
+  await dialog().getByLabel('Start date').fill('10/11/2026')
+  await dialog().getByLabel('Due date').fill('whenever')
+  await dialog().getByLabel('Summary').focus()
+  await expect(dialog()).toContainText('Tue 10 Nov 2026')
+  await expect(dialog()).toContainText('Could not read the date')
+  expect(await measure()).toEqual({ overflow: 0, outside: 0 })
 })
 
 test('a date that cannot be read blocks the create and says which, until it is fixed or cleared', async () => {
@@ -765,6 +773,12 @@ test('a date phrase that cannot be read blocks Create while it is typed, and its
 
   await due.fill('whenever')
   await expect(create).toBeDisabled()
+  // Plain Enter cannot submit a disabled form, so the chip itself says why.
+  await expect(due).not.toHaveAttribute('aria-invalid')
+  await window.keyboard.press('Enter')
+  await expect(due).toHaveAttribute('aria-invalid', 'true')
+  await expect(due).toBeFocused()
+  expect((await counts(app)).edits).toBe(0)
   await dialog().getByLabel('Summary').focus()
   const note = await due.getAttribute('aria-describedby')
   expect(note).not.toBeNull()

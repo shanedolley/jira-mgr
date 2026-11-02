@@ -11,8 +11,20 @@ const WEEKDAY_ONLY = /^(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*$/i
 const MONTH_THEN_DAY = /^([a-z]{3,9})\.?\s+(\d{1,2})$/i
 /** `3 weeks`, which chrono reads only after `in`. */
 const BARE_SPAN = /^(\d+|an?)\s*(day|week|month|year)s?$/i
-/** A span of months or years, which lands past the end of a shorter month. */
-const MONTH_SPAN = /^(?:in\s+)?(?:\d+|an?|next|last)\s*(?:month|year)s?(?:\s+ago)?$/i
+/** A phrase made only of spans, such as `in 1 month 3 days` or `1 year from now`. */
+const SPANS =
+  /^(?:in\s+)?(?:(?:\d+|an?|next|last)\s*(?:day|week|month|year)s?\s*(?:and\s+)?)+(?:ago|from now)?$/i
+const MONTH_UNIT = /\b(?:month|year)s?\b/i
+const DAY_UNITS = /(\d+)\s*(day|week)s?/gi
+
+/** The days the day and week units of a span add, negative for `ago`. */
+function spanDays(phrase: string): number {
+  let days = 0
+  for (const [, count = '0', unit = ''] of phrase.matchAll(DAY_UNITS)) {
+    days += Number(count) * (unit.toLowerCase() === 'week' ? 7 : 1)
+  }
+  return /\bago\b/i.test(phrase) ? -days : days
+}
 
 /**
  * The day a typed phrase names, as `YYYY-MM-DD`, or `null` when it is not a date. `today` is the
@@ -40,8 +52,18 @@ export function parseDateInput(text: string, today: string): string | null {
   const year = start.get('year') ?? 0
   if (year < 1000) return null
   const picked = new Date(year, (start.get('month') ?? 1) - 1, start.get('day') ?? 0, 12)
-  // `1 month` from 31 January runs past February: it means the last day of February.
-  if (MONTH_SPAN.test(phrase) && picked.getDate() < d) picked.setDate(0)
+  if (SPANS.test(phrase) && MONTH_UNIT.test(phrase)) {
+    // `1 month` from 31 January runs past February: it means the last day of February, and the
+    // days after the month span (`1 month 3 days`) count from there.
+    const extra = spanDays(phrase)
+    const span = new Date(picked)
+    span.setDate(span.getDate() - extra)
+    if (span.getDate() < d) {
+      span.setDate(0)
+      span.setDate(span.getDate() + extra)
+      picked.setTime(span.getTime())
+    }
+  }
   // Chrono answers today for `monday` on a Monday, where the next Monday is meant.
   if (weekday && dayKey(picked) === dayKey(instant)) {
     picked.setDate(picked.getDate() + 7)
