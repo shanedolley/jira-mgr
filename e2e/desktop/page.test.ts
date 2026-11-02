@@ -1194,7 +1194,7 @@ test('the issue page suggests the day under the field: Esc keeps the text, Tab a
   expect(await lastBody()).toEqual({ fields: { duedate: '2027-11-02' } })
 })
 
-test('a click on a date field selects its date, so a phrase typed over it saves on Tab', async () => {
+test('a click on a date field selects its date, so a phrase typed over it saves on Tab, and a second click places the caret', async () => {
   await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
   await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
   const due = props().getByLabel('Due date')
@@ -1212,4 +1212,12 @@ test('a click on a date field selects its date, so a phrase typed over it saves 
   await expect(due).toHaveValue('13 Nov')
   await settle(2)
   expect(await lastBody()).toEqual({ fields: { duedate: '2026-11-13' } })
+
+  // Focus selects the date; a second click in the focused field places the caret, to edit one character.
+  const selection = () =>
+    due.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd])
+  await due.click()
+  await expect.poll(selection).toEqual([0, 6])
+  await due.click({ position: { x: 14, y: 10 } })
+  await expect.poll(async () => new Set(await selection()).size).toBe(1)
 })
