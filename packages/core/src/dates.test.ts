@@ -49,6 +49,30 @@ describe('parseDateInput', () => {
     expect(parseDateInput('1 month', end)).toBe('2027-01-30')
   })
 
+  it.each([
+    ['1 month', '2027-01-31', '2027-02-28'],
+    ['1 month', '2028-01-31', '2028-02-29'],
+    ['in 2 months', '2026-12-31', '2027-02-28'],
+    ['3 months', '2026-01-31', '2026-04-30'],
+    ['next month', '2026-10-31', '2026-11-30'],
+    ['1 month ago', '2026-03-31', '2026-02-28'],
+    ['1 year', '2028-02-29', '2029-02-28'],
+    ['2 years', '2028-02-29', '2030-02-28'],
+    ['1 month', '2026-11-30', '2026-12-30'],
+  ])('stops %s from %s at the end of a shorter month: %s', (text, today, day) => {
+    expect(parseDateInput(text, today)).toBe(day)
+  })
+
+  it.each([
+    ['fri.', '2026-11-06'],
+    ['Fri', '2026-11-06'],
+    ['tues', '2026-11-03'],
+    ['weds', '2026-11-04'],
+    ['thurs', '2026-11-05'],
+  ])('reads the weekday %s as the next one, %s', (text, day) => {
+    expect(parseDateInput(text, MONDAY)).toBe(day)
+  })
+
   it('reads the day of a leap year', () => {
     expect(parseDateInput('29/02/2028', MONDAY)).toBe('2028-02-29')
     expect(parseDateInput('29/02/2027', MONDAY)).toBeNull()

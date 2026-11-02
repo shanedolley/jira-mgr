@@ -5,6 +5,7 @@ import type { EditorDoc } from '@jira-mgr/core/adf'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -199,7 +200,8 @@ export function CreateIssueDialog({
     dueDate: draft.dueDate,
   }))
   // The date chips whose text could not be read when focus left them.
-  const [halfDates, setHalfDates] = useState<ReadonlySet<DateField>>(new Set())
+  const noteIds: Record<DateField, string> = { startDate: useId(), dueDate: useId() }
+  const [unreadDates, setUnreadDates] = useState<ReadonlySet<DateField>>(new Set())
   const rules = typeRules(draft.type)
 
   const [parentQuery, setParentQuery] = useState('')
@@ -235,10 +237,11 @@ export function CreateIssueDialog({
     setDraft((d) => (d.assignee?.accountId === meUser.accountId ? d : { ...d, assignee: meUser }))
   }, [meUser])
 
-  const halfTyped = DATE_FIELDS.filter((field) => halfDates.has(field))
+  // Create waits at once for a phrase that means no day; the chip turns red once focus has left it.
+  const unreadFields = DATE_FIELDS.filter(unreadDate)
   const missing = [
     ...missingFields(draft),
-    ...halfTyped.map((field) => `a readable ${DATE_NAMES[field]}`),
+    ...unreadFields.map((field) => `a readable ${DATE_NAMES[field]}`),
   ]
   const estimateBad = missingKeys(draft).includes('estimate')
   const pending = create.isPending || attaching
@@ -266,14 +269,14 @@ export function CreateIssueDialog({
     const day = text.trim() === '' ? '' : (parseDateInput(text, today) ?? '')
     setDateText((typed) => ({ ...typed, [field]: text }))
     edit({ [field]: day })
-    if (day !== '' || text.trim() === '') setDateHalf(field, false)
+    if (day !== '' || text.trim() === '') markUnread(field, false)
   }
 
-  function setDateHalf(field: DateField, half: boolean) {
-    setHalfDates((held) => {
-      if (held.has(field) === half) return held
+  function markUnread(field: DateField, unread: boolean) {
+    setUnreadDates((held) => {
+      if (held.has(field) === unread) return held
       const next = new Set(held)
-      if (half) next.add(field)
+      if (unread) next.add(field)
       else next.delete(field)
       return next
     })
@@ -283,10 +286,10 @@ export function CreateIssueDialog({
     event?.preventDefault()
     if (pending) return
     // Cmd+Enter can come from a chip that has not lost focus yet, so read the text itself.
-    const half = DATE_FIELDS.find(unreadDate)
-    if (half !== undefined) {
-      setDateHalf(half, true)
-      dateRefs.current[half]?.focus()
+    const unread = DATE_FIELDS.find(unreadDate)
+    if (unread !== undefined) {
+      markUnread(unread, true)
+      dateRefs.current[unread]?.focus()
       return
     }
     const args = toCreateArgs(draft)
@@ -413,9 +416,11 @@ export function CreateIssueDialog({
     onCreated(result, notice, more, failedFiles)
     if (more) {
       setLast(notice)
-      setDraft(nextDraft(sent))
-      setDateText({ startDate: '', dueDate: '' })
-      setHalfDates(new Set())
+      // The dates stay for the next issue, so the chips keep showing them.
+      const next = nextDraft(sent)
+      setDraft(next)
+      setDateText({ startDate: next.startDate, dueDate: next.dueDate })
+      setUnreadDates(new Set())
       setFiles([])
       setTouched(false)
     }
@@ -725,12 +730,18 @@ export function CreateIssueDialog({
                   </label>
                 )}
                 {DATE_FIELDS.map((field) => {
-                  const half = halfDates.has(field)
+                  const shown = unreadDates.has(field)
                   const day = draft[field]
+                  const preview =
+                    shown && unreadDate(field)
+                      ? 'Could not read the date'
+                      : day !== '' && dateText[field].trim() !== day
+                        ? describeDate(day)
+                        : ''
                   return (
                     <label
                       key={field}
-                      className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${half ? 'border-danger' : 'border-field-border'}`}
+                      className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${shown ? 'border-danger' : 'border-field-border'}`}
                     >
                       <ChipName>{field === 'startDate' ? 'Start' : 'Due'}</ChipName>
                       <input
@@ -742,19 +753,24 @@ export function CreateIssueDialog({
                         spellCheck={false}
                         placeholder="None"
                         aria-label={DATE_NAMES[field]}
-                        aria-invalid={half || undefined}
+                        aria-invalid={shown || undefined}
+                        aria-describedby={noteIds[field]}
                         value={dateText[field]}
                         onChange={(event) => {
                           typeDate(field, event.target.value)
                         }}
                         onBlur={() => {
-                          setDateHalf(field, unreadDate(field))
+                          markUnread(field, unreadDate(field))
                         }}
                         className="field-sizing-content min-w-16 max-w-40 bg-transparent focus-visible:outline-none"
                       />
-                      {day !== '' && dateText[field].trim() !== day && (
-                        <span className="text-muted">{describeDate(day)}</span>
-                      )}
+                      <span
+                        id={noteIds[field]}
+                        aria-live="polite"
+                        className={`empty:hidden ${shown ? 'text-danger' : 'text-muted'}`}
+                      >
+                        {preview}
+                      </span>
                     </label>
                   )
                 })}

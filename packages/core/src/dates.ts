@@ -11,18 +11,25 @@ const WEEKDAY_ONLY = /^(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*$/i
 const MONTH_THEN_DAY = /^([a-z]{3,9})\.?\s+(\d{1,2})$/i
 /** `3 weeks`, which chrono reads only after `in`. */
 const BARE_SPAN = /^(\d+|an?)\s*(day|week|month|year)s?$/i
+/** A span of months or years, which lands past the end of a shorter month. */
+const MONTH_SPAN = /^(?:in\s+)?(?:\d+|an?|next|last)\s*(?:month|year)s?(?:\s+ago)?$/i
 
 /**
  * The day a typed phrase names, as `YYYY-MM-DD`, or `null` when it is not a date. `today` is the
  * reference day, `YYYY-MM-DD`. Day comes before month (`10/11/2026` is 10 November), `next
  * tuesday` is the Tuesday of next week, a bare weekday is the next one after today, and `3 weeks`
- * is today plus 21 days. The whole phrase must read as one date.
+ * is today plus 21 days. A span of months or years stops at the end of a shorter month: `1 month`
+ * from 31 January is 28 February. The whole phrase must read as one date.
  */
 export function parseDateInput(text: string, today: string): string | null {
   const input = Text.safeParse(text)
   const reference = Day.safeParse(today)
   if (!input.success || !reference.success) return null
-  const phrase = input.data.replace(MONTH_THEN_DAY, '$2 $1').replace(BARE_SPAN, 'in $1 $2')
+  const phrase = input.data
+    .replace(/^(tue|wed)s?\.?$/i, '$1')
+    .replace(/^([a-z]{3,9})\.$/i, '$1')
+    .replace(MONTH_THEN_DAY, '$2 $1')
+    .replace(BARE_SPAN, 'in $1 $2')
   const weekday = WEEKDAY_ONLY.test(phrase)
   // Noon, so a daylight-saving shift never moves the day.
   const [y = 0, m = 1, d = 1] = reference.data.split('-').map(Number)
@@ -30,12 +37,11 @@ export function parseDateInput(text: string, today: string): string | null {
   const found = chrono.en.GB.parse(phrase, instant, { forwardDate: weekday })[0]
   if (found?.index !== 0 || found.text.length !== phrase.length) return null
   const { start } = found
-  const picked = new Date(
-    start.get('year') ?? 0,
-    (start.get('month') ?? 1) - 1,
-    start.get('day') ?? 0,
-    12,
-  )
+  const year = start.get('year') ?? 0
+  if (year < 1000) return null
+  const picked = new Date(year, (start.get('month') ?? 1) - 1, start.get('day') ?? 0, 12)
+  // `1 month` from 31 January runs past February: it means the last day of February.
+  if (MONTH_SPAN.test(phrase) && picked.getDate() < d) picked.setDate(0)
   // Chrono answers today for `monday` on a Monday, where the next Monday is meant.
   if (weekday && dayKey(picked) === dayKey(instant)) {
     picked.setDate(picked.getDate() + 7)

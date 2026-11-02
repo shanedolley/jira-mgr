@@ -105,6 +105,7 @@ The Keychain item has service `jira-mgr` and the email as account. Every call go
 - Day comes before month: `10/11/2026` is 10 November.
 - `next tuesday` is the Tuesday of next week (Monday 2 November gives 10 November). A bare weekday is the next one after today: `tuesday` gives 3 November, and `monday` on a Monday gives the next Monday.
 - A bare span counts from today: `3 weeks` is today plus 21 days, and `2 days`, `1 month` and `a week` read the same way.
+- A span of months or years stops at the end of a shorter month: `1 month` from 31 January is 28 February, `in 2 months` from 31 December is 28 February, and `1 year` from 29 February 2028 is 28 February 2029.
 - `nov 10` reads as 10 November this year. The text must read as a single date, so `10/11/2026abc` and `tomorrow and then some` give `null`.
 
 The CLI still takes ISO dates only.

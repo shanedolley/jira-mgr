@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import type { CellMode } from './cell'
 import { closePopover, CellPopover } from './CellPopover'
 import { TextField } from './IssueProperties'
+import { useNotify } from './notify'
 import { useIssueChange } from './PropertyPickers'
 import { datePatch } from './properties'
 
@@ -22,10 +23,12 @@ interface DateEditorProps {
  * `dd/mm/yyyy`, shows the day it means, and saves on Enter or when focus leaves it. Enter closes
  * the popover, except on a phrase the field cannot read, which stays with its message. Nothing is
  * sent while the phrase is typed. Esc drops the draft and closes. A popover that closes some other
- * way, such as a scroll, sends a changed draft as it goes.
+ * way, such as a scroll, sends a changed draft as it goes, or drops one it cannot read and says so
+ * in a toast.
  */
 export function DateEditor({ issue, field, label, cell }: DateEditorProps) {
   const change = useIssueChange(issue)
+  const notify = useNotify()
   const date = issue[field] ?? ''
   // Set by Clear, or by Esc on it, so the draft left in the field is not sent as the editor goes.
   const cleared = useRef(false)
@@ -61,6 +64,16 @@ export function DateEditor({ issue, field, label, cell }: DateEditorProps) {
           autofocus
           commitOnUnmount
           onCommit={send}
+          onUnreadable={(draft) => {
+            // Clear and Esc on it drop the draft on purpose; any other close would lose it unheard.
+            if (!cleared.current) {
+              notify({
+                title: `${label} not changed`,
+                notes: [`Could not read "${draft}" as a date.`],
+                warned: true,
+              })
+            }
+          }}
         />
         {date !== '' && (
           <button

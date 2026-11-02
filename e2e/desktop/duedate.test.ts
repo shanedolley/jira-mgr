@@ -217,6 +217,21 @@ test('a phrase that cannot be read saves nothing, keeps the editor open and says
   expect(await writes()).toBe(before)
 })
 
+test('a popover closed on a phrase it cannot read sends nothing and says so in a toast', async () => {
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('whenever')
+  // A press on another row blurs the field and closes the editor, and the draft goes with it.
+  await item(/PSAPAC-10,/).click({ position: { x: 40, y: 8 } })
+
+  await expect(editor()).toHaveCount(0)
+  await expect(notices(window)).toContainText('Due date not changed')
+  await expect(notices(window)).toContainText('Could not read "whenever" as a date.')
+  expect(await writes()).toBe(before)
+})
+
 test('Esc drops a typed date: nothing is sent and the slot is as it was', async () => {
   await open()
   const before = await writes()
@@ -397,8 +412,7 @@ test('Esc on Clear writes nothing, even after a date was typed', async () => {
 
   await due('PSAPAC-40', '2020-01-02').click()
   await field().fill('2099-05-06')
-  // One Tab only reaches the next segment of the date field, so move focus to Clear directly: the
-  // field's blur still names Clear as `relatedTarget`.
+  // Move focus to Clear directly: the field's blur still names Clear as `relatedTarget`.
   await editor().getByRole('button', { name: 'Clear' }).focus()
   await expect(editor().getByRole('button', { name: 'Clear' })).toBeFocused()
   await window.keyboard.press('Escape')

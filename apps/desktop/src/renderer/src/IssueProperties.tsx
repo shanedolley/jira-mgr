@@ -4,6 +4,7 @@ import { formatEstimate, parseEstimate, propertyRules } from '@jira-mgr/core/iss
 import {
   useEffect,
   useEffectEvent,
+  useId,
   useRef,
   useState,
   type KeyboardEvent,
@@ -46,7 +47,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const FIELD =
-  'peer h-7 w-full min-w-0 rounded-md border border-field-border bg-transparent px-2 hover:bg-hover focus:bg-canvas disabled:opacity-60'
+  'h-7 w-full min-w-0 rounded-md border border-field-border bg-transparent px-2 hover:bg-hover focus:bg-canvas disabled:opacity-60'
 
 /** The read-only rows follow the editable ones after an 8px gap. */
 function ReadOnly({ children }: { children: ReactNode }) {
@@ -93,6 +94,8 @@ interface TextFieldProps {
   autofocus?: boolean
   /** Sends a changed draft when the field unmounts without a blur, as a popover closed by a scroll does. */
   commitOnUnmount?: boolean
+  /** Called with a date draft that cannot be read when the field unmounts, so the user hears that nothing saved. */
+  onUnreadable?: (draft: string) => void
 }
 
 /** A field that edits locally and saves on Enter or when focus leaves, and reverts on Esc. */
@@ -109,13 +112,17 @@ export function TextField({
   maxLength,
   autofocus = false,
   commitOnUnmount = false,
+  onUnreadable,
 }: TextFieldProps) {
   const [draft, setDraft] = useState(value)
+  // Whether the last attempt to save a date found a phrase it could not read.
+  const [unread, setUnread] = useState(false)
   // Jira's answer replaces what was typed, adjusting state during render as React advises.
   const [seen, setSeen] = useState(value)
   if (seen !== value) {
     setSeen(value)
     setDraft(value)
+    setUnread(false)
   }
   const invalid = draft !== value && !valid(draft)
   // The draft last sent. Jira's answer lands a render later, and until it does `draft` still
@@ -124,17 +131,17 @@ export function TextField({
 
   const isDate = type === 'date'
   const today = useToday()
-  // Whether the last attempt to save a date found a phrase it could not read.
-  const [unread, setUnread] = useState(false)
+  const noteId = useId()
 
   /** Saves the draft if it changed. False when a date draft cannot be read, so the draft stays. */
-  function commit(): boolean {
+  function commit(closing = false): boolean {
     if (draft === value || draft === sent.current) return true
     if (!valid(draft)) return true
     // An emptied date field clears the date.
     const day = !isDate ? draft : draft.trim() === '' ? '' : parseDateInput(draft, today)
     if (day === null) {
       setUnread(true)
+      if (closing) onUnreadable?.(draft)
       return false
     }
     if (day === value) {
@@ -149,7 +156,7 @@ export function TextField({
   // The field can unmount with a draft nobody left or confirmed. A passive cleanup runs after the
   // input has gone, so it reads the last render's draft rather than the element.
   const flush = useEffectEvent(() => {
-    if (commitOnUnmount) commit()
+    if (commitOnUnmount) commit(true)
   })
   useEffect(
     () => () => {
@@ -190,6 +197,7 @@ export function TextField({
           maxLength={maxLength}
           data-autofocus={autofocus || undefined}
           aria-invalid={invalid || unread || undefined}
+          aria-describedby={isDate ? noteId : undefined}
           placeholder={placeholder}
           value={draft}
           onChange={(event) => {
@@ -205,10 +213,14 @@ export function TextField({
         />
       </div>
       {invalid && hint !== undefined && <p className="px-2 text-xs text-danger">{hint}</p>}
-      {unread && <p className="px-2 text-xs text-danger">Could not read the date</p>}
-      {meant !== null && (
-        <p aria-live="polite" className="px-2 text-xs text-muted">
-          {describeDate(meant)}
+      {isDate && (
+        // Mounted before it has anything to say, so a screen reader announces what arrives.
+        <p
+          id={noteId}
+          aria-live="polite"
+          className={`px-2 text-xs empty:hidden ${unread ? 'text-danger' : 'text-muted'}`}
+        >
+          {unread ? 'Could not read the date' : meant === null ? '' : describeDate(meant)}
         </p>
       )}
     </>

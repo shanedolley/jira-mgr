@@ -736,6 +736,45 @@ test('Create more keeps the modal and the prefill, clears the summary and create
   await expect(tree()).toBeFocused()
 })
 
+test('Create more keeps the dates on the chips and sends them with the next issue', async () => {
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Create more').check()
+  await dialog().getByLabel('Due date').fill('10/11/2026')
+  await expect(dialog()).toContainText('Tue 10 Nov 2026')
+
+  await dialog().getByLabel('Summary').fill('First')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10' } })
+
+  await expect(dialog().getByRole('status')).toContainText('Created PSAPAC-2000: First')
+  await expect(dialog().getByLabel('Due date')).toHaveValue('2026-11-10')
+  await dialog().getByLabel('Summary').fill('Second')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(2)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10', summary: 'Second' } })
+})
+
+test('a date phrase that cannot be read blocks Create while it is typed, and its message is tied to the chip', async () => {
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Summary').fill('Unreadable')
+  const due = dialog().getByLabel('Due date')
+  const create = dialog().getByRole('button', { name: 'Create issue' })
+
+  await due.fill('whenever')
+  await expect(create).toBeDisabled()
+  await dialog().getByLabel('Summary').focus()
+  const note = await due.getAttribute('aria-describedby')
+  expect(note).not.toBeNull()
+  await expect(window.locator(`[id="${note ?? ''}"]`)).toHaveText('Could not read the date')
+
+  await due.fill('24/12/2026')
+  await expect(create).toBeEnabled()
+  await expect(window.locator(`[id="${note ?? ''}"]`)).toHaveText('Thu 24 Dec 2026')
+})
+
 test('a parent whose Customer differs asks before it changes the form', async () => {
   await open()
   await openCreate(/PSAPAC-10,/)
