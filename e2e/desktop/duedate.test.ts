@@ -41,7 +41,7 @@ const peek = () => window.getByRole('complementary', { name: 'Peek' })
 const displayButton = () => window.getByRole('button', { name: 'Display', exact: true })
 /** The editor, drawn by the cell editor against the clicked slot. */
 const editor = () => window.getByRole('dialog', { name: 'Due date' })
-const field = () => editor().locator('input[type=date]')
+const field = () => editor().getByRole('textbox')
 
 /** PSAPAC-11 has no due date; PSAPAC-40 is overdue (2020-01-02). */
 const EMPTY = /PSAPAC-11,/
@@ -180,6 +180,114 @@ test('leaving the field with a date typed saves it', async () => {
   await expect(editor()).toHaveCount(0)
   await settle(before + 1)
   expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2099-02-03')
+})
+
+test('a phrase resolves against today, shows the day it means, and saves that day on Enter', async () => {
+  // Monday 2 November 2026, in the app's local time (TZ is UTC).
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('next tuesday')
+  await expect(editor()).toContainText('Tue 10 Nov 2026')
+  expect(await writes()).toBe(before)
+  await window.keyboard.press('Enter')
+
+  await expect(editor()).toHaveCount(0)
+  await expect(slot(EMPTY)).toHaveAttribute('title', 'Due 2026-11-10 (Shift+D)')
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2026-11-10')
+})
+
+test('a phrase that cannot be read saves nothing, keeps the editor open and says so', async () => {
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('whenever')
+  await window.keyboard.press('Enter')
+
+  await expect(editor().getByText('Could not read the date')).toBeVisible()
+  await expect(field()).toHaveValue('whenever')
+  await expect(field()).toBeFocused()
+  expect(await writes()).toBe(before)
+  await window.keyboard.press('Escape')
+  await expect(editor()).toHaveCount(0)
+  expect(await writes()).toBe(before)
+})
+
+test('a popover closed on a phrase it cannot read sends nothing and says so in a toast', async () => {
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('whenever')
+  // A press on another row blurs the field and closes the editor, and the draft goes with it.
+  await item(/PSAPAC-10,/).click({ position: { x: 40, y: 8 } })
+
+  await expect(editor()).toHaveCount(0)
+  await expect(notices(window)).toContainText('Due date not changed')
+  await expect(notices(window)).toContainText('Could not read "whenever" as a date.')
+  expect(await writes()).toBe(before)
+})
+
+const refusal = () => notices(window).getByText('Due date not changed')
+
+test('Clear, Esc on Clear and Esc in the field drop an unreadable phrase without a toast', async () => {
+  await open()
+  const before = await writes()
+
+  // Esc in the field.
+  await slot(EMPTY).click()
+  await field().fill('whenever')
+  await window.keyboard.press('Escape')
+  await expect(editor()).toHaveCount(0)
+
+  // Esc on Clear.
+  await slot(FILLED).click()
+  await field().fill('whenever')
+  await editor().getByRole('button', { name: 'Clear' }).focus()
+  await window.keyboard.press('Escape')
+  await expect(editor()).toHaveCount(0)
+  expect(await writes()).toBe(before)
+
+  // Clear itself.
+  await slot(FILLED).click()
+  await field().fill('whenever')
+  await editor().getByRole('button', { name: 'Clear' }).click()
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-40'))?.duedate).toBeNull()
+  await expect(refusal()).toHaveCount(0)
+})
+
+test('the toast for an unreadable phrase quotes at most 40 characters of it', async () => {
+  await open()
+
+  await slot(EMPTY).click()
+  const long = 'x'.repeat(60)
+  await field().fill(long)
+  await item(/PSAPAC-10,/).click({ position: { x: 40, y: 8 } })
+
+  await expect(editor()).toHaveCount(0)
+  await expect(refusal()).toBeVisible()
+  await expect(notices(window)).toContainText(`Could not read "${'x'.repeat(40)}..." as a date.`)
+  await expect(notices(window)).not.toContainText('x'.repeat(41))
+})
+
+test('a readable phrase closed by a press outside the editor saves and raises no toast', async () => {
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('24/12/2099')
+  await item(/PSAPAC-10,/).click({ position: { x: 40, y: 8 } })
+
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2099-12-24')
+  await expect(refusal()).toHaveCount(0)
 })
 
 test('Esc drops a typed date: nothing is sent and the slot is as it was', async () => {
@@ -362,8 +470,7 @@ test('Esc on Clear writes nothing, even after a date was typed', async () => {
 
   await due('PSAPAC-40', '2020-01-02').click()
   await field().fill('2099-05-06')
-  // One Tab only reaches the next segment of the date field, so move focus to Clear directly: the
-  // field's blur still names Clear as `relatedTarget`.
+  // Move focus to Clear directly: the field's blur still names Clear as `relatedTarget`.
   await editor().getByRole('button', { name: 'Clear' }).focus()
   await expect(editor().getByRole('button', { name: 'Clear' })).toBeFocused()
   await window.keyboard.press('Escape')

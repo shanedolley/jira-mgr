@@ -540,12 +540,22 @@ test('saves a date when focus leaves the field, clears it, and abandons an edit 
   // Esc in a field abandons the edit; it does not leave the page.
   await expect(heading('Migrate the dashboards')).toBeVisible()
 
-  // Clearing one segment of the date reads as "" too, but it is half an edit, not a cleared date.
-  await due.focus()
-  await window.keyboard.press('Backspace')
+  // A phrase that cannot be read saves nothing, stays in the field and says so.
+  await due.fill('whenever')
+  await window.keyboard.press('Enter')
+  await expect(props().getByText('Could not read the date')).toBeVisible()
+  await expect(due).toHaveValue('whenever')
+  await expect(due).toHaveAttribute('aria-invalid', 'true')
+  const note = await due.getAttribute('aria-describedby')
+  expect(note).not.toBeNull()
+  await expect(window.locator(`[id="${note ?? ''}"]`)).toHaveText('Could not read the date')
   await due.blur()
-  await expect(due).toHaveValue('2026-12-24')
+  await expect(due).toHaveValue('whenever')
   expect(await writes()).toBe(1)
+  await due.focus()
+  await window.keyboard.press('Escape')
+  await expect(due).toHaveValue('2026-12-24')
+  await expect(props().getByText('Could not read the date')).toHaveCount(0)
 
   await due.fill('')
   await window.keyboard.press('Enter')
@@ -553,7 +563,8 @@ test('saves a date when focus leaves the field, clears it, and abandons an edit 
   expect(await lastBody()).toEqual({ fields: { duedate: null } })
 
   const start = props().getByLabel('Start date')
-  await start.fill('2026-10-12')
+  await start.fill('12/10/2026')
+  await expect(props()).toContainText('Mon 12 Oct 2026')
   await window.keyboard.press('Enter')
   await settle(3)
   expect(await lastBody()).toEqual({ fields: { customfield_4: '2026-10-12' } })

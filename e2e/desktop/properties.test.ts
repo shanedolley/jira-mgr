@@ -121,8 +121,8 @@ test('the page asks to set an estimate, and shows Time left only once there is o
   const estimate = props().getByLabel('Original estimate')
   await expect(estimate).toHaveAttribute('placeholder', 'Set estimate')
   await expect(props().getByLabel('Time left')).toHaveCount(0)
-  await expect(props().getByText('Set start date')).toBeVisible()
-  await expect(props().getByText('Set due date')).toBeVisible()
+  await expect(props().getByLabel('Start date')).toHaveAttribute('placeholder', 'Set start date')
+  await expect(props().getByLabel('Due date')).toHaveAttribute('placeholder', 'Set due date')
 
   await estimate.fill('4h')
   await window.keyboard.press('Enter')

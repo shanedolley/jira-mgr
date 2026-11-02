@@ -304,8 +304,8 @@ export function IssueMenu({
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    // Tab leaves the menu, so it ends it: focus would go to the page behind with Esc dead. A date or
-    // text field in a submenu keeps its Tab (the date's segments), and a dialog keeps its own.
+    // Tab leaves the menu, so it ends it: focus would go to the page behind with Esc dead. A text or
+    // date field in a submenu keeps its Tab, and a dialog keeps its own.
     if (
       event.key === 'Tab' &&
       event.target instanceof HTMLElement &&

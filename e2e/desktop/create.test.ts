@@ -409,7 +409,7 @@ async function chipRows(font?: string) {
     await window.addStyleTag({ content: `* { font-family: ${font} !important }` })
   }
   const chips = dialog().locator(
-    'button[aria-haspopup=listbox]:not([aria-label^="Type:"]), button:has-text("+me"), label:has(input[aria-label="Original estimate"]), label:has(input[type=date])',
+    'button[aria-haspopup=listbox]:not([aria-label^="Type:"]), button:has-text("+me"), label:has(input[aria-label="Original estimate"]), label:has(input[aria-label$=" date"])',
   )
   await expect(chips).toHaveCount(11)
   const tops = await chips.evaluateAll((all) =>
@@ -439,20 +439,28 @@ test('the date chips stay inside the dialog in a wide font', async () => {
   await window.addStyleTag({
     content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
   })
+  const measure = () =>
+    dialog().evaluate((el) => {
+      const right = el.getBoundingClientRect().right
+      const outside = [...el.querySelectorAll('label:has(input[aria-label$=" date"]) *')].filter(
+        (child) => child.getBoundingClientRect().right > right + 1,
+      )
+      return { overflow: el.scrollWidth - el.clientWidth, outside: outside.length }
+    })
   await dialog().getByLabel('Start date').fill('2026-10-01')
   await dialog().getByLabel('Due date').fill('2026-10-14')
+  expect(await measure()).toEqual({ overflow: 0, outside: 0 })
 
-  const box = await dialog().evaluate((el) => {
-    const right = el.getBoundingClientRect().right
-    const outside = [...el.querySelectorAll('label:has(input[type=date]) *')].filter(
-      (child) => child.getBoundingClientRect().right > right + 1,
-    )
-    return { overflow: el.scrollWidth - el.clientWidth, outside: outside.length }
-  })
-  expect(box).toEqual({ overflow: 0, outside: 0 })
+  // With a phrase and its preview, and with a phrase the chip could not read.
+  await dialog().getByLabel('Start date').fill('10/11/2026')
+  await dialog().getByLabel('Due date').fill('whenever')
+  await dialog().getByLabel('Summary').focus()
+  await expect(dialog()).toContainText('Tue 10 Nov 2026')
+  await expect(dialog()).toContainText('Could not read the date')
+  expect(await measure()).toEqual({ overflow: 0, outside: 0 })
 })
 
-test('a date typed only in part blocks the create and says which, until it is finished or cleared', async () => {
+test('a date that cannot be read blocks the create and says which, until it is fixed or cleared', async () => {
   await open()
   await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Half a date')
@@ -460,23 +468,20 @@ test('a date typed only in part blocks the create and says which, until it is fi
   const create = dialog().getByRole('button', { name: 'Create issue' })
   await expect(create).toBeEnabled()
 
-  // One segment typed: the input reports "" with badInput, like an empty one.
-  await start.focus()
-  await window.keyboard.type('10')
+  await start.fill('whenever')
   await dialog().getByLabel('Summary').focus()
   await expect(start).toHaveAttribute('aria-invalid', 'true')
   await expect(create).toBeDisabled()
-  await expect(dialog()).toContainText('Add a complete Start date to create.')
+  await expect(dialog()).toContainText('Add a readable Start date to create.')
 
   // Cmd+Enter sends nothing and takes focus to the field.
   await window.keyboard.press('Meta+Enter')
   await expect(start).toBeFocused()
   expect((await counts(app)).edits).toBe(0)
 
-  // Typed in part with the cursor still in the field: no input or blur event has told the form.
+  // Typed with the cursor still in the field: no blur has told the form.
   await start.fill('')
-  await start.focus()
-  await window.keyboard.type('10')
+  await start.fill('whenever')
   await window.keyboard.press('Meta+Enter')
   await expect(start).toHaveAttribute('aria-invalid', 'true')
   await expect(start).toBeFocused()
@@ -488,6 +493,18 @@ test('a date typed only in part blocks the create and says which, until it is fi
   await create.click()
   await settle(1)
   expect(await lastBody()).toMatchObject({ fields: { customfield_4: '2026-10-01' } })
+})
+
+test('a date typed as dd/mm/yyyy shows the day it means and is sent as that day', async () => {
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Summary').fill('Dated in words')
+
+  await dialog().getByLabel('Due date').fill('10/11/2026')
+  await expect(dialog()).toContainText('Tue 10 Nov 2026')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10' } })
 })
 
 test('typing an issue key in the Parent field finds that issue', async () => {
@@ -725,6 +742,62 @@ test('Create more keeps the modal and the prefill, clears the summary and create
   await expect(item(/PSAPAC-2001,/)).toHaveAttribute('data-active', 'true')
   await expect(item(/PSAPAC-2000,/)).toBeAttached()
   await expect(tree()).toBeFocused()
+})
+
+test('Create more keeps the dates on the chips and sends them with the next issue', async () => {
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Create more').check()
+  await dialog().getByLabel('Due date').fill('10/11/2026')
+  await expect(dialog()).toContainText('Tue 10 Nov 2026')
+
+  await dialog().getByLabel('Summary').fill('First')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10' } })
+
+  await expect(dialog().getByRole('status')).toContainText('Created PSAPAC-2000: First')
+  await expect(dialog().getByLabel('Due date')).toHaveValue('2026-11-10')
+  await dialog().getByLabel('Summary').fill('Second')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(2)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10', summary: 'Second' } })
+})
+
+test('plain Enter on a readable date chip still submits the form', async () => {
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Summary').fill('Enter in a chip')
+  await dialog().getByLabel('Due date').fill('24/12/2026')
+
+  await window.keyboard.press('Enter')
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-12-24' } })
+})
+
+test('a date phrase that cannot be read blocks Create while it is typed, and its message is tied to the chip', async () => {
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Summary').fill('Unreadable')
+  const due = dialog().getByLabel('Due date')
+  const create = dialog().getByRole('button', { name: 'Create issue' })
+
+  await due.fill('whenever')
+  await expect(create).toBeDisabled()
+  // Plain Enter cannot submit a disabled form, so the chip itself says why.
+  await expect(due).not.toHaveAttribute('aria-invalid')
+  await window.keyboard.press('Enter')
+  await expect(due).toHaveAttribute('aria-invalid', 'true')
+  await expect(due).toBeFocused()
+  expect((await counts(app)).edits).toBe(0)
+  await dialog().getByLabel('Summary').focus()
+  const note = await due.getAttribute('aria-describedby')
+  expect(note).not.toBeNull()
+  await expect(window.locator(`[id="${note ?? ''}"]`)).toHaveText('Could not read the date')
+
+  await due.fill('24/12/2026')
+  await expect(create).toBeEnabled()
+  await expect(window.locator(`[id="${note ?? ''}"]`)).toHaveText('Thu 24 Dec 2026')
 })
 
 test('a parent whose Customer differs asks before it changes the form', async () => {

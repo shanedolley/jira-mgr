@@ -177,6 +177,28 @@ test('sets a due date from the menu with one write', async () => {
   expect(await lastBody()).toEqual({ fields: { duedate: '2026-12-24' } })
 })
 
+test('sets a due date from the menu with a date phrase and keeps the menu open on one it cannot read', async () => {
+  await open()
+  await item(/PSAPAC-4,/).click({ button: 'right' })
+
+  await entry('Due date').click()
+  const due = menu().getByRole('textbox', { name: 'Due date' })
+  await due.fill('whenever')
+  await window.keyboard.press('Enter')
+  await expect(menu()).toBeVisible()
+  await expect(menu().getByText('Could not read the date')).toBeVisible()
+  await expect(due).toHaveValue('whenever')
+  await window.waitForTimeout(200)
+  expect(await writes()).toBe(0)
+
+  await due.fill('24/12/2026')
+  await expect(menu()).toContainText('Thu 24 Dec 2026')
+  await window.keyboard.press('Enter')
+  await expect(menu()).toHaveCount(0)
+  await settle(1)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2026-12-24' } })
+})
+
 test('Esc in the date field abandons the edit and returns to the menu', async () => {
   await open()
   await item(/PSAPAC-4,/).click({ button: 'right' })

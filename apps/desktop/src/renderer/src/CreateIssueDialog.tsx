@@ -1,9 +1,11 @@
 import type { Issue } from '@jira-mgr/core'
+import { describeDate, parseDateInput } from '@jira-mgr/core/dates'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import type { EditorDoc } from '@jira-mgr/core/adf'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -120,6 +122,8 @@ const REQUIRED = 'Required'
 
 type DateField = 'startDate' | 'dueDate'
 const DATE_FIELDS: readonly DateField[] = ['startDate', 'dueDate']
+/** The longest phrase a date chip takes. */
+const DATE_TEXT_MAX = 100
 const DATE_NAMES: Record<DateField, string> = { startDate: 'Start date', dueDate: 'Due date' }
 
 /** A chip's property name, muted before its value. */
@@ -192,8 +196,14 @@ export function CreateIssueDialog({
   const engagementTrigger = useRef<HTMLButtonElement>(null)
   const estimateRef = useRef<HTMLInputElement>(null)
   const dateRefs = useRef<Partial<Record<DateField, HTMLInputElement | null>>>({})
-  // A date input half typed ("10/yyyy") reports "" like an empty one, so the draft cannot tell them apart.
-  const [halfDates, setHalfDates] = useState<ReadonlySet<DateField>>(new Set())
+  // What was typed in each date chip. The draft holds the day it means, or '' while it means none.
+  const [dateText, setDateText] = useState<Record<DateField, string>>(() => ({
+    startDate: draft.startDate,
+    dueDate: draft.dueDate,
+  }))
+  // The date chips whose text could not be read when focus left them.
+  const noteIds: Record<DateField, string> = { startDate: useId(), dueDate: useId() }
+  const [unreadDates, setUnreadDates] = useState<ReadonlySet<DateField>>(new Set())
   const rules = typeRules(draft.type)
 
   const [parentQuery, setParentQuery] = useState('')
@@ -229,10 +239,11 @@ export function CreateIssueDialog({
     setDraft((d) => (d.assignee?.accountId === meUser.accountId ? d : { ...d, assignee: meUser }))
   }, [meUser])
 
-  const halfTyped = DATE_FIELDS.filter((field) => halfDates.has(field))
+  // Create waits at once for a phrase that means no day; the chip turns red once focus has left it.
+  const unreadFields = DATE_FIELDS.filter(unreadDate)
   const missing = [
     ...missingFields(draft),
-    ...halfTyped.map((field) => `a complete ${DATE_NAMES[field]}`),
+    ...unreadFields.map((field) => `a readable ${DATE_NAMES[field]}`),
   ]
   const estimateBad = missingKeys(draft).includes('estimate')
   const pending = create.isPending || attaching
@@ -251,11 +262,23 @@ export function CreateIssueDialog({
     wasPrompting.current = prompt !== null
   }, [prompt])
 
-  function setDateHalf(field: DateField, half: boolean) {
-    setHalfDates((held) => {
-      if (held.has(field) === half) return held
+  /** Whether a date chip holds text that means no day. An empty chip is a date left unset. */
+  function unreadDate(field: DateField) {
+    return dateText[field].trim() !== '' && draft[field] === ''
+  }
+
+  function typeDate(field: DateField, text: string) {
+    const day = text.trim() === '' ? '' : (parseDateInput(text, today) ?? '')
+    setDateText((typed) => ({ ...typed, [field]: text }))
+    edit({ [field]: day })
+    if (day !== '' || text.trim() === '') markUnread(field, false)
+  }
+
+  function markUnread(field: DateField, unread: boolean) {
+    setUnreadDates((held) => {
+      if (held.has(field) === unread) return held
       const next = new Set(held)
-      if (half) next.add(field)
+      if (unread) next.add(field)
       else next.delete(field)
       return next
     })
@@ -264,11 +287,11 @@ export function CreateIssueDialog({
   function submit(event?: SyntheticEvent) {
     event?.preventDefault()
     if (pending) return
-    // The browser fires no input event while a date is typed in part, so ask the input itself.
-    const half = DATE_FIELDS.find((field) => dateRefs.current[field]?.validity.badInput)
-    if (half !== undefined) {
-      setDateHalf(half, true)
-      dateRefs.current[half]?.focus()
+    // Cmd+Enter can come from a chip that has not lost focus yet, so read the text itself.
+    const unread = DATE_FIELDS.find(unreadDate)
+    if (unread !== undefined) {
+      markUnread(unread, true)
+      dateRefs.current[unread]?.focus()
       return
     }
     const args = toCreateArgs(draft)
@@ -395,7 +418,11 @@ export function CreateIssueDialog({
     onCreated(result, notice, more, failedFiles)
     if (more) {
       setLast(notice)
-      setDraft(nextDraft(sent))
+      // The dates stay for the next issue, so the chips keep showing them.
+      const next = nextDraft(sent)
+      setDraft(next)
+      setDateText({ startDate: next.startDate, dueDate: next.dueDate })
+      setUnreadDates(new Set())
       setFiles([])
       setTouched(false)
     }
@@ -705,43 +732,61 @@ export function CreateIssueDialog({
                   </label>
                 )}
                 {DATE_FIELDS.map((field) => {
-                  const half = halfDates.has(field)
-                  const empty = draft[field] === '' && !half
+                  const shown = unreadDates.has(field)
+                  const day = draft[field]
+                  const preview =
+                    shown && unreadDate(field)
+                      ? 'Could not read the date'
+                      : day !== '' && dateText[field].trim() !== day
+                        ? describeDate(day)
+                        : ''
                   return (
                     <label
                       key={field}
-                      className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${half ? 'border-danger' : 'border-field-border'}`}
+                      className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${shown ? 'border-danger' : 'border-field-border'}`}
                     >
                       <ChipName>{field === 'startDate' ? 'Start' : 'Due'}</ChipName>
-                      <span className="relative">
-                        <input
-                          ref={(el) => {
-                            dateRefs.current[field] = el
-                          }}
-                          type="date"
-                          max="9999-12-31"
-                          aria-label={DATE_NAMES[field]}
-                          aria-invalid={half || undefined}
-                          value={draft[field]}
-                          onChange={(event) => {
-                            edit({ [field]: event.target.value })
-                          }}
-                          onInput={(event) => {
-                            setDateHalf(field, event.currentTarget.validity.badInput)
-                          }}
-                          onBlur={(event) => {
-                            setDateHalf(field, event.currentTarget.validity.badInput)
-                          }}
-                          className={`peer bg-transparent focus-visible:outline-none ${empty ? 'date-empty' : ''}`}
-                        />
-                        {empty && (
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-muted peer-focus:hidden"
-                          >
-                            None
-                          </span>
-                        )}
+                      <input
+                        ref={(el) => {
+                          dateRefs.current[field] = el
+                        }}
+                        type="text"
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={DATE_TEXT_MAX}
+                        placeholder="None"
+                        aria-label={DATE_NAMES[field]}
+                        aria-invalid={shown || undefined}
+                        aria-describedby={noteIds[field]}
+                        value={dateText[field]}
+                        onChange={(event) => {
+                          typeDate(field, event.target.value)
+                        }}
+                        onBlur={() => {
+                          markUnread(field, unreadDate(field))
+                        }}
+                        onKeyDown={(event) => {
+                          // Create is disabled while the phrase is unreadable, so Enter would submit nothing.
+                          const plain =
+                            event.key === 'Enter' &&
+                            !event.metaKey &&
+                            !event.ctrlKey &&
+                            !event.shiftKey &&
+                            !event.altKey &&
+                            !event.nativeEvent.isComposing
+                          if (plain && unreadDate(field)) {
+                            event.preventDefault()
+                            markUnread(field, true)
+                          }
+                        }}
+                        className="field-sizing-content min-w-16 max-w-40 bg-transparent focus-visible:outline-none"
+                      />
+                      <span
+                        id={noteIds[field]}
+                        aria-live="polite"
+                        className={`empty:hidden ${shown ? 'text-danger' : 'text-muted'}`}
+                      >
+                        {preview}
                       </span>
                     </label>
                   )

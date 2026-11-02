@@ -45,7 +45,7 @@ const chip = () =>
     .getByRole('button', { name: 'Start date', exact: true })
 /** The editor, drawn by the cell editor against the clicked slot. */
 const editor = () => window.getByRole('dialog', { name: 'Start date' })
-const field = () => editor().locator('input[type=date]')
+const field = () => editor().getByRole('textbox')
 
 /** The fake seeds no start date, so every test sets one first. PSAPAC-11 and PSAPAC-40 are the rows used. */
 const EMPTY = /PSAPAC-11,/

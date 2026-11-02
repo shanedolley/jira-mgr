@@ -4,8 +4,12 @@ import { useRef } from 'react'
 import type { CellMode } from './cell'
 import { closePopover, CellPopover } from './CellPopover'
 import { TextField } from './IssueProperties'
+import { useNotify } from './notify'
 import { useIssueChange } from './PropertyPickers'
 import { datePatch } from './properties'
+
+/** The draft as the toast quotes it: at most 40 characters. */
+const quoted = (draft: string) => (draft.length > 40 ? `${draft.slice(0, 40)}...` : draft)
 
 interface DateEditorProps {
   issue: Issue
@@ -17,14 +21,17 @@ interface DateEditorProps {
 }
 
 /**
- * The cell editor for a date: the native date field and write path of the Peek (`TextField`), in
- * a `CellPopover` with a Clear button. The field saves on Enter or when focus leaves it, and
- * Enter closes the popover. A date typed digit by digit is not sent until then: the browser
- * reports a valid date after every digit of the year. Esc drops the draft and closes. A popover
- * that closes some other way, such as a scroll, sends a changed draft as it goes.
+ * The cell editor for a date: the date field and write path of the Peek (`TextField`), in a
+ * `CellPopover` with a Clear button. The field takes a phrase such as `next tuesday` or
+ * `dd/mm/yyyy`, shows the day it means, and saves on Enter or when focus leaves it. Enter closes
+ * the popover, except on a phrase the field cannot read, which stays with its message. Nothing is
+ * sent while the phrase is typed. Esc drops the draft and closes. A popover that closes some other
+ * way, such as a scroll, sends a changed draft as it goes, or drops one it cannot read and says so
+ * in a toast.
  */
 export function DateEditor({ issue, field, label, cell }: DateEditorProps) {
   const change = useIssueChange(issue)
+  const notify = useNotify()
   const date = issue[field] ?? ''
   // Set by Clear, or by Esc on it, so the draft left in the field is not sent as the editor goes.
   const cleared = useRef(false)
@@ -60,6 +67,16 @@ export function DateEditor({ issue, field, label, cell }: DateEditorProps) {
           autofocus
           commitOnUnmount
           onCommit={send}
+          onUnreadable={(draft) => {
+            // Clear and Esc on it drop the draft on purpose; any other close would lose it unheard.
+            if (!cleared.current) {
+              notify({
+                title: `${label} not changed`,
+                notes: [`Could not read "${quoted(draft)}" as a date.`],
+                warned: true,
+              })
+            }
+          }}
         />
         {date !== '' && (
           <button
