@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { describeDate, parseDateInput } from '@jira-mgr/core/dates'
 import type { CustomerOption } from '@jira-mgr/core/hierarchy'
 import type { EditorDoc } from '@jira-mgr/core/adf'
 import { useQueryClient } from '@tanstack/react-query'
@@ -192,7 +193,12 @@ export function CreateIssueDialog({
   const engagementTrigger = useRef<HTMLButtonElement>(null)
   const estimateRef = useRef<HTMLInputElement>(null)
   const dateRefs = useRef<Partial<Record<DateField, HTMLInputElement | null>>>({})
-  // A date input half typed ("10/yyyy") reports "" like an empty one, so the draft cannot tell them apart.
+  // What was typed in each date chip. The draft holds the day it means, or '' while it means none.
+  const [dateText, setDateText] = useState<Record<DateField, string>>(() => ({
+    startDate: draft.startDate,
+    dueDate: draft.dueDate,
+  }))
+  // The date chips whose text could not be read when focus left them.
   const [halfDates, setHalfDates] = useState<ReadonlySet<DateField>>(new Set())
   const rules = typeRules(draft.type)
 
@@ -232,7 +238,7 @@ export function CreateIssueDialog({
   const halfTyped = DATE_FIELDS.filter((field) => halfDates.has(field))
   const missing = [
     ...missingFields(draft),
-    ...halfTyped.map((field) => `a complete ${DATE_NAMES[field]}`),
+    ...halfTyped.map((field) => `a readable ${DATE_NAMES[field]}`),
   ]
   const estimateBad = missingKeys(draft).includes('estimate')
   const pending = create.isPending || attaching
@@ -251,6 +257,18 @@ export function CreateIssueDialog({
     wasPrompting.current = prompt !== null
   }, [prompt])
 
+  /** Whether a date chip holds text that means no day. An empty chip is a date left unset. */
+  function unreadDate(field: DateField) {
+    return dateText[field].trim() !== '' && draft[field] === ''
+  }
+
+  function typeDate(field: DateField, text: string) {
+    const day = text.trim() === '' ? '' : (parseDateInput(text, today) ?? '')
+    setDateText((typed) => ({ ...typed, [field]: text }))
+    edit({ [field]: day })
+    if (day !== '' || text.trim() === '') setDateHalf(field, false)
+  }
+
   function setDateHalf(field: DateField, half: boolean) {
     setHalfDates((held) => {
       if (held.has(field) === half) return held
@@ -264,8 +282,8 @@ export function CreateIssueDialog({
   function submit(event?: SyntheticEvent) {
     event?.preventDefault()
     if (pending) return
-    // The browser fires no input event while a date is typed in part, so ask the input itself.
-    const half = DATE_FIELDS.find((field) => dateRefs.current[field]?.validity.badInput)
+    // Cmd+Enter can come from a chip that has not lost focus yet, so read the text itself.
+    const half = DATE_FIELDS.find(unreadDate)
     if (half !== undefined) {
       setDateHalf(half, true)
       dateRefs.current[half]?.focus()
@@ -396,6 +414,8 @@ export function CreateIssueDialog({
     if (more) {
       setLast(notice)
       setDraft(nextDraft(sent))
+      setDateText({ startDate: '', dueDate: '' })
+      setHalfDates(new Set())
       setFiles([])
       setTouched(false)
     }
@@ -706,43 +726,35 @@ export function CreateIssueDialog({
                 )}
                 {DATE_FIELDS.map((field) => {
                   const half = halfDates.has(field)
-                  const empty = draft[field] === '' && !half
+                  const day = draft[field]
                   return (
                     <label
                       key={field}
                       className={`flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs focus-within:outline-2 focus-within:outline-accent ${half ? 'border-danger' : 'border-field-border'}`}
                     >
                       <ChipName>{field === 'startDate' ? 'Start' : 'Due'}</ChipName>
-                      <span className="relative">
-                        <input
-                          ref={(el) => {
-                            dateRefs.current[field] = el
-                          }}
-                          type="date"
-                          max="9999-12-31"
-                          aria-label={DATE_NAMES[field]}
-                          aria-invalid={half || undefined}
-                          value={draft[field]}
-                          onChange={(event) => {
-                            edit({ [field]: event.target.value })
-                          }}
-                          onInput={(event) => {
-                            setDateHalf(field, event.currentTarget.validity.badInput)
-                          }}
-                          onBlur={(event) => {
-                            setDateHalf(field, event.currentTarget.validity.badInput)
-                          }}
-                          className={`peer bg-transparent focus-visible:outline-none ${empty ? 'date-empty' : ''}`}
-                        />
-                        {empty && (
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 text-muted peer-focus:hidden"
-                          >
-                            None
-                          </span>
-                        )}
-                      </span>
+                      <input
+                        ref={(el) => {
+                          dateRefs.current[field] = el
+                        }}
+                        type="text"
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder="None"
+                        aria-label={DATE_NAMES[field]}
+                        aria-invalid={half || undefined}
+                        value={dateText[field]}
+                        onChange={(event) => {
+                          typeDate(field, event.target.value)
+                        }}
+                        onBlur={() => {
+                          setDateHalf(field, unreadDate(field))
+                        }}
+                        className="field-sizing-content min-w-16 max-w-40 bg-transparent focus-visible:outline-none"
+                      />
+                      {day !== '' && dateText[field].trim() !== day && (
+                        <span className="text-muted">{describeDate(day)}</span>
+                      )}
                     </label>
                   )
                 })}

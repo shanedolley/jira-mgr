@@ -588,11 +588,6 @@ input {
   outline: 2px solid var(--accent);
 }
 
-/* An empty date field hides the browser's "mm/dd/yyyy", so its own "Set start date" shows instead. */
-.date-empty:not(:focus)::-webkit-datetime-edit {
-  color: transparent;
-}
-
 /*
  * While the overlay sidebar's scrim is up, the headers under it are no drag region, so a click on
  * the scrim in their strip closes the sidebar. A `no-drag` on the scrim would lose to the later

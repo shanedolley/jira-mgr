@@ -304,7 +304,7 @@ Every shortcut has a visible alternative: a double-click for `Enter`, the Peek's
 
 *Amended 2026-10-18, build of #270.* Shane wants to select the due date on the canvas and edit it there. The orchestrator decided these, and Shane approved them by closing #270 on 2026-10-18:
 
-- A click on a row's due-date slot, filled or empty, opens a popover anchored to the slot with the Peek's native date field and a Clear button, the third cell editor (`DateEditor.tsx`). No calendar library is added. `Shift+D` opens it on the active row when the property is shown, and the issue menu's field otherwise.
+- A click on a row's due-date slot, filled or empty, opens a popover anchored to the slot with the Peek's date field and a Clear button, the third cell editor (`DateEditor.tsx`). No calendar library is added. `Shift+D` opens it on the active row when the property is shown, and the issue menu's field otherwise.
 - Enter or leaving the field saves the date; Esc drops it; Clear sends `null`. A picked date saves the same way, not on the pick, because typing a date fires a change at every digit of the year. The edit is optimistic with a Retry toast on refusal. A Hold row and a Done issue stay editable.
 - The slot keeps its width, with a hover fill as the only change, and its title names the key.
 - The Sprint page's due slot is a `Slot` button named "Due date of PSAPAC-4: none" that opens the same editor, with the focus returning to it, beside the row button and not inside it (#279).

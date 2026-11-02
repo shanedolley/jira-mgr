@@ -1,4 +1,5 @@
 import type { Issue } from '@jira-mgr/core'
+import { describeDate, parseDateInput } from '@jira-mgr/core/dates'
 import { formatEstimate, parseEstimate, propertyRules } from '@jira-mgr/core/issue'
 import {
   useEffect,
@@ -23,6 +24,7 @@ import {
   useIssueChange,
 } from './PropertyPickers'
 import { Row } from './PropertyRow'
+import { useToday } from './today'
 import {
   currentSprint,
   customerPatch,
@@ -74,8 +76,9 @@ interface TextFieldProps {
   shortcut?: string
   /** What the field holds now. A change from outside replaces the draft. */
   value: string
+  /** A `date` field reads a typed phrase or `dd/mm/yyyy`, shows the day it means, and sends `YYYY-MM-DD` or `''`. */
   type?: 'text' | 'date'
-  /** Shown while the field is empty. A date field draws it itself, since the browser's is a format. */
+  /** Shown while the field is empty. */
   placeholder?: string
   /** A clock before the text, for durations. */
   clock?: boolean
@@ -119,20 +122,28 @@ export function TextField({
   // differs from `value`, so Enter followed at once by leaving the field would send it twice.
   const sent = useRef<string | null>(null)
 
-  // Whether the browser holds a half-edited date, which reports "" as its value.
-  const badInput = useRef(false)
+  const isDate = type === 'date'
+  const today = useToday()
+  // Whether the last attempt to save a date found a phrase it could not read.
+  const [unread, setUnread] = useState(false)
 
-  function commit() {
-    // A date field the user has half edited reports "" as its value, which is also what
-    // an emptied field reports. Only an emptied one clears the property, so a half edit reverts.
-    if (badInput.current) {
-      setDraft(value)
-      return
+  /** Saves the draft if it changed. False when a date draft cannot be read, so the draft stays. */
+  function commit(): boolean {
+    if (draft === value || draft === sent.current) return true
+    if (!valid(draft)) return true
+    // An emptied date field clears the date.
+    const day = !isDate ? draft : draft.trim() === '' ? '' : parseDateInput(draft, today)
+    if (day === null) {
+      setUnread(true)
+      return false
     }
-    if (draft === value || draft === sent.current) return
-    if (!valid(draft)) return
+    if (day === value) {
+      setDraft(value)
+      return true
+    }
     sent.current = draft
-    onCommit(draft)
+    onCommit(day)
+    return true
   }
 
   // The field can unmount with a draft nobody left or confirmed. A passive cleanup runs after the
@@ -150,52 +161,56 @@ export function TextField({
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter') {
       event.preventDefault()
-      badInput.current = event.currentTarget.validity.badInput
-      commit()
+      // An unreadable date keeps its field and its message, so the Enter goes no further.
+      if (!commit()) event.stopPropagation()
     } else if (event.key === 'Escape') {
       // The page's own Esc is for leaving, and this one only abandons the edit.
       event.stopPropagation()
       sent.current = null
+      setUnread(false)
       setDraft(value)
     }
   }
 
-  const emptyDate = type === 'date' && draft === ''
+  // The day the draft means, shown before it saves so a misread phrase is caught.
+  const meant =
+    isDate && !unread && draft !== value && draft.trim() !== ''
+      ? parseDateInput(draft, today)
+      : null
   return (
     <>
       <div className="relative">
         {clock && <ClockIcon />}
         <input
-          type={type}
+          type="text"
+          autoComplete="off"
+          spellCheck={isDate ? false : undefined}
           aria-label={label}
           aria-keyshortcuts={shortcut}
           maxLength={maxLength}
           data-autofocus={autofocus || undefined}
-          aria-invalid={invalid || undefined}
-          placeholder={type === 'date' ? undefined : placeholder}
+          aria-invalid={invalid || unread || undefined}
+          placeholder={placeholder}
           value={draft}
           onChange={(event) => {
             sent.current = null
-            badInput.current = event.target.validity.badInput
+            setUnread(false)
             setDraft(event.target.value)
           }}
-          onBlur={(event) => {
-            badInput.current = event.currentTarget.validity.badInput
+          onBlur={() => {
             commit()
           }}
           onKeyDown={onKeyDown}
-          className={`${FIELD} aria-invalid:border-danger ${clock ? 'pl-7' : ''} ${emptyDate ? 'date-empty' : ''}`}
+          className={`${FIELD} aria-invalid:border-danger ${clock ? 'pl-7' : ''}`}
         />
-        {emptyDate && placeholder !== undefined && (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted peer-focus:hidden"
-          >
-            {placeholder}
-          </span>
-        )}
       </div>
       {invalid && hint !== undefined && <p className="px-2 text-xs text-danger">{hint}</p>}
+      {unread && <p className="px-2 text-xs text-danger">Could not read the date</p>}
+      {meant !== null && (
+        <p aria-live="polite" className="px-2 text-xs text-muted">
+          {describeDate(meant)}
+        </p>
+      )}
     </>
   )
 }

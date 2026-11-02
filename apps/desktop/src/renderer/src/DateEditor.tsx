@@ -17,11 +17,12 @@ interface DateEditorProps {
 }
 
 /**
- * The cell editor for a date: the native date field and write path of the Peek (`TextField`), in
- * a `CellPopover` with a Clear button. The field saves on Enter or when focus leaves it, and
- * Enter closes the popover. A date typed digit by digit is not sent until then: the browser
- * reports a valid date after every digit of the year. Esc drops the draft and closes. A popover
- * that closes some other way, such as a scroll, sends a changed draft as it goes.
+ * The cell editor for a date: the date field and write path of the Peek (`TextField`), in a
+ * `CellPopover` with a Clear button. The field takes a phrase such as `next tuesday` or
+ * `dd/mm/yyyy`, shows the day it means, and saves on Enter or when focus leaves it. Enter closes
+ * the popover, except on a phrase the field cannot read, which stays with its message. Nothing is
+ * sent while the phrase is typed. Esc drops the draft and closes. A popover that closes some other
+ * way, such as a scroll, sends a changed draft as it goes.
  */
 export function DateEditor({ issue, field, label, cell }: DateEditorProps) {
   const change = useIssueChange(issue)

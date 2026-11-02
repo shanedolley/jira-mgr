@@ -41,7 +41,7 @@ const peek = () => window.getByRole('complementary', { name: 'Peek' })
 const displayButton = () => window.getByRole('button', { name: 'Display', exact: true })
 /** The editor, drawn by the cell editor against the clicked slot. */
 const editor = () => window.getByRole('dialog', { name: 'Due date' })
-const field = () => editor().locator('input[type=date]')
+const field = () => editor().getByRole('textbox')
 
 /** PSAPAC-11 has no due date; PSAPAC-40 is overdue (2020-01-02). */
 const EMPTY = /PSAPAC-11,/
@@ -180,6 +180,41 @@ test('leaving the field with a date typed saves it', async () => {
   await expect(editor()).toHaveCount(0)
   await settle(before + 1)
   expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2099-02-03')
+})
+
+test('a phrase resolves against today, shows the day it means, and saves that day on Enter', async () => {
+  // Monday 2 November 2026, in the app's local time (TZ is UTC).
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('next tuesday')
+  await expect(editor()).toContainText('Tue 10 Nov 2026')
+  expect(await writes()).toBe(before)
+  await window.keyboard.press('Enter')
+
+  await expect(editor()).toHaveCount(0)
+  await expect(slot(EMPTY)).toHaveAttribute('title', 'Due 2026-11-10 (Shift+D)')
+  await settle(before + 1)
+  expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2026-11-10')
+})
+
+test('a phrase that cannot be read saves nothing, keeps the editor open and says so', async () => {
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('whenever')
+  await window.keyboard.press('Enter')
+
+  await expect(editor().getByText('Could not read the date')).toBeVisible()
+  await expect(field()).toHaveValue('whenever')
+  await expect(field()).toBeFocused()
+  expect(await writes()).toBe(before)
+  await window.keyboard.press('Escape')
+  await expect(editor()).toHaveCount(0)
+  expect(await writes()).toBe(before)
 })
 
 test('Esc drops a typed date: nothing is sent and the slot is as it was', async () => {
