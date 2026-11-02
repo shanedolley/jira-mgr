@@ -765,15 +765,92 @@ test('Create more keeps the dates on the chips and sends them with the next issu
   expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10', summary: 'Second' } })
 })
 
-test('plain Enter on a readable date chip still submits the form', async () => {
+test('a click on a date chip that holds a date selects it, so a phrase typed over it, Tab and Create send the new day', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Create more').check()
+  const due = dialog().getByLabel('Due date')
+  await due.fill('10/11/2026')
+  await dialog().getByLabel('Summary').fill('First')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+  await expect(due).toHaveValue('10 Nov')
+
+  // Typed key by key after a click, as a person does: `fill` would replace the text whatever was selected.
+  await dialog().getByLabel('Summary').fill('Second')
+  await due.click()
+  await window.keyboard.type('next friday')
+  await expect(due).toHaveValue('next friday')
+  await expect(dialog().getByRole('option')).toHaveText('Fri 13 Nov 2026')
+  await window.keyboard.press('Tab')
+  await expect(due).toHaveValue('13 Nov')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(2)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-13', summary: 'Second' } })
+})
+
+test('plain Enter on a date chip with no suggestion open submits the form', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
   await open()
   await openCreate(/PSAPAC-10,/)
   await dialog().getByLabel('Summary').fill('Enter in a chip')
-  await dialog().getByLabel('Due date').fill('24/12/2026')
+  // Text that already reads as the day it means has no suggestion to take.
+  await dialog().getByLabel('Due date').fill('24 Dec')
+  await expect(dialog().getByRole('option')).toHaveCount(0)
 
   await window.keyboard.press('Enter')
   await settle(1)
   expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-12-24' } })
+})
+
+test('plain Enter on a date chip takes its suggestion and sends nothing, and the next Enter submits', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Summary').fill('Enter takes the suggestion')
+  const due = dialog().getByLabel('Due date')
+
+  await due.click()
+  await window.keyboard.type('next tuesday')
+  await expect(dialog().getByRole('option')).toHaveText('Tue 10 Nov 2026')
+  await window.keyboard.press('Enter')
+  await expect(due).toHaveValue('10 Nov')
+  await expect(due).toBeFocused()
+  await expect(dialog().getByRole('option')).toHaveCount(0)
+  await window.waitForTimeout(300)
+  expect((await counts(app)).edits).toBe(0)
+  await expect(dialog()).toBeVisible()
+
+  await window.keyboard.press('Enter')
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10' } })
+})
+
+test('Enter after Esc closed the suggestion, and Cmd+Enter with it open, submit the day the phrase means', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Create more').check()
+  await dialog().getByLabel('Summary').fill('First')
+  const due = dialog().getByLabel('Due date')
+
+  await due.click()
+  await window.keyboard.type('next tuesday')
+  await window.keyboard.press('Escape')
+  await expect(dialog().getByRole('option')).toHaveCount(0)
+  await window.keyboard.press('Enter')
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10', summary: 'First' } })
+
+  await expect(dialog().getByRole('status')).toContainText('Created PSAPAC-2000: First')
+  await dialog().getByLabel('Summary').fill('Second')
+  await due.click()
+  await window.keyboard.type('next friday')
+  await expect(dialog().getByRole('option')).toHaveText('Fri 13 Nov 2026')
+  await window.keyboard.press('Meta+Enter')
+  await settle(2)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-13', summary: 'Second' } })
 })
 
 test('a date phrase that cannot be read blocks Create while it is typed, and its message is tied to the chip', async () => {

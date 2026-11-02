@@ -1193,3 +1193,31 @@ test('the issue page suggests the day under the field: Esc keeps the text, Tab a
   await settle(2)
   expect(await lastBody()).toEqual({ fields: { duedate: '2027-11-02' } })
 })
+
+test('a click on a date field selects its date, so a phrase typed over it saves on Tab, and a second click places the caret', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  const due = props().getByLabel('Due date')
+  await due.fill('24/12/2026')
+  await window.keyboard.press('Enter')
+  await settle(1)
+  await due.blur()
+  await expect(due).toHaveValue('24 Dec')
+
+  // Typed key by key after a click, as a person does: `fill` would replace the text whatever was selected.
+  await due.click()
+  await window.keyboard.type('next friday')
+  await expect(due).toHaveValue('next friday')
+  await window.keyboard.press('Tab')
+  await expect(due).toHaveValue('13 Nov')
+  await settle(2)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2026-11-13' } })
+
+  // Focus selects the date; a second click in the focused field places the caret, to edit one character.
+  const selection = () =>
+    due.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd])
+  await due.click()
+  await expect.poll(selection).toEqual([0, 6])
+  await due.click({ position: { x: 14, y: 10 } })
+  await expect.poll(async () => new Set(await selection()).size).toBe(1)
+})
