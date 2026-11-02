@@ -1180,6 +1180,9 @@ test('the issue page suggests the day under the field: Esc keeps the text, Tab a
   await expect(option()).toHaveText('Fri 13 Nov 2026')
   await window.keyboard.press('Tab')
   await expect(due).toHaveValue('13 Nov')
+  // Tab saves through the accept and then the blur; one write goes out, not two.
+  await window.waitForTimeout(400)
+  expect(await writes()).toBe(1)
   await settle(1)
   expect(await lastBody()).toEqual({ fields: { duedate: '2026-11-13' } })
 

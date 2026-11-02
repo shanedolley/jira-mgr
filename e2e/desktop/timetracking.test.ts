@@ -357,3 +357,18 @@ test('the Peek log form takes a date and time phrase in Started, and the local t
   expect(new Date(sent.started.replace('+0000', 'Z')).toISOString()).toBe(local)
   await releaseEdit(app)
 })
+
+test('a click on the suggestion in the Peek log form replaces the text and keeps focus in the field', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T12:00:00Z'))
+  await openPeek(/PSAPAC-4,/)
+  await logButton(peek()).click()
+  const started = logForm(peek()).getByLabel('Started')
+  await started.fill('3 days ago 9am')
+  const option = logForm(peek()).getByRole('option')
+  await expect(option).toHaveText('Fri 30 Oct 2026, 09:00')
+  await option.click()
+  await expect(started).toHaveValue('30 Oct, 09:00')
+  await expect(started).toBeFocused()
+  await expect(option).toHaveCount(0)
+  await expect(logForm(peek())).toBeVisible()
+})

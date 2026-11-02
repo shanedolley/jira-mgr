@@ -308,6 +308,7 @@ Every shortcut has a visible alternative: a double-click for `Enter`, the Peek's
 - Enter or leaving the field saves the date; Esc drops it; Clear sends `null`. A picked date saves the same way, not on the pick, because typing a date fires a change at every digit of the year. The edit is optimistic with a Retry toast on refusal. A Hold row and a Done issue stay editable.
 - The slot keeps its width, with a hover fill as the only change, and its title names the key.
 - The Sprint page's due slot is a `Slot` button named "Due date of PSAPAC-4: none" that opens the same editor, with the focus returning to it, beside the row button and not inside it (#279).
+- Amended by #405: the field is a text input that takes phrases and suggests the day under itself. Tab or a click on the suggestion saves and closes the editor as Enter does, and the first Esc closes the suggestion before the next one drops the draft.
 
 *Amended 2026-10-18, build of #269.* Shane wants to select the priority on the canvas and edit it there. The orchestrator decided these, and Shane approved them by closing #269 on 2026-10-18:
 

@@ -248,10 +248,13 @@ test('a phrase shows a suggestion under the field, and Tab replaces the text wit
   expect(await writes()).toBe(before)
 
   await window.keyboard.press('Tab')
-  await expect(field()).toHaveValue('10 Nov')
-  await expect(suggestion()).toHaveCount(0)
+  // Tab ends the edit as Enter does, and the editor reopens on the replaced text.
+  await expect(editor()).toHaveCount(0)
   await settle(before + 1)
   expect((await fieldsOf(app, 'PSAPAC-11'))?.duedate).toBe('2026-11-10')
+  await slot(EMPTY).click()
+  await expect(field()).toHaveValue('10 Nov')
+  await expect(suggestion()).toHaveCount(0)
 })
 
 test('a click on the suggestion replaces the text, saves it and closes the editor', async () => {
@@ -273,6 +276,59 @@ test('a click on the suggestion replaces the text, saves it and closes the edito
   await slot(EMPTY).click()
   await expect(field()).toHaveValue('2 Nov 2027')
   await expect(suggestion()).toHaveCount(0)
+})
+
+/** The edit requests the fake received so far, whether or not it has answered them. */
+const bodies = async () => (await counts(app)).editBodies
+
+test('Tab in a cell that already holds a date saves the accepted day with one write and closes the editor', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  // PSAPAC-40 is due 2 Jan 2020, so its editor also holds a Clear button after the field.
+  await slot(FILLED).click()
+  await field().fill('next tuesday')
+  await expect(suggestion()).toHaveText('Tue 10 Nov 2026')
+  await window.keyboard.press('Tab')
+
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  // Nothing more arrives after the first write.
+  await window.waitForTimeout(500)
+  expect((await bodies()).slice(before)).toEqual([{ fields: { duedate: '2026-11-10' } }])
+  expect((await fieldsOf(app, 'PSAPAC-40'))?.duedate).toBe('2026-11-10')
+})
+
+test('Tab in an empty cell editor saves once and closes the editor', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('in 3 days')
+  await window.keyboard.press('Tab')
+
+  await expect(editor()).toHaveCount(0)
+  await expect(tree()).toBeFocused()
+  await settle(before + 1)
+  await window.waitForTimeout(500)
+  expect((await bodies()).slice(before)).toEqual([{ fields: { duedate: '2026-11-05' } }])
+})
+
+test('a click on the suggestion in a cell editor sends one write, not one for each blur and unmount', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  const before = await writes()
+
+  await slot(EMPTY).click()
+  await field().fill('1 year')
+  await suggestion().click()
+
+  await expect(editor()).toHaveCount(0)
+  await settle(before + 1)
+  await window.waitForTimeout(500)
+  expect((await bodies()).slice(before)).toEqual([{ fields: { duedate: '2027-11-02' } }])
 })
 
 test('Esc closes the suggestion and keeps the text, and a second Esc leaves with nothing sent', async () => {

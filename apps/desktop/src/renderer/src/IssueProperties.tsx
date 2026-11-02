@@ -96,7 +96,7 @@ interface TextFieldProps {
   commitOnUnmount?: boolean
   /** Called with a date draft that cannot be read when the field unmounts, so the user hears that nothing saved. */
   onUnreadable?: (draft: string) => void
-  /** Called after a click on a date suggestion has saved, as Enter would end an edit. */
+  /** Called after Tab or a click on a date suggestion has saved, as Enter would end an edit. */
   onPick?: (input: HTMLInputElement) => void
   /** A date's suggestion goes under the element with this CSS anchor name, not under the field. */
   suggestUnder?: string
@@ -138,6 +138,9 @@ export function TextField({
   // The draft last sent. Jira's answer lands a render later, and until it does `draft` still
   // differs from `value`, so Enter followed at once by leaving the field would send it twice.
   const sent = useRef<string | null>(null)
+  // The day that draft meant. A click, a blur and an unmount can each carry a different text for
+  // the same day, so a day goes out once.
+  const sentDay = useRef<string | null>(null)
 
   /** Saves the text if it changed. False when a date cannot be read, so the draft stays. */
   function commit(closing = false, text = draft): boolean {
@@ -150,11 +153,13 @@ export function TextField({
       if (closing) onUnreadable?.(text)
       return false
     }
+    if (day === sentDay.current) return true
     if (day === value) {
       setDraft(shown)
       return true
     }
     sent.current = text
+    sentDay.current = day
     onCommit(day)
     return true
   }
@@ -180,6 +185,7 @@ export function TextField({
       // The page's own Esc is for leaving, and this one only abandons the edit.
       event.stopPropagation()
       sent.current = null
+      sentDay.current = null
       setUnread(false)
       setDraft(shown)
     }
@@ -209,13 +215,18 @@ export function TextField({
         }
         onChange={(text) => {
           sent.current = null
+          sentDay.current = null
           setUnread(false)
           setDraft(text)
         }}
         onAccept={(text, how, input) => {
           setDraft(text)
-          // Tab goes on to blur, which saves. A click stays in the field, so it saves here.
-          if (how === 'click' && commit(false, text)) onPick?.(input)
+          // Tab would leave the field and save through its blur, but a cell editor may swallow
+          // that blur (Tab to Clear), so the accept saves here, once, whichever follows. An
+          // editor that ends with the accept keeps Tab from moving focus on, as Enter does.
+          const saved = commit(false, text)
+          if (saved) onPick?.(input)
+          return how === 'tab' && saved && onPick !== undefined
         }}
         onBlur={() => {
           commit()

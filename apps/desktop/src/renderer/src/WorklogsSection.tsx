@@ -75,10 +75,14 @@ export function WorklogFormRow({
   // What the Started field shows; `form.started` holds the day and time it means, or '' if none.
   const [startedLabel, setStartedLabel] = useState(() => startedText(initial.started, today))
   const [startedUnread, setStartedUnread] = useState(false)
-  // The time of day the field holds, which a phrase with no time keeps. It changes when a text is
-  // taken, not on each key, so a half-typed phrase cannot move it.
-  const [keptTime, setKeptTime] = useState(initial.started.split('T')[1] ?? null)
-  const meant = readStarted(startedLabel, today, keptTime)
+  // The time of day and the day the field holds. A phrase with no time keeps the time, and a time
+  // alone keeps the day. They change when a text is taken, not on each key, so a half-typed
+  // phrase cannot move them.
+  const [kept, setKept] = useState({
+    time: initial.started.split('T')[1] ?? null,
+    day: initial.started.slice(0, 10),
+  })
+  const meant = readStarted(startedLabel, today, kept.time, kept.day)
   const meantText = meant === null ? '' : formatDayTime(meant, today)
 
   async function submit(event: SyntheticEvent) {
@@ -167,23 +171,26 @@ export function WorklogFormRow({
             onChange={(text) => {
               setStartedLabel(text)
               setStartedUnread(false)
-              const read = readStarted(text, today, keptTime)
+              const read = readStarted(text, today, kept.time, kept.day)
               field('started')(read === null ? '' : startedValue(read))
             }}
             onAccept={(text) => {
               setStartedLabel(text)
-              setKeptTime(meant?.time ?? keptTime)
-              if (meant !== null) field('started')(startedValue(meant))
+              if (meant === null) return false
+              setKept({ time: meant.time ?? kept.time, day: meant.day })
+              field('started')(startedValue(meant))
+              return false
             }}
             onBlur={() => {
               if (meant === null) {
                 setStartedUnread(startedLabel.trim() !== '')
                 return
               }
-              setKeptTime(meant.time ?? keptTime)
+              setKept({ time: meant.time ?? kept.time, day: meant.day })
               setStartedLabel(meantText)
             }}
             maxLength={100}
+            noteClassName="block text-xs"
             className={`${FIELD} w-48 aria-invalid:border-danger`}
           />
         </div>

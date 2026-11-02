@@ -102,7 +102,7 @@ export interface WorklogForm {
   /** A duration as typed, such as `1h15m` or `1.25 hours`. */
   timeSpent: string
   /**
-   * A `datetime-local` value, `2026-10-10T14:30`, in local time. A new worklog holds a date,
+   * A local date and time, `2026-10-10T14:30`. A new worklog holds a date,
    * `2026-10-10`, and starts at that day's current time of day.
    */
   started: string
@@ -113,7 +113,7 @@ export type WorklogRequest =
   | { ok: true; timeSpent: string; started: string | undefined; comment: AdfDoc | undefined }
   | { ok: false; message: string; field: keyof WorklogForm }
 
-/** `datetime-local` text for an instant, in local time. */
+/** The local date and time of an instant, as `2026-10-10T14:30`. */
 export function toInputTime(iso: string): string {
   const date = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -140,8 +140,12 @@ export function startedText(started: string, today: string): string {
  * The day and time the Started field's text means, or `null` when it means none. A phrase with no
  * time keeps `keepTime`, the time the field holds.
  */
-export const readStarted = (text: string, today: string, keepTime: string | null): DayTime | null =>
-  parseDateTimeInput(text, today, keepTime)
+export const readStarted = (
+  text: string,
+  today: string,
+  keepTime: string | null,
+  keepDay: string | null,
+): DayTime | null => parseDateTimeInput(text, today, keepTime, keepDay)
 
 /** What the form holds for a new worklog: today, nothing logged and no comment. */
 export const blankWorklog = (now: Date = new Date()): WorklogForm => ({

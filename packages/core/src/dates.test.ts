@@ -203,6 +203,23 @@ describe('formatDay', () => {
     }
   })
 
+  it.each([
+    ['Jan 1', MONDAY, '2026-01-01'],
+    ['dec 25', '2027-03-01', '2027-12-25'],
+    ['nov 10th', '2026-01-15', '2026-11-10'],
+    ['10th nov', '2026-01-15', '2026-11-10'],
+    ['10th of nov', '2026-01-15', '2026-11-10'],
+    ['1st Jan', MONDAY, '2026-01-01'],
+    ['22nd of March', MONDAY, '2026-03-22'],
+    // No 29 February in 2027, so chrono's nearest leap year answers, as before the year was pinned.
+    ['29 Feb', '2027-12-02', '2028-02-29'],
+    ['feb 29', '2027-12-02', '2028-02-29'],
+    ['29 Feb', '2028-01-10', '2028-02-29'],
+    ['feb 29', '2028-11-10', '2028-02-29'],
+  ])('reads %s on %s as %s', (text, today, day) => {
+    expect(parseDateInput(text, today)).toBe(day)
+  })
+
   it('reads a short date in the reference year, even when that day has passed', () => {
     expect(parseDateInput('10 Nov', MONDAY)).toBe('2026-11-10')
     expect(parseDateInput('1 Jan', MONDAY)).toBe('2026-01-01')
@@ -226,8 +243,35 @@ describe('parseDateTimeInput', () => {
     ['10 Nov 2027 noon', '2027-11-10', '12:00'],
     ['2pm', '2026-11-02', '14:00'],
     ['9:30', '2026-11-02', '09:30'],
+    ['5pm yesterday', '2026-11-01', '17:00'],
+    ['2pm tomorrow', '2026-11-03', '14:00'],
+    ['14:30 10 nov', '2026-11-10', '14:30'],
+    ['noon today', '2026-11-02', '12:00'],
+    ['10am on friday', '2026-11-06', '10:00'],
+    ['at 7:05 pm next tuesday', '2026-11-10', '19:05'],
+    ['5pm, 3 days ago', '2026-10-30', '17:00'],
   ])('reads %s as %s at %s', (text, day, time) => {
     expect(parseDateTimeInput(text, now)).toEqual({ day, time })
+  })
+
+  it.each(['2pm tomorrow 5pm', '5pm yesterday 6pm', 'noon 2pm', '10 nov 9:30 14:00'])(
+    'does not read %j, which holds two times',
+    (text) => {
+      expect(parseDateTimeInput(text, now)).toBeNull()
+    },
+  )
+
+  it('keeps the day already in the field for a phrase that is only a time', () => {
+    expect(parseDateTimeInput('9:30', now, '13:00', '2026-10-02')).toEqual({
+      day: '2026-10-02',
+      time: '09:30',
+    })
+    expect(parseDateTimeInput('9:30', now, null, 'soon')).toEqual({ day: now, time: '09:30' })
+    // A phrase with a day uses that day, not the one in the field.
+    expect(parseDateTimeInput('tomorrow 9:30', now, null, '2026-10-02')).toEqual({
+      day: '2026-11-03',
+      time: '09:30',
+    })
   })
 
   it('gives a phrase with no time the time already in the field', () => {

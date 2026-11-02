@@ -766,6 +766,7 @@ export function CreateIssueDialog({
                         }}
                         onAccept={(text) => {
                           typeDate(field, text)
+                          return false
                         }}
                         onBlur={() => {
                           markUnread(field, unreadDate(field))

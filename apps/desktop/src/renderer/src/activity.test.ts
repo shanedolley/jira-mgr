@@ -296,17 +296,23 @@ describe('Started field', () => {
   })
 
   it('stores a phrase as the value the native input held', () => {
-    expect(readStarted('yesterday 2pm', today, null)).toEqual({ day: '2026-11-01', time: '14:00' })
-    expect(readStarted('yesterday', today, '15:45')).toEqual({ day: '2026-11-01', time: '15:45' })
+    expect(readStarted('yesterday 2pm', today, null, null)).toEqual({
+      day: '2026-11-01',
+      time: '14:00',
+    })
+    expect(readStarted('yesterday', today, '15:45', null)).toEqual({
+      day: '2026-11-01',
+      time: '15:45',
+    })
     // A new worklog holds a date alone, which logs at the time of day it is submitted.
-    expect(readStarted('yesterday', today, null)).toEqual({ day: '2026-11-01', time: null })
+    expect(readStarted('yesterday', today, null, null)).toEqual({ day: '2026-11-01', time: null })
   })
 
   it.each(['Australia/Sydney', 'America/Los_Angeles', 'UTC', 'Pacific/Auckland'])(
     'keeps the local time of a phrase through the request to Jira in %s',
     (zoneName) => {
       process.env.TZ = zoneName
-      const read = readStarted('yesterday 2pm', today, null)
+      const read = readStarted('yesterday 2pm', today, null, null)
       const request = readWorklogForm(
         { timeSpent: '1h', started: startedValue(read ?? { day: '', time: null }), comment: '' },
         false,
@@ -322,7 +328,7 @@ describe('Started field', () => {
 
   it('sends the same started for a phrase as for the same date and time typed whole', () => {
     const typed = readWorklogForm({ timeSpent: '1h', started: '2026-11-01T14:00', comment: '' })
-    const phrase = readStarted('1 Nov, 14:00', today, null)
+    const phrase = readStarted('1 Nov, 14:00', today, null, null)
     const read = readWorklogForm({
       timeSpent: '1h',
       started: startedValue(phrase ?? { day: '', time: null }),

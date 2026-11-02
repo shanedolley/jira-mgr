@@ -21,8 +21,9 @@ interface DateInputProps extends Omit<
   /**
    * Called when Tab or a click takes the suggestion, with the text to put in the field. Tab goes on
    * to the next field after it, and the field's own `onBlur` saves. A click leaves focus here.
+   * Returning true from a Tab accept says the edit has ended, so Tab moves focus nowhere.
    */
-  onAccept: (text: string, how: 'tab' | 'click', input: HTMLInputElement) => void
+  onAccept: (text: string, how: 'tab' | 'click', input: HTMLInputElement) => boolean
   /** Whether the text could not be read, which the field says in place of a suggestion. */
   unread: boolean
   className: string
@@ -81,7 +82,7 @@ export function DateInput({
   }, [open])
 
   function onInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (open && event.key === 'Escape') {
+    if (open && event.key === 'Escape' && !event.nativeEvent.isComposing) {
       // The field's own Esc, and the cell popover's or the dialog's, wait for the next press.
       event.preventDefault()
       event.stopPropagation()
@@ -96,8 +97,8 @@ export function DateInput({
       !event.altKey &&
       !event.nativeEvent.isComposing
     ) {
-      // No preventDefault: focus goes on to the next field, with the text already replaced.
-      onAccept(suggestion.text, 'tab', event.currentTarget)
+      // Focus goes on to the next field, with the text already replaced, unless the edit ended.
+      if (onAccept(suggestion.text, 'tab', event.currentTarget)) event.preventDefault()
     }
     onKeyDown?.(event)
   }
