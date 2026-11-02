@@ -332,6 +332,20 @@ test('Started takes a date and time phrase: Tab replaces it, a click replaces it
   await expect(logModal('PSAPAC-4')).toHaveCount(0)
 })
 
+test('a click on Started selects its date, so a phrase typed over it replaces it', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await window.keyboard.press('Shift+T')
+  const started = logForm('PSAPAC-4').getByLabel('Started')
+  await expect(started).toHaveValue('2 Nov')
+
+  // Typed key by key after a click, as a person does: `fill` would replace the text whatever was selected.
+  await started.click()
+  await window.keyboard.type('yesterday')
+  await expect(started).toHaveValue('yesterday')
+  await expect(logForm('PSAPAC-4').getByRole('option')).toHaveText('Sun 1 Nov 2026')
+})
+
 test('Started keeps a date-only form date-only, and Esc closes the suggestion without leaving the form', async () => {
   await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
   await open()

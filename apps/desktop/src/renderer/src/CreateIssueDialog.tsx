@@ -772,7 +772,6 @@ export function CreateIssueDialog({
                           markUnread(field, unreadDate(field))
                         }}
                         onKeyDown={(event) => {
-                          // Create is disabled while the phrase is unreadable, so Enter would submit nothing.
                           const plain =
                             event.key === 'Enter' &&
                             !event.metaKey &&
@@ -780,6 +779,13 @@ export function CreateIssueDialog({
                             !event.shiftKey &&
                             !event.altKey &&
                             !event.nativeEvent.isComposing
+                          // Enter takes an open suggestion, as Tab does, and leaves the form unsent.
+                          if (plain && event.currentTarget.ariaExpanded === 'true') {
+                            event.preventDefault()
+                            typeDate(field, replacement)
+                            return
+                          }
+                          // Create is disabled while the phrase is unreadable, so Enter would submit nothing.
                           if (plain && unreadDate(field)) {
                             event.preventDefault()
                             markUnread(field, true)

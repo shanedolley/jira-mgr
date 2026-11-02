@@ -39,8 +39,8 @@ interface DateInputProps extends Omit<
 /**
  * The one date field: a text input that is a combobox over a listbox with at most one option, the
  * date its text reads as. The option sits in a native popover under the field, so no panel, dialog
- * or cell popover clips it. Tab or a click takes it, Esc closes it and keeps the text, and
- * the field's other keys are its caller's. A text that reads as no date shows "Could not read the
+ * or cell popover clips it. Focus selects the text, so typing replaces it. Tab or a click takes
+ * it, Esc closes it and keeps the text, and the field's other keys are its caller's. A text that reads as no date shows "Could not read the
  * date" in a live region the field points at.
  */
 export function DateInput({
@@ -129,6 +129,8 @@ export function DateInput({
           onChange(event.target.value)
         }}
         onFocus={(event) => {
+          // A date is replaced far more often than edited, so typing goes over what the field holds.
+          event.currentTarget.select()
           setFocused(true)
           setDismissedFor(null)
           onFocus?.(event)

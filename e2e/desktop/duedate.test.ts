@@ -300,6 +300,26 @@ test('Tab in a cell that already holds a date saves the accepted day with one wr
   expect((await fieldsOf(app, 'PSAPAC-40'))?.duedate).toBe('2026-11-10')
 })
 
+for (const key of ['Enter', 'Tab'] as const) {
+  test(`the editor opens with its date selected, so a phrase typed over it saves on ${key}`, async () => {
+    await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+    await open()
+    const before = await writes()
+
+    // Typed key by key, as a person does: `fill` would replace the text whatever was selected.
+    await slot(FILLED).click()
+    await expect(field()).toHaveValue('2 Jan 2020')
+    await window.keyboard.type('next tuesday')
+    await expect(field()).toHaveValue('next tuesday')
+    await expect(suggestion()).toHaveText('Tue 10 Nov 2026')
+    await window.keyboard.press(key)
+
+    await expect(editor()).toHaveCount(0)
+    await settle(before + 1)
+    expect((await bodies()).slice(before)).toEqual([{ fields: { duedate: '2026-11-10' } }])
+  })
+}
+
 test('Tab in an empty cell editor saves once and closes the editor', async () => {
   await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
   await open()
