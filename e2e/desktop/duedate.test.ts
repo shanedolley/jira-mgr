@@ -262,6 +262,20 @@ test('Clear, Esc on Clear and Esc in the field drop an unreadable phrase without
   await expect(refusal()).toHaveCount(0)
 })
 
+test('the toast for an unreadable phrase quotes at most 40 characters of it', async () => {
+  await open()
+
+  await slot(EMPTY).click()
+  const long = 'x'.repeat(60)
+  await field().fill(long)
+  await item(/PSAPAC-10,/).click({ position: { x: 40, y: 8 } })
+
+  await expect(editor()).toHaveCount(0)
+  await expect(refusal()).toBeVisible()
+  await expect(notices(window)).toContainText(`Could not read "${'x'.repeat(40)}..." as a date.`)
+  await expect(notices(window)).not.toContainText('x'.repeat(41))
+})
+
 test('a readable phrase closed by a press outside the editor saves and raises no toast', async () => {
   await open()
   const before = await writes()

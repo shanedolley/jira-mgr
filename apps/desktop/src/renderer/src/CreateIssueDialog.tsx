@@ -767,11 +767,16 @@ export function CreateIssueDialog({
                         }}
                         onKeyDown={(event) => {
                           // Create is disabled while the phrase is unreadable, so Enter would submit nothing.
-                          if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) {
-                            if (unreadDate(field)) {
-                              event.preventDefault()
-                              markUnread(field, true)
-                            }
+                          const plain =
+                            event.key === 'Enter' &&
+                            !event.metaKey &&
+                            !event.ctrlKey &&
+                            !event.shiftKey &&
+                            !event.altKey &&
+                            !event.nativeEvent.isComposing
+                          if (plain && unreadDate(field)) {
+                            event.preventDefault()
+                            markUnread(field, true)
                           }
                         }}
                         className="field-sizing-content min-w-16 max-w-40 bg-transparent focus-visible:outline-none"

@@ -64,6 +64,17 @@ describe('parseDateInput', () => {
     ['in 1 month 1 week', '2027-01-31', '2027-03-07'],
     ['last year', '2028-02-29', '2027-02-28'],
     ['1 year ago', '2028-02-29', '2027-02-28'],
+    ['in a month and a week', '2026-01-22', '2026-03-01'],
+    ['in a month and a week', '2027-01-31', '2027-03-07'],
+    ['a month and a week ago', '2026-01-08', '2025-12-01'],
+    ['in a month a day', '2026-01-22', '2026-02-23'],
+    ['in a month a day', '2027-01-31', '2027-03-01'],
+    ['in 2 months and a day', '2026-01-22', '2026-03-23'],
+    ['in 2 months and a day', '2026-12-31', '2027-03-01'],
+    ['in a year and a day', '2026-01-22', '2027-01-23'],
+    ['in a year and a day', '2028-02-29', '2029-03-01'],
+    ['in 1 year and 1 month', '2028-02-29', '2029-03-29'],
+    ['in 1 month a week', '2026-01-22', '2026-03-01'],
   ])('stops %s from %s at the end of a shorter month: %s', (text, today, day) => {
     expect(parseDateInput(text, today)).toBe(day)
   })
@@ -98,6 +109,25 @@ describe('parseDateInput', () => {
   it('reads the year of 10/11/0050 as 2050 and of 1/1/99 as 1999', () => {
     expect(parseDateInput('10/11/0050', MONDAY)).toBe('2050-11-10')
     expect(parseDateInput('1/1/99', MONDAY)).toBe('1999-01-01')
+  })
+
+  it.each([
+    ['3 weeks', '2026-11-23'],
+    ['in 3 days', '2026-11-05'],
+    ['2 weeks ago', '2026-10-19'],
+    ['next week', '2026-11-09'],
+    ['last week', '2026-10-26'],
+    ['next month', '2026-12-02'],
+    ['last month', '2026-10-02'],
+    ['tomorrow', '2026-11-03'],
+    ['next tuesday', '2026-11-10'],
+  ])('keeps %s from Monday 2 November 2026 at %s', (text, day) => {
+    expect(parseDateInput(text, MONDAY)).toBe(day)
+  })
+
+  it('reads no span that mixes next or last with another', () => {
+    expect(parseDateInput('next month and last week', MONDAY)).toBeNull()
+    expect(parseDateInput('99999999999 years', MONDAY)).toBeNull()
   })
 
   it('reads the day of a leap year', () => {

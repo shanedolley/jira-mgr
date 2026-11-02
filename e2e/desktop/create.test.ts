@@ -764,6 +764,17 @@ test('Create more keeps the dates on the chips and sends them with the next issu
   expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10', summary: 'Second' } })
 })
 
+test('plain Enter on a readable date chip still submits the form', async () => {
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await dialog().getByLabel('Summary').fill('Enter in a chip')
+  await dialog().getByLabel('Due date').fill('24/12/2026')
+
+  await window.keyboard.press('Enter')
+  await settle(1)
+  expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-12-24' } })
+})
+
 test('a date phrase that cannot be read blocks Create while it is typed, and its message is tied to the chip', async () => {
   await open()
   await openCreate(/PSAPAC-10,/)
