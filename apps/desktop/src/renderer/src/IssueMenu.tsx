@@ -310,7 +310,8 @@ export function IssueMenu({
       event.key === 'Tab' &&
       event.target instanceof HTMLElement &&
       (event.target === element.current ||
-        event.target.closest('[role="menuitem"], [role="listbox"], [role="combobox"]') !== null)
+        (!event.target.matches('[data-date-input]') &&
+          event.target.closest('[role="menuitem"], [role="listbox"], [role="combobox"]') !== null))
     ) {
       event.preventDefault()
       onClose()

@@ -6,6 +6,7 @@ import { expect, test, type ElectronApplication, type Locator, type Page } from 
 
 import {
   counts,
+  dayText,
   failRead,
   failUpload,
   holdMe,
@@ -348,8 +349,8 @@ test('creates an issue with a Start date and a Due date, and its page shows both
 
   await window.keyboard.press('Enter')
   const props = issuePage().getByRole('complementary', { name: 'Properties' })
-  await expect(props.getByLabel('Start date')).toHaveValue('2026-10-01')
-  await expect(props.getByLabel('Due date')).toHaveValue('2026-10-14')
+  await expect(props.getByLabel('Start date')).toHaveValue(dayText('2026-10-01'))
+  await expect(props.getByLabel('Due date')).toHaveValue(dayText('2026-10-14'))
 })
 
 test('creates an issue with neither date and sends no date field', async () => {
@@ -757,7 +758,7 @@ test('Create more keeps the dates on the chips and sends them with the next issu
   expect(await lastBody()).toMatchObject({ fields: { duedate: '2026-11-10' } })
 
   await expect(dialog().getByRole('status')).toContainText('Created PSAPAC-2000: First')
-  await expect(dialog().getByLabel('Due date')).toHaveValue('2026-11-10')
+  await expect(dialog().getByLabel('Due date')).toHaveValue(dayText('2026-11-10'))
   await dialog().getByLabel('Summary').fill('Second')
   await dialog().getByRole('button', { name: 'Create issue' }).click()
   await settle(2)
@@ -797,7 +798,74 @@ test('a date phrase that cannot be read blocks Create while it is typed, and its
 
   await due.fill('24/12/2026')
   await expect(create).toBeEnabled()
-  await expect(window.locator(`[id="${note ?? ''}"]`)).toHaveText('Thu 24 Dec 2026')
+  await expect(window.locator(`[id="${note ?? ''}"]`)).toHaveText('')
+  await expect(dialog().getByRole('option')).toHaveText('Thu 24 Dec 2026')
+})
+
+test('a date chip suggests the day under itself, and Tab, a click and Esc act on it', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  const due = dialog().getByLabel('Due date')
+  const start = dialog().getByLabel('Start date')
+  const suggestion = () => dialog().getByRole('option')
+
+  await due.fill('next tuesday')
+  await expect(due).toHaveAttribute('aria-expanded', 'true')
+  await expect(suggestion()).toHaveText('Tue 10 Nov 2026')
+  // The suggestion sits under the chip and inside the window.
+  const chip = await due.boundingBox()
+  const box = await suggestion().boundingBox()
+  expect(box?.y ?? 0).toBeGreaterThanOrEqual((chip?.y ?? 0) + (chip?.height ?? 0))
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+    await window.evaluate(() => innerWidth),
+  )
+
+  // Esc closes the suggestion and keeps the text; the dialog stays.
+  await window.keyboard.press('Escape')
+  await expect(suggestion()).toHaveCount(0)
+  await expect(dialog()).toBeVisible()
+  await expect(due).toHaveValue('next tuesday')
+
+  // Tab replaces the text and moves on to the next field.
+  await due.fill('in 3 days')
+  await expect(suggestion()).toHaveText('Thu 5 Nov 2026')
+  await window.keyboard.press('Tab')
+  await expect(due).toHaveValue('5 Nov')
+  await expect(due).not.toBeFocused()
+
+  // A click takes the suggestion and leaves focus in the chip.
+  await start.fill('2 weeks ago')
+  await expect(suggestion()).toHaveText('Mon 19 Oct 2026')
+  await suggestion().click()
+  await expect(start).toHaveValue('19 Oct')
+  await expect(start).toBeFocused()
+  await expect(suggestion()).toHaveCount(0)
+
+  await dialog().getByLabel('Summary').fill('Suggested dates')
+  await dialog().getByRole('button', { name: 'Create issue' }).click()
+  await settle(1)
+  expect(await lastBody()).toMatchObject({
+    fields: { customfield_4: '2026-10-19', duedate: '2026-11-05' },
+  })
+})
+
+test('a date chip with a wide font keeps its suggestion inside the window', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await openCreate(/PSAPAC-10,/)
+  await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  const due = dialog().getByLabel('Due date')
+  await due.fill('wednesday')
+  const option = dialog().getByRole('option')
+  await expect(option).toHaveText('Wed 4 Nov 2026')
+  const box = await option.boundingBox()
+  const size = await window.evaluate(() => ({ width: innerWidth, height: innerHeight }))
+  expect(box?.height ?? 99).toBeLessThan(40)
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(size.width)
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(size.height)
 })
 
 test('a parent whose Customer differs asks before it changes the form', async () => {

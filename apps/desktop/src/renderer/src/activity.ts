@@ -1,4 +1,5 @@
 import { adfToMarkdown, type AdfDoc, type AdfNode } from '@jira-mgr/core/adf'
+import { formatDayTime, parseDateTimeInput, type DayTime } from '@jira-mgr/core/dates'
 import { formatDateTime } from '@jira-mgr/core/display'
 import { parseDuration } from '@jira-mgr/core/issue'
 
@@ -118,6 +119,29 @@ export function toInputTime(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
+
+/** The day and time a form's `started` holds: `2026-10-10` has no time and `2026-10-10T14:30` has. */
+export function startedParts(started: string): DayTime | null {
+  const match = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?$/.exec(started)
+  return match === null ? null : { day: match[1] ?? '', time: match[2] ?? null }
+}
+
+/** The `started` a day and time make: the same two shapes `startedParts` reads. */
+export const startedValue = ({ day, time }: DayTime): string =>
+  time === null ? day : `${day}T${time}`
+
+/** The Started field's text for a form's `started`: `10 Nov`, or `10 Nov, 14:30` with a time. */
+export function startedText(started: string, today: string): string {
+  const parts = startedParts(started)
+  return parts === null ? '' : formatDayTime(parts, today)
+}
+
+/**
+ * The day and time the Started field's text means, or `null` when it means none. A phrase with no
+ * time keeps `keepTime`, the time the field holds.
+ */
+export const readStarted = (text: string, today: string, keepTime: string | null): DayTime | null =>
+  parseDateTimeInput(text, today, keepTime)
 
 /** What the form holds for a new worklog: today, nothing logged and no comment. */
 export const blankWorklog = (now: Date = new Date()): WorklogForm => ({

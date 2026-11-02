@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { describeDate, parseDateInput } from './dates.js'
+import {
+  describeDate,
+  formatDay,
+  formatDayTime,
+  parseDateInput,
+  parseDateTimeInput,
+} from './dates.js'
 
 /** Monday 2 November 2026. */
 const MONDAY = '2026-11-02'
@@ -159,5 +165,114 @@ describe('describeDate', () => {
     ['2028-02-29', 'Tue 29 Feb 2028'],
   ])('writes %s as %s', (day, text) => {
     expect(describeDate(day)).toBe(text)
+  })
+})
+
+describe('formatDay', () => {
+  it.each([
+    ['2026-11-10', '10 Nov'],
+    ['2026-01-01', '1 Jan'],
+    ['2027-11-10', '10 Nov 2027'],
+    ['2025-12-31', '31 Dec 2025'],
+    ['2026-02-28', '28 Feb'],
+  ])('writes %s as %s on Monday 2 November 2026', (day, text) => {
+    expect(formatDay(day, MONDAY)).toBe(text)
+  })
+
+  it('leaves a text that is not a day as it was', () => {
+    expect(formatDay('soon', MONDAY)).toBe('soon')
+    expect(formatDay('2026-13-40', MONDAY)).toBe('2026-13-40')
+  })
+
+  it('reads back as the same day, from every reference day of two years', () => {
+    // Every day of 2026 and 2027 as the reference, and each target day in 2025 to 2029.
+    const targets = [
+      '2025-12-31',
+      '2026-01-01',
+      '2026-02-28',
+      '2026-11-10',
+      '2027-11-10',
+      '2028-02-29',
+      '2029-03-01',
+    ]
+    for (let t = Date.UTC(2026, 0, 1); t < Date.UTC(2028, 0, 1); t += 86_400_000 * 7) {
+      const today = new Date(t).toISOString().slice(0, 10)
+      for (const day of targets) {
+        expect(parseDateInput(formatDay(day, today), today)).toBe(day)
+      }
+    }
+  })
+
+  it('reads a short date in the reference year, even when that day has passed', () => {
+    expect(parseDateInput('10 Nov', MONDAY)).toBe('2026-11-10')
+    expect(parseDateInput('1 Jan', MONDAY)).toBe('2026-01-01')
+    expect(parseDateInput('10 Nov', '2027-03-01')).toBe('2027-11-10')
+    expect(parseDateInput('10 Nov 2027', MONDAY)).toBe('2027-11-10')
+  })
+})
+
+describe('parseDateTimeInput', () => {
+  const now = MONDAY
+
+  it.each([
+    ['yesterday 2pm', '2026-11-01', '14:00'],
+    ['today 9:30', '2026-11-02', '09:30'],
+    ['next tuesday 10am', '2026-11-10', '10:00'],
+    ['tomorrow at 7:05 pm', '2026-11-03', '19:05'],
+    ['tuesday 14:30', '2026-11-03', '14:30'],
+    ['monday 8am', '2026-11-09', '08:00'],
+    ['in 3 days 12am', '2026-11-05', '00:00'],
+    ['3 weeks, 4pm', '2026-11-23', '16:00'],
+    ['10 Nov 2027 noon', '2027-11-10', '12:00'],
+    ['2pm', '2026-11-02', '14:00'],
+    ['9:30', '2026-11-02', '09:30'],
+  ])('reads %s as %s at %s', (text, day, time) => {
+    expect(parseDateTimeInput(text, now)).toEqual({ day, time })
+  })
+
+  it('gives a phrase with no time the time already in the field', () => {
+    expect(parseDateTimeInput('yesterday', now, '15:45')).toEqual({
+      day: '2026-11-01',
+      time: '15:45',
+    })
+    expect(parseDateTimeInput('yesterday', now)).toEqual({ day: '2026-11-01', time: null })
+    expect(parseDateTimeInput('yesterday', now, 'late')).toEqual({ day: '2026-11-01', time: null })
+  })
+
+  it('lets a time in the phrase replace the one in the field', () => {
+    expect(parseDateTimeInput('yesterday 2pm', now, '15:45')).toEqual({
+      day: '2026-11-01',
+      time: '14:00',
+    })
+  })
+
+  it.each(['whenever 2pm', 'yesterday 25:00', 'yesterday 2pm tomorrow', '', '   '])(
+    'does not read %j',
+    (text) => {
+      expect(parseDateTimeInput(text, now)).toBeNull()
+    },
+  )
+
+  it('reads what formatDayTime writes, as the same day and time', () => {
+    for (const day of ['2026-11-10', '2027-11-10', '2025-01-01', '2028-02-29']) {
+      for (const time of ['00:00', '09:05', '12:00', '23:59']) {
+        const text = formatDayTime({ day, time }, '2026-11-02')
+        expect(parseDateTimeInput(text, now)).toEqual({ day, time })
+      }
+    }
+    expect(formatDayTime({ day: '2026-11-10', time: '14:30' }, '2026-11-02')).toBe('10 Nov, 14:30')
+    expect(formatDayTime({ day: '2027-11-10', time: '14:30' }, '2026-11-02')).toBe(
+      '10 Nov 2027, 14:30',
+    )
+    expect(formatDayTime({ day: '2026-11-10', time: null }, '2026-11-02')).toBe('10 Nov')
+  })
+
+  it('reads the time as local time and the day from the local date', () => {
+    // 00:30 local on 2 November is still 1 November in UTC for a zone ahead of it, and the other way round.
+    expect(parseDateTimeInput('today 1am', MONDAY)).toEqual({ day: '2026-11-02', time: '01:00' })
+    expect(parseDateTimeInput('tomorrow 11pm', MONDAY)).toEqual({
+      day: '2026-11-03',
+      time: '23:00',
+    })
   })
 })

@@ -6,6 +6,7 @@ import { expect, test, type ElectronApplication, type Locator, type Page } from 
 
 import {
   counts,
+  dayText,
   failComments,
   failRead,
   failTransitions,
@@ -528,15 +529,17 @@ test('saves a date when focus leaves the field, clears it, and abandons an edit 
 
   await due.fill('2026-12-24')
   expect(await writes()).toBe(0)
-  // Tab would step through the day, month and year segments first, so leave the field outright.
   await due.blur()
-  await expect(due).toHaveValue('2026-12-24')
+  await expect(due).toHaveValue(dayText('2026-12-24'))
   await settle(1)
   expect(await lastBody()).toEqual({ fields: { duedate: '2026-12-24' } })
 
   await due.fill('2027-01-05')
+  // The first Esc closes the suggestion and keeps the text; the second abandons the edit.
   await window.keyboard.press('Escape')
-  await expect(due).toHaveValue('2026-12-24')
+  await expect(due).toHaveValue('2027-01-05')
+  await window.keyboard.press('Escape')
+  await expect(due).toHaveValue(dayText('2026-12-24'))
   // Esc in a field abandons the edit; it does not leave the page.
   await expect(heading('Migrate the dashboards')).toBeVisible()
 
@@ -554,7 +557,7 @@ test('saves a date when focus leaves the field, clears it, and abandons an edit 
   expect(await writes()).toBe(1)
   await due.focus()
   await window.keyboard.press('Escape')
-  await expect(due).toHaveValue('2026-12-24')
+  await expect(due).toHaveValue(dayText('2026-12-24'))
   await expect(props().getByText('Could not read the date')).toHaveCount(0)
 
   await due.fill('')
@@ -618,7 +621,7 @@ test('sends a second edit of the same field only once Jira has answered the firs
   expect((await fieldsOf(app, 'PSAPAC-4'))?.duedate).toBe('2027-03-03')
   // The read after the last edit shows what Jira holds.
   await expect.poll(async () => (await counts(app)).issueReads.length).toBe(3)
-  await expect(due).toHaveValue('2027-03-03')
+  await expect(due).toHaveValue(dayText('2027-03-03'))
 })
 
 test('edits the estimate, shows the remaining estimate Jira cascades, and refuses a bad duration', async () => {
@@ -1153,3 +1156,37 @@ for (const [name, css] of FONTS) {
     expect(other?.width).toBe(208)
   })
 }
+
+test('the issue page suggests the day under the field: Esc keeps the text, Tab and a click replace it', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await openPage(/PSAPAC-4,/, 'Migrate the dashboards')
+  const due = props().getByLabel('Due date')
+  const option = () => props().getByRole('option')
+
+  await due.fill('next tuesday')
+  await expect(due).toHaveAttribute('aria-expanded', 'true')
+  await expect(option()).toHaveText('Tue 10 Nov 2026')
+  // The suggestion is drawn outside the narrow sidebar's own box without being clipped by it.
+  const field = await due.boundingBox()
+  const box = await option().boundingBox()
+  expect(box?.y ?? 0).toBeGreaterThanOrEqual((field?.y ?? 0) + (field?.height ?? 0))
+  await window.keyboard.press('Escape')
+  await expect(option()).toHaveCount(0)
+  await expect(due).toHaveValue('next tuesday')
+  await expect(heading('Migrate the dashboards')).toBeVisible()
+  expect(await writes()).toBe(0)
+
+  await due.fill('next friday')
+  await expect(option()).toHaveText('Fri 13 Nov 2026')
+  await window.keyboard.press('Tab')
+  await expect(due).toHaveValue('13 Nov')
+  await settle(1)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2026-11-13' } })
+
+  await due.fill('1 year')
+  await expect(option()).toHaveText('Tue 2 Nov 2027')
+  await option().click()
+  await expect(due).toHaveValue('2 Nov 2027')
+  await settle(2)
+  expect(await lastBody()).toEqual({ fields: { duedate: '2027-11-02' } })
+})

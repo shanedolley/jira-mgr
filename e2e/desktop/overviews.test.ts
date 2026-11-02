@@ -7,6 +7,7 @@ import { expect, test, type ElectronApplication, type Locator, type Page } from 
 
 import {
   counts,
+  dayText,
   failDone,
   failUnresolved,
   holdUnresolved,
@@ -296,14 +297,14 @@ test.describe('Epics table', () => {
     const due = props().getByLabel('Due date')
     await due.fill('2030-03-04')
     await due.blur()
-    await expect(due).toHaveValue('2030-03-04')
+    await expect(due).toHaveValue(dayText('2030-03-04'))
     await window.keyboard.press('Escape')
 
     await epicRow('PSAPAC-50').getByRole('button').click()
     const other = props().getByLabel('Due date')
     await other.fill('2030-01-02')
     await other.blur()
-    await expect(other).toHaveValue('2030-01-02')
+    await expect(other).toHaveValue(dayText('2030-01-02'))
     await window.keyboard.press('Escape')
     await expect(epicsPage()).toBeVisible()
 

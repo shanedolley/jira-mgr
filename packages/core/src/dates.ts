@@ -5,10 +5,16 @@ import { dayKey } from './view-filter.js'
 
 const Text = z.string().trim().min(1).max(100)
 const Day = z.iso.date()
+const Time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
 
 const WEEKDAY_ONLY = /^(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*$/i
+const MONTH =
+  '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)'
 /** `nov 10`, which chrono reads as November 2010. */
-const MONTH_THEN_DAY = /^([a-z]{3,9})\.?\s+(\d{1,2})$/i
+const MONTH_THEN_DAY = new RegExp(`^(${MONTH})\\.?\\s+(\\d{1,2})$`, 'i')
+/** `10 nov`, which chrono reads as the nearest 10 November, not the one in the reference year. */
+const DAY_THEN_MONTH = new RegExp(`^(\\d{1,2})\\s*(${MONTH})\\.?$`, 'i')
+
 /** A phrase made only of spans, such as `3 weeks`, `in a month and a week` or `1 year ago`. */
 const SPANS =
   /^(?:in\s+)?(?:(?:\d+|an?|next|last)\s*(?:day|week|month|year)s?\s*(?:and\s+)?)+(?:ago|from now)?$/i
@@ -66,7 +72,9 @@ export function parseDateInput(text: string, today: string): string | null {
   const phrase = input.data
     .replace(/^(tue|wed)s?\.?$/i, '$1')
     .replace(/^([a-z]{3,9})\.$/i, '$1')
-    .replace(MONTH_THEN_DAY, '$2 $1')
+    // A month and day with no year is in the reference year, so `formatDay` reads back as itself.
+    .replace(MONTH_THEN_DAY, `$2 $1 ${reference.data.slice(0, 4)}`)
+    .replace(DAY_THEN_MONTH, `$1 $2 ${reference.data.slice(0, 4)}`)
   const weekday = WEEKDAY_ONLY.test(phrase)
   const [y = 0, m = 1, d = 1] = reference.data.split('-').map(Number)
   if (SPANS.test(phrase)) {
@@ -98,4 +106,68 @@ export function describeDate(day: string): string {
   const [y = 0, m = 1, d = 1] = day.split('-').map(Number)
   const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] ?? ''
   return `${weekday} ${String(d)} ${MONTHS[m - 1] ?? ''} ${String(y)}`
+}
+
+/**
+ * A day as the date fields hold it once they have read it: `10 Nov` in the year of `today` and
+ * `10 Nov 2027` in any other. `parseDateInput` reads it back as the same day. `day` and `today` are
+ * `YYYY-MM-DD`; a `day` that is not one comes back as it was.
+ */
+export function formatDay(day: string, today: string): string {
+  const parsed = Day.safeParse(day)
+  if (!parsed.success) return day
+  const [y = 0, m = 1, d = 1] = parsed.data.split('-').map(Number)
+  const short = `${String(d)} ${MONTHS[m - 1] ?? ''}`
+  return today.startsWith(`${String(y).padStart(4, '0')}-`) ? short : `${short} ${String(y)}`
+}
+
+/** A day and the time of day on it, `HH:mm` in local time, or `null` for a day with no time. */
+export interface DayTime {
+  day: string
+  time: string | null
+}
+
+/** A day and time as the Started field holds them: `10 Nov, 14:30`, or `10 Nov 2027, 14:30`. */
+export function formatDayTime({ day, time }: DayTime, today: string): string {
+  return time === null ? formatDay(day, today) : `${formatDay(day, today)}, ${time}`
+}
+
+/** `2pm`, `9:30`, `14:30`, `at 10am`, `noon`: a time that ends a phrase, after a space or a comma. */
+const TRAILING_TIME =
+  /^(?:(.+?)(?:\s*,\s*|\s+))?((?:at\s+)?(?:\d{1,2}(?:[:.]\d{2})?\s*[ap]\.?m\.?|\d{1,2}:\d{2}|noon|midnight))$/i
+
+/**
+ * The day and time a typed phrase names, for a field that holds both, such as a work log's
+ * Started: `yesterday 2pm`, `today 9:30`, `next tuesday 10am`, `10 Nov, 14:30`. The day follows
+ * `parseDateInput` and the time is chrono's, in local time. A phrase with no time takes `keepTime`
+ * (`HH:mm` or `null`), the time the field already holds. `today` is the reference day,
+ * `YYYY-MM-DD`. A phrase
+ * that is only a time, such as `2pm`, is that time today.
+ */
+export function parseDateTimeInput(
+  text: string,
+  today: string,
+  keepTime: string | null = null,
+): DayTime | null {
+  const input = Text.safeParse(text)
+  const reference = Day.safeParse(today)
+  if (!input.success || !reference.success) return null
+  const kept = Time.safeParse(keepTime)
+  const fallback = kept.success ? kept.data : null
+  const split = TRAILING_TIME.exec(input.data)
+  if (split === null) {
+    const day = parseDateInput(input.data, reference.data)
+    return day === null ? null : { day, time: fallback }
+  }
+  const [, datePart, timePart = ''] = split
+  const day = datePart === undefined ? reference.data : parseDateInput(datePart, reference.data)
+  const [y = 0, m = 1, d = 1] = reference.data.split('-').map(Number)
+  const found = chrono.en.GB.parse(timePart, new Date(y, m - 1, d, 12))[0]
+  if (day === null || found?.index !== 0 || found.text.length !== timePart.length) return null
+  if (!found.start.isCertain('hour')) return null
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const time = Time.safeParse(
+    `${pad(found.start.get('hour') ?? 0)}:${pad(found.start.get('minute') ?? 0)}`,
+  )
+  return time.success ? { day, time: time.data } : null
 }

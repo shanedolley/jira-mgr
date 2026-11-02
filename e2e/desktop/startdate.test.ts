@@ -7,6 +7,7 @@ import { expect, test, type ElectronApplication, type Page } from '@playwright/t
 
 import {
   counts,
+  dayText,
   fieldsOf,
   joinSprint,
   launch,
@@ -45,7 +46,7 @@ const chip = () =>
     .getByRole('button', { name: 'Start date', exact: true })
 /** The editor, drawn by the cell editor against the clicked slot. */
 const editor = () => window.getByRole('dialog', { name: 'Start date' })
-const field = () => editor().getByRole('textbox')
+const field = () => editor().getByRole('combobox')
 
 /** The fake seeds no start date, so every test sets one first. PSAPAC-11 and PSAPAC-40 are the rows used. */
 const EMPTY = /PSAPAC-11,/
@@ -186,6 +187,9 @@ test('Esc drops a typed date: nothing is sent and the slot is as it was', async 
 
   await slot(EMPTY).click()
   await field().fill('2099-01-01')
+  // The first Esc closes the suggestion and keeps the text. The second drops the draft.
+  await window.keyboard.press('Escape')
+  await expect(editor()).toBeVisible()
   await window.keyboard.press('Escape')
 
   await expect(editor()).toHaveCount(0)
@@ -200,7 +204,7 @@ test('Clear removes the date', async () => {
   const before = await writes()
 
   await slot(EMPTY).click()
-  await expect(field()).toHaveValue('2099-01-01')
+  await expect(field()).toHaveValue(dayText('2099-01-01'))
   await editor().getByRole('button', { name: 'Clear' }).click()
 
   await expect(editor()).toHaveCount(0)

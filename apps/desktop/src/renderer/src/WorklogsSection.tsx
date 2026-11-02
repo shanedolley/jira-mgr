@@ -1,3 +1,4 @@
+import { describeDate, formatDayTime } from '@jira-mgr/core/dates'
 import { formatEstimate } from '@jira-mgr/core/issue'
 import { useId, useState, type SyntheticEvent, type KeyboardEvent } from 'react'
 
@@ -6,7 +7,10 @@ import {
   blankWorklog,
   failureNotice,
   formatWhen,
+  readStarted,
   readWorklogForm,
+  startedText,
+  startedValue,
   textFromAdf,
   toInputTime,
   totalSpent,
@@ -21,8 +25,10 @@ import {
   type WorklogInput,
 } from './activityQueries'
 import type { Notice } from './create'
+import { DateInput } from './DateInput'
 import { submitOnModEnter } from './modEnter'
 import { AddAction, FIELD, QueryBody, Section } from './Section'
+import { useToday } from './today'
 
 interface WorklogsSectionProps {
   issueKey: string
@@ -64,7 +70,16 @@ export function WorklogFormRow({
     null,
   )
   const problemId = useId()
-  const dateOnly = !initial.started.includes('T')
+  const today = useToday()
+  const startedId = useId()
+  // What the Started field shows; `form.started` holds the day and time it means, or '' if none.
+  const [startedLabel, setStartedLabel] = useState(() => startedText(initial.started, today))
+  const [startedUnread, setStartedUnread] = useState(false)
+  // The time of day the field holds, which a phrase with no time keeps. It changes when a text is
+  // taken, not on each key, so a half-typed phrase cannot move it.
+  const [keptTime, setKeptTime] = useState(initial.started.split('T')[1] ?? null)
+  const meant = readStarted(startedLabel, today, keptTime)
+  const meantText = meant === null ? '' : formatDayTime(meant, today)
 
   async function submit(event: SyntheticEvent) {
     event.preventDefault()
@@ -128,20 +143,50 @@ export function WorklogFormRow({
             className={`${FIELD} w-28 aria-invalid:border-danger`}
           />
         </label>
-        <label className="space-y-0.5">
-          <span className="block text-xs text-muted">Started</span>
-          <input
-            type={dateOnly ? 'date' : 'datetime-local'}
-            value={form.started}
+        <div className="space-y-0.5">
+          <label htmlFor={startedId} className="block text-xs text-muted">
+            Started
+          </label>
+          <DateInput
+            id={startedId}
+            label="Started"
+            value={startedLabel}
             disabled={saving}
+            unread={startedUnread}
             aria-invalid={invalid('started')}
             aria-describedby={described('started')}
-            onChange={(event) => {
-              field('started')(event.target.value)
+            // Text that already reads as the replacement has nothing left to offer.
+            suggestion={
+              meant === null || meantText === startedLabel
+                ? null
+                : {
+                    label: `${describeDate(meant.day)}${meant.time === null ? '' : `, ${meant.time}`}`,
+                    text: meantText,
+                  }
+            }
+            onChange={(text) => {
+              setStartedLabel(text)
+              setStartedUnread(false)
+              const read = readStarted(text, today, keptTime)
+              field('started')(read === null ? '' : startedValue(read))
             }}
-            className={`${FIELD} aria-invalid:border-danger`}
+            onAccept={(text) => {
+              setStartedLabel(text)
+              setKeptTime(meant?.time ?? keptTime)
+              if (meant !== null) field('started')(startedValue(meant))
+            }}
+            onBlur={() => {
+              if (meant === null) {
+                setStartedUnread(startedLabel.trim() !== '')
+                return
+              }
+              setKeptTime(meant.time ?? keptTime)
+              setStartedLabel(meantText)
+            }}
+            maxLength={100}
+            className={`${FIELD} w-48 aria-invalid:border-danger`}
           />
-        </label>
+        </div>
         <label className="min-w-40 flex-1 space-y-0.5">
           <span className="block text-xs text-muted">Comment</span>
           <input

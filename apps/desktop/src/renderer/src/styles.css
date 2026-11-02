@@ -606,3 +606,31 @@ body:has([data-scrim]) header.app-drag {
     -webkit-app-region: no-drag;
   }
 }
+
+/*
+ * The date suggestion: a native popover under its field, so no panel, dialog or cell popover
+ * clips it. It is as wide as its text needs, and no narrower than the field.
+ */
+.suggestion {
+  position-area: block-end span-inline-end;
+  position-try-fallbacks: flip-block, flip-inline;
+  min-width: anchor-size(width);
+  max-width: min(24rem, calc(100vw - 16px));
+  margin: 2px 0 0;
+  inset: auto;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.18);
+}
+
+.suggestion-option {
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--hover);
+  white-space: nowrap;
+  cursor: default;
+}

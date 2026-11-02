@@ -4,7 +4,16 @@ import { join } from 'node:path'
 
 import { expect, test, type ElectronApplication, type Locator, type Page } from '@playwright/test'
 
-import { counts, launch, logIn, logWork, peekRow, releaseEdit, setEstimate } from './harness.js'
+import {
+  counts,
+  dayText,
+  launch,
+  logIn,
+  logWork,
+  peekRow,
+  releaseEdit,
+  setEstimate,
+} from './harness.js'
 
 let app: ElectronApplication
 let window: Page
@@ -197,8 +206,9 @@ const logForm = (scope: Locator) => block(scope).getByRole('form', { name: 'Log 
 const edits = async () => (await counts(app)).edits
 const lastBody = async () => (await counts(app)).editBodies.at(-1)
 
-/** The date the app's own clock shows, as a date input holds it. */
-const today = () => window.evaluate(() => new Date().toLocaleDateString('en-CA'))
+/** The date the app's own clock shows, as the Started field holds it. */
+const today = async () =>
+  dayText(await window.evaluate(() => new Date().toLocaleDateString('en-CA')))
 
 /** Opens the form, fills it and submits, then lets the fake Jira answer once it has the write. */
 async function logFrom(scope: Locator, time: string, comment: string, writesBefore: number) {
@@ -317,4 +327,33 @@ test('keeps the form inside a narrow Peek and a narrow page with no sideways scr
   expect(
     await window.evaluate(() => document.documentElement.scrollWidth - globalThis.innerWidth),
   ).toBeLessThanOrEqual(0)
+})
+
+test('the Peek log form takes a date and time phrase in Started, and the local time reaches Jira', async () => {
+  // Noon UTC on Monday 2 November 2026 is the same calendar day in the test zone.
+  await window.clock.setFixedTime(new Date('2026-11-02T12:00:00Z'))
+  await openPeek(/PSAPAC-4,/)
+  await logButton(peek()).click()
+  const started = logForm(peek()).getByLabel('Started')
+  const option = () => logForm(peek()).getByRole('option')
+  await expect(started).toHaveValue('2 Nov')
+
+  await started.fill('yesterday 2pm')
+  await expect(option()).toHaveText('Sun 1 Nov 2026, 14:00')
+  await window.keyboard.press('Escape')
+  await expect(option()).toHaveCount(0)
+  await expect(started).toHaveValue('yesterday 2pm')
+  await expect(logForm(peek())).toBeVisible()
+
+  await started.fill('yesterday 2pm ')
+  await window.keyboard.press('Tab')
+  await expect(started).toHaveValue('1 Nov, 14:00')
+  await logForm(peek()).getByLabel('Time spent').fill('45m')
+  await logForm(peek()).getByRole('button', { name: 'Log work' }).click()
+  await expect.poll(edits).toBe(1)
+  const sent = (await lastBody()) as { started: string }
+  // 14:00 on 1 November in the app's own zone, as an instant.
+  const local = await window.evaluate(() => new Date(2026, 10, 1, 14, 0).toISOString())
+  expect(new Date(sent.started.replace('+0000', 'Z')).toISOString()).toBe(local)
+  await releaseEdit(app)
 })

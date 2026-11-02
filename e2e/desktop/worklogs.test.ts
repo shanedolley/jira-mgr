@@ -299,3 +299,118 @@ test('the issue menu and the palette offer Worklogs with W and Log work with Shi
   await palette.getByRole('option', { name: /^Worklogs/ }).click()
   await expect(list('PSAPAC-4')).toBeVisible()
 })
+
+const lastBody = async () => (await counts(app)).editBodies.at(-1) as { started?: string }
+
+test('Started takes a date and time phrase: Tab replaces it, a click replaces it, and the time survives to Jira', async () => {
+  // Monday 2 November 2026, 09:30 in the app's time zone (UTC).
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await window.keyboard.press('Shift+T')
+  const started = logForm('PSAPAC-4').getByLabel('Started')
+  const suggestion = () => logForm('PSAPAC-4').getByRole('option')
+  await expect(started).toHaveValue('2 Nov')
+
+  await started.fill('yesterday 2pm')
+  await expect(started).toHaveAttribute('aria-expanded', 'true')
+  await expect(suggestion()).toHaveText('Sun 1 Nov 2026, 14:00')
+  await window.keyboard.press('Tab')
+  await expect(started).toHaveValue('1 Nov, 14:00')
+
+  // A date alone keeps the time already in the field.
+  await started.fill('2 days ago')
+  await expect(suggestion()).toHaveText('Sat 31 Oct 2026, 14:00')
+  await suggestion().click()
+  await expect(started).toHaveValue('31 Oct, 14:00')
+  await expect(started).toBeFocused()
+
+  await logForm('PSAPAC-4').getByLabel('Time spent').fill('1h')
+  await logForm('PSAPAC-4').getByLabel('Time spent').press('Enter')
+  await expect.poll(writes).toBe(1)
+  expect((await lastBody()).started).toBe('2026-10-31T14:00:00.000+0000')
+  await releaseEdit(app)
+  await expect(logModal('PSAPAC-4')).toHaveCount(0)
+})
+
+test('Started keeps a date-only form date-only, and Esc closes the suggestion without leaving the form', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await window.keyboard.press('Shift+T')
+  const started = logForm('PSAPAC-4').getByLabel('Started')
+  const suggestion = () => logForm('PSAPAC-4').getByRole('option')
+
+  await started.fill('yesterday')
+  await expect(suggestion()).toHaveText('Sun 1 Nov 2026')
+  await window.keyboard.press('Escape')
+  await expect(suggestion()).toHaveCount(0)
+  await expect(started).toHaveValue('yesterday')
+  await expect(logModal('PSAPAC-4')).toBeVisible()
+  await expect(started).toBeFocused()
+
+  // A second Esc leaves the form, as before.
+  await window.keyboard.press('Escape')
+  await expect(logModal('PSAPAC-4')).toHaveCount(0)
+})
+
+test('Started says it cannot read a phrase, and the form refuses to log it', async () => {
+  await open()
+  await window.keyboard.press('Shift+T')
+  const started = logForm('PSAPAC-4').getByLabel('Started')
+  await logForm('PSAPAC-4').getByLabel('Time spent').fill('1h')
+  await started.fill('whenever')
+  await expect(logForm('PSAPAC-4').getByRole('option')).toHaveCount(0)
+  await logForm('PSAPAC-4').getByLabel('Comment').focus()
+  await expect(logForm('PSAPAC-4').getByText('Could not read the date')).toBeVisible()
+  await expect(started).toHaveAttribute('aria-invalid', 'true')
+
+  await logForm('PSAPAC-4').getByRole('button', { name: 'Log work' }).click()
+  await expect(logForm('PSAPAC-4').getByRole('alert')).toContainText(
+    'Started must be a valid date.',
+  )
+  expect(await writes()).toBe(0)
+})
+
+test('an edited worklog shows its start as a date and time, and a date phrase keeps the time', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  // PSAPAC-2 holds 1h by the signed-in user, started 2026-10-02 03:00 UTC.
+  await open(/PSAPAC-2,/)
+  await window.keyboard.press('w')
+  await rows('PSAPAC-2').nth(1).getByRole('button', { name: 'Edit worklog' }).click()
+  const edit = list('PSAPAC-2').getByRole('form', { name: 'Edit worklog' })
+  const started = edit.getByLabel('Started')
+  await expect(started).toHaveValue('2 Oct, 03:00')
+
+  await started.fill('tomorrow')
+  await expect(edit.getByRole('option')).toHaveText('Tue 3 Nov 2026, 03:00')
+  await edit.getByRole('option').click()
+  await expect(started).toHaveValue('3 Nov, 03:00')
+  await edit.getByRole('button', { name: 'Save' }).click()
+  await expect.poll(writes).toBe(1)
+  expect((await lastBody()).started).toBe('2026-11-03T03:00:00.000+0000')
+  await releaseEdit(app)
+})
+
+test('the Started field in a wide font keeps its suggestion inside the window', async () => {
+  await window.clock.setFixedTime(new Date('2026-11-02T09:30:00Z'))
+  await open()
+  await window.keyboard.press('Shift+T')
+  await window.addStyleTag({
+    content: '* { font-family: Verdana, "DejaVu Sans", sans-serif !important }',
+  })
+  const started = logForm('PSAPAC-4').getByLabel('Started')
+  await started.fill('next tuesday 10am')
+  const option = logForm('PSAPAC-4').getByRole('option')
+  await expect(option).toHaveText('Tue 10 Nov 2026, 10:00')
+  const box = await option.boundingBox()
+  const field = await started.boundingBox()
+  const size = await window.evaluate(() => ({ width: innerWidth, height: innerHeight }))
+  expect(box?.height ?? 99).toBeLessThan(40)
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(size.width)
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(size.height)
+  expect(box?.y ?? 0).toBeGreaterThanOrEqual((field?.y ?? 0) + (field?.height ?? 0))
+  // Typed text fits the field.
+  await started.fill('30 Oct 2027, 14:00')
+  expect(await started.evaluate((el: HTMLInputElement) => el.scrollWidth > el.clientWidth)).toBe(
+    false,
+  )
+})
