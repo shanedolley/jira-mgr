@@ -36,14 +36,14 @@
   },
   "devDependencies": {
     "@jira-mgr/config-ts": "workspace:*",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "msw": "^3.0.3",
     "typescript": "~7.0.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.1.0"
   },
   "dependencies": {
     "chrono-node": "^2.10.3",
-    "marked": "^18.1.1",
+    "marked": "^18.1.3",
     "zod": "^4.6.7"
   }
 }

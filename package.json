@@ -28,9 +28,9 @@
   "devDependencies": {
     "@jira-mgr/config-lint": "workspace:*",
     "@jira-mgr/config-ts": "workspace:*",
-    "@types/node": "^26.6.5",
-    "oxlint": "^1.88.0",
-    "oxlint-tsgolint": "^7.0.2004",
+    "@types/node": "^26.6.6",
+    "oxlint": "^1.91.0",
+    "oxlint-tsgolint": "^7.0.2005",
     "prettier": "^3.9.10",
     "typescript": "~7.0.2"
   }
